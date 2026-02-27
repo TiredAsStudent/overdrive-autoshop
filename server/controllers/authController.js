@@ -72,7 +72,7 @@ const login = async (req, res) => {
       { expiresIn: "12h" }, // Token expires in 12 hours
     );
 
-    // Send the token and user data back to the frontend
+    // Send the token and user data
     res.status(200).json({
       message: "Login successful",
       token: token,
@@ -88,4 +88,26 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { register, login };
+// GET CURRENT USER (For frontend page refreshes)
+const getCurrentUser = async (req, res) => {
+  try {
+    // req.user is attached by the verifyToken middleware
+    const query = "SELECT id, email, role, created_at FROM users WHERE id = $1";
+
+    // import the pool directly here to run the quick query
+    const pool = require("../config/db");
+    const result = await pool.query(query, [req.user.id]);
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Send the user data back
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("Get User Error:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+module.exports = { register, login, getCurrentUser };
