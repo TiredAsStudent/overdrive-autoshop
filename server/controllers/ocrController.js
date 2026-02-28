@@ -10,15 +10,25 @@ const processReceipt = async (req, res) => {
 
     const imagePath = req.file.path;
 
-    // Send the image
+    // Send the image to Tesseract
     const rawText = await ocrService.extractTextFromImage(imagePath);
 
+    // EXTRACT TOTAL AMOUNT
     // This looks for "Total", "Amount", or "PHP/₱" followed by a number
     const totalRegex = /(?:total|amount|php|₱)[\s:=-]*([\d,]+\.\d{2})/i;
     const match = rawText.match(totalRegex);
     const extractedTotal = match
       ? match[1]
       : "Could not auto-detect total. Manual review required.";
+
+    // EXTRACT VENDOR NAME
+    // Split the raw text into lines, remove empty spaces, and grab the first line
+    const lines = rawText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const extractedVendor =
+      lines.length > 0 ? lines[0] : "Could not detect vendor.";
 
     // Clean up (Delete the image)
     fs.unlinkSync(imagePath);
@@ -27,6 +37,7 @@ const processReceipt = async (req, res) => {
     res.status(200).json({
       message: "OCR processing complete.",
       extractedData: {
+        vendor_name: extractedVendor,
         total_amount: extractedTotal,
         raw_text: rawText,
       },
