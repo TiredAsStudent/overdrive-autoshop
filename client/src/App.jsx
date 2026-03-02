@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+import MainLayout from "./components/layout/MainLayout";
 import CustomToaster from "./components/ui/CustomToaster";
 
 import NotFound from "./pages/NotFound";
@@ -24,28 +25,38 @@ function App() {
           {/* Default redirect to login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
 
-          {/* Admin Protected Routes */}
+          {/* === ADMIN PROTECTED ROUTES === */}
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-            <Route
-              path="/admin"
-              element={
-                <div className="p-10 text-2xl font-bold">
-                  Admin Dashboard (Coming Soon)
-                </div>
-              }
-            />
+            <Route element={<MainLayout />}>
+              <Route
+                path="/admin"
+                element={
+                  <div className="text-2xl font-bold text-zinc-800">
+                    Admin Dashboard Overview (Coming Soon)
+                  </div>
+                }
+              />
+              {/* Future Admin Pages will go here, for example: */}
+              {/* <Route path="/admin/vehicles" element={<AdminVehicleArchive />} /> */}
+              {/* <Route path="/admin/inventory" element={<AdminInventory />} /> */}
+            </Route>
           </Route>
 
-          {/* Staff Protected Routes */}
+          {/* === STAFF PROTECTED ROUTES === */}
           <Route element={<ProtectedRoute allowedRoles={["staff"]} />}>
-            <Route
-              path="/staff"
-              element={
-                <div className="p-10 text-2xl font-bold">
-                  Staff Dashboard (Coming Soon)
-                </div>
-              }
-            />
+            <Route element={<MainLayout />}>
+              <Route
+                path="/staff"
+                element={
+                  <div className="text-2xl font-bold text-zinc-800">
+                    Staff Operational Dashboard (Coming Soon)
+                  </div>
+                }
+              />
+              {/* Future Staff Pages will go here, for example: */}
+              {/* <Route path="/staff/vehicles" element={<StaffVehicleSearch />} /> */}
+              {/* <Route path="/staff/ocr" element={<StaffOcrIntake />} /> */}
+            </Route>
           </Route>
 
           {/* Not Found Page */}
