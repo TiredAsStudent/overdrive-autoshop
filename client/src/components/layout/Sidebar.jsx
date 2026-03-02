@@ -9,6 +9,9 @@ import {
   Wrench,
   PieChart,
   Users,
+  MapPin,
+  ClipboardList,
+  Settings,
   Menu,
   LogOut,
 } from "lucide-react";
@@ -38,6 +41,12 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
       roles: ["admin", "staff"],
     },
     {
+      name: "Job Cards",
+      path: `/${user?.role}/jobs`,
+      icon: Wrench,
+      roles: ["admin", "staff"],
+    },
+    {
       name: "Inventory",
       path: `/${user?.role}/inventory`,
       icon: Package,
@@ -49,11 +58,22 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
       icon: ScanLine,
       roles: ["admin", "staff"],
     },
-    { name: "Job Cards", path: `/staff/jobs`, icon: Wrench, roles: ["staff"] },
     {
       name: "Financials",
       path: `/admin/financials`,
       icon: PieChart,
+      roles: ["admin"],
+    },
+    {
+      name: "Branch Control",
+      path: `/admin/branches`,
+      icon: MapPin,
+      roles: ["admin"],
+    },
+    {
+      name: "Audit Logs",
+      path: `/admin/audit`,
+      icon: ClipboardList,
       roles: ["admin"],
     },
     {
@@ -147,15 +167,11 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                 }
               >
                 <Icon size={22} className="shrink-0" />
-
-                {/* Only render text if NOT collapsed */}
                 {!isCollapsed && (
                   <span className="whitespace-nowrap transition-all duration-300">
                     {link.name}
                   </span>
                 )}
-
-                {/* Tooltip for Collapsed State */}
                 {isCollapsed && (
                   <div className="absolute left-full ml-6 px-3 py-2 bg-yellow-400 text-zinc-950 text-sm font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-100 flex items-center">
                     <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-3 h-3 bg-yellow-400 rotate-45 rounded-sm"></div>
@@ -167,8 +183,43 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
           })}
         </nav>
 
-        {/* Bottom Logout Area */}
-        <div className="p-4 mb-2 border-t border-zinc-800/50 mt-2">
+        {/* Bottom Area: Settings & Logout */}
+        <div className="p-4 mb-2 border-t border-zinc-800/50 mt-2 space-y-2">
+          {/* Pinned Settings Link (Admin Only) */}
+          {user?.role === "admin" && (
+            <NavLink
+              to="/admin/settings"
+              onClick={() => {
+                if (window.innerWidth < 768) setIsMobileOpen(false);
+              }}
+              className={({ isActive }) =>
+                `group relative flex items-center h-12 rounded-xl transition-all duration-300 overflow-visible ${
+                  isCollapsed
+                    ? "justify-center w-12 mx-auto"
+                    : "px-4 gap-4 w-full"
+                } ${
+                  isActive
+                    ? "bg-yellow-400 text-zinc-950 font-black shadow-[0_0_15px_rgba(250,204,21,0.3)]"
+                    : "text-zinc-400 hover:bg-zinc-800 hover:text-white font-semibold"
+                }`
+              }
+            >
+              <Settings size={22} className="shrink-0" />
+              {!isCollapsed && (
+                <span className="whitespace-nowrap transition-all duration-300">
+                  Settings
+                </span>
+              )}
+              {isCollapsed && (
+                <div className="absolute left-full ml-6 px-3 py-2 bg-yellow-400 text-zinc-950 text-sm font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-50 flex items-center">
+                  <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-3 h-3 bg-yellow-400 rotate-45 rounded-sm"></div>
+                  Settings
+                </div>
+              )}
+            </NavLink>
+          )}
+
+          {/* Logout Button */}
           <button
             onClick={handleLogout}
             className={`group relative flex items-center h-12 rounded-xl hover:bg-red-500 hover:text-white text-zinc-400 transition-all duration-300 overflow-visible ${
@@ -178,12 +229,9 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
             }`}
           >
             <LogOut size={22} className="shrink-0" />
-
             {!isCollapsed && (
               <span className="whitespace-nowrap font-bold">Logout</span>
             )}
-
-            {/* Logout Tooltip for Collapsed State */}
             {isCollapsed && (
               <div className="absolute left-full ml-6 px-3 py-2 bg-red-500 text-white text-sm font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-100 flex items-center">
                 <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rotate-45 rounded-sm"></div>
