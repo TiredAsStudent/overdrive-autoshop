@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 
-//Verify if the user is logged in (Has a valid token)
+// Core Authentication Guard
 const verifyToken = (req, res, next) => {
   let token = req.header("Authorization");
 
@@ -11,16 +11,14 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
-    // Standardize the token format (Remove 'Bearer ' if it exists)
     if (token.startsWith("Bearer ")) {
-      token = token.slice(7, token.length).trimLeft();
+      token = token.slice(7).trim();
     }
 
-    // Verify the token using your secret key
     const verified = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = verified; // Attach the decoded payload (id, role) to the request
-
-    next(); // Token is good, proceed to the requested route
+    // Payload contains { id, role, branch_id }
+    req.user = verified;
+    next();
   } catch (error) {
     res
       .status(401)
@@ -28,7 +26,7 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-//Verify if the user has Admin privileges
+//Global Admin Guard
 const isAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "admin") {
     return res
@@ -38,4 +36,22 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { verifyToken, isAdmin };
+//Branch Lock Guard
+const branchGuard = (req, res, next) => {
+  // Admins bypass the branch lock
+  if (req.user.role === "admin") return next();
+
+  const targetBranch =
+    req.body?.branch_id || req.query?.branch_id || req.params?.branch_id;
+
+  // If a branch is specified and it does not match the staff member's branch
+  if (targetBranch && parseInt(targetBranch) !== req.user.branch_id) {
+    return res.status(403).json({
+      message: "Access Denied. You are locked to your specific branch.",
+    });
+  }
+
+  next();
+};
+
+module.exports = { verifyToken, isAdmin, branchGuard };

@@ -1,63 +1,103 @@
 const Inventory = require("../models/inventoryModel");
 
-//CREATE ITEM
+// Add a new item
 const addItem = async (req, res) => {
   try {
-    const { item_name, category, quantity, unit_price } = req.body;
+    const { item_name, category, quantity, unit_cost, tax_category } = req.body;
 
-    if (!item_name || !category || quantity === undefined || !unit_price) {
-      return res.status(400).json({ message: "All fields are required." });
+    if (
+      !item_name ||
+      !category ||
+      quantity === undefined ||
+      unit_cost === undefined
+    ) {
+      return res.status(400).json({
+        message: "Item name, category, quantity, and unit cost are required.",
+      });
     }
 
-    // Clean the input slightly
-    const cleanName = item_name.trim();
+    // Admins can specify which branch to add to. Staff are locked to their JWT branch_id.
+    const targetBranchId =
+      req.user.role === "admin"
+        ? req.body.branch_id || req.user.branch_id
+        : req.user.branch_id;
+
+    // Auto-calculate the +25% markup price
+    const markupPrice = (parseFloat(unit_cost) * 1.25).toFixed(2);
+
+    // Default to VAT-Exempt if not specified
+    const tax = tax_category || "VAT-Exempt";
 
     const newItem = await Inventory.createItem(
-      cleanName,
+      targetBranchId,
+      item_name.trim(),
       category,
       quantity,
-      unit_price,
+      unit_cost,
+      markupPrice,
+      tax,
     );
+
     res.status(201).json({ message: "Item added successfully", item: newItem });
   } catch (error) {
     console.error("Add Item Error:", error);
-    // Catch duplicate name errors from PostgreSQL (Error code 23505)
+    // Handle PostgreSQL Unique Constraint Error (e.g., trying to add "Oil Filter" twice to Branch 1)
     if (error.code === "23505") {
-      return res
-        .status(409)
-        .json({ message: "An item with this name already exists." });
+      return res.status(409).json({
+        message:
+          "This item already exists in this branch. Please update the existing stock instead.",
+      });
     }
-    res.status(500).json({ message: "Internal server error." });
+    res.status(500).json({ message: "Internal server error adding item." });
   }
 };
 
-// GET ALL ITEMS
+// Get the stock list
 const getItems = async (req, res) => {
   try {
-    const items = await Inventory.getAllItems();
+    // Admins get the Global View. Staff get the Local View.
+    const items =
+      req.user.role === "admin"
+        ? await Inventory.getAllItemsGlobal()
+        : await Inventory.getItemsByBranch(req.user.branch_id);
+
     res.status(200).json(items);
   } catch (error) {
     console.error("Get Items Error:", error);
-    res.status(500).json({ message: "Internal server error." });
+    res
+      .status(500)
+      .json({ message: "Internal server error fetching inventory." });
   }
 };
 
-// UPDATE ITEM
+// Edit an existing item
 const editItem = async (req, res) => {
   try {
     const itemId = req.params.id;
-    const { item_name, category, quantity, unit_price } = req.body;
+    const { item_name, category, quantity, unit_cost, tax_category } = req.body;
+
+    const targetBranchId =
+      req.user.role === "admin"
+        ? req.body.branch_id || req.user.branch_id
+        : req.user.branch_id;
+    const markupPrice = (parseFloat(unit_cost) * 1.25).toFixed(2);
+    const tax = tax_category || "VAT-Exempt";
 
     const updatedItem = await Inventory.updateItem(
       itemId,
-      item_name,
+      targetBranchId,
+      item_name.trim(),
       category,
       quantity,
-      unit_price,
+      unit_cost,
+      markupPrice,
+      tax,
     );
 
     if (!updatedItem) {
-      return res.status(404).json({ message: "Item not found." });
+      return res.status(404).json({
+        message: "Item not found or you do not have permission to edit it.",
+      });
     }
 
     res
@@ -65,18 +105,25 @@ const editItem = async (req, res) => {
       .json({ message: "Item updated successfully", item: updatedItem });
   } catch (error) {
     console.error("Update Item Error:", error);
-    res.status(500).json({ message: "Internal server error." });
+    res.status(500).json({ message: "Internal server error updating item." });
   }
 };
 
-// DELETE ITEM
+// Delete an item
 const removeItem = async (req, res) => {
   try {
     const itemId = req.params.id;
-    const deletedItem = await Inventory.deleteItem(itemId);
+    const targetBranchId =
+      req.user.role === "admin"
+        ? req.body.branch_id || req.user.branch_id
+        : req.user.branch_id;
+
+    const deletedItem = await Inventory.deleteItem(itemId, targetBranchId);
 
     if (!deletedItem) {
-      return res.status(404).json({ message: "Item not found." });
+      return res.status(404).json({
+        message: "Item not found or you do not have permission to delete it.",
+      });
     }
 
     res
@@ -84,7 +131,7 @@ const removeItem = async (req, res) => {
       .json({ message: "Item deleted successfully", item: deletedItem });
   } catch (error) {
     console.error("Delete Item Error:", error);
-    res.status(500).json({ message: "Internal server error." });
+    res.status(500).json({ message: "Internal server error deleting item." });
   }
 };
 

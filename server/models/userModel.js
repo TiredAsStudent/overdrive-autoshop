@@ -7,18 +7,30 @@ const getUserByEmail = async (email) => {
   return result.rows[0];
 };
 
-// Insert a new user (for our initial test accounts)
-const createUser = async (email, hashedPassword, role) => {
+const createUser = async (email, hashedPassword, role, branch_id) => {
   const query = `
-        INSERT INTO users (email, password, role) 
-        VALUES ($1, $2, $3) 
-        RETURNING id, email, role, created_at
-    `;
-  const result = await pool.query(query, [email, hashedPassword, role]);
+    INSERT INTO users (email, password, role, branch_id) 
+    VALUES ($1, $2, $3, $4) 
+    RETURNING id, email, role, branch_id, created_at
+  `;
+  const result = await pool.query(query, [
+    email,
+    hashedPassword,
+    role,
+    branch_id,
+  ]);
+  return result.rows[0];
+};
+
+const getUserById = async (id) => {
+  const query =
+    "SELECT id, email, role, branch_id, created_at FROM users WHERE id = $1";
+  const result = await pool.query(query, [id]);
   return result.rows[0];
 };
 
 module.exports = {
   getUserByEmail,
   createUser,
+  getUserById,
 };

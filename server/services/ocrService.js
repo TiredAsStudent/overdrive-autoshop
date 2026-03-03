@@ -1,18 +1,40 @@
 const Tesseract = require("tesseract.js");
+const sharp = require("sharp");
+const fs = require("fs");
+const path = require("path");
 
-// takes the image path and asks Tesseract to read it
-const extractTextFromImage = async (imagePath) => {
+const extractTextFromImage = async (originalImagePath) => {
+  const processedImagePath = path.join(
+    "uploads",
+    `processed-${Date.now()}.png`,
+  );
+
   try {
-    console.log("OCR Engine is processing the image...");
+    // Clean the greasy receipt for OCR accuracy
+    await sharp(originalImagePath)
+      .grayscale()
+      .normalize()
+      .threshold(128)
+      .toFile(processedImagePath);
 
+    // Ask Tesseract to read the clean image
     const {
       data: { text },
-    } = await Tesseract.recognize(imagePath, "eng");
+    } = await Tesseract.recognize(processedImagePath, "eng");
+
+    //Immediately delete both images to save server space
+    fs.unlinkSync(originalImagePath);
+    fs.unlinkSync(processedImagePath);
 
     return text;
   } catch (error) {
-    console.error("OCR Service Error:", error);
-    throw new Error("Failed to process image through OCR.");
+    console.error("OCR Engine Error:", error);
+
+    // Ensure files are deleted even if the OCR engine crashes
+    if (fs.existsSync(originalImagePath)) fs.unlinkSync(originalImagePath);
+    if (fs.existsSync(processedImagePath)) fs.unlinkSync(processedImagePath);
+
+    throw new Error("Failed to process the receipt image.");
   }
 };
 

@@ -2,19 +2,21 @@ const express = require("express");
 const router = express.Router();
 const inventoryController = require("../controllers/inventoryController");
 
-// Middleware
-const { verifyToken } = require("../middleware/authMiddleware");
+// Middlewares
+const { verifyToken, branchGuard } = require("../middleware/authMiddleware");
+
+router.use(verifyToken);
 
 // POST /api/inventory/add
-router.post("/add", verifyToken, inventoryController.addItem);
+router.post("/add", branchGuard, inventoryController.addItem);
 
-// GET /api/inventory/
-router.get("/", verifyToken, inventoryController.getItems);
+// GET /api/inventory
+router.get("/", inventoryController.getItems);
 
 // PUT /api/inventory/edit/:id
-router.put("/edit/:id", verifyToken, inventoryController.editItem);
+router.put("/edit/:id", branchGuard, inventoryController.editItem);
 
 // DELETE /api/inventory/delete/:id
-router.delete("/delete/:id", verifyToken, inventoryController.removeItem);
+router.delete("/delete/:id", branchGuard, inventoryController.removeItem);
 
 module.exports = router;

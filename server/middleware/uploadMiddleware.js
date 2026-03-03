@@ -1,20 +1,25 @@
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
 
-// Configure where and how to save the incoming images
+// Ensure the uploads directory exists
+const uploadDir = "uploads/";
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // Create a unique filename: receipt-1634567890.jpg
+    // Generates a unique name to prevent file overwrites
     cb(null, `receipt-${Date.now()}${path.extname(file.originalname)}`);
   },
 });
 
-// Create the upload filter (Only allow images)
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png/;
+  const allowedTypes = /jpeg|jpg|png|webp/;
   const extName = allowedTypes.test(
     path.extname(file.originalname).toLowerCase(),
   );
@@ -23,14 +28,13 @@ const fileFilter = (req, file, cb) => {
   if (extName && mimeType) {
     return cb(null, true);
   } else {
-    cb(new Error("Only images (jpeg, jpg, png) are allowed!"));
+    cb(new Error("Only image files (jpeg, jpg, png, webp) are allowed."));
   }
 };
 
-// Export the configured upload middleware (Max size: 5MB)
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024 }, // Strict 5MB limit per receipt
   fileFilter: fileFilter,
 });
 
