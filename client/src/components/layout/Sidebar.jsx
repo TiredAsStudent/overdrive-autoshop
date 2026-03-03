@@ -102,43 +102,36 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
       <aside
         className={`fixed inset-y-0 left-0 z-50 bg-zinc-950 text-white flex flex-col transition-all duration-300 ease-in-out border-r border-zinc-800 md:static md:inset-0 
           ${isMobileOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0"}
-          ${isCollapsed ? "md:w-24" : "md:w-64"}
+          ${isCollapsed ? "md:w-20" : "md:w-64"}
         `}
       >
         {/* Top Header & Logo Area */}
         <div
-          className={`flex h-20 items-center border-b border-zinc-800 transition-all duration-300 ${
-            isCollapsed ? "justify-center px-0" : "justify-between px-5"
-          }`}
+          className={`flex h-20 items-center border-b border-zinc-800 transition-all duration-300 ${isCollapsed ? "justify-center px-0" : "justify-between px-5"}`}
         >
-          {/* Logo AND Text (Only visible when expanded) */}
           {!isCollapsed && (
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className="bg-white p-1.5 rounded-lg shadow-sm shrink-0">
+              <div className="bg-white p-1 rounded-lg shadow-sm shrink-0">
                 <img
                   src={logoImg}
                   alt="Overdrive Logo"
                   className="h-6 w-auto object-contain"
                 />
               </div>
-              <span className="text-white font-black tracking-widest text-lg uppercase mt-0.5">
+              <span className="text-white font-black tracking-widest text-base uppercase mt-0.5">
                 Overdrive
               </span>
             </div>
           )}
 
-          {/* Toggle Button */}
           <button
             onClick={() => {
-              if (window.innerWidth >= 768) {
-                setIsCollapsed(!isCollapsed);
-              } else {
-                setIsMobileOpen(false);
-              }
+              if (window.innerWidth >= 768) setIsCollapsed(!isCollapsed);
+              else setIsMobileOpen(false);
             }}
             className="p-2 text-zinc-400 hover:text-yellow-400 hover:bg-zinc-800/50 rounded-lg transition-all focus:outline-none shrink-0"
           >
-            <Menu size={26} />
+            <Menu size={24} />
           </button>
         </div>
 
@@ -155,26 +148,29 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                   if (window.innerWidth < 768) setIsMobileOpen(false);
                 }}
                 className={({ isActive }) =>
-                  `group relative flex items-center h-12 rounded-xl transition-all duration-300 overflow-visible ${
+                  `group relative flex items-center h-11 rounded-xl transition-all duration-300 overflow-visible shrink-0 ${
                     isCollapsed
-                      ? "justify-center w-12 mx-auto"
+                      ? "justify-center w-11 mx-auto"
                       : "px-4 gap-4 w-full"
                   } ${
                     isActive
-                      ? "bg-yellow-400 text-zinc-950 font-black shadow-[0_0_15px_rgba(250,204,21,0.3)]"
-                      : "text-zinc-400 hover:bg-zinc-800 hover:text-white font-semibold"
+                      ? "bg-yellow-400 text-zinc-950 font-black shadow-[0_0_15px_rgba(250,204,21,0.2)]"
+                      : "text-zinc-400 hover:bg-zinc-800/80 hover:text-white font-semibold"
                   }`
                 }
               >
-                <Icon size={22} className="shrink-0" />
+                <Icon size={20} className="shrink-0" />
+
                 {!isCollapsed && (
-                  <span className="whitespace-nowrap transition-all duration-300">
+                  <span className="whitespace-nowrap text-[15px] transition-all duration-300">
                     {link.name}
                   </span>
                 )}
+
+                {/* Tooltip */}
                 {isCollapsed && (
-                  <div className="absolute left-full ml-6 px-3 py-2 bg-yellow-400 text-zinc-950 text-sm font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-100 flex items-center">
-                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-3 h-3 bg-yellow-400 rotate-45 rounded-sm"></div>
+                  <div className="absolute left-full ml-5 px-3 py-2 bg-yellow-400 text-zinc-950 text-xs font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-100 flex items-center">
+                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-yellow-400 rotate-45 rounded-sm"></div>
                     {link.name}
                   </div>
                 )}
@@ -184,8 +180,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
         </nav>
 
         {/* Bottom Area: Settings & Logout */}
-        <div className="p-4 mb-2 border-t border-zinc-800/50 mt-2 space-y-2">
-          {/* Pinned Settings Link (Admin Only) */}
+        <div className="p-4 mb-2 border-t border-zinc-800/50 flex flex-col gap-2 shrink-0">
           {user?.role === "admin" && (
             <NavLink
               to="/admin/settings"
@@ -193,48 +188,49 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                 if (window.innerWidth < 768) setIsMobileOpen(false);
               }}
               className={({ isActive }) =>
-                `group relative flex items-center h-12 rounded-xl transition-all duration-300 overflow-visible ${
+                `group relative flex items-center h-11 rounded-xl transition-all duration-300 overflow-visible ${
                   isCollapsed
-                    ? "justify-center w-12 mx-auto"
+                    ? "justify-center w-11 mx-auto"
                     : "px-4 gap-4 w-full"
                 } ${
                   isActive
-                    ? "bg-yellow-400 text-zinc-950 font-black shadow-[0_0_15px_rgba(250,204,21,0.3)]"
-                    : "text-zinc-400 hover:bg-zinc-800 hover:text-white font-semibold"
+                    ? "bg-yellow-400 text-zinc-950 font-black shadow-[0_0_15px_rgba(250,204,21,0.2)]"
+                    : "text-zinc-400 hover:bg-zinc-800/80 hover:text-white font-semibold"
                 }`
               }
             >
-              <Settings size={22} className="shrink-0" />
+              <Settings size={20} className="shrink-0" />
               {!isCollapsed && (
-                <span className="whitespace-nowrap transition-all duration-300">
+                <span className="whitespace-nowrap text-[15px] transition-all duration-300">
                   Settings
                 </span>
               )}
               {isCollapsed && (
-                <div className="absolute left-full ml-6 px-3 py-2 bg-yellow-400 text-zinc-950 text-sm font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-50 flex items-center">
-                  <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-3 h-3 bg-yellow-400 rotate-45 rounded-sm"></div>
+                <div className="absolute left-full ml-5 px-3 py-2 bg-yellow-400 text-zinc-950 text-xs font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-50 flex items-center">
+                  <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-yellow-400 rotate-45 rounded-sm"></div>
                   Settings
                 </div>
               )}
             </NavLink>
           )}
 
-          {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className={`group relative flex items-center h-12 rounded-xl hover:bg-red-500 hover:text-white text-zinc-400 transition-all duration-300 overflow-visible ${
+            className={`group relative flex items-center h-11 rounded-xl hover:bg-red-500 hover:text-white text-zinc-400 transition-all duration-300 overflow-visible ${
               isCollapsed
-                ? "justify-center w-12 mx-auto bg-zinc-900"
+                ? "justify-center w-11 mx-auto bg-zinc-900"
                 : "px-4 gap-4 w-full"
             }`}
           >
-            <LogOut size={22} className="shrink-0" />
+            <LogOut size={20} className="shrink-0" />
             {!isCollapsed && (
-              <span className="whitespace-nowrap font-bold">Logout</span>
+              <span className="whitespace-nowrap text-[15px] font-bold">
+                Logout
+              </span>
             )}
             {isCollapsed && (
-              <div className="absolute left-full ml-6 px-3 py-2 bg-red-500 text-white text-sm font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-100 flex items-center">
-                <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rotate-45 rounded-sm"></div>
+              <div className="absolute left-full ml-5 px-3 py-2 bg-red-500 text-white text-xs font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-100 flex items-center">
+                <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-red-500 rotate-45 rounded-sm"></div>
                 Logout
               </div>
             )}
