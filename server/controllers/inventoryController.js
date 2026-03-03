@@ -115,7 +115,7 @@ const removeItem = async (req, res) => {
     const itemId = req.params.id;
     const targetBranchId =
       req.user.role === "admin"
-        ? req.body.branch_id || req.user.branch_id
+        ? req.body?.branch_id || req.user.branch_id
         : req.user.branch_id;
 
     const deletedItem = await Inventory.deleteItem(itemId, targetBranchId);
