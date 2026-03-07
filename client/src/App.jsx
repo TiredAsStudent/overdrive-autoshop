@@ -11,6 +11,9 @@ import CustomToaster from "./components/ui/CustomToaster";
 
 import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
+import VehicleArchive from "./pages/vehicles/VehicleArchive";
+import OCRIntake from "./pages/ocr/OCRIntake";
+import InventoryList from "./pages/inventory/InventoryList";
 
 // Reusable Placeholder Component for testing routes
 const ComingSoon = ({ title }) => (
@@ -39,22 +42,13 @@ function App() {
                 path="/admin"
                 element={<ComingSoon title="Admin Dashboard Overview" />}
               />
-              <Route
-                path="/admin/vehicles"
-                element={<ComingSoon title="Admin Vehicle Archive" />}
-              />
+              <Route path="/admin/vehicles" element={<VehicleArchive />} />
               <Route
                 path="/admin/jobs"
                 element={<ComingSoon title="Admin Job Cards" />}
               />
-              <Route
-                path="/admin/inventory"
-                element={<ComingSoon title="Admin Inventory Manager" />}
-              />
-              <Route
-                path="/admin/ocr"
-                element={<ComingSoon title="Admin OCR Intake" />}
-              />
+              <Route path="/admin/inventory" element={<InventoryList />} />
+              <Route path="/admin/ocr" element={<OCRIntake />} />
               <Route
                 path="/admin/financials"
                 element={<ComingSoon title="Financials & P&L" />}
@@ -85,22 +79,13 @@ function App() {
                 path="/staff"
                 element={<ComingSoon title="Staff Operational Dashboard" />}
               />
-              <Route
-                path="/staff/vehicles"
-                element={<ComingSoon title="Staff Vehicle Archive" />}
-              />
+              <Route path="/staff/vehicles" element={<VehicleArchive />} />
               <Route
                 path="/staff/jobs"
                 element={<ComingSoon title="Staff Job Cards" />}
               />
-              <Route
-                path="/staff/inventory"
-                element={<ComingSoon title="Staff Stock Monitor" />}
-              />
-              <Route
-                path="/staff/ocr"
-                element={<ComingSoon title="Staff OCR Intake" />}
-              />
+              <Route path="/staff/inventory" element={<InventoryList />} />
+              <Route path="/staff/ocr" element={<OCRIntake />} />
             </Route>
           </Route>
 
