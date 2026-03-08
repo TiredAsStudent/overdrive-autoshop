@@ -1,101 +1,102 @@
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
+const bcrypt = require("bcrypt");
+const { generateToken } = require("../utils/jwtUtils");
+const { OAuth2Client } = require("google-auth-library");
 
-const register = async (req, res) => {
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// Register
+exports.register = async (req, res) => {
+  const { email, password, full_name, role, branch_id } = req.body;
+
   try {
-    const { email, password, role, branch_id } = req.body;
+    const existingUser = await User.findByEmail(email);
+    if (existingUser)
+      return res.status(400).json({ error: "Email already exists." });
 
-    if (!email || !password || !role || !branch_id) {
-      return res.status(400).json({
-        message: "Email, password, role, and branch_id are required.",
-      });
-    }
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
 
-    if (role !== "admin" && role !== "staff") {
-      return res
-        .status(400)
-        .json({ message: "Role must be 'admin' or 'staff'." });
-    }
-
-    const existingUser = await User.getUserByEmail(email);
-    if (existingUser) {
-      return res.status(409).json({ message: "Email is already registered." });
-    }
-
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    const newUser = await User.createUser(
+    const newUser = await User.createTraditionalUser(
       email,
-      hashedPassword,
+      password_hash,
+      full_name,
       role,
       branch_id,
     );
     res
       .status(201)
       .json({ message: "User created successfully", user: newUser });
-  } catch (error) {
-    console.error("Registration Error:", error);
-    res
-      .status(500)
-      .json({ message: "Internal server error during registration." });
+  } catch (err) {
+    console.error("Registration Error:", err.message);
+    res.status(500).json({ error: "Internal server error." });
   }
 };
 
-const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+// Login
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
 
-    if (!email || !password) {
+  try {
+    const user = await User.findByEmail(email);
+    if (!user) return res.status(400).json({ error: "Invalid credentials." });
+
+    if (!user.password_hash)
       return res
         .status(400)
-        .json({ message: "Email and password are required." });
-    }
+        .json({ error: "Please login using Google OAuth." });
 
-    const user = await User.getUserByEmail(email);
-    if (!user) {
-      return res.status(401).json({ message: "Invalid email or password." });
-    }
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch)
+      return res.status(400).json({ error: "Invalid credentials." });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password." });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, role: user.role, branch_id: user.branch_id },
-      process.env.JWT_SECRET,
-      { expiresIn: "12h" },
-    );
-
+    const token = generateToken(user);
     res.status(200).json({
-      message: "Login successful",
-      token: token,
+      token,
       user: {
         id: user.id,
-        email: user.email,
+        full_name: user.full_name,
         role: user.role,
         branch_id: user.branch_id,
       },
     });
-  } catch (error) {
-    console.error("Login Error:", error);
-    res.status(500).json({ message: "Internal server error during login." });
+  } catch (err) {
+    console.error("Login Error:", err.message);
+    res.status(500).json({ error: "Internal server error." });
   }
 };
 
-const getCurrentUser = async (req, res) => {
+// Google Login
+exports.googleLogin = async (req, res) => {
+  const { credential } = req.body;
+
   try {
-    const user = await User.getUserById(req.user.id);
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const { email, name, sub: google_id } = ticket.getPayload();
+
+    let user = await User.findByEmail(email);
+
     if (!user) {
-      return res.status(404).json({ message: "User not found." });
+      user = await User.createGoogleUser(email, name, "Customer", google_id);
+    } else if (!user.google_id) {
+      user = await User.updateGoogleId(email, google_id);
     }
-    res.status(200).json(user);
-  } catch (error) {
-    console.error("Get User Error:", error);
-    res.status(500).json({ message: "Internal server error." });
+
+    const token = generateToken(user);
+    res.status(200).json({
+      token,
+      user: {
+        id: user.id,
+        full_name: user.full_name,
+        role: user.role,
+        branch_id: user.branch_id,
+      },
+    });
+  } catch (err) {
+    console.error("Google Auth Error:", err.message);
+    res.status(401).json({ error: "Google authentication failed." });
   }
 };
-
-module.exports = { register, login, getCurrentUser };

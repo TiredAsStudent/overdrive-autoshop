@@ -1,57 +1,47 @@
 const jwt = require("jsonwebtoken");
 
-// Core Authentication Guard
 const verifyToken = (req, res, next) => {
-  let token = req.header("Authorization");
-
-  if (!token) {
-    return res
-      .status(403)
-      .json({ message: "Access Denied. No token provided." });
+  const authHeader = req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Access denied. No token provided." });
   }
+
+  const token = authHeader.split(" ")[1];
 
   try {
-    if (token.startsWith("Bearer ")) {
-      token = token.slice(7).trim();
-    }
-
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
-    // Payload contains { id, role, branch_id }
-    req.user = verified;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
     next();
-  } catch (error) {
-    res
-      .status(401)
-      .json({ message: "Invalid or expired token. Please log in again." });
+  } catch (err) {
+    res.status(401).json({ error: "Invalid or expired token." });
   }
 };
 
-//Global Admin Guard
-const isAdmin = (req, res, next) => {
-  if (!req.user || req.user.role !== "admin") {
-    return res
-      .status(403)
-      .json({ message: "Access Denied. Admin privileges required." });
-  }
-  next();
+const requireRole = (roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res
+        .status(403)
+        .json({ error: "Forbidden. Insufficient permissions." });
+    }
+    next();
+  };
 };
 
-//Branch Lock Guard
 const branchGuard = (req, res, next) => {
-  // Admins bypass the branch lock
-  if (req.user.role === "admin") return next();
+  const requestedBranchId = parseInt(
+    req.params.branch_id || req.body.branch_id,
+  );
 
-  const targetBranch =
-    req.body?.branch_id || req.query?.branch_id || req.params?.branch_id;
+  if (req.user.role === "Admin") return next();
 
-  // If a branch is specified and it does not match the staff member's branch
-  if (targetBranch && parseInt(targetBranch) !== req.user.branch_id) {
+  if (req.user.role === "Staff" && req.user.branch_id !== requestedBranchId) {
     return res.status(403).json({
-      message: "Access Denied. You are locked to your specific branch.",
+      error: "Forbidden. You can only access data for your assigned branch.",
     });
   }
 
   next();
 };
 
-module.exports = { verifyToken, isAdmin, branchGuard };
+module.exports = { verifyToken, requireRole, branchGuard };
