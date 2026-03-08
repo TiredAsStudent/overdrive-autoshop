@@ -1,49 +1,78 @@
 const pool = require("../config/db");
 
-//Find a vehicle exactly by its plate
-const findVehicleByPlate = async (plate) => {
-  const query = "SELECT * FROM vehicles WHERE plate_number = $1";
-  const result = await pool.query(query, [plate]);
-  return result.rows[0];
+const Vehicle = {
+  // Find a vehicle by its exact sanitized plate number
+  findByPlate: async (plate_number) => {
+    const result = await pool.query(
+      "SELECT * FROM vehicles WHERE plate_number = $1",
+      [plate_number],
+    );
+    return result.rows[0];
+  },
+
+  //Find a vehicle by its exact database ID
+  findById: async (id) => {
+    const result = await pool.query("SELECT id FROM vehicles WHERE id = $1", [
+      id,
+    ]);
+    return result.rows[0];
+  },
+
+  // Register a new vehicle
+  createVehicle: async (plate_number, make, model, year, owner_id) => {
+    const result = await pool.query(
+      `INSERT INTO vehicles (plate_number, make, model, year, owner_id) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [plate_number, make, model, year, owner_id || null],
+    );
+    return result.rows[0];
+  },
+
+  // Pulls all records across all 3 branches
+  getMedicalRecord: async (vehicle_id) => {
+    const result = await pool.query(
+      `SELECT 
+          sr.id AS record_id,
+          sr.service_date,
+          sr.description,
+          sr.mechanic_notes,
+          sr.total_cost,
+          sr.status,
+          b.branch_name,
+          u.full_name AS mechanic_name
+       FROM service_records sr
+       LEFT JOIN branches b ON sr.branch_id = b.id
+       LEFT JOIN users u ON sr.mechanic_id = u.id
+       WHERE sr.vehicle_id = $1
+       ORDER BY sr.service_date DESC`,
+      [vehicle_id],
+    );
+    return result.rows;
+  },
+
+  // Add a new service record
+  addServiceRecord: async (
+    vehicle_id,
+    branch_id,
+    mechanic_id,
+    description,
+    mechanic_notes,
+    total_cost,
+  ) => {
+    const result = await pool.query(
+      `INSERT INTO service_records (vehicle_id, branch_id, mechanic_id, description, mechanic_notes, total_cost)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [
+        vehicle_id,
+        branch_id,
+        mechanic_id,
+        description,
+        mechanic_notes,
+        total_cost,
+      ],
+    );
+    return result.rows[0];
+  },
 };
 
-// Register a new vehicle
-const createVehicle = async (plate, make, model, year, owner) => {
-  const query = `
-    INSERT INTO vehicles (plate_number, make, model, year, owner_name) 
-    VALUES ($1, $2, $3, $4, $5) 
-    RETURNING *;
-  `;
-  const result = await pool.query(query, [plate, make, model, year, owner]);
-  return result.rows[0];
-};
-
-// The "History Aggregator": Pulls all past repairs across all branches
-const getVehicleHistory = async (plate) => {
-  const query = `
-    SELECT id, branch_id, service_details, total_cost, service_date 
-    FROM service_history 
-    WHERE plate_number = $1 
-    ORDER BY service_date DESC;
-  `;
-  const result = await pool.query(query, [plate]);
-  return result.rows;
-};
-
-// Add a new service record (Used later when an Invoice is finalized)
-const createServiceRecord = async (plate, branchId, details, cost) => {
-  const query = `
-    INSERT INTO service_history (plate_number, branch_id, service_details, total_cost) 
-    VALUES ($1, $2, $3, $4) 
-    RETURNING *;
-  `;
-  const result = await pool.query(query, [plate, branchId, details, cost]);
-  return result.rows[0];
-};
-
-module.exports = {
-  findVehicleByPlate,
-  createVehicle,
-  getVehicleHistory,
-  createServiceRecord,
-};
+module.exports = Vehicle;

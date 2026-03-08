@@ -1,18 +1,29 @@
 const express = require("express");
 const router = express.Router();
 const vehicleController = require("../controllers/vehicleController");
+const { verifyToken, requireRole } = require("../middleware/authMiddleware");
 
-// Middleware
-const { verifyToken } = require("../middleware/authMiddleware");
 router.use(verifyToken);
 
-// POST /api/vehicles/register
-router.post("/register", vehicleController.registerVehicle);
+//Get Vehicle Medical Record by Plate (Admin & Staff)
+router.get(
+  "/:plate_number",
+  requireRole(["Admin", "Staff"]),
+  vehicleController.searchMedicalRecord,
+);
 
-// GET /api/vehicles/:plate
-router.get("/:plate", vehicleController.searchVehicle);
+//Register a new vehicle to the shop floor
+router.post(
+  "/register",
+  requireRole(["Admin", "Staff"]),
+  vehicleController.registerNewVehicle,
+);
 
-// POST /api/vehicles/history
-router.post("/history", vehicleController.addHistoryRecord);
+//Add a completed repair to the vehicle's history
+router.post(
+  "/service-record",
+  requireRole(["Admin", "Staff"]),
+  vehicleController.addRepairHistory,
+);
 
 module.exports = router;

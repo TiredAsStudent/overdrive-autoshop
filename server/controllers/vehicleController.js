@@ -1,30 +1,48 @@
 const Vehicle = require("../models/vehicleModel");
+const { sanitizePlate } = require("../utils/plateSanitizer");
 
-// Strips all spaces and dashes, and forces uppercase (e.g., "ab c-12 3" to "ABC123")
-const sanitizePlate = (plate) => {
-  if (!plate) return "";
-  return plate.replace(/[\s-]/g, "").toUpperCase();
-};
-
-// Register a new vehicle
-const registerVehicle = async (req, res) => {
+exports.searchMedicalRecord = async (req, res) => {
   try {
-    const { plate_number, make, model, year, owner_name } = req.body;
+    const rawPlate = req.params.plate_number;
+    const cleanPlate = sanitizePlate(rawPlate);
 
-    if (!plate_number || !make || !model || !owner_name) {
-      return res
-        .status(400)
-        .json({ message: "Plate, make, model, and owner are required." });
+    if (!cleanPlate) {
+      return res.status(400).json({ error: "Invalid license plate format." });
     }
 
+    // Fetch the Vehicle details
+    const vehicle = await Vehicle.findByPlate(cleanPlate);
+    if (!vehicle) {
+      return res
+        .status(404)
+        .json({ error: "Vehicle not found. Please register it first." });
+    }
+
+    // Fetch the Aggregated History across all branches
+    const history = await Vehicle.getMedicalRecord(vehicle.id);
+
+    // Return the unified "Medical Record"
+    res.status(200).json({
+      message: "Medical record retrieved successfully.",
+      vehicle: vehicle,
+      service_history: history,
+    });
+  } catch (err) {
+    console.error("Medical Record Search Error:", err.message);
+    res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+exports.registerNewVehicle = async (req, res) => {
+  try {
+    const { plate_number, make, model, year, owner_id } = req.body;
     const cleanPlate = sanitizePlate(plate_number);
 
-    // Check if it already exists
-    const existingVehicle = await Vehicle.findVehicleByPlate(cleanPlate);
+    const existingVehicle = await Vehicle.findByPlate(cleanPlate);
     if (existingVehicle) {
-      return res.status(409).json({
-        message: `Vehicle with plate ${cleanPlate} is already registered.`,
-      });
+      return res
+        .status(400)
+        .json({ error: "Vehicle with this plate already exists." });
     }
 
     const newVehicle = await Vehicle.createVehicle(
@@ -32,88 +50,48 @@ const registerVehicle = async (req, res) => {
       make,
       model,
       year,
-      owner_name,
+      owner_id,
     );
     res.status(201).json({
       message: "Vehicle registered successfully",
       vehicle: newVehicle,
     });
-  } catch (error) {
-    console.error("Vehicle Registration Error:", error);
-    res
-      .status(500)
-      .json({ message: "Internal server error during registration." });
+  } catch (err) {
+    console.error("Vehicle Registration Error:", err.message);
+    res.status(500).json({ error: "Internal server error." });
   }
 };
 
-// Search for a vehicle and aggregate its "Medical Record"
-const searchVehicle = async (req, res) => {
+exports.addRepairHistory = async (req, res) => {
   try {
-    const rawPlate = req.params.plate;
-    const cleanPlate = sanitizePlate(rawPlate);
+    const { vehicle_id, description, mechanic_notes, total_cost } = req.body;
 
-    const vehicle = await Vehicle.findVehicleByPlate(cleanPlate);
-
-    if (!vehicle) {
-      return res
-        .status(404)
-        .json({ message: `No vehicle found for plate ${cleanPlate}.` });
+    const vehicleExists = await Vehicle.findById(vehicle_id);
+    if (!vehicleExists) {
+      return res.status(404).json({
+        error:
+          "Vehicle not found. Cannot add a repair record to a non-existent vehicle.",
+      });
     }
 
-    // Pull the aggregated history across all branches
-    const history = await Vehicle.getVehicleHistory(cleanPlate);
-
-    res.status(200).json({
-      message: "Medical Record retrieved.",
-      vehicle: vehicle,
-      medical_record: history,
-    });
-  } catch (error) {
-    console.error("Vehicle Search Error:", error);
-    res.status(500).json({ message: "Internal server error while searching." });
-  }
-};
-
-// Add a history record
-const addHistoryRecord = async (req, res) => {
-  try {
-    const { plate_number, service_details, total_cost } = req.body;
-
-    // Automatically tags the repair with the logged-in staff member's specific branch
+    // Pull branch_id and mechanic_id securely from the JWT token via authMiddleware
     const branch_id = req.user.branch_id;
+    const mechanic_id = req.user.id;
 
-    if (!plate_number || !service_details || total_cost === undefined) {
-      return res
-        .status(400)
-        .json({ message: "Plate, details, and cost are required." });
-    }
-
-    const cleanPlate = sanitizePlate(plate_number);
-
-    // Ensure the car actually exists before adding history
-    const vehicle = await Vehicle.findVehicleByPlate(cleanPlate);
-    if (!vehicle) {
-      return res
-        .status(404)
-        .json({ message: "Cannot add record. Vehicle not found." });
-    }
-
-    const newRecord = await Vehicle.createServiceRecord(
-      cleanPlate,
+    const newRecord = await Vehicle.addServiceRecord(
+      vehicle_id,
       branch_id,
-      service_details,
+      mechanic_id,
+      description,
+      mechanic_notes,
       total_cost,
     );
     res.status(201).json({
-      message: "Service record added successfully.",
+      message: "Repair history added successfully.",
       record: newRecord,
     });
-  } catch (error) {
-    console.error("Add History Error:", error);
-    res
-      .status(500)
-      .json({ message: "Internal server error adding service record." });
+  } catch (err) {
+    console.error("Add Repair History Error:", err.message);
+    res.status(500).json({ error: "Internal server error." });
   }
 };
-
-module.exports = { registerVehicle, searchVehicle, addHistoryRecord };

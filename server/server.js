@@ -4,6 +4,7 @@ const cors = require("cors");
 
 //Import Routes
 const authRoutes = require("./routes/authRoutes");
+const vehicleRoutes = require("./routes/vehicleRoutes");
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(express.json());
 
 //Mount Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/vehicles", vehicleRoutes);
 
 // Base Test Route
 app.get("/", (req, res) => {
