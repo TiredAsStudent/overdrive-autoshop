@@ -1,22 +1,44 @@
 const express = require("express");
 const router = express.Router();
 const inventoryController = require("../controllers/inventoryController");
-
-// Middlewares
-const { verifyToken, branchGuard } = require("../middleware/authMiddleware");
+const {
+  verifyToken,
+  requireRole,
+  branchGuard,
+} = require("../middleware/authMiddleware");
 
 router.use(verifyToken);
 
-// POST /api/inventory/add
-router.post("/add", branchGuard, inventoryController.addItem);
+// Admin adds a brand new item to the system
+router.post("/item", requireRole(["Admin"]), inventoryController.addNewItem);
 
-// GET /api/inventory
-router.get("/", inventoryController.getItems);
+// View Branch Inventory
+router.get(
+  "/:branch_id",
+  requireRole(["Admin", "Staff"]),
+  branchGuard,
+  inventoryController.fetchInventory,
+);
 
-// PUT /api/inventory/edit/:id
-router.put("/edit/:id", branchGuard, inventoryController.editItem);
+//Staff requests a count correction
+router.post(
+  "/adjust",
+  requireRole(["Admin", "Staff"]),
+  inventoryController.submitAdjustment,
+);
 
-// DELETE /api/inventory/delete/:id
-router.delete("/delete/:id", branchGuard, inventoryController.removeItem);
+//Admin views the queue of all pending corrections
+router.get(
+  "/adjustments/queue",
+  requireRole(["Admin"]),
+  inventoryController.getAdjustmentsQueue,
+);
+
+//Admin approves or rejects the correction
+router.put(
+  "/adjustments/:id",
+  requireRole(["Admin"]),
+  inventoryController.processAdjustment,
+);
 
 module.exports = router;
