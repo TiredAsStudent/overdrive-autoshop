@@ -7,6 +7,7 @@ const authRoutes = require("./routes/authRoutes");
 const vehicleRoutes = require("./routes/vehicleRoutes");
 const ocrRoutes = require("./routes/ocrRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
+const pipelineRoutes = require("./routes/pipelineRoutes");
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/ocr", ocrRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/pipeline", pipelineRoutes);
 
 // Base Test Route
 app.get("/", (req, res) => {
