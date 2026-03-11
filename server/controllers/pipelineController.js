@@ -4,12 +4,36 @@ const Pipeline = require("../models/pipelineModel");
 exports.createEstimate = async (req, res) => {
   try {
     const { vehicle_id, assigned_mechanic_id, items } = req.body;
-    const branch_id = req.user.branch_id;
+
+    // Fix: Allow Admin to specify branch; force Staff to use their locked branch.
+    const branch_id =
+      req.user.role === "Admin" && req.body.branch_id
+        ? req.body.branch_id
+        : req.user.branch_id;
+
+    if (!branch_id) {
+      return res
+        .status(400)
+        .json({ error: "Branch ID is required to create an estimate." });
+    }
 
     if (!items || items.length === 0) {
       return res
         .status(400)
         .json({ error: "Cannot create an estimate without items." });
+    }
+
+    // Fix: Input Validation to prevent negative stock inputs
+    const invalidItem = items.find(
+      (item) => item.quantity <= 0 || item.unit_price < 0,
+    );
+    if (invalidItem) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Item quantities must be greater than zero, and prices cannot be negative.",
+        });
     }
 
     const newJob = await Pipeline.createEstimate(
@@ -24,7 +48,7 @@ exports.createEstimate = async (req, res) => {
     });
   } catch (err) {
     console.error("Create Estimate Error:", err.message);
-    res.status(500).json({ error: "Internal server error." });
+    res.status(500).json({ error: err.message || "Internal server error." });
   }
 };
 
@@ -52,9 +76,12 @@ exports.advanceStage = async (req, res) => {
     }
   } catch (err) {
     console.error("Advance Stage Error:", err.message);
+    // Modified to return the specific DB error if stock reservation fails
     res
       .status(500)
-      .json({ error: "Internal server error during stage transition." });
+      .json({
+        error: err.message || "Internal server error during stage transition.",
+      });
   }
 };
 

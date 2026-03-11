@@ -74,9 +74,17 @@ exports.addRepairHistory = async (req, res) => {
       });
     }
 
-    // Pull branch_id and mechanic_id securely from the JWT token via authMiddleware
-    const branch_id = req.user.branch_id;
+    const branch_id =
+      req.user.role === "Admin" && req.body.branch_id
+        ? req.body.branch_id
+        : req.user.branch_id;
     const mechanic_id = req.user.id;
+
+    if (!branch_id) {
+      return res
+        .status(400)
+        .json({ error: "Branch ID is required to add history." });
+    }
 
     const newRecord = await Vehicle.addServiceRecord(
       vehicle_id,

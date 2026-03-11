@@ -84,6 +84,12 @@ const Inventory = {
     try {
       await client.query("BEGIN"); // Start Transaction
 
+      if (action === "Approved" && requested_qty < 0) {
+        throw new Error(
+          "Physical stock count cannot be updated to a negative number.",
+        );
+      }
+
       // Update the status of the adjustment request
       const adjResult = await client.query(
         `UPDATE inventory_adjustments 

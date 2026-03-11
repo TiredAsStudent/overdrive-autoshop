@@ -13,9 +13,7 @@ const processReceiptImage = async (imageBuffer) => {
     //Run Tesseract.js OCR
     const {
       data: { text },
-    } = await Tesseract.recognize(processedImageBuffer, "eng", {
-      logger: (m) => console.log(m),
-    });
+    } = await Tesseract.recognize(processedImageBuffer, "eng");
 
     //Basic Extraction Logic (Regex)
     // Note: Staff (Maker) will verify/edit this on the frontend

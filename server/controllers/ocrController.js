@@ -11,14 +11,16 @@ exports.scanReceipt = async (req, res) => {
     const ocrResult = await processReceiptImage(req.file.buffer);
 
     //Automated Markup Engine (+25%)
-    const markupSuggested = ocrResult.extractedTotal * 1.25;
+    const markupSuggested = parseFloat(
+      (ocrResult.extractedTotal * 1.25).toFixed(2),
+    );
 
     //Return to Frontend for Maker Verification
     res.status(200).json({
       message: "OCR Scan Complete. Please verify data.",
       extracted_data: {
         total_amount: ocrResult.extractedTotal,
-        markup_suggested: markupSuggested.toFixed(2),
+        markup_suggested: markupSuggested,
         raw_text: ocrResult.rawText,
       },
     });
@@ -35,8 +37,16 @@ exports.submitVerifiedData = async (req, res) => {
     const branch_id = req.user.branch_id;
     const maker_id = req.user.id;
 
-    // Recalculate markup
-    const markup_suggested = parseFloat(total_amount) * 1.25;
+    if (parseFloat(total_amount) < 0) {
+      return res
+        .status(400)
+        .json({ error: "Total amount cannot be negative." });
+    }
+
+    //Recalculate markup safely
+    const markup_suggested = parseFloat(
+      (parseFloat(total_amount) * 1.25).toFixed(2),
+    );
 
     const pendingRecord = await OcrIntake.createPendingRecord(
       branch_id,
@@ -85,8 +95,6 @@ exports.processApproval = async (req, res) => {
     if (!updatedRecord) {
       return res.status(404).json({ error: "Pending OCR record not found." });
     }
-
-    // Note: Once 'Approved', this is where would sync it to the financial ledgers for continuation!
 
     res.status(200).json({
       message: `Record ${action} successfully.`,

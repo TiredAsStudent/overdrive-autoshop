@@ -21,7 +21,8 @@ const Pipeline = {
         if (item.is_service) total_labor += subtotal;
         else total_parts += subtotal;
       });
-      const grand_total = total_labor + total_parts;
+
+      const grand_total = parseFloat((total_labor + total_parts).toFixed(2));
 
       // Insert the Job Header
       const jobRes = await client.query(
@@ -40,7 +41,9 @@ const Pipeline = {
 
       // Insert Line Items
       for (const item of items) {
-        const subtotal = item.quantity * item.unit_price;
+        const subtotal = parseFloat(
+          (item.quantity * item.unit_price).toFixed(2),
+        );
         await client.query(
           `INSERT INTO job_items (job_id, inventory_id, item_name, quantity, unit_price, subtotal, is_service)
                      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -86,10 +89,18 @@ const Pipeline = {
 
       //Reserve the stock
       for (const item of items.rows) {
-        await client.query(
-          `UPDATE inventory SET qty_reserved = qty_reserved + $1 WHERE id = $2`,
+        const reserveRes = await client.query(
+          `UPDATE inventory 
+           SET qty_reserved = qty_reserved + $1 
+           WHERE id = $2 AND (qty_on_hand - qty_reserved) >= $1 RETURNING *`,
           [item.quantity, item.inventory_id],
         );
+
+        if (reserveRes.rowCount === 0) {
+          throw new Error(
+            `Insufficient available stock for inventory ID ${item.inventory_id}. Reservation failed.`,
+          );
+        }
       }
 
       await client.query("COMMIT");

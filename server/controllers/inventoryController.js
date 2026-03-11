@@ -58,6 +58,12 @@ exports.submitAdjustment = async (req, res) => {
     const branch_id = req.user.branch_id;
     const maker_id = req.user.id;
 
+    if (requested_qty < 0) {
+      return res
+        .status(400)
+        .json({ error: "Requested quantity cannot be negative." });
+    }
+
     const pendingRequest = await Inventory.requestAdjustment(
       inventory_id,
       branch_id,
@@ -114,6 +120,6 @@ exports.processAdjustment = async (req, res) => {
     });
   } catch (err) {
     console.error("Process Adjustment Error:", err.message);
-    res.status(500).json({ error: "Internal server error." });
+    res.status(500).json({ error: err.message || "Internal server error." });
   }
 };
