@@ -28,12 +28,10 @@ exports.createEstimate = async (req, res) => {
       (item) => item.quantity <= 0 || item.unit_price < 0,
     );
     if (invalidItem) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Item quantities must be greater than zero, and prices cannot be negative.",
-        });
+      return res.status(400).json({
+        error:
+          "Item quantities must be greater than zero, and prices cannot be negative.",
+      });
     }
 
     const newJob = await Pipeline.createEstimate(
@@ -77,11 +75,9 @@ exports.advanceStage = async (req, res) => {
   } catch (err) {
     console.error("Advance Stage Error:", err.message);
     // Modified to return the specific DB error if stock reservation fails
-    res
-      .status(500)
-      .json({
-        error: err.message || "Internal server error during stage transition.",
-      });
+    res.status(500).json({
+      error: err.message || "Internal server error during stage transition.",
+    });
   }
 };
 
@@ -89,8 +85,24 @@ exports.advanceStage = async (req, res) => {
 exports.getJobs = async (req, res) => {
   try {
     const { branch_id } = req.params;
-    const jobs = await Pipeline.getBranchJobs(branch_id);
-    res.status(200).json(jobs);
+
+    // Pagination logic
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20; // Default to 20 jobs for the board
+    const offset = (page - 1) * limit;
+
+    const jobsResult = await Pipeline.getBranchJobs(branch_id, limit, offset);
+
+    res.status(200).json({
+      message: "Branch jobs retrieved successfully.",
+      data: jobsResult.data,
+      pagination: {
+        total_records: jobsResult.totalRecords,
+        current_page: page,
+        total_pages: Math.ceil(jobsResult.totalRecords / limit),
+        per_page: limit,
+      },
+    });
   } catch (err) {
     console.error("Get Jobs Error:", err.message);
     res.status(500).json({ error: "Internal server error." });
@@ -110,5 +122,28 @@ exports.updateStatus = async (req, res) => {
   } catch (err) {
     console.error("Update Status Error:", err.message);
     res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+//Cancel a job and release inventory
+exports.cancelServiceJob = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const cancelledJob = await Pipeline.cancelJob(id);
+
+    if (!cancelledJob) {
+      return res
+        .status(404)
+        .json({ error: "Job not found or could not be cancelled." });
+    }
+
+    res.status(200).json({
+      message:
+        "Job cancelled. If parts were reserved, they have been released.",
+      job: cancelledJob,
+    });
+  } catch (err) {
+    console.error("Cancel Job Error:", err.message);
+    res.status(500).json({ error: err.message || "Internal server error." });
   }
 };

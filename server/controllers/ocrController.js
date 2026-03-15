@@ -1,5 +1,6 @@
 const OcrIntake = require("../models/ocrModel");
 const { processReceiptImage } = require("../utils/ocrEngine");
+const moneyUtils = require("../utils/moneyUtils");
 
 exports.scanReceipt = async (req, res) => {
   try {
@@ -11,8 +12,9 @@ exports.scanReceipt = async (req, res) => {
     const ocrResult = await processReceiptImage(req.file.buffer);
 
     //Automated Markup Engine (+25%)
-    const markupSuggested = parseFloat(
-      (ocrResult.extractedTotal * 1.25).toFixed(2),
+    const markupSuggested = moneyUtils.applyMarkup(
+      ocrResult.extractedTotal,
+      1.25,
     );
 
     //Return to Frontend for Maker Verification
@@ -44,9 +46,7 @@ exports.submitVerifiedData = async (req, res) => {
     }
 
     //Recalculate markup safely
-    const markup_suggested = parseFloat(
-      (parseFloat(total_amount) * 1.25).toFixed(2),
-    );
+    const markup_suggested = moneyUtils.applyMarkup(total_amount, 1.25);
 
     const pendingRecord = await OcrIntake.createPendingRecord(
       branch_id,

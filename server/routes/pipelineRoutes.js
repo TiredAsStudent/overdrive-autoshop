@@ -38,4 +38,11 @@ router.get(
   pipelineController.getJobs,
 );
 
+// Cancel a Job and release reserved inventory
+router.put(
+  "/:id/cancel",
+  requireRole(["Admin", "Staff"]),
+  pipelineController.cancelServiceJob,
+);
+
 module.exports = router;

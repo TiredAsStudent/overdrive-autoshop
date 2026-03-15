@@ -24,11 +24,32 @@ exports.fetchLiveStatus = async (req, res) => {
   }
 };
 
+//Fetch History
 exports.fetchHistory = async (req, res) => {
   try {
     const customer_id = req.user.id;
-    const history = await CustomerPortal.getServiceHistory(customer_id);
-    res.status(200).json(history);
+
+    // Pagination math
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const offset = (page - 1) * limit;
+
+    const historyResult = await CustomerPortal.getServiceHistory(
+      customer_id,
+      limit,
+      offset,
+    );
+
+    res.status(200).json({
+      message: "Service history retrieved successfully.",
+      data: historyResult.data,
+      pagination: {
+        total_records: historyResult.totalRecords,
+        current_page: page,
+        total_pages: Math.ceil(historyResult.totalRecords / limit),
+        per_page: limit,
+      },
+    });
   } catch (err) {
     console.error("Fetch History Error:", err.message);
     res.status(500).json({ error: "Internal server error." });
