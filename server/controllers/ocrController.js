@@ -1,107 +1,74 @@
 const OcrIntake = require("../models/ocrModel");
 const { processReceiptImage } = require("../utils/ocrEngine");
 const moneyUtils = require("../utils/moneyUtils");
+const catchAsync = require("../utils/catchAsync");
 
-exports.scanReceipt = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No receipt image uploaded." });
-    }
-
-    //Send image buffer to the OCR Engine
-    const ocrResult = await processReceiptImage(req.file.buffer);
-
-    //Automated Markup Engine (+25%)
-    const markupSuggested = moneyUtils.applyMarkup(
-      ocrResult.extractedTotal,
-      1.25,
-    );
-
-    //Return to Frontend for Maker Verification
-    res.status(200).json({
-      message: "OCR Scan Complete. Please verify data.",
-      extracted_data: {
-        total_amount: ocrResult.extractedTotal,
-        markup_suggested: markupSuggested,
-        raw_text: ocrResult.rawText,
-      },
-    });
-  } catch (err) {
-    console.error("Scan Receipt Error:", err.message);
-    res.status(500).json({ error: "Internal server error during OCR scan." });
+exports.scanReceipt = catchAsync(async (req, res, next) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No receipt image uploaded." });
   }
-};
 
-// Maker (Staff) submits the verified data
-exports.submitVerifiedData = async (req, res) => {
-  try {
-    const { vendor_name, total_amount, raw_text } = req.body;
-    const branch_id = req.user.branch_id;
-    const maker_id = req.user.id;
+  const ocrResult = await processReceiptImage(req.file.buffer);
+  const markupSuggested = moneyUtils.applyMarkup(
+    ocrResult.extractedTotal,
+    1.25,
+  );
 
-    if (parseFloat(total_amount) < 0) {
-      return res
-        .status(400)
-        .json({ error: "Total amount cannot be negative." });
-    }
+  res.status(200).json({
+    message: "OCR Scan Complete. Please verify data.",
+    extracted_data: {
+      total_amount: ocrResult.extractedTotal,
+      markup_suggested: markupSuggested,
+      raw_text: ocrResult.rawText,
+    },
+  });
+});
 
-    //Recalculate markup safely
-    const markup_suggested = moneyUtils.applyMarkup(total_amount, 1.25);
+exports.submitVerifiedData = catchAsync(async (req, res, next) => {
+  const { vendor_name, total_amount, raw_text } = req.body;
+  const branch_id = req.user.branch_id;
+  const maker_id = req.user.id;
 
-    const pendingRecord = await OcrIntake.createPendingRecord(
-      branch_id,
-      maker_id,
-      vendor_name,
-      total_amount,
-      markup_suggested,
-      raw_text,
-    );
-
-    res.status(201).json({
-      message: "Sent to Admin Approval Queue.",
-      record: pendingRecord,
-    });
-  } catch (err) {
-    console.error("Submit Verification Error:", err.message);
-    res.status(500).json({ error: "Internal server error." });
+  if (parseFloat(total_amount) < 0) {
+    return res.status(400).json({ error: "Total amount cannot be negative." });
   }
-};
 
-// Checker (Admin) reviews the queue
-exports.getApprovalQueue = async (req, res) => {
-  try {
-    const queue = await OcrIntake.getPendingQueue();
-    res.status(200).json(queue);
-  } catch (err) {
-    console.error("Get Queue Error:", err.message);
-    res.status(500).json({ error: "Internal server error." });
+  const markup_suggested = moneyUtils.applyMarkup(total_amount, 1.25);
+  const pendingRecord = await OcrIntake.createPendingRecord(
+    branch_id,
+    maker_id,
+    vendor_name,
+    total_amount,
+    markup_suggested,
+    raw_text,
+  );
+
+  res
+    .status(201)
+    .json({ message: "Sent to Admin Approval Queue.", record: pendingRecord });
+});
+
+exports.getApprovalQueue = catchAsync(async (req, res, next) => {
+  const queue = await OcrIntake.getPendingQueue();
+  res.status(200).json(queue);
+});
+
+exports.processApproval = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { action } = req.body;
+  const checker_id = req.user.id;
+
+  if (!["Approved", "Rejected"].includes(action)) {
+    return res
+      .status(400)
+      .json({ error: "Invalid action. Must be 'Approved' or 'Rejected'." });
   }
-};
 
-// Checker (Admin) approves or rejects
-exports.processApproval = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { action } = req.body; // 'Approved' or 'Rejected'
-    const checker_id = req.user.id;
+  const updatedRecord = await OcrIntake.updateStatus(id, checker_id, action);
+  if (!updatedRecord)
+    return res.status(404).json({ error: "Pending OCR record not found." });
 
-    if (!["Approved", "Rejected"].includes(action)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid action. Must be 'Approved' or 'Rejected'." });
-    }
-
-    const updatedRecord = await OcrIntake.updateStatus(id, checker_id, action);
-    if (!updatedRecord) {
-      return res.status(404).json({ error: "Pending OCR record not found." });
-    }
-
-    res.status(200).json({
-      message: `Record ${action} successfully.`,
-      record: updatedRecord,
-    });
-  } catch (err) {
-    console.error("Process Approval Error:", err.message);
-    res.status(500).json({ error: "Internal server error." });
-  }
-};
+  res
+    .status(200)
+    .json({ message: `Record ${action} successfully.`, record: updatedRecord });
+});

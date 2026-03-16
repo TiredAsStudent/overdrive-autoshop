@@ -1,7 +1,7 @@
 const pool = require("../config/db");
 
 const Inventory = {
-  //Get all inventory for a specific branch
+  //GET BRANCH INVENTORY
   getBranchInventory: async (branch_id) => {
     const result = await pool.query(
       `SELECT *, (qty_on_hand - qty_reserved) AS qty_available 
@@ -13,7 +13,7 @@ const Inventory = {
     return result.rows;
   },
 
-  //Add a new part to the system (Admin only)
+  //CREATE NEW ITEM (ADMIN ONLY)
   createItem: async (
     branch_id,
     item_code,
@@ -41,7 +41,7 @@ const Inventory = {
     return result.rows[0];
   },
 
-  //Staff requests a stock adjustment
+  //STAFF REQUESTS ADJUSTMENT (MAKER)
   requestAdjustment: async (
     inventory_id,
     branch_id,
@@ -58,7 +58,7 @@ const Inventory = {
     return result.rows[0];
   },
 
-  //Get pending adjustments for Admin
+  //ADMIN VIEWS QUEUE (CHECKER)
   getPendingAdjustments: async () => {
     const result = await pool.query(
       `SELECT a.*, i.item_name, i.item_code, b.branch_name, u.full_name AS maker_name 
@@ -72,7 +72,7 @@ const Inventory = {
     return result.rows;
   },
 
-  //Admin processes the adjustment (SQL Transaction)
+  // 5. ADMIN PROCESSES ADJUSTMENT
   processAdjustment: async (
     adjustment_id,
     checker_id,
@@ -84,13 +84,14 @@ const Inventory = {
     try {
       await client.query("BEGIN"); // Start Transaction
 
+      // Basic Logic Check
       if (action === "Approved" && requested_qty < 0) {
         throw new Error(
           "Physical stock count cannot be updated to a negative number.",
         );
       }
 
-      // Update the status of the adjustment request
+      //Update the status of the adjustment request
       const adjResult = await client.query(
         `UPDATE inventory_adjustments 
          SET status = $1, checker_id = $2, updated_at = CURRENT_TIMESTAMP 
@@ -98,14 +99,20 @@ const Inventory = {
         [action, checker_id, adjustment_id],
       );
 
-      // If Approved, actually update the physical stock count
+      //If Approved, attempt to update the physical stock count
       if (action === "Approved") {
-        await client.query(
+        const updateRes = await client.query(
           `UPDATE inventory 
            SET qty_on_hand = $1, updated_at = CURRENT_TIMESTAMP 
-           WHERE id = $2`,
+           WHERE id = $2 AND $1 >= qty_reserved RETURNING *`,
           [requested_qty, inventory_id],
         );
+
+        if (updateRes.rowCount === 0) {
+          throw new Error(
+            "Cannot approve: The requested physical stock is lower than the stock currently reserved for active jobs in the workshop.",
+          );
+        }
       }
 
       await client.query("COMMIT"); // Commit both changes

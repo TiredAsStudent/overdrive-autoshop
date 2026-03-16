@@ -1,105 +1,79 @@
 const Vehicle = require("../models/vehicleModel");
 const { sanitizePlate } = require("../utils/plateSanitizer");
+const catchAsync = require("../utils/catchAsync");
 
-exports.searchMedicalRecord = async (req, res) => {
-  try {
-    const rawPlate = req.params.plate_number;
-    const cleanPlate = sanitizePlate(rawPlate);
+exports.searchMedicalRecord = catchAsync(async (req, res, next) => {
+  const rawPlate = req.params.plate_number;
+  const cleanPlate = sanitizePlate(rawPlate);
 
-    if (!cleanPlate) {
-      return res.status(400).json({ error: "Invalid license plate format." });
-    }
+  if (!cleanPlate)
+    return res.status(400).json({ error: "Invalid license plate format." });
 
-    // Fetch the Vehicle details
-    const vehicle = await Vehicle.findByPlate(cleanPlate);
-    if (!vehicle) {
-      return res
-        .status(404)
-        .json({ error: "Vehicle not found. Please register it first." });
-    }
+  const vehicle = await Vehicle.findByPlate(cleanPlate);
+  if (!vehicle)
+    return res
+      .status(404)
+      .json({ error: "Vehicle not found. Please register it first." });
 
-    // Fetch the Aggregated History across all branches
-    const history = await Vehicle.getMedicalRecord(vehicle.id);
+  const history = await Vehicle.getMedicalRecord(vehicle.id);
 
-    // Return the unified "Medical Record"
-    res.status(200).json({
-      message: "Medical record retrieved successfully.",
-      vehicle: vehicle,
-      service_history: history,
-    });
-  } catch (err) {
-    console.error("Medical Record Search Error:", err.message);
-    res.status(500).json({ error: "Internal server error." });
-  }
-};
+  res.status(200).json({
+    message: "Medical record retrieved successfully.",
+    vehicle: vehicle,
+    service_history: history,
+  });
+});
 
-exports.registerNewVehicle = async (req, res) => {
-  try {
-    const { plate_number, make, model, year, owner_id } = req.body;
-    const cleanPlate = sanitizePlate(plate_number);
+exports.registerNewVehicle = catchAsync(async (req, res, next) => {
+  const { plate_number, make, model, year, owner_id } = req.body;
+  const cleanPlate = sanitizePlate(plate_number);
 
-    const existingVehicle = await Vehicle.findByPlate(cleanPlate);
-    if (existingVehicle) {
-      return res
-        .status(400)
-        .json({ error: "Vehicle with this plate already exists." });
-    }
+  const existingVehicle = await Vehicle.findByPlate(cleanPlate);
+  if (existingVehicle)
+    return res
+      .status(400)
+      .json({ error: "Vehicle with this plate already exists." });
 
-    const newVehicle = await Vehicle.createVehicle(
-      cleanPlate,
-      make,
-      model,
-      year,
-      owner_id,
-    );
-    res.status(201).json({
-      message: "Vehicle registered successfully",
-      vehicle: newVehicle,
-    });
-  } catch (err) {
-    console.error("Vehicle Registration Error:", err.message);
-    res.status(500).json({ error: "Internal server error." });
-  }
-};
+  const newVehicle = await Vehicle.createVehicle(
+    cleanPlate,
+    make,
+    model,
+    year,
+    owner_id,
+  );
+  res
+    .status(201)
+    .json({ message: "Vehicle registered successfully", vehicle: newVehicle });
+});
 
-exports.addRepairHistory = async (req, res) => {
-  try {
-    const { vehicle_id, description, mechanic_notes, total_cost } = req.body;
+exports.addRepairHistory = catchAsync(async (req, res, next) => {
+  const { vehicle_id, description, mechanic_notes, total_cost } = req.body;
 
-    const vehicleExists = await Vehicle.findById(vehicle_id);
-    if (!vehicleExists) {
-      return res.status(404).json({
-        error:
-          "Vehicle not found. Cannot add a repair record to a non-existent vehicle.",
-      });
-    }
+  const vehicleExists = await Vehicle.findById(vehicle_id);
+  if (!vehicleExists)
+    return res.status(404).json({ error: "Vehicle not found." });
 
-    const branch_id =
-      req.user.role === "Admin" && req.body.branch_id
-        ? req.body.branch_id
-        : req.user.branch_id;
-    const mechanic_id = req.user.id;
+  const branch_id =
+    req.user.role === "Admin" && req.body.branch_id
+      ? req.body.branch_id
+      : req.user.branch_id;
+  const mechanic_id = req.user.id;
 
-    if (!branch_id) {
-      return res
-        .status(400)
-        .json({ error: "Branch ID is required to add history." });
-    }
+  if (!branch_id)
+    return res
+      .status(400)
+      .json({ error: "Branch ID is required to add history." });
 
-    const newRecord = await Vehicle.addServiceRecord(
-      vehicle_id,
-      branch_id,
-      mechanic_id,
-      description,
-      mechanic_notes,
-      total_cost,
-    );
-    res.status(201).json({
-      message: "Repair history added successfully.",
-      record: newRecord,
-    });
-  } catch (err) {
-    console.error("Add Repair History Error:", err.message);
-    res.status(500).json({ error: "Internal server error." });
-  }
-};
+  const newRecord = await Vehicle.addServiceRecord(
+    vehicle_id,
+    branch_id,
+    mechanic_id,
+    description,
+    mechanic_notes,
+    total_cost,
+  );
+
+  res
+    .status(201)
+    .json({ message: "Repair history added successfully.", record: newRecord });
+});

@@ -13,6 +13,7 @@ router.use(verifyToken);
 router.post(
   "/estimate",
   requireRole(["Admin", "Staff"]),
+  branchGuard,
   pipelineController.createEstimate,
 );
 
@@ -20,6 +21,7 @@ router.post(
 router.put(
   "/:id/stage",
   requireRole(["Admin", "Staff"]),
+  branchGuard,
   pipelineController.advanceStage,
 );
 
@@ -27,7 +29,16 @@ router.put(
 router.put(
   "/:id/status",
   requireRole(["Admin", "Staff"]),
+  branchGuard,
   pipelineController.updateStatus,
+);
+
+// Cancel a Job and release reserved inventory
+router.put(
+  "/:id/cancel",
+  requireRole(["Admin", "Staff"]),
+  branchGuard,
+  pipelineController.cancelServiceJob,
 );
 
 // View all jobs for the branch Kanban Dashboard
@@ -36,13 +47,6 @@ router.get(
   requireRole(["Admin", "Staff"]),
   branchGuard,
   pipelineController.getJobs,
-);
-
-// Cancel a Job and release reserved inventory
-router.put(
-  "/:id/cancel",
-  requireRole(["Admin", "Staff"]),
-  pipelineController.cancelServiceJob,
 );
 
 module.exports = router;

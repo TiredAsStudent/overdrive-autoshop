@@ -2,7 +2,11 @@ const express = require("express");
 const router = express.Router();
 const ocrController = require("../controllers/ocrController");
 const upload = require("../middleware/uploadMiddleware");
-const { verifyToken, requireRole } = require("../middleware/authMiddleware");
+const {
+  verifyToken,
+  requireRole,
+  branchGuard,
+} = require("../middleware/authMiddleware");
 
 router.use(verifyToken);
 
@@ -11,6 +15,7 @@ router.post(
   "/scan",
   requireRole(["Admin", "Staff"]),
   upload.single("receipt"),
+  branchGuard,
   ocrController.scanReceipt,
 );
 
@@ -18,6 +23,7 @@ router.post(
 router.post(
   "/submit",
   requireRole(["Admin", "Staff"]),
+  branchGuard,
   ocrController.submitVerifiedData,
 );
 

@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const AppError = require("./utils/AppError");
 const globalErrorHandler = require("./middleware/errorMiddleware");
 
@@ -13,6 +14,8 @@ const pipelineRoutes = require("./routes/pipelineRoutes");
 const customerRoutes = require("./routes/customerRoutes");
 
 const app = express();
+
+app.use(helmet());
 
 const allowedOrigins =
   process.env.NODE_ENV === "production"
@@ -66,6 +69,8 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(
-    `Server is successfully running on port ${PORT} in ${process.env.NODE_ENV || "development"} mode.`,
+    `Server is successfully running on port ${PORT} in ${
+      process.env.NODE_ENV || "development"
+    } mode.`,
   );
 });
