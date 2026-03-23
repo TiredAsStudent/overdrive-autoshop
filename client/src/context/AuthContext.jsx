@@ -1,47 +1,69 @@
-import { createContext, useState, useEffect } from "react";
-import api from "../services/api";
+import React, { createContext, useState, useEffect, useContext } from 'react';
 
-export const AuthContext = createContext();
+// 1. Create the Context
+const AuthContext = createContext();
 
+// 2. Create a custom hook for easy access later
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
+
+// 3. Create the Provider Component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if a user is already logged in when the app loads
+  // Check for an existing session when the app loads
   useEffect(() => {
-    const fetchUser = async () => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          const response = await api.get("/auth/me");
-          setUser(response.data);
-        } catch (error) {
-          console.error("Session expired or invalid token");
-          localStorage.removeItem("token");
+    const checkLoggedInUser = () => {
+      try {
+        const storedToken = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+
+        if (storedToken && storedUser) {
+          setUser(JSON.parse(storedUser));
         }
+      } catch (error) {
+        console.error("Failed to parse stored user data:", error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      } finally {
+        setLoading(false); // Stop the loading spinner once the check is done
       }
-      setLoading(false);
     };
-    fetchUser();
+
+    checkLoggedInUser();
   }, []);
 
-  // Login function
-  const login = async (email, password) => {
-    const response = await api.post("/auth/login", { email, password });
-    localStorage.setItem("token", response.data.token);
-    setUser(response.data.user);
-    return response.data.user;
+  // The login function to update global state
+  const login = (userData, token) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', token);
   };
 
-  // Logout function
+  // The logout function to clear global state
   const logout = () => {
-    localStorage.removeItem("token");
     setUser(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+  };
+
+  // Provide the state and functions to the rest of the app
+  const value = {
+    user,
+    loading,
+    login,
+    logout,
+    // Helper booleans based on your Role-Based Access Control (RBAC)
+    isAdmin: user?.role === 'admin',
+    isStaff: user?.role === 'staff',
+    isCustomer: user?.role === 'customer',
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
