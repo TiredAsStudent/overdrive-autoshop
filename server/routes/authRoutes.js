@@ -5,7 +5,7 @@ const {
   verifyToken,
   requireRole,
   branchGuard,
-} = require("../middleware/authMiddleware");
+} = require("../middlewares/authMiddleware");
 
 router.post("/register", authController.register);
 

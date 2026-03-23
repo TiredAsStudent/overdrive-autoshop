@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const AppError = require("./utils/AppError");
-const globalErrorHandler = require("./middleware/errorMiddleware");
+const globalErrorHandler = require("./middlewares/errorMiddleware");
 
 //Import Routes
 const authRoutes = require("./routes/authRoutes");
