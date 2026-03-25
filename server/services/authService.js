@@ -2,6 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
+const db = require("../config/db");
 const UserModel = require("../models/userModel");
 const InvitationModel = require("../models/invitationModel");
 const AuditModel = require("../models/auditModel");
@@ -35,33 +36,25 @@ class AuthService {
       user.id,
       ipAddress,
     );
-
     delete user.password_hash;
     return { user, token };
   }
 
   //Google OAuth 2.0 (Hybrid Login)
   static async loginWithGoogle(googleToken, ipAddress) {
-    // Verify token with Google's servers
     const ticket = await googleClient.verifyIdToken({
       idToken: googleToken,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
     const payload = ticket.getPayload();
-    const email = payload.email;
 
-    // Check if email exists in our DB
-    const user = await UserModel.findByEmail(email);
-    if (!user) {
+    const user = await UserModel.findByEmail(payload.email);
+    if (!user)
       throw new Error(
-        "Email not registered in the system. Please contact the Admin.",
+        "Email not registered in the system. Please complete registration first.",
       );
-    }
 
-    // Link Google ID if it's their first time logging in with Google
-    if (!user.google_id) {
-      await UserModel.linkGoogleId(user.id, payload.sub);
-    }
+    if (!user.google_id) await UserModel.linkGoogleId(user.id, payload.sub);
 
     const jwtPayload = {
       id: user.id,
@@ -81,16 +74,14 @@ class AuthService {
       user.id,
       ipAddress,
     );
-
     delete user.password_hash;
     return { user, token };
   }
 
-  //Generate 2-Hour Security Link
   static async inviteStaff(adminId, email, role, branchId, ipAddress) {
     const token = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 Hours
 
     const invite = await InvitationModel.create(
       email,
@@ -107,17 +98,48 @@ class AuthService {
     await AuditModel.log(
       adminId,
       adminUser.branch_id,
-      "GENERATED_INVITE",
+      "GENERATED_STAFF_INVITE",
       "user_invitations",
       invite.id,
       ipAddress,
     );
 
-    const inviteLink = `${process.env.FRONTEND_URL_PROD}/setup-account?token=${token}`;
-    return { inviteLink, expiresAt };
+    return {
+      inviteLink: `${process.env.FRONTEND_URL_PROD}/setup-account?token=${token}`,
+      expiresAt,
+    };
   }
 
-  //Setup Account
+  //Customer Welcome Link (No Expiration)
+  static async inviteCustomer(staffId, email, branchId, ipAddress) {
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    // expiresAt is intentionally left NULL in the database via the model
+    const invite = await InvitationModel.createCustomerInvite(
+      email,
+      branchId,
+      tokenHash,
+      staffId,
+    );
+
+    const staffUser = await UserModel.findById(staffId);
+    await AuditModel.log(
+      staffId,
+      staffUser.branch_id,
+      "GENERATED_CUSTOMER_INVITE",
+      "user_invitations",
+      invite.id,
+      ipAddress,
+    );
+
+    return {
+      inviteLink: `${process.env.FRONTEND_URL_PROD}/welcome?token=${token}`,
+      expiresAt: "Never",
+    };
+  }
+
+  //Universal Setup Account
   static async setupAccount(
     rawToken,
     newPassword,
@@ -125,7 +147,6 @@ class AuthService {
     lastName,
     ipAddress,
   ) {
-    // Hash the raw token from the URL to match the DB
     const tokenHash = crypto
       .createHash("sha256")
       .update(rawToken)
@@ -135,37 +156,66 @@ class AuthService {
     if (!invitation) throw new Error("Invalid or missing invitation token.");
     if (invitation.is_used)
       throw new Error("This invitation has already been used.");
-    if (new Date(invitation.expires_at) < new Date())
+
+    // Only check expiration if it's NOT a customer (since Customer expires_at is NULL)
+    if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
       throw new Error("This invitation has expired.");
+    }
 
-    // Hash new password
-    const saltRounds = 10;
-    const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+    const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    // Create the user in the database
-    const newUser = await UserModel.createStaff(
-      invitation.branch_id,
-      invitation.role,
-      invitation.email,
-      passwordHash,
-      firstName,
-      lastName,
-    );
+    //START ATOMIC TRANSACTION
+    const client = await db.pool.connect();
+    try {
+      await client.query("BEGIN"); // Lock the database state
 
-    // Mark invitation as used
-    await InvitationModel.markAsUsed(invitation.id);
+      let newUser;
+      // Route creation based on the invitation role
+      if (invitation.role === "CUSTOMER") {
+        newUser = await UserModel.createCustomer(
+          invitation.branch_id,
+          invitation.email,
+          passwordHash,
+          firstName,
+          lastName,
+          client,
+        );
+      } else {
+        newUser = await UserModel.createStaff(
+          invitation.branch_id,
+          invitation.role,
+          invitation.email,
+          passwordHash,
+          firstName,
+          lastName,
+          client,
+        );
+      }
 
-    // Inject Immutable Audit Trail
-    await AuditModel.log(
-      newUser.id,
-      newUser.branch_id,
-      "ACCOUNT_SETUP",
-      "users",
-      newUser.id,
-      ipAddress,
-    );
+      // Mark invite as used
+      await InvitationModel.markAsUsed(invitation.id, client);
 
-    return { email: newUser.email, role: newUser.role };
+      // Log the audit trail
+      await AuditModel.log(
+        newUser.id,
+        newUser.branch_id,
+        "ACCOUNT_SETUP",
+        "users",
+        newUser.id,
+        ipAddress,
+        client,
+      );
+
+      await client.query("COMMIT"); // Save everything permanently
+      return { email: newUser.email, role: newUser.role };
+    } catch (error) {
+      await client.query("ROLLBACK"); // Abort everything if ANY step fails
+      throw new Error(
+        "Failed to setup account due to an internal error. Transaction rolled back.",
+      );
+    } finally {
+      client.release(); // Free up the connection pool
+    }
   }
 }
 

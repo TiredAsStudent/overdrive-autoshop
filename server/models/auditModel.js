@@ -8,13 +8,14 @@ class AuditModel {
     targetResource = null,
     targetId = null,
     ipAddress = null,
+    client = db,
   ) {
     const query = `
       INSERT INTO audit_logs (user_id, branch_id, action, target_resource, target_id, ip_address)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id, created_at;
     `;
-    const result = await db.query(query, [
+    const result = await client.query(query, [
       userId,
       branchId,
       action,

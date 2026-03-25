@@ -32,7 +32,7 @@ const seedDatabase = async () => {
     await db.query(
       `
       INSERT INTO users (branch_id, role, email, password_hash, first_name, last_name)
-      VALUES ($1, 'ADMIN', 'admin@overdrive.com', $2, 'System', 'Owner')
+      VALUES ($1, 'ADMIN', 'admin@overdrive.com', $2, 'Dan', 'Tandog')
       ON CONFLICT (email) DO NOTHING;
     `,
       [mainBranchId, passwordHash],
