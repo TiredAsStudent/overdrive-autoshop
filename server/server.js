@@ -13,6 +13,7 @@ const authRoutes = require("./routes/v1/auth");
 const app = express();
 
 app.use(helmet());
+app.set("trust proxy", 1);
 
 const allowedOrigin =
   process.env.NODE_ENV === "development"
