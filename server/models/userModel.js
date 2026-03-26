@@ -1,46 +1,72 @@
-const pool = require("../config/db");
+const db = require("../config/db");
 
-const User = {
-  findByEmail: async (email) => {
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+class UserModel {
+  static async findByEmail(email, client = db) {
+    const query = `SELECT * FROM users WHERE email = $1 AND is_active = TRUE`;
+    const result = await client.query(query, [email]);
+    return result.rows[0];
+  }
+
+  static async findById(id, client = db) {
+    const query = `SELECT id, role, branch_id, is_active FROM users WHERE id = $1`;
+    const result = await client.query(query, [id]);
+    return result.rows[0];
+  }
+
+  // Universal create method for Staff/Admins
+  static async createStaff(
+    branchId,
+    role,
+    email,
+    passwordHash,
+    firstName,
+    lastName,
+    client = db,
+  ) {
+    const query = `
+      INSERT INTO users (branch_id, role, email, password_hash, first_name, last_name)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, email, role, branch_id;
+    `;
+    const result = await client.query(query, [
+      branchId,
+      role,
       email,
+      passwordHash,
+      firstName,
+      lastName,
     ]);
     return result.rows[0];
-  },
+  }
 
-  createTraditionalUser: async (
+  // Universal create method for Customers
+  static async createCustomer(
+    branchId,
     email,
-    password_hash,
-    full_name,
-    role,
-    branch_id,
-  ) => {
-    const result = await pool.query(
-      `INSERT INTO users (email, password_hash, full_name, role, branch_id) 
-       VALUES ($1, $2, $3, $4, $5) 
-       RETURNING id, email, full_name, role, branch_id`,
-      [email, password_hash, full_name, role || "Customer", branch_id || null],
-    );
+    passwordHash,
+    firstName,
+    lastName,
+    client = db,
+  ) {
+    const query = `
+      INSERT INTO users (branch_id, role, email, password_hash, first_name, last_name)
+      VALUES ($1, 'CUSTOMER', $2, $3, $4, $5)
+      RETURNING id, email, role, branch_id;
+    `;
+    const result = await client.query(query, [
+      branchId,
+      email,
+      passwordHash,
+      firstName,
+      lastName,
+    ]);
     return result.rows[0];
-  },
+  }
 
-  createGoogleUser: async (email, full_name, role, google_id) => {
-    const result = await pool.query(
-      `INSERT INTO users (email, full_name, role, google_id) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING id, email, full_name, role, branch_id`,
-      [email, full_name, role || "Customer", google_id],
-    );
-    return result.rows[0];
-  },
+  static async linkGoogleId(id, googleId, client = db) {
+    const query = `UPDATE users SET google_id = $1, updated_at = NOW() WHERE id = $2`;
+    await client.query(query, [googleId, id]);
+  }
+}
 
-  updateGoogleId: async (email, google_id) => {
-    const result = await pool.query(
-      "UPDATE users SET google_id = $1 WHERE email = $2 RETURNING id, email, full_name, role, branch_id",
-      [google_id, email],
-    );
-    return result.rows[0];
-  },
-};
-
-module.exports = User;
+module.exports = UserModel;

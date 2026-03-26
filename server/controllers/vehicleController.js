@@ -1,79 +1,62 @@
-const Vehicle = require("../models/vehicleModel");
-const { sanitizePlate } = require("../utils/plateSanitizer");
-const catchAsync = require("../utils/catchAsync");
+const VehicleService = require("../services/vehicleService");
+const { sendSuccess, sendError } = require("../utils/responseHandler");
 
-exports.searchMedicalRecord = catchAsync(async (req, res, next) => {
-  const rawPlate = req.params.plate_number;
-  const cleanPlate = sanitizePlate(rawPlate);
+class VehicleController {
+  static async checkIn(req, res) {
+    try {
+      const {
+        plateNumber,
+        make,
+        model,
+        ownerFirstName,
+        ownerLastName,
+        ownerEmail,
+      } = req.body;
 
-  if (!cleanPlate)
-    return res.status(400).json({ error: "Invalid license plate format." });
+      // Strict validation for required fields
+      if (
+        !plateNumber ||
+        !make ||
+        !model ||
+        !ownerFirstName ||
+        !ownerLastName ||
+        !ownerEmail
+      ) {
+        return sendError(
+          res,
+          400,
+          "Missing required fields for Integrated Check-In.",
+        );
+      }
 
-  const vehicle = await Vehicle.findByPlate(cleanPlate);
-  if (!vehicle)
-    return res
-      .status(404)
-      .json({ error: "Vehicle not found. Please register it first." });
+      const result = await VehicleService.integratedCheckIn(
+        req.user.id,
+        req.user.branchId,
+        req.body,
+        req.ip,
+      );
 
-  const history = await Vehicle.getMedicalRecord(vehicle.id);
+      return sendSuccess(res, 201, result, result.message);
+    } catch (error) {
+      return sendError(res, 400, error.message);
+    }
+  }
 
-  res.status(200).json({
-    message: "Medical record retrieved successfully.",
-    vehicle: vehicle,
-    service_history: history,
-  });
-});
+  static async getRecord(req, res) {
+    try {
+      const { plateNumber } = req.params;
+      const record = await VehicleService.searchMedicalRecord(plateNumber);
 
-exports.registerNewVehicle = catchAsync(async (req, res, next) => {
-  const { plate_number, make, model, year, owner_id } = req.body;
-  const cleanPlate = sanitizePlate(plate_number);
+      return sendSuccess(
+        res,
+        200,
+        record,
+        "Medical record fetched successfully.",
+      );
+    } catch (error) {
+      return sendError(res, 404, error.message);
+    }
+  }
+}
 
-  const existingVehicle = await Vehicle.findByPlate(cleanPlate);
-  if (existingVehicle)
-    return res
-      .status(400)
-      .json({ error: "Vehicle with this plate already exists." });
-
-  const newVehicle = await Vehicle.createVehicle(
-    cleanPlate,
-    make,
-    model,
-    year,
-    owner_id,
-  );
-  res
-    .status(201)
-    .json({ message: "Vehicle registered successfully", vehicle: newVehicle });
-});
-
-exports.addRepairHistory = catchAsync(async (req, res, next) => {
-  const { vehicle_id, description, mechanic_notes, total_cost } = req.body;
-
-  const vehicleExists = await Vehicle.findById(vehicle_id);
-  if (!vehicleExists)
-    return res.status(404).json({ error: "Vehicle not found." });
-
-  const branch_id =
-    req.user.role === "Admin" && req.body.branch_id
-      ? req.body.branch_id
-      : req.user.branch_id;
-  const mechanic_id = req.user.id;
-
-  if (!branch_id)
-    return res
-      .status(400)
-      .json({ error: "Branch ID is required to add history." });
-
-  const newRecord = await Vehicle.addServiceRecord(
-    vehicle_id,
-    branch_id,
-    mechanic_id,
-    description,
-    mechanic_notes,
-    total_cost,
-  );
-
-  res
-    .status(201)
-    .json({ message: "Repair history added successfully.", record: newRecord });
-});
+module.exports = VehicleController;

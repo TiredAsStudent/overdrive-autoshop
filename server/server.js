@@ -2,75 +2,69 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const AppError = require("./utils/AppError");
-const globalErrorHandler = require("./middleware/errorMiddleware");
+const morgan = require("morgan");
+
+// Import Database Connection
+const db = require("./config/db");
 
 //Import Routes
-const authRoutes = require("./routes/authRoutes");
-const vehicleRoutes = require("./routes/vehicleRoutes");
-const ocrRoutes = require("./routes/ocrRoutes");
-const inventoryRoutes = require("./routes/inventoryRoutes");
-const pipelineRoutes = require("./routes/pipelineRoutes");
-const customerRoutes = require("./routes/customerRoutes");
+const authRoutes = require("./routes/v1/auth");
+const mechanicRoutes = require("./routes/v1/mechanic");
+const financeConfigRoutes = require("./routes/v1/financeConfig");
+const serviceTemplateRoutes = require("./routes/v1/serviceTemplate");
+const vehicleRoutes = require("./routes/v1/vehicle");
 
 const app = express();
 
 app.use(helmet());
+app.set("trust proxy", 1);
 
-const allowedOrigins =
-  process.env.NODE_ENV === "production"
-    ? [process.env.FRONTEND_URL_PROD]
-    : [process.env.FRONTEND_URL_DEV, "http://localhost:3000"];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg =
-        "The CORS policy for this site does not allow access from the specified Origin.";
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-};
+const allowedOrigin =
+  process.env.NODE_ENV === "development"
+    ? process.env.FRONTEND_URL_DEV
+    : process.env.FRONTEND_URL_PROD;
 
 //Global Middleware
-app.use(cors(corsOptions));
+app.use(
+  cors({
+    origin: allowedOrigin,
+    credentials: true,
+  }),
+);
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Base Test Route
-app.get("/", (req, res) => {
-  res.json({
-    message:
-      "Welcome to the Overdrive Auto Shop API! Server is secure and running.",
-  });
+// Log API requests in the terminal during development
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
+
+// Base Health Route
+app.get("/api/health", async (req, res, next) => {
+  try {
+    const dbResult = await db.query("SELECT NOW()");
+    res.status(200).json({
+      success: true,
+      message: "Overdrive Auto Shop API is running.",
+      database_time: dbResult.rows[0].now,
+      environment: process.env.NODE_ENV,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 //Mount Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/vehicles", vehicleRoutes);
-app.use("/api/ocr", ocrRoutes);
-app.use("/api/inventory", inventoryRoutes);
-app.use("/api/pipeline", pipelineRoutes);
-app.use("/api/customer", customerRoutes);
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/mechanics", mechanicRoutes);
+app.use("/api/v1/finance", financeConfigRoutes);
+app.use("/api/v1/templates", serviceTemplateRoutes);
+app.use("/api/v1/vehicles", vehicleRoutes);
 
-app.all(/(.*)/, (req, res, next) => {
-  next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
-});
-
-//Global Error Handler Middleware
-app.use(globalErrorHandler);
-
+// Start Server
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
   console.log(
-    `Server is successfully running on port ${PORT} in ${
-      process.env.NODE_ENV || "development"
-    } mode.`,
+    `Server is successfully running on port ${PORT} [${process.env.NODE_ENV}]`,
   );
 });

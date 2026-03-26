@@ -7,14 +7,28 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
 
-pool.query("SELECT NOW()", (err, res) => {
+// Test the connection immediately on startup
+pool.connect((err, client, release) => {
   if (err) {
-    console.error("Error connecting to PostgreSQL:", err.message);
+    console.error("Database Connection Error:", err.stack);
   } else {
-    console.log("Securely connected to PostgreSQL Database");
+    console.log("Successfully connected to PostgreSQL (overdrive_db)");
+    release();
   }
 });
 
-module.exports = pool;
+// Catch idle client errors so the server doesn't crash
+pool.on("error", (err) => {
+  console.error("Unexpected error on idle client:", err);
+  process.exit(-1);
+});
+
+module.exports = {
+  query: (text, params) => pool.query(text, params),
+  pool,
+};
