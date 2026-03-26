@@ -1,243 +1,113 @@
-import { NavLink, useNavigate } from "react-router-dom";
-import { useContext, useState } from "react";
-import { AuthContext } from "../../context/AuthContext";
-import {
-  LayoutDashboard,
-  Car,
-  Package,
-  ScanLine,
-  Wrench,
-  PieChart,
-  Users,
-  MapPin,
-  ClipboardList,
-  Settings,
-  Menu,
-  LogOut,
-} from "lucide-react";
-import logoImg from "../../assets/overdrive_logo-removebg-preview.png";
+import React from 'react';
+import { 
+  LayoutDashboard, 
+  ClipboardList, 
+  Search, 
+  ScanLine, 
+  Package, 
+  CheckSquare, 
+  BarChart3, 
+  Truck,
+  History,
+  Users
+} from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import BannerLogo from '../../assets/OverdriveLogo2.png'; // Make sure this path is correct!
 
-const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
-  const { user, logout } = useContext(AuthContext);
-  const navigate = useNavigate();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+const Sidebar = ({ user }) => {
+  const location = useLocation();
+  const isAdmin = user?.role === 'admin';
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-
-  const navItems = [
+  const menuGroups = [
     {
-      name: "Dashboard",
-      path: `/${user?.role}`,
-      icon: LayoutDashboard,
-      roles: ["admin", "staff"],
+      label: "Workshop (Maker)",
+      items: [
+        { name: 'Floor (Kanban)', icon: LayoutDashboard, path: '/staff/workshop' },
+        { name: 'Check-In', icon: ClipboardList, path: '/check-in' },
+        { name: 'Medical Records', icon: Search, path: '/records' },
+        { name: 'OCR Intake', icon: ScanLine, path: '/ocr' },
+        { name: 'Local Inventory', icon: Package, path: '/inventory' },
+      ]
     },
-    {
-      name: "Vehicle Archive",
-      path: `/${user?.role}/vehicles`,
-      icon: Car,
-      roles: ["admin", "staff"],
-    },
-    {
-      name: "Job Cards",
-      path: `/${user?.role}/jobs`,
-      icon: Wrench,
-      roles: ["admin", "staff"],
-    },
-    {
-      name: "Inventory",
-      path: `/${user?.role}/inventory`,
-      icon: Package,
-      roles: ["admin", "staff"],
-    },
-    {
-      name: "OCR Intake",
-      path: `/${user?.role}/ocr`,
-      icon: ScanLine,
-      roles: ["admin", "staff"],
-    },
-    {
-      name: "Financials",
-      path: `/admin/financials`,
-      icon: PieChart,
-      roles: ["admin"],
-    },
-    {
-      name: "Branch Control",
-      path: `/admin/branches`,
-      icon: MapPin,
-      roles: ["admin"],
-    },
-    {
-      name: "Audit Logs",
-      path: `/admin/audit`,
-      icon: ClipboardList,
-      roles: ["admin"],
-    },
-    {
-      name: "Manage Users",
-      path: `/admin/users`,
-      icon: Users,
-      roles: ["admin"],
-    },
+    ...(isAdmin ? [{
+      label: "Governance (Checker)",
+      items: [
+        { name: 'Approval Queue', icon: CheckSquare, path: '/approvals' },
+        { name: 'Financials', icon: BarChart3, path: '/analytics' },
+        { name: 'Stock Transfers', icon: Truck, path: '/transfers' },
+        { name: 'Resource Mgmt', icon: Users, path: '/resources' },
+        { name: 'Audit Trail', icon: History, path: '/audit' },
+      ]
+    }] : [])
   ];
 
-  const allowedLinks = navItems.filter((item) =>
-    item.roles.includes(user?.role),
-  );
-
   return (
-    <>
-      {/* Mobile Overlay */}
-      {isMobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-
-      {/* Sidebar Container*/}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-zinc-950 text-white flex flex-col transition-all duration-300 ease-in-out border-r border-zinc-800 md:static md:inset-0 
-          ${isMobileOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0"}
-          ${isCollapsed ? "md:w-20" : "md:w-64"}
-        `}
+    <div className="h-screen w-64 shrink-0 bg-overdrive-dark text-white flex flex-col border-r border-white/5 z-30 relative">
+      
+     
+     {/* 1. Brand Logo Section - Custom Corrugated Metal Background */}
+      {/* 1. Brand Logo Section - Custom Corrugated Metal Background */}
+      <div 
+        className="relative h-20 flex items-center justify-center shrink-0 border-b-2 border-yellow-600 shadow-lg overflow-hidden"
+        style={{
+          backgroundImage: 'repeating-linear-gradient(90deg, #facc15 0px, #facc15 16px, #ca8a04 16px, #ca8a04 20px)'
+        }}
       >
-        {/* Top Header & Logo Area */}
-        <div
-          className={`flex h-20 items-center border-b border-zinc-800 transition-all duration-300 ${isCollapsed ? "justify-center px-0" : "justify-between px-5"}`}
-        >
-          {!isCollapsed && (
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="bg-white p-1 rounded-lg shadow-sm shrink-0">
-                <img
-                  src={logoImg}
-                  alt="Overdrive Logo"
-                  className="h-6 w-auto object-contain"
-                />
-              </div>
-              <span className="text-white font-black tracking-widest text-base uppercase mt-0.5">
-                Overdrive
-              </span>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent pointer-events-none"></div>
+
+        <img 
+          src={BannerLogo} 
+          alt="Overdrive Autoworks" 
+          // THE FIX: 
+          // 1. Removed 'p-2' to give it 16px more room instantly.
+          // 2. Added 'scale-110' to visually zoom it in and make it wider!
+          className="w-full h-full object-contain scale-110 relative z-10 drop-shadow-md"
+        />
+      </div>
+      {/* 2. Branch Context Badge */}
+      <div className="p-6 flex flex-col gap-1 pb-2 shrink-0">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold">Current Context</span>
+        <div className="bg-overdrive-yellow/10 border border-overdrive-yellow/20 rounded-lg px-3 py-2 flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-overdrive-yellow animate-pulse" />
+          <span className="text-overdrive-yellow font-bold text-sm tracking-tight">
+            {user?.assigned_branch || 'Main Branch'}
+          </span>
+        </div>
+      </div>
+
+      {/* 3. Navigation Links */}
+      <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-8">
+        {menuGroups.map((group, idx) => (
+          <div key={idx} className="space-y-2">
+            <h3 className="px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
+              {group.label}
+            </h3>
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const isActive = location.pathname.includes(item.path);
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    className={`
+                      flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group
+                      ${isActive 
+                        ? 'bg-overdrive-yellow text-black' 
+                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                      }
+                    `}
+                  >
+                    <item.icon size={18} className={isActive ? 'text-black' : 'text-gray-500 group-hover:text-overdrive-yellow transition-colors'} />
+                    {item.name}
+                  </Link>
+                );
+              })}
             </div>
-          )}
+          </div>
+        ))}
+      </nav>
 
-          <button
-            onClick={() => {
-              if (window.innerWidth >= 768) setIsCollapsed(!isCollapsed);
-              else setIsMobileOpen(false);
-            }}
-            className="p-2 text-zinc-400 hover:text-yellow-400 hover:bg-zinc-800/50 rounded-lg transition-all focus:outline-none shrink-0"
-          >
-            <Menu size={24} />
-          </button>
-        </div>
-
-        {/* Navigation Links */}
-        <nav className="flex-1 mt-6 px-3 space-y-2">
-          {allowedLinks.map((link) => {
-            const Icon = link.icon;
-            return (
-              <NavLink
-                key={link.name}
-                to={link.path}
-                end={link.path === `/${user?.role}`}
-                onClick={() => {
-                  if (window.innerWidth < 768) setIsMobileOpen(false);
-                }}
-                className={({ isActive }) =>
-                  `group relative flex items-center h-11 rounded-xl transition-all duration-300 overflow-visible shrink-0 ${
-                    isCollapsed
-                      ? "justify-center w-11 mx-auto"
-                      : "px-4 gap-4 w-full"
-                  } ${
-                    isActive
-                      ? "bg-yellow-400 text-zinc-950 font-black shadow-[0_0_15px_rgba(250,204,21,0.2)]"
-                      : "text-zinc-400 hover:bg-zinc-800/80 hover:text-white font-semibold"
-                  }`
-                }
-              >
-                <Icon size={20} className="shrink-0" />
-
-                {!isCollapsed && (
-                  <span className="whitespace-nowrap text-[15px] transition-all duration-300">
-                    {link.name}
-                  </span>
-                )}
-
-                {/* Tooltip */}
-                {isCollapsed && (
-                  <div className="absolute left-full ml-5 px-3 py-2 bg-yellow-400 text-zinc-950 text-xs font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-100 flex items-center">
-                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-yellow-400 rotate-45 rounded-sm"></div>
-                    {link.name}
-                  </div>
-                )}
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        {/* Bottom Area: Settings & Logout */}
-        <div className="p-4 mb-2 border-t border-zinc-800/50 flex flex-col gap-2 shrink-0">
-          {user?.role === "admin" && (
-            <NavLink
-              to="/admin/settings"
-              onClick={() => {
-                if (window.innerWidth < 768) setIsMobileOpen(false);
-              }}
-              className={({ isActive }) =>
-                `group relative flex items-center h-11 rounded-xl transition-all duration-300 overflow-visible ${
-                  isCollapsed
-                    ? "justify-center w-11 mx-auto"
-                    : "px-4 gap-4 w-full"
-                } ${
-                  isActive
-                    ? "bg-yellow-400 text-zinc-950 font-black shadow-[0_0_15px_rgba(250,204,21,0.2)]"
-                    : "text-zinc-400 hover:bg-zinc-800/80 hover:text-white font-semibold"
-                }`
-              }
-            >
-              <Settings size={20} className="shrink-0" />
-              {!isCollapsed && (
-                <span className="whitespace-nowrap text-[15px] transition-all duration-300">
-                  Settings
-                </span>
-              )}
-              {isCollapsed && (
-                <div className="absolute left-full ml-5 px-3 py-2 bg-yellow-400 text-zinc-950 text-xs font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-50 flex items-center">
-                  <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-yellow-400 rotate-45 rounded-sm"></div>
-                  Settings
-                </div>
-              )}
-            </NavLink>
-          )}
-
-          <button
-            onClick={handleLogout}
-            className={`group relative flex items-center h-11 rounded-xl hover:bg-red-500 hover:text-white text-zinc-400 transition-all duration-300 overflow-visible ${
-              isCollapsed
-                ? "justify-center w-11 mx-auto bg-zinc-900"
-                : "px-4 gap-4 w-full"
-            }`}
-          >
-            <LogOut size={20} className="shrink-0" />
-            {!isCollapsed && (
-              <span className="whitespace-nowrap text-[15px] font-bold">
-                Logout
-              </span>
-            )}
-            {isCollapsed && (
-              <div className="absolute left-full ml-5 px-3 py-2 bg-red-500 text-white text-xs font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-100 flex items-center">
-                <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-red-500 rotate-45 rounded-sm"></div>
-                Logout
-              </div>
-            )}
-          </button>
-        </div>
-      </aside>
-    </>
+    </div>
   );
 };
 
