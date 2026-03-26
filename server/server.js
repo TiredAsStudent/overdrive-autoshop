@@ -9,6 +9,10 @@ const db = require("./config/db");
 
 //Import Routes
 const authRoutes = require("./routes/v1/auth");
+const mechanicRoutes = require("./routes/v1/mechanic");
+const financeConfigRoutes = require("./routes/v1/financeConfig");
+const serviceTemplateRoutes = require("./routes/v1/serviceTemplate");
+const vehicleRoutes = require("./routes/v1/vehicle");
 
 const app = express();
 
@@ -52,6 +56,10 @@ app.get("/api/health", async (req, res, next) => {
 
 //Mount Routes
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/mechanics", mechanicRoutes);
+app.use("/api/v1/finance", financeConfigRoutes);
+app.use("/api/v1/templates", serviceTemplateRoutes);
+app.use("/api/v1/vehicles", vehicleRoutes);
 
 // Start Server
 const PORT = process.env.PORT || 5000;
