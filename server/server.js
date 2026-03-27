@@ -13,6 +13,7 @@ const mechanicRoutes = require("./routes/v1/mechanic");
 const financeConfigRoutes = require("./routes/v1/financeConfig");
 const serviceTemplateRoutes = require("./routes/v1/serviceTemplate");
 const vehicleRoutes = require("./routes/v1/vehicle");
+const inventoryRoutes = require("./routes/v1/inventory");
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.use("/api/v1/mechanics", mechanicRoutes);
 app.use("/api/v1/finance", financeConfigRoutes);
 app.use("/api/v1/templates", serviceTemplateRoutes);
 app.use("/api/v1/vehicles", vehicleRoutes);
+app.use("/api/v1/inventory", inventoryRoutes);
 
 // Start Server
 const PORT = process.env.PORT || 5000;
