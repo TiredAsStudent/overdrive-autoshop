@@ -26,7 +26,6 @@ class InventoryController {
     }
   }
 
-  // Admin sees all, Staff only sees active items for their dropdown menus
   static async getCatalog(req, res) {
     try {
       const onlyActive = req.user.role === "STAFF";
@@ -42,7 +41,6 @@ class InventoryController {
     }
   }
 
-  // Update Master Part
   static async updateMasterPart(req, res) {
     try {
       const { partName, unitCost, retailPrice } = req.body;
@@ -66,7 +64,6 @@ class InventoryController {
     }
   }
 
-  // Soft-Delete Master Part
   static async toggleStatus(req, res) {
     try {
       const { isActive } = req.body;
@@ -86,6 +83,20 @@ class InventoryController {
       return sendSuccess(res, 200, part, msg);
     } catch (error) {
       return sendError(res, 400, error.message);
+    }
+  }
+
+  // --- LOCAL STOCK API ---
+  static async getLocalStock(req, res) {
+    try {
+      let branchToQuery = req.user.branchId;
+      if (req.user.role === "ADMIN" && req.query.branchId) {
+        branchToQuery = req.query.branchId;
+      }
+      const stock = await InventoryModel.getLocalStockByBranch(branchToQuery);
+      return sendSuccess(res, 200, stock, "Fetched local stock successfully.");
+    } catch (error) {
+      return sendError(res, 500, "Failed to fetch local stock.");
     }
   }
 
@@ -143,9 +154,9 @@ class InventoryController {
   static async resolveAdjustment(req, res) {
     try {
       const { isApproved } = req.body;
-      if (typeof isApproved !== "boolean") {
+      if (typeof isApproved !== "boolean")
         return sendError(res, 400, "isApproved must be a boolean value.");
-      }
+
       const adjustment = await InventoryService.resolveAdjustment(
         req.user.id,
         req.user.branchId,
@@ -157,6 +168,56 @@ class InventoryController {
         ? "Adjustment approved and stock updated."
         : "Adjustment rejected.";
       return sendSuccess(res, 200, adjustment, msg);
+    } catch (error) {
+      return sendError(res, 400, error.message);
+    }
+  }
+
+  // --- TRANSFER REQUESTS (STAFF TASKS) ---
+  static async requestInterBranchTransfer(req, res) {
+    try {
+      const { fromBranchId, masterPartId, quantity } = req.body;
+      if (!fromBranchId || !masterPartId || !quantity) {
+        return sendError(
+          res,
+          400,
+          "Source Branch, Part ID, and Quantity are required.",
+        );
+      }
+      const request = await InventoryService.submitTransferRequest(
+        req.user.id,
+        req.user.branchId,
+        req.body,
+        req.ip,
+      );
+      return sendSuccess(
+        res,
+        201,
+        request,
+        "Transfer request submitted to Admin.",
+      );
+    } catch (error) {
+      return sendError(res, 400, error.message);
+    }
+  }
+
+  static async resolveTransferRequest(req, res) {
+    try {
+      const { isApproved } = req.body;
+      if (typeof isApproved !== "boolean")
+        return sendError(res, 400, "isApproved must be a boolean.");
+
+      const request = await InventoryService.resolveTransferRequest(
+        req.user.id,
+        req.user.branchId,
+        req.params.id,
+        isApproved,
+        req.ip,
+      );
+      const msg = isApproved
+        ? "Transfer approved and inventory moved."
+        : "Transfer request rejected.";
+      return sendSuccess(res, 200, request, msg);
     } catch (error) {
       return sendError(res, 400, error.message);
     }

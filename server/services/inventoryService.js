@@ -36,7 +36,6 @@ class InventoryService {
     }
   }
 
-  // Update Master Part
   static async editMasterPart(adminId, adminBranchId, partId, data, ipAddress) {
     const { partName, unitCost, retailPrice } = data;
     const client = await db.pool.connect();
@@ -60,7 +59,6 @@ class InventoryService {
         ipAddress,
         client,
       );
-
       await client.query("COMMIT");
       return part;
     } catch (error) {
@@ -73,7 +71,6 @@ class InventoryService {
     }
   }
 
-  // Soft-Delete Master Part
   static async toggleMasterPartStatus(
     adminId,
     adminBranchId,
@@ -103,7 +100,6 @@ class InventoryService {
         ipAddress,
         client,
       );
-
       await client.query("COMMIT");
       return part;
     } catch (error) {
@@ -115,16 +111,25 @@ class InventoryService {
   }
 
   // --- STOCK TRANSFER HUB ---
-  static async executeTransfer(adminId, adminBranchId, data, ipAddress) {
+  static async executeTransfer(
+    adminId,
+    adminBranchId,
+    data,
+    ipAddress,
+    clientOverride = null,
+  ) {
     const { fromBranchId, toBranchId, masterPartId, quantity } = data;
     if (quantity <= 0)
       throw new Error("Transfer quantity must be greater than zero.");
     if (fromBranchId === toBranchId)
       throw new Error("Cannot transfer stock to the same branch.");
 
-    const client = await db.pool.connect();
+    const client = clientOverride || (await db.pool.connect());
+    const shouldManageTransaction = !clientOverride;
+
     try {
-      await client.query("BEGIN");
+      if (shouldManageTransaction) await client.query("BEGIN");
+
       const deducted = await InventoryModel.deductStockSafe(
         fromBranchId,
         masterPartId,
@@ -152,13 +157,13 @@ class InventoryService {
         client,
       );
 
-      await client.query("COMMIT");
+      if (shouldManageTransaction) await client.query("COMMIT");
       return { message: `Successfully transferred ${quantity} units.` };
     } catch (error) {
-      await client.query("ROLLBACK");
+      if (shouldManageTransaction) await client.query("ROLLBACK");
       throw new Error(error.message);
     } finally {
-      client.release();
+      if (shouldManageTransaction) client.release();
     }
   }
 
@@ -253,6 +258,105 @@ class InventoryService {
       );
       await client.query("COMMIT");
       return adjustment;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw new Error(error.message);
+    } finally {
+      client.release();
+    }
+  }
+
+  // --- INTER-BRANCH TRANSFER REQUESTS ---
+  static async submitTransferRequest(staffId, staffBranchId, data, ipAddress) {
+    const { fromBranchId, masterPartId, quantity } = data;
+    if (quantity <= 0) throw new Error("Quantity must be greater than zero.");
+    if (fromBranchId === staffBranchId)
+      throw new Error("Cannot request a transfer from your own branch.");
+
+    const client = await db.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const request = await InventoryModel.createTransferRequest(
+        fromBranchId,
+        staffBranchId,
+        masterPartId,
+        quantity,
+        staffId,
+        client,
+      );
+      await AuditModel.log(
+        staffId,
+        staffBranchId,
+        "SUBMITTED_TRANSFER_REQUEST",
+        "stock_transfer_requests",
+        request.id,
+        ipAddress,
+        client,
+      );
+      await client.query("COMMIT");
+      return request;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw new Error("Failed to submit transfer request.");
+    } finally {
+      client.release();
+    }
+  }
+
+  static async resolveTransferRequest(
+    adminId,
+    adminBranchId,
+    requestId,
+    isApproved,
+    ipAddress,
+  ) {
+    const client = await db.pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const requestDetails = await InventoryModel.getTransferRequestById(
+        requestId,
+        client,
+      );
+      if (!requestDetails) throw new Error("Transfer request not found.");
+
+      const status = isApproved ? "APPROVED" : "REJECTED";
+      const request = await InventoryModel.updateTransferRequestStatus(
+        requestId,
+        adminId,
+        status,
+        client,
+      );
+      if (!request) throw new Error("Request already resolved or invalid.");
+
+      // If approved, trigger the atomic transfer within the exact same transaction bubble
+      if (isApproved) {
+        const transferData = {
+          fromBranchId: request.from_branch_id,
+          toBranchId: request.to_branch_id,
+          masterPartId: request.master_part_id,
+          quantity: request.quantity,
+        };
+        await this.executeTransfer(
+          adminId,
+          adminBranchId,
+          transferData,
+          ipAddress,
+          client,
+        );
+      }
+
+      await AuditModel.log(
+        adminId,
+        adminBranchId,
+        `RESOLVED_TRANSFER_REQUEST_${status}`,
+        "stock_transfer_requests",
+        request.id,
+        ipAddress,
+        client,
+      );
+      await client.query("COMMIT");
+      return request;
     } catch (error) {
       await client.query("ROLLBACK");
       throw new Error(error.message);

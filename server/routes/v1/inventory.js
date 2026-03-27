@@ -40,8 +40,17 @@ router.patch(
   InventoryController.toggleStatus,
 );
 
+// --- LOCAL STOCK API ---
+// Staff & Admin: View physical items on the shelves
+router.get(
+  "/local",
+  authenticate,
+  requireRole(ROLES.ADMIN, ROLES.STAFF),
+  InventoryController.getLocalStock,
+);
+
 // --- STOCK TRANSFER HUB ---
-// Admin Only: Execute Atomic Transfers between branches
+// Admin Only: Direct execute Atomic Transfers
 router.post(
   "/transfer",
   authenticate,
@@ -49,7 +58,23 @@ router.post(
   InventoryController.transferStock,
 );
 
-// --- INVENTORY SECURITY (MAKER-CHECKER) ---
+// --- TRANSFER REQUESTS (INTER-BRANCH) ---
+// Staff (Maker): Request parts from another branch
+router.post(
+  "/transfer-requests",
+  authenticate,
+  requireRole(ROLES.STAFF),
+  InventoryController.requestInterBranchTransfer,
+);
+// Admin (Checker): Approve or Reject the inter-branch transfer
+router.patch(
+  "/transfer-requests/:id/resolve",
+  authenticate,
+  requireRole(ROLES.ADMIN),
+  InventoryController.resolveTransferRequest,
+);
+
+// --- INVENTORY SECURITY (ADJUSTMENTS) ---
 // Staff (Maker): Submit a stock correction request for damage/loss
 router.post(
   "/adjustments",
@@ -57,8 +82,7 @@ router.post(
   requireRole(ROLES.STAFF),
   InventoryController.requestAdjustment,
 );
-
-// Admin (Checker): Approve or Reject the request
+// Admin (Checker): Approve or Reject the adjustment
 router.patch(
   "/adjustments/:id/resolve",
   authenticate,

@@ -33,7 +33,6 @@ class InventoryModel {
     return result.rows[0];
   }
 
-  // The Soft-Delete Query
   static async toggleMasterPartStatus(id, isActive, client = db) {
     const query = `
       UPDATE master_inventory
@@ -44,7 +43,6 @@ class InventoryModel {
     return result.rows[0];
   }
 
-  // Filters deactivated parts if requested
   static async getAllMasterParts(onlyActive = false, client = db) {
     const activeFilter = onlyActive ? "WHERE is_active = TRUE" : "";
     const query = `SELECT * FROM master_inventory ${activeFilter} ORDER BY part_name ASC;`;
@@ -53,6 +51,24 @@ class InventoryModel {
   }
 
   // --- LOCAL STOCK (THE SHELVES) ---
+  static async getLocalStockByBranch(branchId, client = db) {
+    const query = `
+      SELECT 
+        bls.id as local_stock_id,
+        bls.quantity,
+        bls.updated_at,
+        mi.id as master_part_id,
+        mi.part_name,
+        mi.retail_price
+      FROM branch_local_stock bls
+      JOIN master_inventory mi ON bls.master_part_id = mi.id
+      WHERE bls.branch_id = $1 AND mi.is_active = TRUE
+      ORDER BY mi.part_name ASC;
+    `;
+    const result = await client.query(query, [branchId]);
+    return result.rows;
+  }
+
   static async deductStockSafe(
     branchId,
     masterPartId,
@@ -126,6 +142,50 @@ class InventoryModel {
       RETURNING *;
     `;
     const result = await client.query(query, [status, adminId, adjustmentId]);
+    return result.rows[0];
+  }
+
+  // --- INTER-BRANCH TRANSFER REQUESTS ---
+  static async createTransferRequest(
+    fromBranchId,
+    toBranchId,
+    masterPartId,
+    quantity,
+    requestedBy,
+    client = db,
+  ) {
+    const query = `
+      INSERT INTO stock_transfer_requests (from_branch_id, to_branch_id, master_part_id, quantity, requested_by)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *;
+    `;
+    const result = await client.query(query, [
+      fromBranchId,
+      toBranchId,
+      masterPartId,
+      quantity,
+      requestedBy,
+    ]);
+    return result.rows[0];
+  }
+
+  static async getTransferRequestById(requestId, client = db) {
+    const query = `SELECT * FROM stock_transfer_requests WHERE id = $1;`;
+    const result = await client.query(query, [requestId]);
+    return result.rows[0];
+  }
+
+  static async updateTransferRequestStatus(
+    requestId,
+    adminId,
+    status,
+    client = db,
+  ) {
+    const query = `
+      UPDATE stock_transfer_requests 
+      SET status = $1, reviewed_by = $2, updated_at = NOW() 
+      WHERE id = $3 AND status = 'PENDING' RETURNING *;
+    `;
+    const result = await client.query(query, [status, adminId, requestId]);
     return result.rows[0];
   }
 }
