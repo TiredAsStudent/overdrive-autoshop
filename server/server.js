@@ -14,6 +14,8 @@ const financeConfigRoutes = require("./routes/v1/financeConfig");
 const serviceTemplateRoutes = require("./routes/v1/serviceTemplate");
 const vehicleRoutes = require("./routes/v1/vehicle");
 const inventoryRoutes = require("./routes/v1/inventory");
+const estimateRoutes = require("./routes/v1/estimate");
+const kanbanRoutes = require("./routes/v1/kanban");
 
 const app = express();
 
@@ -62,6 +64,8 @@ app.use("/api/v1/finance", financeConfigRoutes);
 app.use("/api/v1/templates", serviceTemplateRoutes);
 app.use("/api/v1/vehicles", vehicleRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
+app.use("/api/v1/estimates", estimateRoutes);
+app.use("/api/v1/kanban", kanbanRoutes);
 
 // Start Server
 const PORT = process.env.PORT || 5000;

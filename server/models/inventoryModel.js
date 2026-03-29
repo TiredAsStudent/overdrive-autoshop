@@ -105,6 +105,53 @@ class InventoryModel {
     return result.rows[0];
   }
 
+  // Digitally reserves stock to prevent double-selling
+  static async reserveStockSafe(
+    branchId,
+    masterPartId,
+    qtyToReserve,
+    client = db,
+  ) {
+    const query = `
+      UPDATE branch_local_stock
+      SET reserved_quantity = reserved_quantity + $3, updated_at = NOW()
+      WHERE branch_id = $1 AND master_part_id = $2
+      AND (quantity - reserved_quantity) >= $3
+      RETURNING *;
+    `;
+    const result = await client.query(query, [
+      branchId,
+      masterPartId,
+      qtyToReserve,
+    ]);
+    return result.rows[0];
+    // Returns undefined if there isn't enough unreserved stock
+  }
+
+  // Permanently deducts the reserved parts when the invoice is paid
+  static async finalizeReservedStockSafe(
+    branchId,
+    masterPartId,
+    qtyToDeduct,
+    client = db,
+  ) {
+    const query = `
+      UPDATE branch_local_stock
+      SET quantity = quantity - $3, 
+          reserved_quantity = reserved_quantity - $3, 
+          updated_at = NOW()
+      WHERE branch_id = $1 AND master_part_id = $2
+      AND quantity >= $3 AND reserved_quantity >= $3
+      RETURNING *;
+    `;
+    const result = await client.query(query, [
+      branchId,
+      masterPartId,
+      qtyToDeduct,
+    ]);
+    return result.rows[0];
+  }
+
   // --- INVENTORY SECURITY (MAKER-CHECKER) ---
   static async createAdjustmentRequest(
     branchId,
