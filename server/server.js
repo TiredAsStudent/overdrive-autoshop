@@ -17,6 +17,8 @@ const inventoryRoutes = require("./routes/v1/inventory");
 const estimateRoutes = require("./routes/v1/estimate");
 const kanbanRoutes = require("./routes/v1/kanban");
 const expenseRoutes = require("./routes/v1/expense");
+const analyticsRoutes = require("./routes/v1/analytics");
+const bulkOrderRoutes = require("./routes/v1/bulkOrder");
 
 const path = require("path");
 
@@ -70,6 +72,8 @@ app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/estimates", estimateRoutes);
 app.use("/api/v1/kanban", kanbanRoutes);
 app.use("/api/v1/expenses", expenseRoutes);
+app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/bulk-orders", bulkOrderRoutes);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
