@@ -1,14 +1,17 @@
 const sharp = require("sharp");
-const Tesseract = require("tesseract.js");
 const path = require("path");
 const fs = require("fs").promises;
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 class OcrProcessor {
-  // The "Grease-Proof" Filter
+  //The "Grease-Proof"
   static async cleanImageForOcr(fileBuffer, originalName) {
     const uploadDir = path.join(__dirname, "../uploads");
 
-    //Check if uploads folder exists, create if it doesn't
+    // Check if uploads folder exists, create if it doesn't
     try {
       await fs.access(uploadDir);
     } catch (error) {
@@ -18,65 +21,91 @@ class OcrProcessor {
     const filename = `processed_${Date.now()}_${originalName}`;
     const outputPath = path.join(uploadDir, filename);
 
-    // Apply filters to make blurry/dirty workshop receipts readable for Tesseract
-    await sharp(fileBuffer)
-      .grayscale() // Remove color
-      .normalize() // Stretch contrast
-      .sharpen() // Make text edges crisp
-      .toFile(outputPath);
+    // Apply filters and save to disk
+    const processedBuffer = await sharp(fileBuffer)
+      .grayscale()
+      .normalize()
+      .sharpen()
+      .toBuffer();
 
-    return { buffer: fileBuffer, filepath: outputPath, filename };
-  }
-
-  // The Regex Parsing Engine
-  static parseTesseractText(rawText) {
-    const lines = rawText
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    // Very basic regex rules to catch standard receipt patterns
-    let totalAmount = 0;
-    let vendorName = lines[0] || "Unknown Vendor"; // Usually the first line
-    let receiptDate = new Date().toISOString().split("T")[0];
-    let invoiceNumber = "UNKNOWN";
-
-    const dateRegex = /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/;
-    const totalRegex = /TOTAL[\s:$]*([\d,.]+)/i;
-    const invRegex = /INV[\w\s#:]*([A-Z0-9\-]+)/i;
-
-    for (const line of lines) {
-      if (dateRegex.test(line)) receiptDate = line.match(dateRegex)[1];
-      if (invRegex.test(line)) invoiceNumber = line.match(invRegex)[1];
-      if (totalRegex.test(line)) {
-        const amountStr = line.match(totalRegex)[1].replace(/,/g, "");
-        totalAmount = parseFloat(amountStr) || 0;
-      }
-    }
+    // Save the file
+    await fs.writeFile(outputPath, processedBuffer);
 
     return {
-      vendorName,
-      receiptDate,
-      invoiceNumber,
-      totalAmount,
-      extractedItems: [],
-      rawText,
+      buffer: processedBuffer,
+      filepath: outputPath,
+      filename,
     };
   }
 
+  // The Gemini AI Extraction Engine
   static async extract(fileBuffer, originalName) {
-    const cleanedImage = await this.cleanImageForOcr(fileBuffer, originalName);
+    try {
+      // Clean the image
+      const cleanedImage = await this.cleanImageForOcr(
+        fileBuffer,
+        originalName,
+      );
 
-    const {
-      data: { text },
-    } = await Tesseract.recognize(cleanedImage.filepath, "eng", {
-      logger: (m) => console.log(m),
-    });
+      // Prepare the image for Gemini (Base64 format)
+      const imagePart = {
+        inlineData: {
+          data: cleanedImage.buffer.toString("base64"),
+          mimeType: "image/jpeg", // Sharp defaults to jpeg/png buffer, this is safe for Gemini
+        },
+      };
 
-    const parsedData = this.parseTesseractText(text);
-    parsedData.processedImageUrl = `/uploads/${cleanedImage.filename}`;
+      // The "Prompt"
+      const prompt = `
+        You are an expert accounting assistant for an auto repair shop.
+        Analyze this receipt/invoice image and extract the data strictly as a JSON object.
+        Do NOT include any markdown formatting, backticks, or explanation. ONLY output raw JSON.
+        
+        Use this EXACT JSON structure:
+        {
+          "vendorName": "Name of the supplier or store (string)",
+          "receiptDate": "Date on receipt in YYYY-MM-DD format (string)",
+          "invoiceNumber": "Invoice or receipt number, or 'UNKNOWN' if missing (string)",
+          "totalAmount": 0.00, 
+          "items": [
+            {
+              "itemName": "Name of the part, food, or item (string)",
+              "quantity": 1, 
+              "unitCost": 0.00 
+            }
+          ]
+        }
+        
+        Rules:
+        1. totalAmount, quantity, and unitCost MUST be numbers, not strings.
+        2. If you cannot find a value, use "Unknown" for strings or 0 for numbers.
+        3. If there are no line items visible, return an empty array [] for items.
+      `;
 
-    return parsedData;
+      // Call the Gemini Flash Model
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const result = await model.generateContent([prompt, imagePart]);
+      const responseText = result.response.text();
+
+      //Clean up the AI output
+      const cleanedJsonString = responseText
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+
+      // Parse into a real JavaScript Object
+      const parsedData = JSON.parse(cleanedJsonString);
+
+      // Attach the UI image URL
+      parsedData.processedImageUrl = `/uploads/${cleanedImage.filename}`;
+
+      return parsedData;
+    } catch (error) {
+      console.error("Gemini AI Extraction Failed:", error);
+      throw new Error(
+        "Failed to process receipt with AI. Please check the image and try again.",
+      );
+    }
   }
 }
 
