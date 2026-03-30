@@ -16,6 +16,9 @@ const vehicleRoutes = require("./routes/v1/vehicle");
 const inventoryRoutes = require("./routes/v1/inventory");
 const estimateRoutes = require("./routes/v1/estimate");
 const kanbanRoutes = require("./routes/v1/kanban");
+const expenseRoutes = require("./routes/v1/expense");
+
+const path = require("path");
 
 const app = express();
 
@@ -66,6 +69,9 @@ app.use("/api/v1/vehicles", vehicleRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/estimates", estimateRoutes);
 app.use("/api/v1/kanban", kanbanRoutes);
+app.use("/api/v1/expenses", expenseRoutes);
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Start Server
 const PORT = process.env.PORT || 5000;
