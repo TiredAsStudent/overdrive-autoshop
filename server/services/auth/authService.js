@@ -2,10 +2,13 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const AuthModel = require("../../models/auth/authModel");
+const crypto = require("crypto");
+const { sendPasswordResetEmail } = require("../../utils/mailer");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 class AuthService {
+  // --Generate Token--
   static generateToken(user) {
     const payload = {
       id: user.id,
@@ -15,6 +18,7 @@ class AuthService {
     return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "12h" });
   }
 
+  // --Login with Email--
   static async loginWithEmail(email, password, ipAddress) {
     const user = await AuthModel.findUserByEmail(email);
 
@@ -38,6 +42,7 @@ class AuthService {
     return { user, token };
   }
 
+  // --Login with Google--
   static async loginWithGoogle(googleToken, ipAddress) {
     const ticket = await googleClient.verifyIdToken({
       idToken: googleToken,
@@ -69,6 +74,61 @@ class AuthService {
 
     delete user.password_hash;
     return { user, token };
+  }
+
+  // --Process forgot passoword--
+  static async processForgotPassword(email) {
+    const user = await AuthModel.findUserByEmail(email);
+
+    if (!user || !user.is_active) return;
+
+    // Generate a raw, URL-safe crypto token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    // Hash the token
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+
+    await AuthModel.saveResetToken(user.id, hashedToken);
+
+    // Construct URL and Send Email
+    const frontendUrl =
+      process.env.NODE_ENV === "development"
+        ? process.env.FRONTEND_URL_DEV
+        : process.env.FRONTEND_URL_PROD;
+
+    const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+    await sendPasswordResetEmail(user.email, resetLink);
+  }
+
+  // --Process reset  password--
+  static async processResetPassword(rawToken, newPassword, ipAddress) {
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+
+    // Check if token exists and is not expired
+    const user = await AuthModel.findUserByResetToken(hashedToken);
+    if (!user) {
+      throw new Error(
+        "Invalid or expired reset token. Please request a new one.",
+      );
+    }
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    await AuthModel.updatePasswordAndClearToken(user.id, newPasswordHash);
+
+    await AuthModel.logAudit(
+      user.id,
+      user.branch_id, // NULL if Admin, Number if Staff
+      "PASSWORD_RESET_SUCCESS",
+      ipAddress,
+    );
   }
 }
 

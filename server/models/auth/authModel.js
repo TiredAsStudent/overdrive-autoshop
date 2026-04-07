@@ -28,6 +28,37 @@ class AuthModel {
     `;
     await query(sql, [userId, branchId, action, "users", userId, ipAddress]);
   }
+
+  // Save the hashed token and set expiry to 15 minutes from now
+  static async saveResetToken(userId, hashedToken) {
+    const sql = `
+      UPDATE users 
+      SET reset_token = $1, reset_token_expires = NOW() + INTERVAL '15 minutes', updated_at = NOW()
+      WHERE id = $2
+    `;
+    await query(sql, [hashedToken, userId]);
+  }
+
+  // Find user by valid token (checks if it exists AND is not expired)
+  static async findUserByResetToken(hashedToken) {
+    const sql = `
+      SELECT id, email, branch_id 
+      FROM users 
+      WHERE reset_token = $1 AND reset_token_expires > NOW()
+    `;
+    const result = await query(sql, [hashedToken]);
+    return result.rows[0];
+  }
+
+  // Update the password and instantly BURN the token
+  static async updatePasswordAndClearToken(userId, newPasswordHash) {
+    const sql = `
+      UPDATE users 
+      SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, updated_at = NOW()
+      WHERE id = $2
+    `;
+    await query(sql, [newPasswordHash, userId]);
+  }
 }
 
 module.exports = AuthModel;

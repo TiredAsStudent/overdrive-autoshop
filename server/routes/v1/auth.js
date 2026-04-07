@@ -2,11 +2,15 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 const AuthController = require("../../controllers/auth/authController");
 const validate = require("../../middlewares/validateMiddleware");
-const { loginSchema } = require("../../validations/auth.schema");
+const {
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} = require("../../validations/auth.schema");
 
 const router = express.Router();
 
-// Max 5 FAILED attempts per 15 minutes
+// Login Limiter: Max 5 FAILED attempts per 15 minutes
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -22,6 +26,18 @@ const loginLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
+// Forgot Password Limiter: Max 3 email requests per hour per IP
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: {
+    success: false,
+    error: {
+      message: "Too many reset requests. Please try again after 1 hour.",
+    },
+  },
+});
+
 // Public Routes
 router.post(
   "/login",
@@ -30,5 +46,18 @@ router.post(
   AuthController.login,
 );
 router.post("/google", loginLimiter, AuthController.googleLogin);
+
+// Forgot & Reset Password Routes
+router.post(
+  "/forgot-password",
+  forgotPasswordLimiter,
+  validate(forgotPasswordSchema),
+  AuthController.forgotPassword,
+);
+router.post(
+  "/reset-password",
+  validate(resetPasswordSchema),
+  AuthController.resetPassword,
+);
 
 module.exports = router;

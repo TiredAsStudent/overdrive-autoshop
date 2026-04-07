@@ -46,6 +46,44 @@ class AuthController {
       return sendError(res, STATUS_CODES.UNAUTHORIZED, error.message);
     }
   }
+
+  static async forgotPassword(req, res) {
+    try {
+      const email = req.body.email.trim();
+
+      await AuthService.processForgotPassword(email);
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        null,
+        `If an account exists for ${email}, a recovery link has been sent.`,
+      );
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "An error occurred while processing your request.",
+      );
+    }
+  }
+
+  static async resetPassword(req, res) {
+    try {
+      const { token, newPassword } = req.body;
+
+      await AuthService.processResetPassword(token, newPassword, req.ip);
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        null,
+        "Password has been successfully reset. You may now log in.",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
 }
 
 module.exports = AuthController;
