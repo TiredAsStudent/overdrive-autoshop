@@ -10,8 +10,6 @@ const { connectDB, query } = require("./config/db");
 const { sendError } = require("./utils/responseHandler");
 const { STATUS_CODES } = require("./constants/statusCodes");
 
-//Import Routes
-
 const app = express();
 
 // --- SECURITY & GLOBAL MIDDLEWARE ---
@@ -59,7 +57,8 @@ app.get("/api/health", async (req, res, next) => {
 // --- STATIC FILES (Uploads) ---
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-//Mount Routes
+// -- Mount Routes --
+app.use("/api/v1/auth", require("./routes/v1/auth"));
 
 // --- GLOBAL ERROR CATCHING ---
 // Handle 404 - Route Not Found
