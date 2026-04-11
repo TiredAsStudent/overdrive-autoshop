@@ -1,4 +1,4 @@
-const { query } = require("../../config/db");
+const { query, pool } = require("../../config/db");
 
 class AuthModel {
   static async findUserByEmail(email) {
@@ -50,14 +50,44 @@ class AuthModel {
     return result.rows[0];
   }
 
-  // Update the password and instantly BURN the token
-  static async updatePasswordAndClearToken(userId, newPasswordHash) {
-    const sql = `
-      UPDATE users 
-      SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, updated_at = NOW()
-      WHERE id = $2
-    `;
-    await query(sql, [newPasswordHash, userId]);
+  // Update the password and instantly BURN the token AND log it
+  static async updatePasswordAndLogAudit(
+    userId,
+    newPasswordHash,
+    branchId,
+    ipAddress,
+  ) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const updateSql = `
+        UPDATE users 
+        SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, updated_at = NOW()
+        WHERE id = $2
+      `;
+      await client.query(updateSql, [newPasswordHash, userId]);
+
+      const auditSql = `
+        INSERT INTO audit_logs (user_id, branch_id, action, target_resource, target_id, ip_address) 
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `;
+      await client.query(auditSql, [
+        userId,
+        branchId,
+        "PASSWORD_RESET_SUCCESS",
+        "users",
+        userId,
+        ipAddress,
+      ]);
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 

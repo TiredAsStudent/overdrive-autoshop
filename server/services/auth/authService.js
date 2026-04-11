@@ -76,7 +76,7 @@ class AuthService {
     return { user, token };
   }
 
-  // --Process forgot passoword--
+  // --Process forgot password--
   static async processForgotPassword(email) {
     const user = await AuthModel.findUserByEmail(email);
 
@@ -104,7 +104,7 @@ class AuthService {
     await sendPasswordResetEmail(user.email, resetLink);
   }
 
-  // --Process reset  password--
+  // --Process reset password--
   static async processResetPassword(rawToken, newPassword, ipAddress) {
     const hashedToken = crypto
       .createHash("sha256")
@@ -121,12 +121,10 @@ class AuthService {
 
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-    await AuthModel.updatePasswordAndClearToken(user.id, newPasswordHash);
-
-    await AuthModel.logAudit(
+    await AuthModel.updatePasswordAndLogAudit(
       user.id,
+      newPasswordHash,
       user.branch_id, // NULL if Admin, Number if Staff
-      "PASSWORD_RESET_SUCCESS",
       ipAddress,
     );
   }
