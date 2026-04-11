@@ -84,6 +84,49 @@ class AuthController {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
+
+  static async verifyInvite(req, res) {
+    try {
+      const { token } = req.params;
+
+      const data = await AuthService.verifyActivationToken(token);
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        data,
+        "Invite verified successfully.",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
+
+  static async activateAccount(req, res) {
+    try {
+      const { token, newPassword, policyAgreed } = req.body;
+
+      // Double check policy agreement
+      if (!policyAgreed) {
+        return sendError(
+          res,
+          STATUS_CODES.BAD_REQUEST,
+          "You must agree to the Data Integrity Policy to activate your account.",
+        );
+      }
+
+      await AuthService.processActivation(token, newPassword, req.ip);
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        null,
+        "Account successfully activated! You may now log in.",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
 }
 
 module.exports = AuthController;

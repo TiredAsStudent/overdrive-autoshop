@@ -89,6 +89,67 @@ class AuthModel {
       client.release();
     }
   }
+
+  // --- ACTIVATION LOGIC ---
+
+  // Find user by activation token
+  static async findUserByActivationToken(hashedToken) {
+    const sql = `
+      SELECT 
+        u.id, u.email, u.first_name, u.last_name, u.role, u.branch_id, 
+        u.activation_token_expires, b.branch_name 
+      FROM users u
+      LEFT JOIN branches b ON u.branch_id = b.id
+      WHERE u.activation_token = $1 AND u.activation_token_expires > NOW()
+    `;
+    const result = await query(sql, [hashedToken]);
+    return result.rows[0];
+  }
+
+  static async activateUserAndLogAudit(
+    userId,
+    newPasswordHash,
+    branchId,
+    ipAddress,
+  ) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // Update Password and Activate User
+      const updateSql = `
+        UPDATE users 
+        SET 
+          password_hash = $1, 
+          is_active = TRUE, 
+          activation_token = NULL, 
+          activation_token_expires = NULL, 
+          updated_at = NOW()
+        WHERE id = $2
+      `;
+      await client.query(updateSql, [newPasswordHash, userId]);
+
+      const auditSql = `
+        INSERT INTO audit_logs (user_id, branch_id, action, target_resource, target_id, ip_address) 
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `;
+      await client.query(auditSql, [
+        userId,
+        branchId,
+        "ACCOUNT_ACTIVATED_POLICY_SIGNED",
+        "users",
+        userId,
+        ipAddress,
+      ]);
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 module.exports = AuthModel;

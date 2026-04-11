@@ -27,4 +27,26 @@ const resetPasswordSchema = z.object({
   }),
 });
 
-module.exports = { loginSchema, forgotPasswordSchema, resetPasswordSchema };
+const activateAccountSchema = z.object({
+  body: z.object({
+    token: z.string().min(1, "Activation token is required"),
+    newPassword: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(
+        /[\d@$!%*?&#]/,
+        "Password must contain at least one number or special character",
+      ),
+    policyAgreed: z.boolean().refine((val) => val === true, {
+      message: "You must agree to the Data Integrity Policy",
+    }),
+  }),
+});
+
+module.exports = {
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  activateAccountSchema,
+};

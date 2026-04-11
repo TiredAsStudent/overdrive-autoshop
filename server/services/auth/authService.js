@@ -128,6 +128,59 @@ class AuthService {
       ipAddress,
     );
   }
+
+  // --Verify Activation Token--
+  static async verifyActivationToken(rawToken) {
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+
+    const user = await AuthModel.findUserByActivationToken(hashedToken);
+
+    if (!user) {
+      throw new Error("This invitation link is invalid or has expired.");
+    }
+
+    // Calculate remaining time for the frontend countdown timer
+    const expiresAt = new Date(user.activation_token_expires).getTime();
+    const now = new Date().getTime();
+    const timeRemainingMs = expiresAt - now;
+
+    return {
+      firstName: user.first_name,
+      email: user.email,
+      role: user.role,
+      branchName: user.branch_name || "Global Enterprise", // Fallback if Admin (branch_id = NULL)
+      expiresAt: user.activation_token_expires,
+      timeRemainingMs: timeRemainingMs > 0 ? timeRemainingMs : 0,
+    };
+  }
+
+  // --Process Account Activation--
+  static async processActivation(rawToken, newPassword, ipAddress) {
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+
+    const user = await AuthModel.findUserByActivationToken(hashedToken);
+    if (!user) {
+      throw new Error(
+        "This invitation link has expired. Please contact your Admin for a new invite.",
+      );
+    }
+
+    // Hash the new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    await AuthModel.activateUserAndLogAudit(
+      user.id,
+      newPasswordHash,
+      user.branch_id,
+      ipAddress,
+    );
+  }
 }
 
 module.exports = AuthService;
