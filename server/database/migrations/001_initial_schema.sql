@@ -1,8 +1,10 @@
--- Create Roles
+-- 001_initial_schema.sql
+
+-- Create Roles ENUM
 CREATE TYPE user_role AS ENUM ('ADMIN', 'STAFF', 'CUSTOMER');
 
 -- Create Branches Table
-CREATE TABLE branches (
+CREATE TABLE IF NOT EXISTS branches (
     id SERIAL PRIMARY KEY,
     branch_name VARCHAR(100) NOT NULL UNIQUE,
     location TEXT,
@@ -10,7 +12,7 @@ CREATE TABLE branches (
 );
 
 -- Create Users Table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     branch_id INTEGER REFERENCES branches(id) ON DELETE RESTRICT,
     role user_role NOT NULL,
@@ -24,21 +26,8 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create Closed-Loop Invitations Table
-CREATE TABLE user_invitations (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) NOT NULL,
-    role user_role NOT NULL,
-    branch_id INTEGER REFERENCES branches(id),
-    token_hash VARCHAR(255) UNIQUE NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    is_used BOOLEAN DEFAULT FALSE,
-    invited_by INTEGER REFERENCES users(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create Audit Logs
-CREATE TABLE audit_logs (
+-- Create Audit Logs Table
+CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     branch_id INTEGER REFERENCES branches(id),

@@ -1,32 +1,87 @@
 const express = require("express");
-const router = express.Router();
-const AuthController = require("../../controllers/authController");
+const rateLimit = require("express-rate-limit");
+const AuthController = require("../../controllers/auth/authController");
+const validate = require("../../middlewares/validateMiddleware");
 const {
-  authenticate,
-  requireRole,
-} = require("../../middlewares/authMiddleware");
-const { ROLES } = require("../../constants/roles");
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  activateAccountSchema,
+  activateCustomerSchema,
+} = require("../../validations/auth.schema");
+
+const router = express.Router();
+
+// Login Limiter: Max 5 FAILED attempts per 15 minutes
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    success: false,
+    error: {
+      message:
+        "Too many failed login attempts. Please try again after 15 minutes.",
+    },
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+});
+
+// Forgot Password Limiter: Max 3 email requests per hour per IP
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: {
+    success: false,
+    error: {
+      message: "Too many reset requests. Please try again after 1 hour.",
+    },
+  },
+});
 
 // Public Routes
-router.post("/login", AuthController.login);
-router.post("/google", AuthController.googleLogin);
-router.post("/setup-account", AuthController.setupAccount);
-
-// Protected Admin Route (Staff/Manager 2-Hour Invites)
 router.post(
-  "/invite-staff",
-  authenticate,
-  requireRole(ROLES.ADMIN),
-  AuthController.inviteUser,
+  "/login",
+  loginLimiter,
+  validate(loginSchema),
+  AuthController.login,
+);
+router.post("/google", loginLimiter, AuthController.googleLogin);
+
+// Forgot & Reset Password Routes
+router.post(
+  "/forgot-password",
+  forgotPasswordLimiter,
+  validate(forgotPasswordSchema),
+  AuthController.forgotPassword,
 );
 
-// Protected Operational Route (Customer Service Registration)
-// Staff AND Admins can check in vehicles and register customers
 router.post(
-  "/invite-customer",
-  authenticate,
-  requireRole(ROLES.ADMIN, ROLES.STAFF),
-  AuthController.inviteCustomer,
+  "/reset-password",
+  validate(resetPasswordSchema),
+  AuthController.resetPassword,
+);
+
+// Staff & Admin Activation routes
+router.get("/verify-invite/:token", AuthController.verifyInvite);
+
+router.post(
+  "/activate",
+  validate(activateAccountSchema),
+  AuthController.activateAccount,
+);
+
+// Customer Activation routes
+router.get(
+  "/verify-customer-invite/:token",
+  AuthController.verifyCustomerInvite,
+);
+
+router.post(
+  "/activate-customer",
+  validate(activateCustomerSchema),
+  AuthController.activateCustomerAccount,
 );
 
 module.exports = router;
