@@ -1,6 +1,8 @@
 const { query, pool } = require("../../config/db");
 
 class AuthModel {
+  // --- LOGIN LOGIC ---
+
   static async findUserByEmail(email) {
     const sql = `
       SELECT id, email, password_hash, role, branch_id, google_id, is_active, first_name, last_name 
@@ -28,6 +30,8 @@ class AuthModel {
     `;
     await query(sql, [userId, branchId, action, "users", userId, ipAddress]);
   }
+
+  // --- RESET PASSWORD LOGIC ---
 
   // Save the hashed token and set expiry to 15 minutes from now
   static async saveResetToken(userId, hashedToken) {
@@ -90,7 +94,7 @@ class AuthModel {
     }
   }
 
-  // --- ACTIVATION LOGIC ---
+  // --- STAFF & ADMIN ACTIVATION LOGIC ---
 
   // Find user by activation token
   static async findUserByActivationToken(hashedToken) {
@@ -137,6 +141,62 @@ class AuthModel {
         userId,
         branchId,
         "ACCOUNT_ACTIVATED_POLICY_SIGNED",
+        "users",
+        userId,
+        ipAddress,
+      ]);
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  // --- CUSTOMER ACTIVATION LOGIC ---
+
+  // Find customer by token and JOIN their primary vehicle
+  static async findCustomerByActivationToken(hashedToken) {
+    const sql = `
+      SELECT 
+        u.id, u.first_name, u.email, u.role, u.activation_token_expires,
+        v.make, v.model, v.plate_number
+      FROM users u
+      LEFT JOIN vehicles v ON v.owner_id = u.id
+      WHERE u.activation_token = $1 AND u.role = 'CUSTOMER'
+      LIMIT 1
+    `;
+    const result = await query(sql, [hashedToken]);
+    return result.rows[0];
+  }
+
+  static async activateCustomerAndLogAudit(userId, newPasswordHash, ipAddress) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      //  Update Password and Activate
+      const updateSql = `
+        UPDATE users 
+        SET 
+          password_hash = $1, 
+          is_active = TRUE, 
+          activation_token = NULL, 
+          activation_token_expires = NULL, 
+          updated_at = NOW()
+        WHERE id = $2
+      `;
+      await client.query(updateSql, [newPasswordHash, userId]);
+
+      const auditSql = `
+        INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) 
+        VALUES ($1, $2, $3, $4, $5)
+      `;
+      await client.query(auditSql, [
+        userId,
+        "CUSTOMER_ACCOUNT_ACTIVATED",
         "users",
         userId,
         ipAddress,

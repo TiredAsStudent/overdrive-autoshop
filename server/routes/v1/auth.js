@@ -7,6 +7,7 @@ const {
   forgotPasswordSchema,
   resetPasswordSchema,
   activateAccountSchema,
+  activateCustomerSchema,
 } = require("../../validations/auth.schema");
 
 const router = express.Router();
@@ -69,6 +70,18 @@ router.post(
   "/activate",
   validate(activateAccountSchema),
   AuthController.activateAccount,
+);
+
+// Customer Activation routes
+router.get(
+  "/verify-customer-invite/:token",
+  AuthController.verifyCustomerInvite,
+);
+
+router.post(
+  "/activate-customer",
+  validate(activateCustomerSchema),
+  AuthController.activateCustomerAccount,
 );
 
 module.exports = router;

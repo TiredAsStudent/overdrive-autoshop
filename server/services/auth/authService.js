@@ -181,6 +181,66 @@ class AuthService {
       ipAddress,
     );
   }
+
+  // --Verify Customer Activation Token--
+  static async verifyCustomerActivationToken(rawToken) {
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+    const user = await AuthModel.findCustomerByActivationToken(hashedToken);
+
+    if (!user) {
+      throw new Error("This activation link is invalid or has expired.");
+    }
+
+    return {
+      firstName: user.first_name,
+      email: user.email,
+      role: user.role,
+      vehicle: {
+        make: user.make || "Unknown Make",
+        model: user.model || "Unknown Model",
+        plateNumber: user.plate_number || "PENDING",
+      },
+    };
+  }
+
+  // --Process Customer Activation & Auto-Login--
+  static async processCustomerActivation(rawToken, newPassword, ipAddress) {
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+    const user = await AuthModel.findCustomerByActivationToken(hashedToken);
+
+    if (!user) {
+      throw new Error("This activation link is invalid or has expired.");
+    }
+
+    // Hash the password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Atomic Activation
+    await AuthModel.activateCustomerAndLogAudit(
+      user.id,
+      newPasswordHash,
+      ipAddress,
+    );
+
+    // Auto-Login Logic
+    const payload = {
+      id: user.id,
+      role: user.role,
+      branchId: null,
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "12h",
+    });
+
+    return { token, firstName: user.first_name };
+  }
 }
 
 module.exports = AuthService;

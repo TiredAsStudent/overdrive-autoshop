@@ -44,9 +44,17 @@ const activateAccountSchema = z.object({
   }),
 });
 
+const activateCustomerSchema = z.object({
+  body: z.object({
+    token: z.string().min(1, "Activation token is required"),
+    newPassword: z.string().min(8, "Password must be at least 8 characters"),
+  }),
+});
+
 module.exports = {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   activateAccountSchema,
+  activateCustomerSchema,
 };

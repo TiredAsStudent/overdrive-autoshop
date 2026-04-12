@@ -127,6 +127,43 @@ class AuthController {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
+
+  static async verifyCustomerInvite(req, res) {
+    try {
+      const { token } = req.params;
+      const data = await AuthService.verifyCustomerActivationToken(token);
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        data,
+        "Customer invite verified.",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
+
+  static async activateCustomerAccount(req, res) {
+    try {
+      const { token, newPassword } = req.body;
+
+      const data = await AuthService.processCustomerActivation(
+        token,
+        newPassword,
+        req.ip,
+      );
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        data,
+        "Digital Passport successfully activated!",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
 }
 
 module.exports = AuthController;
