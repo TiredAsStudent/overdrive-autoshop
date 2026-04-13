@@ -2,35 +2,39 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 
-// Icons for the placeholders
-import { 
-  LayoutDashboard, CheckSquare, Wrench, Package, CircleDollarSign, 
-  Users2, Settings2, Home, FileText, Camera, Inbox, UserCircle,
-  BarChart3, Truck, History
-} from 'lucide-react';
-
 // Layouts & Wrappers
 import DashboardLayout from '../components/layout/DashboardLayout';
 import PageWrapper from '../components/layout/PageWrapper';
 
-// Actual Pages
+// --- AUTH PAGES (Full Screen) ---
 import LoginPage from '../pages/auth/LoginPage'; 
+import ForgotPassword from '../pages/auth/ForgotPassword';
+import ResetPassword from '../pages/auth/ResetPassword';
+
+// --- ERROR PAGES (Full Screen) ---
+import AccessDenied from '../pages/error/AccessDenied';
+import NotFound from '../pages/error/NotFound';
+
+// --- SHARED PAGES (With Sidebar) ---
 import UserProfilePage from '../pages/profile/UserProfilePage';
 import AccountSettingsPage from '../pages/settings/AccountSettingsPage';
-import PlaceholderPage from '../pages/PlaceholderPage';
 
-
+// --- STAFF PAGES (With Sidebar) ---
+import StaffDashboard from '../pages/staff/StaffDashboard';
 import OcrIntake from '../pages/staff/OcrIntake';
+import OcrHistory from '../pages/staff/OcrHistory';
 import Workshop from '../pages/staff/Workshop';
 import WorkshopCheckIn from '../pages/staff/WorkshopCheckIn';
 import Estimates from '../pages/staff/Estimates';
 import SalesOrders from '../pages/staff/SalesOrders';
 import Invoices from '../pages/staff/Invoices';
-import OcrHistory from '../pages/staff/OcrHistory';
 import StockRoom from '../pages/staff/StockRoom';
 import MovementRequests from '../pages/staff/MovementRequest';
 import CustomerDirectory from '../pages/staff/CustomerDirectory';
 import ServicePassport from '../pages/staff/ServicePassport';
+
+// --- ADMIN PAGES (With Sidebar) ---
+import AdminOverview from '../pages/admin/AdminOverview';
 import BranchRanking from '../pages/admin/BranchRanking';
 import OcrApprovals from '../pages/admin/OcrApprovals';
 import StockAdjustments from '../pages/admin/StockAdjustments';
@@ -47,23 +51,28 @@ import AdminServiceHistory from '../pages/admin/AdminServiceHistory';
 import AdminUserManagement from '../pages/admin/AdminUserManagement';
 import AdminSettings from '../pages/admin/AdminSettings';
 import AdminActivityLogs from '../pages/admin/AdminActivityLogs';
-// NEW: Import the Staff Dashboard we just built!
-import StaffDashboard from '../pages/staff/StaffDashboard';
-import AdminOverview from '../pages/admin/AdminOverview';
 
-const AnimatedDashboardRoutes = ({ user }) => { // <--- ADD THIS
+// --- CUSTOMER PAGES (With Sidebar) ---
+import CustomerDashboard from '../pages/customer/CustomerDashboard';
+import CustomerInstructions from '../pages/customer/CustomerInstructions';
+import CustomerTimeline from '../pages/customer/CustomerTimeline';
+import CustomerTechnicalLogs from '../pages/customer/CustomerTechnicalLogs';
+import CustomerEstimates from '../pages/customer/CustomerEstimates';
+import CustomerInvoices from '../pages/customer/CustomerInvoices';
+import CustomerGarage from '../pages/customer/CustomerGarage';
+
+const AnimatedDashboardRoutes = ({ user }) => {
   const location = useLocation();
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         
-        {/* Shared Top Right Menu Routes */}
+        {/* SHARED */}
         <Route path="/profile" element={<PageWrapper><UserProfilePage /></PageWrapper>} />
         <Route path="/settings" element={<PageWrapper><AccountSettingsPage /></PageWrapper>} />
 
-        {/* === ADMIN PORTAL === */}
-        {/* In AnimatedDashboardRoutes, find the admin dashboard route */}
+        {/* === ADMIN === */}
         <Route path="/admin/dashboard/overview" element={<PageWrapper><AdminOverview /></PageWrapper>} />
         <Route path="/admin/dashboard/ranking" element={<PageWrapper><BranchRanking /></PageWrapper>} />
         <Route path="/admin/approvals/ocr" element={<PageWrapper><OcrApprovals /></PageWrapper>} />
@@ -82,10 +91,8 @@ const AnimatedDashboardRoutes = ({ user }) => { // <--- ADD THIS
         <Route path="/admin/control/settings" element={<PageWrapper><AdminSettings /></PageWrapper>} />
         <Route path="/admin/control/logs" element={<PageWrapper><AdminActivityLogs /></PageWrapper>} />
 
-        {/* === STAFF PORTAL === */}
-        {/* REPLACED WITH REAL COMPONENT */}
+        {/* === STAFF === */}
         <Route path="/staff/dashboard/stats" element={<PageWrapper><StaffDashboard /></PageWrapper>} />
-        <Route path="/staff/dashboard/actions" element={<PageWrapper><PlaceholderPage title="Quick Actions" icon={Home} /></PageWrapper>} />
         <Route path="/staff/workshop/check-in" element={<PageWrapper><WorkshopCheckIn /></PageWrapper>} />
         <Route path="/staff/workshop/kanban" element={<PageWrapper><Workshop user={user} /></PageWrapper>} />
         <Route path="/staff/billing/estimates" element={<PageWrapper><Estimates user={user} /></PageWrapper>} />
@@ -98,8 +105,19 @@ const AnimatedDashboardRoutes = ({ user }) => { // <--- ADD THIS
         <Route path="/staff/customers/directory" element={<PageWrapper><CustomerDirectory user={user} /></PageWrapper>} />
         <Route path="/staff/customers/passport" element={<PageWrapper><ServicePassport user={user} /></PageWrapper>} />
 
+        {/* === CUSTOMER === */}
+        <Route path="/customer/dashboard/status" element={<PageWrapper><CustomerDashboard /></PageWrapper>} />
+        <Route path="/customer/dashboard/instructions" element={<PageWrapper><CustomerInstructions /></PageWrapper>} />
+        <Route path="/customer/history/timeline" element={<PageWrapper><CustomerTimeline /></PageWrapper>} />
+        <Route path="/customer/history/logs" element={<PageWrapper><CustomerTechnicalLogs /></PageWrapper>} />
+        <Route path="/customer/documents/estimates" element={<PageWrapper><CustomerEstimates /></PageWrapper>} />
+        <Route path="/customer/documents/invoices" element={<PageWrapper><CustomerInvoices /></PageWrapper>} />
+        <Route path="/customer/garage" element={<PageWrapper><CustomerGarage /></PageWrapper>} />
+
+        {/* REDIRECTS INSIDE THE LAYOUT */}
         <Route path="/admin" element={<Navigate to="/admin/dashboard/overview" replace />} />
         <Route path="/staff" element={<Navigate to="/staff/dashboard/stats" replace />} />
+        <Route path="/customer" element={<Navigate to="/customer/dashboard/status" replace />} />
       </Routes>
     </AnimatePresence>
   );
@@ -107,20 +125,35 @@ const AnimatedDashboardRoutes = ({ user }) => { // <--- ADD THIS
 
 const AppRoutes = () => {
   const currentUser = { 
-    name: 'Jay Agustin', 
+    name: 'Jayro Agustin', 
     role: 'admin', 
-    assigned_branch: 'Batino Branch' 
+    assigned_branch: 'Batino Branch',
+    plate: 'ABC 1234' 
   };
 
   return (
     <Router>
       <Routes>
-        <Route path="/auth/login" element={<LoginPage />} />
+        {/* 1. FULL SCREEN AUTH ROUTES */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        
+        {/* 2. FULL SCREEN ERROR ROUTES (Removed sidebar by being top-level) */}
+        <Route path="/403" element={<AccessDenied user={currentUser} />} />
+
+        {/* 3. WRAPPED DASHBOARD ROUTES (Includes Sidebar) */}
         <Route path="/*" element={
           <DashboardLayout user={currentUser}>
             <AnimatedDashboardRoutes user={currentUser} /> 
           </DashboardLayout>
         } />
+
+        {/* 4. ROOT REDIRECT */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* 5. FULL SCREEN 404 CATCH-ALL (Outside the DashboardLayout) */}
+        <Route path="*" element={<NotFound user={currentUser} />} />
       </Routes>
     </Router>
   );
