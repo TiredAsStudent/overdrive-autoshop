@@ -22,6 +22,35 @@ const authService = {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
   },
+
+  // Verify the 2-Hour Activation Token
+  verifyInvite: async (token) => {
+    try {
+      const response = await api.get(`/auth/verify-invite/${token}`);
+      return response.data.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Invalid or expired invite link.",
+      );
+    }
+  },
+
+  // Submit the Activation Payload
+  activateAccount: async (token, newPassword, policyAgreed) => {
+    try {
+      const response = await api.post("/auth/activate", {
+        token,
+        newPassword,
+        policyAgreed,
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message || "Activation failed.",
+      );
+    }
+  },
 };
 
 export default authService;

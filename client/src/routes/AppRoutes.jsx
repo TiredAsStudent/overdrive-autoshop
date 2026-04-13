@@ -18,6 +18,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 import LoginPage from "../pages/auth/LoginPage";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
+import ActivateAccount from "../pages/auth/ActivateAccount";
 
 // --- ERROR PAGES (Full Screen) ---
 import AccessDenied from "../pages/error/AccessDenied";
@@ -434,6 +435,12 @@ const AppRoutes = () => {
         />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+
+        {/*  ACTIVATION ROUTE */}
+        <Route
+          path="/activate"
+          element={user ? <Navigate to="/" replace /> : <ActivateAccount />}
+        />
 
         {/* 2. FULL SCREEN ERROR ROUTES */}
         <Route path="/403" element={<AccessDenied user={user} />} />
