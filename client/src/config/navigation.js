@@ -1,6 +1,8 @@
 import { 
   LayoutDashboard, CheckSquare, Wrench, Package, CircleDollarSign, 
-  Users2, Settings2, Home, FileText, Camera, Inbox, UserCircle 
+  Users2, Settings2, Home, FileText, Camera, Inbox, UserCircle,
+  History, ShieldCheck, MessageSquare, Car, Activity, ClipboardList,
+  BookOpen, Receipt
 } from 'lucide-react';
 
 export const adminMenu = [
@@ -113,6 +115,41 @@ export const staffMenu = [
     items: [
       { name: 'Directory', path: '/staff/customers/directory' },
       { name: 'Service Passport', path: '/staff/customers/passport' },
+    ]
+  }
+];
+
+// --- UPDATED CUSTOMER MENU BASED ON YOUR SPEC ---
+export const customerMenu = [
+  {
+    label: "Dashboard",
+    icon: Home,
+    items: [
+      { name: 'Live Status', path: '/customer/dashboard/status' },
+      { name: 'Instructions', path: '/customer/dashboard/instructions' }, // The Loop
+    ]
+  },
+  {
+    label: "Medical Record",
+    icon: History,
+    items: [
+      { name: 'Service Timeline', path: '/customer/history/timeline' },
+      { name: 'Technical Logs', path: '/customer/history/logs' }, // Deep Dive
+    ]
+  },
+  {
+    label: "Financials",
+    icon: Receipt,
+    items: [
+      { name: 'Estimates', path: '/customer/documents/estimates' }, // Interactive Approval
+      { name: 'Invoice Archive', path: '/customer/documents/invoices' },
+    ]
+  },
+  {
+    label: "My Garage",
+    icon: Car,
+    items: [
+      { name: 'Vehicle Stalls', path: '/customer/garage' },
     ]
   }
 ];

@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
-import { ChevronRight, Shield } from 'lucide-react';
+import { ChevronRight, Shield, Car, ShieldCheck, Home, History } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import BannerLogo from '../../assets/OverdriveLogo2.png';
-import { adminMenu, staffMenu } from '../../config/navigation';
-// 1. IMPORT the App Context
+import { adminMenu, staffMenu, customerMenu } from '../../config/navigation'; // 1. Added customerMenu
 import { useApp } from '../../context/AppContext'; 
 
 const Sidebar = ({ user }) => {
   const location = useLocation();
   const [openSubMenu, setOpenSubMenu] = useState(null);
-  
-  // 2. EXTRACT activeVehicle from the global state
   const { activeVehicle } = useApp();
 
+  // 2. Logic to handle 3 roles
   const isAdmin = user?.role === 'admin';
-  const menuGroups = isAdmin ? adminMenu : staffMenu;
+  const isCustomer = user?.role === 'customer';
+  
+  let menuGroups = staffMenu;
+  if (isAdmin) menuGroups = adminMenu;
+  if (isCustomer) menuGroups = customerMenu;
 
   const toggleSubMenu = (label) => {
     setOpenSubMenu(openSubMenu === label ? null : label);
@@ -34,23 +36,26 @@ const Sidebar = ({ user }) => {
         <img src={BannerLogo} alt="Logo" className="w-full h-full object-contain scale-110 relative z-10" />
       </div>
 
-      {/* Access Badge */}
+      {/* 3. ACCESS BADGE (Updated for Customer) */}
       <div className="p-6 flex flex-col gap-1 pb-2">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-gray-500 font-bold transition-colors">
-          {isAdmin ? 'Access Level' : 'Current Context'}
+        <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-gray-500 font-bold">
+          {isAdmin ? 'Access Level' : isCustomer ? 'Portal Status' : 'Current Context'}
         </span>
-        <div className="bg-amber-50 dark:bg-overdrive-yellow/10 border border-amber-200 dark:border-overdrive-yellow/20 rounded-lg px-3 py-2 flex items-center gap-2 transition-colors">
-          {isAdmin ? <Shield className="h-4 w-4 text-amber-600 dark:text-overdrive-yellow transition-colors" /> : <div className="h-2 w-2 rounded-full bg-overdrive-yellow animate-pulse" />}
-          <span className="text-amber-700 dark:text-overdrive-yellow font-bold text-sm transition-colors">
-            {isAdmin ? 'Global Admin' : (user?.assigned_branch || 'Main Branch')}
+        <div className="bg-amber-50 dark:bg-overdrive-yellow/10 border border-amber-200 dark:border-overdrive-yellow/20 rounded-lg px-3 py-2 flex items-center gap-2">
+          {isAdmin && <Shield className="h-4 w-4 text-amber-600 dark:text-overdrive-yellow" />}
+          {isCustomer && <ShieldCheck className="h-4 w-4 text-emerald-600" />}
+          {!isAdmin && !isCustomer && <div className="h-2 w-2 rounded-full bg-overdrive-yellow animate-pulse" />}
+          
+          <span className="text-amber-700 dark:text-overdrive-yellow font-black text-sm uppercase italic tracking-tighter">
+            {isAdmin ? 'Global Admin' : isCustomer ? 'Verified Owner' : (user?.assigned_branch || 'Main Branch')}
           </span>
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-        <h3 className="px-2 mb-2 text-[10px] font-bold uppercase text-slate-500 dark:text-gray-500 transition-colors">
-          {isAdmin ? 'Governance (Checker)' : 'Workshop (Maker)'}
+        <h3 className="px-2 mb-2 text-[10px] font-bold uppercase text-slate-500 dark:text-gray-500">
+          {isAdmin ? 'Governance (Checker)' : isCustomer ? 'My Digital Garage' : 'Workshop (Maker)'}
         </h3>
 
         {menuGroups.map((group) => {
@@ -77,7 +82,7 @@ const Sidebar = ({ user }) => {
                   animate={{ rotate: isOpen ? 90 : 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <ChevronRight size={14} className="text-slate-400 dark:text-gray-500 transition-colors" />
+                  <ChevronRight size={14} className="text-slate-400 dark:text-gray-500" />
                 </motion.div>
               </button>
 
@@ -90,7 +95,7 @@ const Sidebar = ({ user }) => {
                     transition={{ duration: 0.3, ease: 'easeInOut' }}
                     className="overflow-hidden"
                   >
-                    <div className="ml-9 mt-1 space-y-1 border-l border-slate-200 dark:border-white/10 transition-colors">
+                    <div className="ml-9 mt-1 space-y-1 border-l border-slate-200 dark:border-white/10">
                       {group.items.map((subItem) => {
                         const isSubActive = location.pathname === subItem.path;
                         return (
@@ -107,7 +112,7 @@ const Sidebar = ({ user }) => {
                             {isSubActive && (
                               <motion.div 
                                 layoutId="activeDot"
-                                className="absolute left-[-1px] top-1/2 -translate-y-1/2 w-1 h-4 bg-amber-500 dark:bg-overdrive-yellow rounded-r-full shadow-[0_0_8px_rgba(245,158,11,0.4)] dark:shadow-[0_0_8px_rgba(250,204,21,0.6)]" 
+                                className="absolute left-[-1px] top-1/2 -translate-y-1/2 w-1 h-4 bg-amber-500 dark:bg-overdrive-yellow rounded-r-full" 
                               />
                             )}
                             {subItem.name}
@@ -123,23 +128,24 @@ const Sidebar = ({ user }) => {
         })}
       </nav>
 
-      {/* 3. THE PAYOFF: Active Session Display */}
+      {/* 4. ACTIVE SESSION (Contextual) */}
       <AnimatePresence>
-        {activeVehicle && (
+        {(activeVehicle || isCustomer) && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="mt-auto p-4 bg-amber-500/10 dark:bg-overdrive-yellow/5 border-t border-slate-200 dark:border-white/10 transition-colors"
+            className="mt-auto p-4 bg-amber-500/10 dark:bg-overdrive-yellow/5 border-t border-slate-200 dark:border-white/10"
           >
-            <p className="text-[10px] uppercase font-bold text-amber-600 dark:text-overdrive-yellow mb-1 tracking-wider">
-              Active Session
+            <p className="text-[10px] uppercase font-black text-amber-600 dark:text-overdrive-yellow mb-1 tracking-widest flex items-center gap-1">
+              {isCustomer ? <ShieldCheck size={10} /> : <div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />}
+              {isCustomer ? 'Authenticated Car' : 'Active Session'}
             </p>
             <div className="flex items-center justify-between">
-              <span className="font-black text-slate-900 dark:text-white tracking-widest uppercase">
-                {activeVehicle}
+              <span className="font-black text-slate-900 dark:text-white tracking-widest uppercase italic">
+                {isCustomer ? (user?.plate || 'ABC 1234') : activeVehicle}
               </span>
-              <div className="h-2 w-2 rounded-full bg-amber-500 dark:bg-overdrive-yellow animate-pulse" />
+              <Car size={16} className="text-slate-400 opacity-50" />
             </div>
           </motion.div>
         )}

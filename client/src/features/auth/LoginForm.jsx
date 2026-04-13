@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'; 
+import { Eye, EyeOff, AlertCircle, Chrome } from 'lucide-react'; 
+import { Link } from 'react-router-dom'; // 1. Import Link
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Buttons';
 import authService from '../../services/auth.service';
@@ -12,7 +13,6 @@ const LoginForm = () => {
 
   const handleChange = (e) => {
     const { id, value } = e.target;
-    // This ensures state updates correctly
     setCredentials((prev) => ({ ...prev, [id]: value }));
     if (error) setError(null);
   };
@@ -24,75 +24,87 @@ const LoginForm = () => {
 
     try {
       await authService.loginWithEmail(credentials.email, credentials.password);
-      // Success! Logic for redirecting goes here
     } catch (err) {
-      setError(err.message || 'Invalid email or password.');
+      setError(err.message || 'Access Denied. Invalid credentials.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full space-y-5">
+    <div className="w-full space-y-6">
       
-      {/* Error Message Alert */}
       {error && (
-        <div className="flex items-center gap-2 p-3 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="flex items-center gap-3 p-4 text-xs font-black uppercase tracking-tighter text-red-600 bg-red-50 border-l-4 border-red-600 rounded-r-xl animate-in fade-in slide-in-from-top-2 duration-300">
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          id="email"
-          label="Email Address"
-          type="email"
-          placeholder="name@overdrive.com"
-          value={credentials.email}
-          onChange={handleChange}
-          required
-          disabled={loading}
-          error={!!error}
-          // Forces text to be visible (dark) on the white background
-          className="text-gray-900" 
-        />
-        
-        <div className="relative flex flex-col">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-4">
           <Input
-            id="password"
-            label="Password"
-            type={showPassword ? "text" : "password"}
-            placeholder="••••••••"
-            value={credentials.password}
+            id="email"
+            label="Employee Email"
+            type="email"
+            placeholder="name@overdrive.com"
+            value={credentials.email}
             onChange={handleChange}
             required
             disabled={loading}
-            error={!!error}
-            // pr-12 ensures text doesn't hide behind the eye icon
-            className="text-gray-900 pr-12" 
+            className="text-slate-900 font-bold h-14" 
           />
           
-          {/* Password Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            // Adjusted 'top' to align perfectly with your Input label height
-            className="absolute right-3 top-[34px] p-1 text-gray-400 hover:text-gray-600 transition-colors z-10"
-            tabIndex="-1" // Prevents tabbing to the eye icon
-          >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
+          <div className="relative group">
+            <Input
+              id="password"
+              label="Security Password"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              value={credentials.password}
+              onChange={handleChange}
+              required
+              disabled={loading}
+              className="text-slate-900 font-bold h-14 pr-12" 
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-[38px] p-1 text-slate-400 hover:text-slate-900 transition-colors z-10"
+              tabIndex="-1"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
         </div>
 
-        <Button 
-          type="submit" 
-          loading={loading} // Uses the built-in loading logic from your updated Button component
-          variant="primary"
-          className="w-full"
-        >
-          {loading ? 'AUTHENTICATING...' : 'SIGN IN'}
-        </Button>
+        <div className="flex items-center justify-end">
+          {/* 2. Swapped <button> for <Link> */}
+          <Link 
+            to="/forgot-password" 
+            className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-600 transition-colors"
+          >
+            Forgot Password?
+          </Link>
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <Button 
+            type="submit" 
+            loading={loading} 
+            variant="primary"
+            className="w-full h-14 text-sm font-black tracking-[0.2em] shadow-xl shadow-slate-900/10"
+          >
+            {loading ? 'VERIFYING...' : 'SIGN IN'}
+          </Button>
+
+          <button
+            type="button"
+            className="w-full h-14 border-2 border-slate-200 rounded-2xl flex items-center justify-center gap-3 text-xs font-black text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest"
+          >
+            <Chrome size={18} /> Continue with Google
+          </button>
+        </div>
       </form>
     </div>
   );
