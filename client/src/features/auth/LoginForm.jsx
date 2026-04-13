@@ -1,15 +1,18 @@
 import React, { useState } from "react";
 import { Eye, EyeOff, AlertCircle, Chrome } from "lucide-react";
-import { Link } from "react-router-dom"; // 1. Import Link
+import { Link, useNavigate } from "react-router-dom";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Buttons";
-import authService from "../../services/auth.service";
+import { useAuth } from "../../context/AuthContext";
 
 const LoginForm = () => {
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -23,7 +26,19 @@ const LoginForm = () => {
     setError(null);
 
     try {
-      await authService.loginWithEmail(credentials.email, credentials.password);
+      // Trigger Login
+      const loggedInUser = await login(credentials.email, credentials.password);
+
+      // The Traffic Cop Logic (Redirect based on Role)
+      if (loggedInUser.role === "ADMIN") {
+        navigate("/admin/dashboard/overview");
+      } else if (loggedInUser.role === "STAFF") {
+        navigate("/staff/dashboard/stats");
+      } else if (loggedInUser.role === "CUSTOMER") {
+        navigate("/customer/dashboard/status");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       setError(err.message || "Access Denied. Invalid credentials.");
     } finally {

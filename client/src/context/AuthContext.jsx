@@ -1,69 +1,45 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import authService from "../services/auth.service";
 
-// 1. Create the Context
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
-// 2. Create a custom hook for easy access later
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
-
-// 3. Create the Provider Component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Wait for local storage check
 
-  // Check for an existing session when the app loads
+  // Check for existing session on page load
   useEffect(() => {
-    const checkLoggedInUser = () => {
-      try {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
+    const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("token");
 
-        if (storedToken && storedUser) {
-          setUser(JSON.parse(storedUser));
-        }
-      } catch (error) {
-        console.error("Failed to parse stored user data:", error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-      } finally {
-        setLoading(false); // Stop the loading spinner once the check is done
-      }
-    };
-
-    checkLoggedInUser();
+    if (storedUser && storedToken) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
-  // The login function to update global state
-  const login = (userData, token) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('token', token);
+  const login = async (email, password) => {
+    const { user, token } = await authService.loginWithEmail(email, password);
+
+    // Save to local storage for persistence
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+
+    // Update React State
+    setUser(user);
+    return user; // Return user so LoginForm knows where to redirect
   };
 
-  // The logout function to clear global state
   const logout = () => {
+    authService.logout();
     setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-  };
-
-  // Provide the state and functions to the rest of the app
-  const value = {
-    user,
-    loading,
-    login,
-    logout,
-    // Helper booleans based on your Role-Based Access Control (RBAC)
-    isAdmin: user?.role === 'admin',
-    isStaff: user?.role === 'staff',
-    isCustomer: user?.role === 'customer',
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );
 };
+
+export const useAuth = () => useContext(AuthContext);
