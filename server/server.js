@@ -61,6 +61,10 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/v1/auth", require("./routes/v1/auth"));
 
 app.use("/api/v1/control-center", require("./routes/v1/controlCenter"));
+app.use(
+  "/api/v1/control-center/settings",
+  require("./routes/v1/systemSettings"),
+);
 
 // --- GLOBAL ERROR CATCHING ---
 // Handle 404 - Route Not Found
