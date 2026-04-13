@@ -73,6 +73,10 @@ class UserManagementService {
     const sanitizedUpdates = {
       branchId: updates.branchId !== undefined ? updates.branchId : null,
       isActive: updates.isActive !== undefined ? updates.isActive : null,
+      role: updates.role !== undefined ? updates.role : null,
+      firstName: updates.firstName !== undefined ? updates.firstName : null,
+      lastName: updates.lastName !== undefined ? updates.lastName : null,
+      email: updates.email !== undefined ? updates.email : null,
     };
 
     await UserManagementModel.updateUserAndLogAudit(

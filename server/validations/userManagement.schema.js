@@ -31,6 +31,10 @@ const updateUserSchema = z.object({
   body: z.object({
     branchId: z.number().int().positive().nullable().optional(),
     isActive: z.boolean().optional(),
+    role: z.enum([ROLES.ADMIN, ROLES.STAFF]).optional(),
+    firstName: z.string().trim().min(1).optional(),
+    lastName: z.string().trim().min(1).optional(),
+    email: z.string().email().trim().optional(),
   }),
 });
 
