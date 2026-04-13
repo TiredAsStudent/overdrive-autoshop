@@ -60,4 +60,39 @@ const sendPasswordResetEmail = async (toEmail, resetLink) => {
   await transporter.sendMail(mailOptions);
 };
 
-module.exports = { sendPasswordResetEmail };
+const sendWelcomeInviteEmail = async (toEmail, firstName, role, inviteLink) => {
+  const mailOptions = {
+    from: `"Overdrive Auto Shop" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
+    subject: `Welcome to Overdrive! Your ${role} Account Activation`,
+    html: `
+      <div style="background-color: #121212; padding: 40px 20px; font-family: sans-serif; color: #ffffff;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #1e1e1e; border-radius: 12px; overflow: hidden;">
+          <div style="background-color: #FACC15; padding: 24px; text-align: center;">
+            <h1 style="color: #121212; margin: 0;">OVERDRIVE AUTO SHOP</h1>
+          </div>
+          <div style="padding: 40px 32px;">
+            <h2 style="color: #ffffff;">Welcome to the team, ${firstName}!</h2>
+            <p style="color: #cccccc; line-height: 1.6;">
+              An Admin has invited you to join the Overdrive Auto Shop as a <strong>${role}</strong>.
+            </p>
+            <p style="color: #cccccc; line-height: 1.6; margin-bottom: 32px;">
+              For security purposes, you must activate your account and set your password within the next <strong>2 hours</strong>.
+            </p>
+            <div style="text-align: center; margin-bottom: 32px;">
+              <a href="${inviteLink}" style="background-color: #FACC15; color: #121212; padding: 14px 32px; text-decoration: none; font-weight: bold; border-radius: 6px;">
+                ACTIVATE MY ACCOUNT
+              </a>
+            </div>
+            <hr style="border-top: 1px solid #333333;">
+            <p style="color: #888888; font-size: 14px;">If the button doesn't work, copy this link: <br><a href="${inviteLink}" style="color: #FACC15;">${inviteLink}</a></p>
+          </div>
+        </div>
+      </div>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
+module.exports = { sendPasswordResetEmail, sendWelcomeInviteEmail };
