@@ -65,6 +65,7 @@ app.use(
   "/api/v1/control-center/settings",
   require("./routes/v1/systemSettings"),
 );
+app.use("/api/v1/control-center/logs", require("./routes/v1/auditLogs"));
 
 // --- GLOBAL ERROR CATCHING ---
 // Handle 404 - Route Not Found
