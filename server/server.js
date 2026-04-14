@@ -58,9 +58,24 @@ app.get("/api/health", async (req, res, next) => {
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // -- Mount Routes --
+// AUTH ROUTES
 app.use("/api/v1/auth", require("./routes/v1/auth"));
 
+//ADMIN ROUTES
 app.use("/api/v1/control-center", require("./routes/v1/controlCenter"));
+app.use(
+  "/api/v1/control-center/settings",
+  require("./routes/v1/systemSettings"),
+);
+app.use("/api/v1/control-center/logs", require("./routes/v1/auditLogs"));
+app.use("/api/v1/finance/accounts", require("./routes/v1/financeAccounts"));
+app.use("/api/v1/workshop/mechanics", require("./routes/v1/workshopMechanics"));
+app.use("/api/v1/workshop/services", require("./routes/v1/workshopServices"));
+app.use("/api/v1/inventory", require("./routes/v1/inventory"));
+app.use("/api/v1/approval-queue", require("./routes/v1/approvalQueue"));
+
+// --- STAFF PORTAL ---
+app.use("/api/v1/staff/inventory", require("./routes/v1/staffInventory"));
 
 // --- GLOBAL ERROR CATCHING ---
 // Handle 404 - Route Not Found

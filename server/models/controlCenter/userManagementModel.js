@@ -95,16 +95,28 @@ class UserManagementModel {
       const updateSql = `
         UPDATE users 
         SET 
-          branch_id = COALESCE($1, branch_id),
-          is_active = COALESCE($2, is_active),
+          role = COALESCE($4::user_role, role),
+          branch_id = CASE 
+                        WHEN COALESCE($4::user_role, role) = 'ADMIN' THEN NULL 
+                        WHEN $1::integer IS NOT NULL THEN $1::integer 
+                        ELSE branch_id 
+                      END,
+          is_active = COALESCE($2::boolean, is_active),
+          first_name = COALESCE($5::varchar, first_name),
+          last_name = COALESCE($6::varchar, last_name),
+          email = COALESCE($7::varchar, email),
           updated_at = NOW()
-        WHERE id = $3
-        RETURNING id, email, is_active, branch_id;
+        WHERE id = $3::integer
+        RETURNING id, email, is_active, branch_id, role;
       `;
       await client.query(updateSql, [
         updates.branchId,
         updates.isActive,
         targetUserId,
+        updates.role,
+        updates.firstName,
+        updates.lastName,
+        updates.email,
       ]);
 
       const auditSql = `

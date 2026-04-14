@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, AlertCircle, Chrome } from 'lucide-react'; 
-import { Link } from 'react-router-dom'; // 1. Import Link
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Buttons';
-import authService from '../../services/auth.service';
+import React, { useState } from "react";
+import { Eye, EyeOff, AlertCircle, Chrome } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import Input from "../../components/ui/Input";
+import Button from "../../components/ui/Buttons";
+import { useAuth } from "../../context/AuthContext";
 
 const LoginForm = () => {
-  const [credentials, setCredentials] = useState({ email: '', password: '' });
+  const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -23,9 +26,21 @@ const LoginForm = () => {
     setError(null);
 
     try {
-      await authService.loginWithEmail(credentials.email, credentials.password);
+      // Trigger Login
+      const loggedInUser = await login(credentials.email, credentials.password);
+
+      // The Traffic Cop Logic (Redirect based on Role)
+      if (loggedInUser.role === "ADMIN") {
+        navigate("/admin/dashboard/overview");
+      } else if (loggedInUser.role === "STAFF") {
+        navigate("/staff/dashboard/stats");
+      } else if (loggedInUser.role === "CUSTOMER") {
+        navigate("/customer/dashboard/status");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
-      setError(err.message || 'Access Denied. Invalid credentials.');
+      setError(err.message || "Access Denied. Invalid credentials.");
     } finally {
       setLoading(false);
     }
@@ -33,7 +48,6 @@ const LoginForm = () => {
 
   return (
     <div className="w-full space-y-6">
-      
       {error && (
         <div className="flex items-center gap-3 p-4 text-xs font-black uppercase tracking-tighter text-red-600 bg-red-50 border-l-4 border-red-600 rounded-r-xl animate-in fade-in slide-in-from-top-2 duration-300">
           <AlertCircle className="w-5 h-5 shrink-0" />
@@ -45,27 +59,27 @@ const LoginForm = () => {
         <div className="space-y-4">
           <Input
             id="email"
-            label="Employee Email"
+            label="Email"
             type="email"
             placeholder="name@overdrive.com"
             value={credentials.email}
             onChange={handleChange}
             required
             disabled={loading}
-            className="text-slate-900 font-bold h-14" 
+            className="text-slate-900 font-bold h-14"
           />
-          
+
           <div className="relative group">
             <Input
               id="password"
-              label="Security Password"
+              label="Password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               value={credentials.password}
               onChange={handleChange}
               required
               disabled={loading}
-              className="text-slate-900 font-bold h-14 pr-12" 
+              className="text-slate-900 font-bold h-14 pr-12"
             />
             <button
               type="button"
@@ -80,8 +94,8 @@ const LoginForm = () => {
 
         <div className="flex items-center justify-end">
           {/* 2. Swapped <button> for <Link> */}
-          <Link 
-            to="/forgot-password" 
+          <Link
+            to="/forgot-password"
             className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-600 transition-colors"
           >
             Forgot Password?
@@ -89,13 +103,13 @@ const LoginForm = () => {
         </div>
 
         <div className="space-y-3 pt-2">
-          <Button 
-            type="submit" 
-            loading={loading} 
+          <Button
+            type="submit"
+            loading={loading}
             variant="primary"
             className="w-full h-14 text-sm font-black tracking-[0.2em] shadow-xl shadow-slate-900/10"
           >
-            {loading ? 'VERIFYING...' : 'SIGN IN'}
+            {loading ? "VERIFYING..." : "SIGN IN"}
           </Button>
 
           <button
