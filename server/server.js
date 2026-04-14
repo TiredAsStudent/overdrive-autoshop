@@ -72,6 +72,7 @@ app.use("/api/v1/finance/accounts", require("./routes/v1/financeAccounts"));
 app.use("/api/v1/workshop/mechanics", require("./routes/v1/workshopMechanics"));
 app.use("/api/v1/workshop/services", require("./routes/v1/workshopServices"));
 app.use("/api/v1/inventory", require("./routes/v1/inventory"));
+app.use("/api/v1/approval-queue", require("./routes/v1/approvalQueue"));
 
 // --- GLOBAL ERROR CATCHING ---
 // Handle 404 - Route Not Found
