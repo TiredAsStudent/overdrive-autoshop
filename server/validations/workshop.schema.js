@@ -38,7 +38,14 @@ const createServiceSchema = z.object({
         }),
       )
       .optional()
-      .default([]), // Allow services with zero parts (Labor-only)
+      .default([]) // Allow services with zero parts (Labor-only)
+      .refine(
+        (items) => {
+          const ids = items.map((item) => item.inventory_id);
+          return new Set(ids).size === ids.length;
+        },
+        { message: "Duplicate parts are not allowed in the same service." },
+      ),
   }),
 });
 
@@ -56,7 +63,16 @@ const updateServiceSchema = z.object({
           quantity_required: z.coerce.number().positive(),
         }),
       )
-      .optional(),
+      .optional()
+      .refine(
+        (items) => {
+          // If undefined (not updating parts), skip the check
+          if (!items) return true;
+          const ids = items.map((item) => item.inventory_id);
+          return new Set(ids).size === ids.length;
+        },
+        { message: "Duplicate parts are not allowed in the same service." },
+      ),
   }),
 });
 
