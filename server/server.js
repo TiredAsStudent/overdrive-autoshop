@@ -69,6 +69,7 @@ app.use(
 );
 app.use("/api/v1/control-center/logs", require("./routes/v1/auditLogs"));
 app.use("/api/v1/finance/accounts", require("./routes/v1/financeAccounts"));
+app.use("/api/v1/workshop/mechanics", require("./routes/v1/workshopMechanics"));
 
 // --- GLOBAL ERROR CATCHING ---
 // Handle 404 - Route Not Found
