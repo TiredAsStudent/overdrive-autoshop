@@ -1,48 +1,53 @@
 const jwt = require("jsonwebtoken");
 const { sendError } = require("../utils/responseHandler");
-const UserModel = require("../models/userModel");
+const { STATUS_CODES } = require("../constants/statusCodes");
 
-// Verify JWT & Extract Context
-const authenticate = async (req, res, next) => {
+// Verify the JSON Web Token
+const verifyToken = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return sendError(res, 401, "Authentication required. Missing token.");
+      return sendError(
+        res,
+        STATUS_CODES.UNAUTHORIZED,
+        "Access denied. No token provided.",
+      );
     }
 
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await UserModel.findById(decoded.id);
-
-    if (!user || !user.is_active) {
-      return sendError(res, 403, "Account is disabled or no longer exists.");
-    }
-
-    // Attach user identity and branch context to the request object
-    req.user = {
-      id: user.id,
-      role: user.role,
-      branchId: user.branch_id,
-    };
-
+    // Attach the user's ID, Role, and Branch directly to the request object
+    req.user = decoded;
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
-      return sendError(res, 401, "Session expired. Please log in again.");
+      return sendError(
+        res,
+        STATUS_CODES.UNAUTHORIZED,
+        "Session expired. Please log in again.",
+      );
     }
-    return sendError(res, 401, "Invalid authentication token.");
+    return sendError(
+      res,
+      STATUS_CODES.FORBIDDEN,
+      "Invalid or corrupted token.",
+    );
   }
 };
 
-// Role-Based Access Control (RBAC)
+// Role-Based Access Control (Check if Admin or Staff)
 const requireRole = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
-      return sendError(res, 403, "Access denied. Insufficient permissions.");
+      return sendError(
+        res,
+        STATUS_CODES.FORBIDDEN,
+        "Access denied. Insufficient permissions for this action.",
+      );
     }
     next();
   };
 };
 
-module.exports = { authenticate, requireRole };
+module.exports = { verifyToken, requireRole };
