@@ -1,4 +1,4 @@
-const WorkshopServiceLogic = require("../../services/workshop/serviceService");
+const WorkshopServiceLogic = require("../../services/workshop.service"); // Updated import path
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 

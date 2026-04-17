@@ -1,4 +1,4 @@
-const StaffInventoryService = require("../../services/staff/inventoryService");
+const StaffInventoryService = require("../../services/inventory.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 

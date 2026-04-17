@@ -1,4 +1,4 @@
-const InventoryLogic = require("../../services/inventory/inventoryLogic");
+const InventoryLogic = require("../../services/inventory.service"); // Updated import path
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 

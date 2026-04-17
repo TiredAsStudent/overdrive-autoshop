@@ -1,4 +1,4 @@
-const AuthService = require("../../services/auth/authService");
+const AuthService = require("../../services/auth.service"); // Updated import path
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 

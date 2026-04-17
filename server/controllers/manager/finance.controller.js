@@ -1,4 +1,4 @@
-const AccountService = require("../../services/finance/accountService");
+const AccountService = require("../../services/billing.service"); // Updated import path
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 

@@ -1,4 +1,4 @@
-const OcrServiceLogic = require("../../services/approval/ocrService");
+const OcrServiceLogic = require("../../services/ocr.service"); // Updated import path
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 
