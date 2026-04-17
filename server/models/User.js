@@ -1,8 +1,7 @@
-const { query, pool } = require("../../config/db");
+const { query, pool } = require("../config/db"); // Path updated
 
-class AuthModel {
+class User {
   // --- LOGIN LOGIC ---
-
   static async findUserByEmail(email) {
     const sql = `
       SELECT id, email, password_hash, role, branch_id, google_id, is_active, first_name, last_name 
@@ -32,8 +31,6 @@ class AuthModel {
   }
 
   // --- RESET PASSWORD LOGIC ---
-
-  // Save the hashed token and set expiry to 15 minutes from now
   static async saveResetToken(userId, hashedToken) {
     const sql = `
       UPDATE users 
@@ -43,7 +40,6 @@ class AuthModel {
     await query(sql, [hashedToken, userId]);
   }
 
-  // Find user by valid token (checks if it exists AND is not expired)
   static async findUserByResetToken(hashedToken) {
     const sql = `
       SELECT id, email, branch_id 
@@ -54,7 +50,6 @@ class AuthModel {
     return result.rows[0];
   }
 
-  // Update the password and instantly BURN the token AND log it
   static async updatePasswordAndLogAudit(
     userId,
     newPasswordHash,
@@ -95,8 +90,6 @@ class AuthModel {
   }
 
   // --- STAFF & ADMIN ACTIVATION LOGIC ---
-
-  // Find user by activation token
   static async findUserByActivationToken(hashedToken) {
     const sql = `
       SELECT 
@@ -120,7 +113,6 @@ class AuthModel {
     try {
       await client.query("BEGIN");
 
-      // Update Password and Activate User
       const updateSql = `
         UPDATE users 
         SET 
@@ -156,8 +148,6 @@ class AuthModel {
   }
 
   // --- CUSTOMER ACTIVATION LOGIC ---
-
-  // Find customer by token and JOIN their primary vehicle
   static async findCustomerByActivationToken(hashedToken) {
     const sql = `
       SELECT 
@@ -177,7 +167,6 @@ class AuthModel {
     try {
       await client.query("BEGIN");
 
-      //  Update Password and Activate
       const updateSql = `
         UPDATE users 
         SET 
@@ -212,4 +201,4 @@ class AuthModel {
   }
 }
 
-module.exports = AuthModel;
+module.exports = User;

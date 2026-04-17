@@ -1,4 +1,4 @@
-const { query, pool } = require("../../config/db");
+const { query, pool } = require("../config/db"); // Path updated
 
 class ServiceModel {
   static async findServiceByName(name) {
