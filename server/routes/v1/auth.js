@@ -28,14 +28,14 @@ const loginLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
-// Forgot Password Limiter: Max 3 email requests per hour per IP
+// Forgot Password Limiter: Max 3 email requests per 15 minutes per IP
 const forgotPasswordLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 3,
   message: {
     success: false,
     error: {
-      message: "Too many reset requests. Please try again after 1 hour.",
+      message: "Too many reset requests. Please try again after 15 minutes.",
     },
   },
 });
