@@ -1,6 +1,6 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
-const AuthController = require("../../controllers/auth/authController");
+const AuthController = require("../../controllers/auth/auth.controller"); // Path updated
 const validate = require("../../middlewares/validateMiddleware");
 const {
   loginSchema,
@@ -56,7 +56,6 @@ router.post(
   validate(forgotPasswordSchema),
   AuthController.forgotPassword,
 );
-
 router.post(
   "/reset-password",
   validate(resetPasswordSchema),
@@ -65,7 +64,6 @@ router.post(
 
 // Staff & Admin Activation routes
 router.get("/verify-invite/:token", AuthController.verifyInvite);
-
 router.post(
   "/activate",
   validate(activateAccountSchema),
@@ -77,7 +75,6 @@ router.get(
   "/verify-customer-invite/:token",
   AuthController.verifyCustomerInvite,
 );
-
 router.post(
   "/activate-customer",
   validate(activateCustomerSchema),
