@@ -3,7 +3,7 @@ import api from "./api";
 const ocrService = {
   getPendingQueue: async () => {
     try {
-      const response = await api.get("/approval-queue/ocr");
+      const response = await api.get("/manager/ocr");
       return response.data.data;
     } catch (error) {
       throw new Error(
@@ -14,7 +14,7 @@ const ocrService = {
 
   getScanDetails: async (id) => {
     try {
-      const response = await api.get(`/approval-queue/ocr/${id}`);
+      const response = await api.get(`/manager/ocr/${id}`);
       return response.data.data;
     } catch (error) {
       throw new Error(
@@ -25,10 +25,7 @@ const ocrService = {
 
   approveScan: async (id, payload) => {
     try {
-      const response = await api.post(
-        `/approval-queue/ocr/${id}/approve`,
-        payload,
-      );
+      const response = await api.post(`/manager/ocr/${id}/approve`, payload);
       // Notice we return the whole response to capture the 'inflationDetected' flag and message
       return response.data;
     } catch (error) {
@@ -40,7 +37,7 @@ const ocrService = {
 
   rejectScan: async (id) => {
     try {
-      const response = await api.post(`/approval-queue/ocr/${id}/reject`);
+      const response = await api.post(`/manager/ocr/${id}/reject`);
       return response.data;
     } catch (error) {
       throw new Error(
