@@ -1,6 +1,6 @@
-const AccountModel = require("../../models/finance/accountModel");
+const AccountModel = require("../models/Account");
 
-class AccountService {
+class BillingService {
   static async createCategory(data, userId, ipAddress) {
     // Prevent duplicate buckets
     const existing = await AccountModel.findCategoryByName(data.name);
@@ -66,4 +66,4 @@ class AccountService {
   }
 }
 
-module.exports = AccountService;
+module.exports = BillingService;

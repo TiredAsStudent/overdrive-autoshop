@@ -1,6 +1,6 @@
-const OcrModel = require("../../models/approval/ocrModel");
+const OcrModel = require("../models/Ocr"); // Points to the flattened models folder
 
-class OcrServiceLogic {
+class OcrService {
   static async getPendingQueue() {
     return await OcrModel.getPendingScans();
   }
@@ -38,4 +38,4 @@ class OcrServiceLogic {
   }
 }
 
-module.exports = OcrServiceLogic;
+module.exports = OcrService;

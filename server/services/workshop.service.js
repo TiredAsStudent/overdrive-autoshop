@@ -1,26 +1,73 @@
-const ServiceModel = require("../../models/workshop/serviceModel");
-const { query } = require("../../config/db");
+const MechanicModel = require("../models/Mechanic");
+const ServiceModel = require("../models/Service");
+const { query } = require("../config/db");
 
-class WorkshopServiceLogic {
+class WorkshopService {
+  // --- MECHANIC LOGIC ---
+  static async createMechanic(data, userId, ipAddress) {
+    return await MechanicModel.createMechanicAndLogAudit(
+      data,
+      userId,
+      ipAddress,
+    );
+  }
+
+  static async getMechanics(branchId) {
+    return await MechanicModel.getAllMechanics(branchId);
+  }
+
+  static async updateMechanic(id, updates, userId, ipAddress) {
+    const existing = await MechanicModel.findMechanicById(id);
+    if (!existing) {
+      throw new Error("Mechanic not found.");
+    }
+
+    const safeUpdates = {};
+    if (updates.first_name !== undefined)
+      safeUpdates.first_name = updates.first_name;
+    if (updates.last_name !== undefined)
+      safeUpdates.last_name = updates.last_name;
+    if (updates.specialization !== undefined)
+      safeUpdates.specialization = updates.specialization;
+    if (updates.contact_number !== undefined)
+      safeUpdates.contact_number = updates.contact_number;
+    if (updates.is_active !== undefined)
+      safeUpdates.is_active = updates.is_active;
+
+    if (updates.branch_id !== undefined)
+      safeUpdates.branch_id = updates.branch_id;
+
+    if (Object.keys(safeUpdates).length === 0) {
+      throw new Error("No valid fields provided for update.");
+    }
+
+    const targetBranchId = safeUpdates.branch_id || existing.branch_id;
+
+    return await MechanicModel.updateMechanicAndLogAudit(
+      id,
+      safeUpdates,
+      targetBranchId,
+      userId,
+      ipAddress,
+    );
+  }
+
+  // --- SERVICE PACKAGES LOGIC ---
   static async getServicesWithDynamicPricing(onlyActive) {
     const rawServices = await ServiceModel.getAllServices(onlyActive);
 
-    // Fetch the LIVE Enterprise Standards from system_settings
     const settingsSql = `SELECT markup_percentage, vat_percentage FROM system_settings WHERE id = 1`;
     const settingsResult = await query(settingsSql);
 
-    // Default to your SQL baseline if the table is empty
     let GLOBAL_MARKUP_PERCENT = 0.25; // 25% Markup
     let GLOBAL_TAX_RATE = 0.12; // 12% VAT
 
     if (settingsResult.rows.length > 0) {
       const settings = settingsResult.rows[0];
-      // Convert SQL percentages (e.g., 25.00) to math decimals (0.25)
       GLOBAL_MARKUP_PERCENT = parseFloat(settings.markup_percentage) / 100;
       GLOBAL_TAX_RATE = parseFloat(settings.vat_percentage) / 100;
     }
 
-    // Apply the Formula: Total = ((Parts Cost * Markup) + Labor Fee) + Tax
     const calculatedServices = rawServices.map((service) => {
       const partsBaseCost = parseFloat(service.total_parts_base_cost);
       const laborFee = parseFloat(service.labor_fee);
@@ -54,7 +101,6 @@ class WorkshopServiceLogic {
       throw new Error("A service package with this name already exists.");
     }
 
-    // Extract parts array out of the main data object
     const { parts, ...serviceData } = data;
     return await ServiceModel.createServiceAndLogAudit(
       serviceData,
@@ -70,14 +116,12 @@ class WorkshopServiceLogic {
       throw new Error("Service package not found.");
     }
 
-    // Duplicate name check
     if (data.name && data.name.toLowerCase() !== existing.name.toLowerCase()) {
       const duplicate = await ServiceModel.findServiceByName(data.name);
       if (duplicate)
         throw new Error("A service package with this name already exists.");
     }
 
-    // Extract safe fields
     const safeUpdates = {};
     if (data.name !== undefined) safeUpdates.name = data.name;
     if (data.category !== undefined) safeUpdates.category = data.category;
@@ -86,7 +130,7 @@ class WorkshopServiceLogic {
       safeUpdates.description = data.description;
     if (data.is_active !== undefined) safeUpdates.is_active = data.is_active;
 
-    const partsArray = data.parts; // Undefined if not updating parts
+    const partsArray = data.parts;
 
     return await ServiceModel.updateServiceAndLogAudit(
       id,
@@ -98,4 +142,4 @@ class WorkshopServiceLogic {
   }
 }
 
-module.exports = WorkshopServiceLogic;
+module.exports = WorkshopService;

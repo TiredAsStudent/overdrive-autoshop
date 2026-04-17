@@ -1,9 +1,9 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
-const AuthModel = require("../../models/auth/authModel");
+const User = require("../models/User"); // We changed AuthModel to User
 const crypto = require("crypto");
-const { sendPasswordResetEmail } = require("../../utils/mailer");
+const { sendPasswordResetEmail } = require("../utils/mailer");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -20,7 +20,7 @@ class AuthService {
 
   // --Login with Email--
   static async loginWithEmail(email, password, ipAddress) {
-    const user = await AuthModel.findUserByEmail(email);
+    const user = await User.findUserByEmail(email);
 
     if (!user) throw new Error("Invalid credentials.");
     if (!user.is_active) throw new Error("This account has been disabled.");
@@ -31,7 +31,7 @@ class AuthService {
     if (!isMatch) throw new Error("Invalid credentials.");
 
     const token = this.generateToken(user);
-    await AuthModel.logAudit(
+    await User.logAudit(
       user.id,
       user.branch_id,
       "LOGIN_SUCCESS_EMAIL",
@@ -55,17 +55,17 @@ class AuthService {
       throw new Error("This Google account email is not verified.");
     }
 
-    const user = await AuthModel.findUserByEmail(payload.email);
+    const user = await User.findUserByEmail(payload.email);
     if (!user)
       throw new Error("Email not registered. Please contact an Admin.");
     if (!user.is_active) throw new Error("This account has been disabled.");
 
     if (!user.google_id) {
-      await AuthModel.linkGoogleId(user.id, payload.sub);
+      await User.linkGoogleId(user.id, payload.sub);
     }
 
     const token = this.generateToken(user);
-    await AuthModel.logAudit(
+    await User.logAudit(
       user.id,
       user.branch_id,
       "LOGIN_SUCCESS_GOOGLE",
@@ -78,7 +78,7 @@ class AuthService {
 
   // --Process forgot password--
   static async processForgotPassword(email) {
-    const user = await AuthModel.findUserByEmail(email);
+    const user = await User.findUserByEmail(email);
 
     if (!user || !user.is_active) return;
 
@@ -91,7 +91,7 @@ class AuthService {
       .update(resetToken)
       .digest("hex");
 
-    await AuthModel.saveResetToken(user.id, hashedToken);
+    await User.saveResetToken(user.id, hashedToken);
 
     // Construct URL and Send Email
     const frontendUrl =
@@ -112,7 +112,7 @@ class AuthService {
       .digest("hex");
 
     // Check if token exists and is not expired
-    const user = await AuthModel.findUserByResetToken(hashedToken);
+    const user = await User.findUserByResetToken(hashedToken);
     if (!user) {
       throw new Error(
         "Invalid or expired reset token. Please request a new one.",
@@ -121,7 +121,7 @@ class AuthService {
 
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-    await AuthModel.updatePasswordAndLogAudit(
+    await User.updatePasswordAndLogAudit(
       user.id,
       newPasswordHash,
       user.branch_id, // NULL if Admin, Number if Staff
@@ -136,7 +136,7 @@ class AuthService {
       .update(rawToken)
       .digest("hex");
 
-    const user = await AuthModel.findUserByActivationToken(hashedToken);
+    const user = await User.findUserByActivationToken(hashedToken);
 
     if (!user) {
       throw new Error("This invitation link is invalid or has expired.");
@@ -164,7 +164,7 @@ class AuthService {
       .update(rawToken)
       .digest("hex");
 
-    const user = await AuthModel.findUserByActivationToken(hashedToken);
+    const user = await User.findUserByActivationToken(hashedToken);
     if (!user) {
       throw new Error(
         "This invitation link has expired. Please contact your Admin for a new invite.",
@@ -174,7 +174,7 @@ class AuthService {
     // Hash the new password
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-    await AuthModel.activateUserAndLogAudit(
+    await User.activateUserAndLogAudit(
       user.id,
       newPasswordHash,
       user.branch_id,
@@ -188,7 +188,7 @@ class AuthService {
       .createHash("sha256")
       .update(rawToken)
       .digest("hex");
-    const user = await AuthModel.findCustomerByActivationToken(hashedToken);
+    const user = await User.findCustomerByActivationToken(hashedToken);
 
     if (!user) {
       throw new Error("This activation link is invalid or has expired.");
@@ -212,7 +212,7 @@ class AuthService {
       .createHash("sha256")
       .update(rawToken)
       .digest("hex");
-    const user = await AuthModel.findCustomerByActivationToken(hashedToken);
+    const user = await User.findCustomerByActivationToken(hashedToken);
 
     if (!user) {
       throw new Error("This activation link is invalid or has expired.");
@@ -222,11 +222,7 @@ class AuthService {
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
     // Atomic Activation
-    await AuthModel.activateCustomerAndLogAudit(
-      user.id,
-      newPasswordHash,
-      ipAddress,
-    );
+    await User.activateCustomerAndLogAudit(user.id, newPasswordHash, ipAddress);
 
     // Auto-Login Logic
     const payload = {
