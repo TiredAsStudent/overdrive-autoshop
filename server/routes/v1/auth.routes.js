@@ -8,7 +8,7 @@ const {
   resetPasswordSchema,
   activateAccountSchema,
   activateCustomerSchema,
-} = require("../../validations/auth.schema");
+} = require("../../validations/auth/auth.schema");
 
 const router = express.Router();
 

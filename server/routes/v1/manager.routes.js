@@ -17,21 +17,23 @@ const {
 const branchGuard = require("../../middlewares/branchMiddleware");
 const { ROLES } = require("../../constants/roles");
 
-const { approveReceiptSchema } = require("../../validations/approval.schema");
+const {
+  approveReceiptSchema,
+} = require("../../validations/manager/approval.schema");
 const {
   createCategorySchema,
   updateCategorySchema,
-} = require("../../validations/finance.schema");
+} = require("../../validations/manager/finance.schema");
 const {
   createInventorySchema,
   updateInventorySchema,
-} = require("../../validations/inventory.schema");
+} = require("../../validations/manager/inventory.schema");
 const {
   createMechanicSchema,
   updateMechanicSchema,
   createServiceSchema,
   updateServiceSchema,
-} = require("../../validations/workshop.schema");
+} = require("../../validations/manager/workshop.schema");
 
 // ==========================================
 // GLOBAL PORTAL SECURITY
