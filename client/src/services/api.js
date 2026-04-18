@@ -26,12 +26,19 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // If token is invalid/expired, clear storage and kick to login
+    const requestUrl = error.config?.url;
+
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      requestUrl !== "/auth/login"
+    ) {
+      // If token is invalid/expired on a normal page, clear storage and kick to login
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";
     }
+
     return Promise.reject(error);
   },
 );

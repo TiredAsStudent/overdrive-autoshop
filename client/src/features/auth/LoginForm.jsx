@@ -29,15 +29,22 @@ const LoginForm = () => {
       // Trigger Login
       const loggedInUser = await login(credentials.email, credentials.password);
 
-      // The Traffic Cop Logic (Redirect based on Role)
-      if (loggedInUser.role === "ADMIN") {
-        navigate("/admin/dashboard/overview");
-      } else if (loggedInUser.role === "STAFF") {
-        navigate("/staff/dashboard/stats");
-      } else if (loggedInUser.role === "CUSTOMER") {
-        navigate("/customer/dashboard/status");
-      } else {
-        navigate("/");
+      // The 4-Portal Traffic Cop
+      switch (loggedInUser.role) {
+        case "ADMIN": // System IT Admin
+          navigate("/sysadmin/overview");
+          break;
+        case "MANAGER": // Enterprise Owner
+          navigate("/manager/dashboard/ranking");
+          break;
+        case "STAFF": // Daily Operations
+          navigate("/staff/dashboard/stats");
+          break;
+        case "CUSTOMER": // Digital Passport
+          navigate("/customer/dashboard/status");
+          break;
+        default:
+          throw new Error("Unrecognized access level. Please contact support.");
       }
     } catch (err) {
       setError(err.message || "Access Denied. Invalid credentials.");
@@ -93,7 +100,6 @@ const LoginForm = () => {
         </div>
 
         <div className="flex items-center justify-end">
-          {/* 2. Swapped <button> for <Link> */}
           <Link
             to="/forgot-password"
             className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-600 transition-colors"

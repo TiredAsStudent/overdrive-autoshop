@@ -1,16 +1,15 @@
 import React, { useState } from "react";
-import {
-  ChevronRight,
-  Shield,
-  Car,
-  ShieldCheck,
-  Home,
-  History,
-} from "lucide-react";
+import { ChevronRight, Shield, Car, ShieldCheck } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import BannerLogo from "../../assets/OverdriveLogo2.png";
-import { adminMenu, staffMenu, customerMenu } from "../../config/navigation"; // 1. Added customerMenu
+// Pulling all 4 menus
+import {
+  sysAdminMenu,
+  managerMenu,
+  staffMenu,
+  customerMenu,
+} from "../../config/navigation";
 import { useApp } from "../../context/AppContext";
 
 const Sidebar = ({ user }) => {
@@ -18,13 +17,15 @@ const Sidebar = ({ user }) => {
   const [openSubMenu, setOpenSubMenu] = useState(null);
   const { activeVehicle } = useApp();
 
-  // 2. Logic to handle 3 roles
-  const isAdmin = user?.role?.toUpperCase() === "ADMIN";
+  // 1. Logic to handle 4 Roles
+  const isSysAdmin = user?.role?.toUpperCase() === "ADMIN";
+  const isManager = user?.role?.toUpperCase() === "MANAGER";
   const isCustomer = user?.role?.toUpperCase() === "CUSTOMER";
 
-  let menuGroups = staffMenu;
-  if (isAdmin) menuGroups = adminMenu;
-  if (isCustomer) menuGroups = customerMenu;
+  let menuGroups = staffMenu; // Default to staff
+  if (isSysAdmin) menuGroups = sysAdminMenu;
+  else if (isManager) menuGroups = managerMenu;
+  else if (isCustomer) menuGroups = customerMenu;
 
   const toggleSubMenu = (label) => {
     setOpenSubMenu(openSubMenu === label ? null : label);
@@ -47,30 +48,32 @@ const Sidebar = ({ user }) => {
         />
       </div>
 
-      {/* 3. ACCESS BADGE (Updated for Customer) */}
+      {/* ACCESS BADGE */}
       <div className="p-6 flex flex-col gap-1 pb-2">
         <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-gray-500 font-bold">
-          {isAdmin
+          {isSysAdmin || isManager
             ? "Access Level"
             : isCustomer
               ? "Portal Status"
               : "Current Context"}
         </span>
         <div className="bg-amber-50 dark:bg-overdrive-yellow/10 border border-amber-200 dark:border-overdrive-yellow/20 rounded-lg px-3 py-2 flex items-center gap-2">
-          {isAdmin && (
+          {(isSysAdmin || isManager) && (
             <Shield className="h-4 w-4 text-amber-600 dark:text-overdrive-yellow" />
           )}
           {isCustomer && <ShieldCheck className="h-4 w-4 text-emerald-600" />}
-          {!isAdmin && !isCustomer && (
+          {!isSysAdmin && !isManager && !isCustomer && (
             <div className="h-2 w-2 rounded-full bg-overdrive-yellow animate-pulse" />
           )}
 
           <span className="text-amber-700 dark:text-overdrive-yellow font-black text-sm uppercase italic tracking-tighter">
-            {isAdmin
-              ? "Global Admin"
-              : isCustomer
-                ? "Verified Owner"
-                : user?.assigned_branch || "Main Branch"}
+            {isSysAdmin
+              ? "God Mode"
+              : isManager
+                ? "Enterprise Owner"
+                : isCustomer
+                  ? "Verified Owner"
+                  : user?.assigned_branch || "Main Branch"}
           </span>
         </div>
       </div>
@@ -78,11 +81,13 @@ const Sidebar = ({ user }) => {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
         <h3 className="px-2 mb-2 text-[10px] font-bold uppercase text-slate-500 dark:text-gray-500">
-          {isAdmin
-            ? "Governance (Checker)"
-            : isCustomer
-              ? "My Digital Garage"
-              : "Workshop (Maker)"}
+          {isSysAdmin
+            ? "System Control (IT)"
+            : isManager
+              ? "Governance (Checker)"
+              : isCustomer
+                ? "My Digital Garage"
+                : "Workshop (Maker)"}
         </h3>
 
         {menuGroups.map((group) => {
@@ -95,13 +100,7 @@ const Sidebar = ({ user }) => {
             <div key={group.label} className="mb-1">
               <button
                 onClick={() => toggleSubMenu(group.label)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group
-                  ${
-                    isGroupActive
-                      ? "text-slate-900 dark:text-overdrive-yellow bg-slate-100 dark:bg-white/5"
-                      : "text-slate-600 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white"
-                  }
-                `}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group ${isGroupActive ? "text-slate-900 dark:text-overdrive-yellow bg-slate-100 dark:bg-white/5" : "text-slate-600 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white"}`}
               >
                 <div className="flex items-center gap-3">
                   <group.icon
@@ -114,7 +113,6 @@ const Sidebar = ({ user }) => {
                   />
                   {group.label}
                 </div>
-
                 <motion.div
                   animate={{ rotate: isOpen ? 90 : 0 }}
                   transition={{ duration: 0.2 }}
@@ -142,13 +140,7 @@ const Sidebar = ({ user }) => {
                           <Link
                             key={subItem.name}
                             to={subItem.path}
-                            className={`block px-4 py-2 text-xs transition-all relative
-                              ${
-                                isSubActive
-                                  ? "text-slate-900 dark:text-overdrive-yellow font-bold"
-                                  : "font-medium text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:translate-x-1"
-                              }
-                            `}
+                            className={`block px-4 py-2 text-xs transition-all relative ${isSubActive ? "text-slate-900 dark:text-overdrive-yellow font-bold" : "font-medium text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:translate-x-1"}`}
                           >
                             {isSubActive && (
                               <motion.div
@@ -169,7 +161,7 @@ const Sidebar = ({ user }) => {
         })}
       </nav>
 
-      {/* 4. ACTIVE SESSION (Contextual) */}
+      {/* ACTIVE SESSION */}
       <AnimatePresence>
         {(activeVehicle || isCustomer) && (
           <motion.div

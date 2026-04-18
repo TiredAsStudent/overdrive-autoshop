@@ -44,6 +44,7 @@ const Navbar = ({ user }) => {
 
   let displayRole = "Staff";
   if (user?.role?.toUpperCase() === "ADMIN") displayRole = "Administrator";
+  if (user?.role?.toUpperCase() === "MANAGER") displayRole = "Manager";
   if (user?.role?.toUpperCase() === "CUSTOMER") displayRole = "Customer";
 
   return (
