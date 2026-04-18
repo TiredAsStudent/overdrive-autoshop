@@ -1,31 +1,36 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Mail, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import BannerLogo from "../../assets/Banner_Logo.png";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Buttons";
+import authService from "../../services/auth.service";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
-    // Mimicking the security delay
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await authService.forgotPassword(email);
       setSubmitted(true);
-    }, 1500);
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-100 p-6">
       <div className="w-full max-w-[440px] bg-white rounded-[40px] shadow-2xl p-10 sm:p-14 space-y-8 border border-gray-100">
-        {/* Banner Logo */}
         <div className="w-full flex justify-center">
           <img
             src={BannerLogo}
@@ -36,7 +41,6 @@ const ForgotPassword = () => {
 
         <AnimatePresence mode="wait">
           {!submitted ? (
-            /* --- STATE 1: REQUEST FORM --- */
             <motion.div
               key="request"
               initial={{ opacity: 0, y: 10 }}
@@ -53,6 +57,13 @@ const ForgotPassword = () => {
                   recovery link.
                 </p>
               </div>
+
+              {error && (
+                <div className="flex items-center gap-3 p-3 text-[10px] font-black uppercase tracking-widest text-red-600 bg-red-50 border-l-4 border-red-600 rounded-r-xl">
+                  <AlertCircle size={16} className="shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <Input
@@ -77,7 +88,6 @@ const ForgotPassword = () => {
               </form>
             </motion.div>
           ) : (
-            /* --- STATE 2: GHOST SUCCESS (SECURITY BEST PRACTICE) --- */
             <motion.div
               key="success"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -109,13 +119,12 @@ const ForgotPassword = () => {
           )}
         </AnimatePresence>
 
-        {/* Footer Navigation */}
         <div className="pt-6 border-t border-gray-100 flex justify-center">
           <Link
             to="/login"
             className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all"
           >
-            <ArrowLeft size={14} /> Back to System Gate
+            <ArrowLeft size={14} /> Back to Login
           </Link>
         </div>
       </div>

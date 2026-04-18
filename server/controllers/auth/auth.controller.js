@@ -85,6 +85,16 @@ class AuthController {
     }
   }
 
+  static async verifyResetToken(req, res) {
+    try {
+      const { token } = req.params;
+      await AuthService.verifyResetToken(token);
+      return sendSuccess(res, STATUS_CODES.SUCCESS, null, "Token is valid.");
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
+
   static async verifyInvite(req, res) {
     try {
       const { token } = req.params;

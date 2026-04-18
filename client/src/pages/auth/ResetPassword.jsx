@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -23,8 +23,10 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   // Status State
+  const [verifying, setVerifying] = useState(true); // New state for initial load
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [sessionError, setSessionError] = useState(null); // Error for bad tokens
+  const [error, setError] = useState(null); // Error for form submission
   const [success, setSuccess] = useState(false);
 
   // Zod-Aligned Password Strength Validation
@@ -41,14 +43,32 @@ const ResetPassword = () => {
     validations.specialOrNumber &&
     validations.match;
 
+  // --- THE TOKEN HANDSHAKE ---
+  useEffect(() => {
+    const checkToken = async () => {
+      if (!token) {
+        setSessionError("Security token is missing from the URL.");
+        setVerifying(false);
+        return;
+      }
+      try {
+        await authService.verifyResetToken(token);
+        // Token is good, clear any session errors
+        setSessionError(null);
+      } catch (err) {
+        setSessionError(err.message || "Invalid or expired session.");
+      } finally {
+        setVerifying(false);
+      }
+    };
+
+    checkToken();
+  }, [token]);
+
+  // --- THE SUBMISSION LOGIC ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-
-    if (!token) {
-      setError("Security token is missing from the URL.");
-      return;
-    }
 
     setLoading(true);
     setError(null);
@@ -57,29 +77,40 @@ const ResetPassword = () => {
       await authService.resetPassword(token, password);
       setSuccess(true);
     } catch (err) {
-      setError(
-        err.message || "Failed to reset password. The link may have expired.",
-      );
+      setError(err.message || "Failed to reset password. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // If no token in URL and not successful yet, show hard error
-  if (!token && !success) {
+  // --- LOADING STATE ---
+  if (verifying) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-pulse text-slate-400 font-black uppercase text-xs tracking-widest flex items-center gap-3">
+          <ShieldCheck size={20} className="text-amber-500" />
+          Verifying Security Token...
+        </div>
+      </div>
+    );
+  }
+
+  // --- HARD ERROR STATE (Dead Link or No Token) ---
+  if ((!token || sessionError) && !success) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-md bg-white p-8 rounded-3xl shadow-xl text-center space-y-4">
+        <div className="max-w-md bg-white p-8 rounded-3xl shadow-xl text-center space-y-4 border border-slate-200">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
           <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">
             Invalid Session
           </h2>
           <p className="text-sm text-slate-500 font-medium">
-            No secure token found. Please request a new password reset link.
+            {sessionError ||
+              "No secure token found. Please request a new password reset link."}
           </p>
           <Link
             to="/forgot-password"
-            className="inline-block mt-4 text-xs font-black text-amber-600 uppercase tracking-widest hover:text-amber-700"
+            className="inline-block mt-4 text-xs font-black text-amber-600 uppercase tracking-widest hover:text-amber-700 transition-colors"
           >
             Request New Link
           </Link>
@@ -88,6 +119,7 @@ const ResetPassword = () => {
     );
   }
 
+  // --- THE MAIN RENDER ---
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12">
       <motion.div
@@ -213,17 +245,29 @@ const ResetPassword = () => {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div
-                      className={`flex items-center gap-2 text-xs font-bold ${validations.length ? "text-emerald-600" : "text-slate-400"}`}
+                      className={`flex items-center gap-2 text-xs font-bold ${
+                        validations.length
+                          ? "text-emerald-600"
+                          : "text-slate-400"
+                      }`}
                     >
                       <CheckCircle2 size={16} /> 8+ Characters
                     </div>
                     <div
-                      className={`flex items-center gap-2 text-xs font-bold ${validations.uppercase ? "text-emerald-600" : "text-slate-400"}`}
+                      className={`flex items-center gap-2 text-xs font-bold ${
+                        validations.uppercase
+                          ? "text-emerald-600"
+                          : "text-slate-400"
+                      }`}
                     >
                       <CheckCircle2 size={16} /> 1 Uppercase Letter
                     </div>
                     <div
-                      className={`flex items-center gap-2 text-xs font-bold ${validations.specialOrNumber ? "text-emerald-600" : "text-slate-400"}`}
+                      className={`flex items-center gap-2 text-xs font-bold ${
+                        validations.specialOrNumber
+                          ? "text-emerald-600"
+                          : "text-slate-400"
+                      }`}
                     >
                       <CheckCircle2 size={16} /> 1 Number or Special
                     </div>

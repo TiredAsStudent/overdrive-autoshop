@@ -61,6 +61,7 @@ router.post(
   validate(resetPasswordSchema),
   AuthController.resetPassword,
 );
+router.get("/verify-reset-token/:token", AuthController.verifyResetToken);
 
 // Staff & Admin Activation routes
 router.get("/verify-invite/:token", AuthController.verifyInvite);

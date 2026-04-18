@@ -68,7 +68,7 @@ const LoginForm = () => {
             id="email"
             label="Email"
             type="email"
-            placeholder="name@overdrive.com"
+            placeholder="name@gmail.com"
             value={credentials.email}
             onChange={handleChange}
             required

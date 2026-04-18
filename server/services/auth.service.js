@@ -129,6 +129,18 @@ class AuthService {
     );
   }
 
+  static async verifyResetToken(rawToken) {
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+    const user = await User.findUserByResetToken(hashedToken);
+    if (!user) {
+      throw new Error("This reset link has already been used or has expired.");
+    }
+    return true;
+  }
+
   // --Verify Activation Token--
   static async verifyActivationToken(rawToken) {
     const hashedToken = crypto
