@@ -39,6 +39,7 @@ import StockRoom from "../pages/staff/StockRoom";
 import MovementRequests from "../pages/staff/MovementRequest";
 import CustomerDirectory from "../pages/staff/CustomerDirectory";
 import ServicePassport from "../pages/staff/ServicePassport";
+import PortalSupport from "../pages/staff/PortalSupport";
 
 // --- SYS ADMIN PAGES ---
 import Overview from "../pages/sysadmin/Overview";
@@ -49,7 +50,8 @@ import Integrations from "../pages/sysadmin/Integrations";
 import AuditLogs from "../pages/sysadmin/AuditLogs";
 import SystemHealth from "../pages/sysadmin/SystemHealth";
 
-// --- MANAGER PAGES (Imported from the renamed manager folder) ---
+// --- MANAGER PAGES ---
+import ManagerOverview from "../pages/manager/AdminOverview";
 import BranchRanking from "../pages/manager/BranchRanking";
 import OcrApprovals from "../pages/manager/OcrApprovals";
 import StockAdjustments from "../pages/manager/StockAdjustments";
@@ -170,6 +172,14 @@ const AnimatedDashboardRoutes = ({ user }) => {
           element={
             <ProtectedRoute allowedRoles={["MANAGER"]}>
               <Routes>
+                <Route
+                  path="dashboard/overview"
+                  element={
+                    <PageWrapper>
+                      <ManagerOverview />
+                    </PageWrapper>
+                  }
+                />
                 <Route
                   path="dashboard/ranking"
                   element={
@@ -381,6 +391,14 @@ const AnimatedDashboardRoutes = ({ user }) => {
                     </PageWrapper>
                   }
                 />
+                <Route
+                  path="customers/support"
+                  element={
+                    <PageWrapper>
+                      <PortalSupport user={user} />
+                    </PageWrapper>
+                  }
+                />
               </Routes>
             </ProtectedRoute>
           }
@@ -460,7 +478,7 @@ const AnimatedDashboardRoutes = ({ user }) => {
         />
         <Route
           path="/manager"
-          element={<Navigate to="/manager/dashboard/ranking" replace />}
+          element={<Navigate to="/manager/dashboard/overview" replace />}
         />
         <Route
           path="/staff"
@@ -491,7 +509,7 @@ const AppRoutes = () => {
                   user.role === "ADMIN"
                     ? "/sysadmin/overview"
                     : user.role === "MANAGER"
-                      ? "/manager/dashboard/ranking"
+                      ? "/manager/dashboard/overview"
                       : user.role === "STAFF"
                         ? "/staff/dashboard/stats"
                         : "/customer/dashboard/status"

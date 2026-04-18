@@ -24,9 +24,9 @@ import {
 // === SYSTEM ADMIN MENU ===
 export const sysAdminMenu = [
   {
-    label: "Overview",
+    label: "Dashboard",
     icon: Activity,
-    items: [{ name: "System Pulse", path: "/sysadmin/overview" }],
+    items: [{ name: "Overview", path: "/sysadmin/overview" }],
   },
   {
     label: "Management",
@@ -59,7 +59,10 @@ export const managerMenu = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
-    items: [{ name: "Branch Ranking", path: "/manager/dashboard/ranking" }],
+    items: [
+      { name: "Overview", path: "/manager/dashboard/overview" },
+      { name: "Branch Stats", path: "/manager/dashboard/ranking" },
+    ],
   },
   {
     label: "Approval Queue",
@@ -113,7 +116,7 @@ export const staffMenu = [
     items: [{ name: "Local Stats", path: "/staff/dashboard/stats" }],
   },
   {
-    label: "Workshop Floor",
+    label: "Workshop",
     icon: LayoutDashboard,
     items: [
       { name: "Check-In", path: "/staff/workshop/check-in" },
@@ -142,7 +145,7 @@ export const staffMenu = [
     icon: Inbox,
     items: [
       { name: "Stock Room", path: "/staff/inventory/stock" },
-      { name: "Movement Requests", path: "/staff/inventory/requests" },
+      { name: "Stock Requests", path: "/staff/inventory/requests" },
     ],
   },
   {
@@ -151,6 +154,7 @@ export const staffMenu = [
     items: [
       { name: "Directory", path: "/staff/customers/directory" },
       { name: "Service Passport", path: "/staff/customers/passport" },
+      { name: "Portal Support", path: "/staff/customers/support" },
     ],
   },
 ];
@@ -166,19 +170,19 @@ export const customerMenu = [
     ],
   },
   {
-    label: "Medical Record",
+    label: "History",
     icon: History,
     items: [
-      { name: "Service Timeline", path: "/customer/history/timeline" },
-      { name: "Technical Logs", path: "/customer/history/logs" },
+      { name: "Timeline", path: "/customer/history/timeline" },
+      { name: "Technical Details", path: "/customer/history/logs" },
     ],
   },
   {
-    label: "Financials",
+    label: "Documents",
     icon: Receipt,
     items: [
       { name: "Estimates", path: "/customer/documents/estimates" },
-      { name: "Invoice Archive", path: "/customer/documents/invoices" },
+      { name: "Invoices", path: "/customer/documents/invoices" },
     ],
   },
   {

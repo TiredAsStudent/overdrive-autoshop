@@ -81,13 +81,7 @@ const Sidebar = ({ user }) => {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
         <h3 className="px-2 mb-2 text-[10px] font-bold uppercase text-slate-500 dark:text-gray-500">
-          {isSysAdmin
-            ? "System Control (IT)"
-            : isManager
-              ? "Governance (Checker)"
-              : isCustomer
-                ? "My Digital Garage"
-                : "Workshop (Maker)"}
+          Navigations
         </h3>
 
         {menuGroups.map((group) => {

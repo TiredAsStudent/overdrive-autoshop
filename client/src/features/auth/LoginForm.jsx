@@ -35,7 +35,7 @@ const LoginForm = () => {
           navigate("/sysadmin/overview");
           break;
         case "MANAGER": // Enterprise Owner
-          navigate("/manager/dashboard/ranking");
+          navigate("/manager/dashboard/overview");
           break;
         case "STAFF": // Daily Operations
           navigate("/staff/dashboard/stats");

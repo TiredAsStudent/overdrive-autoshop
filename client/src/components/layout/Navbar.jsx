@@ -49,20 +49,8 @@ const Navbar = ({ user }) => {
 
   return (
     <header className="h-16 shrink-0 w-full border-b border-gray-200 dark:border-white/10 bg-white dark:bg-overdrive-dark flex items-center justify-between px-6 lg:px-8 z-20 transition-colors duration-300">
-      {/* Universal Search (UI Only) */}
-      <div className="flex-1 max-w-xl">
-        <div className="relative group flex items-center">
-          <Search
-            className="absolute left-3 text-gray-400 dark:text-gray-500 group-focus-within:text-overdrive-yellow transition-colors"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Search License Plate (e.g., ABC 1234)..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-white/5 border-transparent text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:bg-white dark:focus:bg-black/20 focus:border-overdrive-yellow focus:ring-2 focus:ring-overdrive-yellow/20 rounded-lg text-sm transition-all outline-none"
-          />
-        </div>
-      </div>
+      {/* Empty Left Section*/}
+      <div className="flex-1 max-w-xl"></div>
 
       {/* Right Side Actions */}
       <div className="flex items-center gap-4 lg:gap-6 ml-4">
