@@ -35,7 +35,7 @@ router.get(
 
 // --- SHARED READ-ONLY ROUTES (For Staff Dropdowns & Kanban) ---
 // These call the EXACT same logic as the Manager, but securely through the Staff portal API url!
-router.get("/accounts", AccountController.getAllCategories);
+router.get("/accounts/categories", AccountController.getBaseCategories);
 router.get("/inventory/master", InventoryController.getInventory);
 router.get("/mechanics", MechanicController.getMechanics);
 router.get("/services", ServiceController.getServices);

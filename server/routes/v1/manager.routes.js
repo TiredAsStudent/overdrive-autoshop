@@ -53,20 +53,19 @@ router.post(
 router.post("/ocr/:id/reject", OcrController.reject);
 
 // --- FINANCE & ACCOUNTS ---
-router.get("/accounts", AccountController.getAllCategories);
+router.get("/accounts/categories", AccountController.getBaseCategories);
 router.post(
   "/accounts",
-  branchGuard,
   validate(createCategorySchema),
-  AccountController.createCategory,
+  AccountController.createAccount,
 );
+router.get("/accounts/balances", AccountController.getBalances);
+
 router.put(
   "/accounts/:id",
-  branchGuard,
   validate(updateCategorySchema),
-  AccountController.updateCategory,
+  AccountController.updateAccount,
 );
-router.get("/accounts/balances", branchGuard, AccountController.getBalances);
 
 // --- MASTER INVENTORY ---
 router.get("/inventory", InventoryController.getInventory);

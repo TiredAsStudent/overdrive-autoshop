@@ -1,65 +1,70 @@
-const { query, pool } = require("../config/db"); // Path updated
+const { query, pool } = require("../config/db");
 
 class AccountModel {
-  static async findCategoryByName(name) {
-    const sql = `SELECT id, name FROM account_categories WHERE LOWER(name) = LOWER($1)`;
-    const result = await query(sql, [name]);
+  static async checkCodeExists(code) {
+    const sql = `SELECT id FROM chart_of_accounts WHERE account_code = $1`;
+    const result = await query(sql, [code]);
     return result.rows[0];
   }
 
-  static async findCategoryById(id) {
-    const sql = `SELECT id, name, type, is_active FROM account_categories WHERE id = $1`;
+  static async findAccountById(id) {
+    const sql = `SELECT * FROM chart_of_accounts WHERE id = $1`;
     const result = await query(sql, [id]);
     return result.rows[0];
   }
 
-  static async getAllCategories(typeFilter) {
-    let sql = `SELECT id, name, type, description, is_active, created_at FROM account_categories`;
-    const params = [];
-
-    if (typeFilter) {
-      params.push(typeFilter);
-      sql += ` WHERE type = $1`;
-    }
-
-    sql += ` ORDER BY type ASC, name ASC`;
-    const result = await query(sql, params);
+  static async getAllCategories() {
+    const sql = `SELECT * FROM account_categories ORDER BY id ASC`;
+    const result = await query(sql);
     return result.rows;
   }
 
-  static async createCategoryAndLogAudit(data, userId, ipAddress) {
+  static async createAccountAndLogAudit(data, userId, ipAddress) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // 1. Insert Category
+      // Insert into Chart of Accounts
       const insertSql = `
-        INSERT INTO account_categories (name, type, description)
-        VALUES ($1, $2, $3)
-        RETURNING id, name, type, is_active
+        INSERT INTO chart_of_accounts (category_id, account_code, account_name, staff_label, description)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
       `;
-      const categoryResult = await client.query(insertSql, [
-        data.name,
-        data.type,
+      const accResult = await client.query(insertSql, [
+        data.category_id,
+        data.account_code,
+        data.account_name,
+        data.staff_label,
         data.description,
       ]);
-      const newCategory = categoryResult.rows[0];
+      const newAccount = accResult.rows[0];
 
-      // 2. Log Audit (Global Action, so branch_id is NULL)
+      // Initialize 0.00 balances for ALL active branches automatically
+      const branchSql = `SELECT id FROM branches WHERE is_active = TRUE`;
+      const branches = await client.query(branchSql);
+
+      for (let branch of branches.rows) {
+        await client.query(
+          `INSERT INTO account_balances (account_id, branch_id, balance) VALUES ($1, $2, 0.00)`,
+          [newAccount.id, branch.id],
+        );
+      }
+
+      // 3. Log Audit
       const auditSql = `
         INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) 
         VALUES ($1, $2, $3, $4, $5)
       `;
       await client.query(auditSql, [
         userId,
-        "FINANCE_CATEGORY_CREATED",
-        "account_categories",
-        newCategory.id,
+        "CREATE_CHART_OF_ACCOUNT",
+        "chart_of_accounts",
+        newAccount.id,
         ipAddress,
       ]);
 
       await client.query("COMMIT");
-      return newCategory;
+      return newAccount;
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -68,11 +73,21 @@ class AccountModel {
     }
   }
 
-  static async updateCategoryAndLogAudit(id, updates, userId, ipAddress) {
+  static async updateAccountAndLogAudit(id, updates, userId, ipAddress) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
+      // Security Check: Prevent editing of locked system accounts
+      const checkSql = `SELECT is_system_locked FROM chart_of_accounts WHERE id = $1`;
+      const checkResult = await client.query(checkSql, [id]);
+
+      if (!checkResult.rows[0]) throw new Error("Account not found.");
+      if (checkResult.rows[0].is_system_locked && updates.is_active === false) {
+        throw new Error("System accounts cannot be deactivated.");
+      }
+
+      // Build the dynamic update query
       const fields = [];
       const params = [id];
       let paramIndex = 2;
@@ -84,32 +99,32 @@ class AccountModel {
           paramIndex++;
         }
       }
-
       fields.push(`updated_at = NOW()`);
 
       const updateSql = `
-        UPDATE account_categories 
+        UPDATE chart_of_accounts 
         SET ${fields.join(", ")} 
         WHERE id = $1 
         RETURNING *
       `;
       const result = await client.query(updateSql, params);
-      const updatedCategory = result.rows[0];
+      const updatedAccount = result.rows[0];
 
+      //  Log Audit
       const auditSql = `
         INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) 
         VALUES ($1, $2, $3, $4, $5)
       `;
       await client.query(auditSql, [
         userId,
-        "FINANCE_CATEGORY_UPDATED",
-        "account_categories",
+        "UPDATE_CHART_OF_ACCOUNT",
+        "chart_of_accounts",
         id,
         ipAddress,
       ]);
 
       await client.query("COMMIT");
-      return updatedCategory;
+      return updatedAccount;
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -118,30 +133,26 @@ class AccountModel {
     }
   }
 
-  static async getRealTimeBalances(branchId) {
+  // THE ENTERPRISE MULTI-BRANCH QUERY
+  static async getRealTimeBalances() {
     const sql = `
       SELECT 
-        ac.id AS category_id,
-        ac.name AS category_name,
-        ac.type,
-        COALESCE(
-          SUM(
-            CASE 
-              WHEN fl.transaction_type = 'CREDIT' THEN fl.amount 
-              ELSE -fl.amount 
-            END
-          ), 0
-        ) as current_balance
-      FROM account_categories ac
-      LEFT JOIN financial_ledger fl 
-        ON ac.id = fl.account_category_id 
-        ${branchId ? `AND fl.branch_id = $1` : ``}
-      WHERE ac.is_active = TRUE
-      GROUP BY ac.id, ac.name, ac.type
-      ORDER BY ac.type ASC, ac.name ASC
+        coa.id as account_id,
+        coa.account_code,
+        coa.account_name,
+        coa.staff_label,
+        ac.category_name,
+        b.id as branch_id,
+        b.branch_name,
+        COALESCE(ab.balance, 0.00) as balance
+      FROM chart_of_accounts coa
+      JOIN account_categories ac ON coa.category_id = ac.id
+      CROSS JOIN branches b
+      LEFT JOIN account_balances ab ON ab.account_id = coa.id AND ab.branch_id = b.id
+      WHERE b.is_active = TRUE AND coa.is_active = TRUE
+      ORDER BY coa.account_code ASC, b.id ASC
     `;
-    const params = branchId ? [branchId] : [];
-    const result = await query(sql, params);
+    const result = await query(sql);
     return result.rows;
   }
 }
