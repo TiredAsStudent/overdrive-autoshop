@@ -1,11 +1,15 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
 
 // Controllers
 const BranchController = require("../../controllers/sysadmin/branch.controller");
+const SettingsController = require("../../controllers/sysadmin/settings.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
+const { uploadLogo } = require("../../middlewares/uploadMiddleware");
+const { sendError } = require("../../utils/responseHandler");
 const {
   verifyToken,
   requireRole,
@@ -14,10 +18,32 @@ const { ROLES } = require("../../constants/roles");
 
 // Validations
 const {
+  updateSettingsSchema,
+} = require("../../validations/sysadmin/settings.schema");
+const {
   createBranchSchema,
   updateBranchSchema,
   toggleMaintenanceSchema,
 } = require("../../validations/sysadmin/branch.schema");
+
+// ==========================================
+// UTILITY: Catch Multer File Errors cleanly (Turns 500s into 400s)
+// ==========================================
+const handleLogoUpload = (req, res, next) => {
+  const upload = uploadLogo.single("logo");
+
+  upload(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      // A Multer error occurred (e.g., File too large)
+      return sendError(res, 400, "File Upload Error", err.message);
+    } else if (err) {
+      // An unknown error occurred (e.g., PDF uploaded instead of image)
+      return sendError(res, 400, "Invalid File Type", err.message);
+    }
+    // Everything went fine, proceed to validation!
+    next();
+  });
+};
 
 // ==========================================
 // GLOBAL SECURITY: SysAdmin Only
@@ -50,6 +76,18 @@ router.patch(
   "/branches/:id/maintenance",
   validate(toggleMaintenanceSchema),
   BranchController.toggleMaintenance,
+);
+
+// ==========================================
+// SUB-TAB 3.1: BUSINESS SETTINGS
+// ==========================================
+router.get("/settings", SettingsController.getSettings);
+
+router.put(
+  "/settings",
+  handleLogoUpload,
+  validate(updateSettingsSchema),
+  SettingsController.updateSettings,
 );
 
 module.exports = router;

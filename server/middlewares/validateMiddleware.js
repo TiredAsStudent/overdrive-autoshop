@@ -1,3 +1,4 @@
+const fs = require("fs");
 const { sendError } = require("../utils/responseHandler");
 const { STATUS_CODES } = require("../constants/statusCodes");
 
@@ -18,6 +19,16 @@ const validate = (schema) => (req, res, next) => {
   });
 
   if (!result.success) {
+    // If Multer uploaded a file before Zod validation failed, delete the orphaned file.
+    if (req.file && req.file.path) {
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+        console.log(
+          "Validation Middleware: Deleted orphaned file due to validation error.",
+        );
+      }
+    }
+
     let errorMessages = "Validation failed: Invalid input data.";
 
     try {
