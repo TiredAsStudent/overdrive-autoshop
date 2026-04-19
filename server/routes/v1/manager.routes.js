@@ -7,6 +7,7 @@ const AccountController = require("../../controllers/manager/finance.controller"
 const InventoryController = require("../../controllers/manager/inventory.controller");
 const MechanicController = require("../../controllers/manager/mechanic.controller");
 const ServiceController = require("../../controllers/manager/service.controller");
+const BranchController = require("../../controllers/manager/branch.controller");
 
 // Import Security Guards & Validations
 const validate = require("../../middlewares/validateMiddleware");
@@ -94,6 +95,8 @@ router.put(
   validate(updateMechanicSchema),
   MechanicController.updateMechanic,
 );
+// --- SYSTEM HELPERS ---
+router.get("/branches", BranchController.getBranches);
 
 // --- SERVICES (COMBO MEALS) ---
 router.get("/services", ServiceController.getServices);

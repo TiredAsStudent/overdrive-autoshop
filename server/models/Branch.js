@@ -103,6 +103,17 @@ class Branch {
     const result = await query(sql, [id]);
     return result.rows[0];
   }
+
+  static async getAllBranches() {
+    const sql = `
+      SELECT id, branch_name 
+      FROM branches 
+      WHERE is_active = TRUE 
+      ORDER BY id ASC
+    `;
+    const result = await query(sql);
+    return result.rows;
+  }
 }
 
 module.exports = Branch;

@@ -26,17 +26,18 @@ const MechanicRegistry = () => {
 
   // --- DATA STATE ---
   const [mechanics, setMechanics] = useState([]);
+  const [branches, setBranches] = useState([]);
 
   // --- MODAL STATE ---
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState("CREATE"); // "CREATE" or "EDIT"
+  const [modalMode, setModalMode] = useState("CREATE");
   const [editingId, setEditingId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
-    branch_id: 1, // Default Branch
+    branch_id: "",
     specialization: "",
     certification_level: "Junior",
     contact_number: "",
@@ -44,12 +45,16 @@ const MechanicRegistry = () => {
   });
 
   // --- DATA FETCHING ---
-  const fetchMechanics = useCallback(async () => {
+  const fetchInitialData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await workshopService.getMechanics();
-      setMechanics(data);
+      const [mechData, branchData] = await Promise.all([
+        workshopService.getMechanics(),
+        workshopService.getBranches(),
+      ]);
+      setMechanics(mechData);
+      setBranches(branchData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -58,27 +63,21 @@ const MechanicRegistry = () => {
   }, []);
 
   useEffect(() => {
-    fetchMechanics();
-  }, [fetchMechanics]);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   // --- ACTIONS ---
   const handleToggleStatus = async (mech) => {
-    // Prevent quick-toggling terminated employees
     if (mech.status === "TERMINATED") {
       setError(
         "Cannot quick-toggle a terminated professional. Please use the Edit menu to reinstate them.",
       );
       return;
     }
-
-    // Cycle between ACTIVE and ON_LEAVE
     const newStatus = mech.status === "ACTIVE" ? "ON_LEAVE" : "ACTIVE";
-
     try {
-      await workshopService.updateMechanic(mech.id, {
-        status: newStatus,
-      });
-      await fetchMechanics(); // Refresh the UI
+      await workshopService.updateMechanic(mech.id, { status: newStatus });
+      await fetchInitialData();
     } catch (err) {
       setError("Failed to change mechanic status: " + err.message);
     }
@@ -89,7 +88,7 @@ const MechanicRegistry = () => {
     setFormData({
       first_name: "",
       last_name: "",
-      branch_id: 1,
+      branch_id: branches.length > 0 ? branches[0].id : "",
       specialization: "",
       certification_level: "Junior",
       contact_number: "",
@@ -129,11 +128,11 @@ const MechanicRegistry = () => {
           branch_id: parseInt(formData.branch_id, 10),
         });
       }
-      setIsModalOpen(false); // Close on success
-      await fetchMechanics(); // Refresh the list
+      setIsModalOpen(false);
+      await fetchInitialData();
     } catch (err) {
       setError(err.message);
-      setIsModalOpen(false); // Ensure modal closes so user sees global error banner
+      setIsModalOpen(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -199,7 +198,6 @@ const MechanicRegistry = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredMechanics.map((mech) => {
-            // Determine Dynamic UI based on Enterprise Status
             const isActive = mech.status === "ACTIVE";
             const isOnLeave = mech.status === "ON_LEAVE";
             const isTerminated = mech.status === "TERMINATED";
@@ -216,7 +214,6 @@ const MechanicRegistry = () => {
               >
                 <div className="p-8">
                   <div className="flex justify-between items-start mb-6">
-                    {/* Avatar Icon */}
                     <div
                       className={`h-16 w-16 rounded-2xl flex items-center justify-center shadow-inner transition-colors
                         ${isActive ? "bg-amber-500 text-slate-900" : ""}
@@ -232,7 +229,6 @@ const MechanicRegistry = () => {
                     </div>
 
                     <div className="flex flex-col items-end gap-3">
-                      {/* Quick Toggle Status Badge */}
                       <button
                         onClick={() => handleToggleStatus(mech)}
                         disabled={isTerminated}
@@ -246,7 +242,6 @@ const MechanicRegistry = () => {
                         {mech.status.replace("_", " ")}
                       </button>
 
-                      {/* Productivity Rating Indicator */}
                       <div className="flex items-center gap-1 text-amber-500 font-black text-sm">
                         <Star size={14} fill="currentColor" />{" "}
                         {isActive ? "4.9" : "N/A"}
@@ -299,7 +294,6 @@ const MechanicRegistry = () => {
                     >
                       <Edit3 size={14} /> Manage / Transfer
                     </button>
-                    {/* Placeholder for Productivity metrics */}
                     <div className="px-4 py-4 bg-slate-50 dark:bg-white/5 rounded-2xl flex flex-col items-center justify-center min-w-[70px]">
                       <p className="text-[10px] font-black text-slate-400 uppercase leading-none">
                         {isActive ? "12" : "-"}
@@ -329,7 +323,7 @@ const MechanicRegistry = () => {
         </div>
       )}
 
-      {/* 4. CRUD MODAL (Hire & Transfer) */}
+      {/* 4. CRUD MODAL */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
@@ -385,7 +379,6 @@ const MechanicRegistry = () => {
                   </div>
                 </div>
 
-                {/* Certification & Specialization Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
@@ -435,10 +428,16 @@ const MechanicRegistry = () => {
                       setFormData({ ...formData, branch_id: e.target.value })
                     }
                     className="w-full px-4 py-3 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-700/30 rounded-xl text-sm font-bold text-slate-900 dark:text-amber-500 focus:outline-none focus:border-amber-500 appearance-none"
+                    required
                   >
-                    <option value="1">Main Branch</option>
-                    <option value="2">Second Branch</option>
-                    <option value="3">Third Branch</option>
+                    <option value="" disabled>
+                      Select a branch...
+                    </option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.branch_name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -460,7 +459,6 @@ const MechanicRegistry = () => {
                   />
                 </div>
 
-                {/* Employment Status Dropdown (Only show in EDIT mode to prevent accidental firing during creation) */}
                 {modalMode === "EDIT" && (
                   <div className="pt-2">
                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
