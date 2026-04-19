@@ -39,7 +39,7 @@ const {
 // GLOBAL PORTAL SECURITY
 // Locks every single route below this line!
 // ==========================================
-router.use(verifyToken, requireRole(ROLES.ADMIN)); // Note: Using your existing ROLES.ADMIN constant
+router.use(verifyToken, requireRole(ROLES.ADMIN, ROLES.MANAGER));
 
 // --- APPROVAL QUEUE (OCR) ---
 router.get("/ocr", OcrController.getQueue);

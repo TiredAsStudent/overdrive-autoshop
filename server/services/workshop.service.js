@@ -31,9 +31,10 @@ class WorkshopService {
       safeUpdates.specialization = updates.specialization;
     if (updates.contact_number !== undefined)
       safeUpdates.contact_number = updates.contact_number;
-    if (updates.is_active !== undefined)
-      safeUpdates.is_active = updates.is_active;
 
+    if (updates.certification_level !== undefined)
+      safeUpdates.certification_level = updates.certification_level;
+    if (updates.status !== undefined) safeUpdates.status = updates.status;
     if (updates.branch_id !== undefined)
       safeUpdates.branch_id = updates.branch_id;
 
@@ -41,6 +42,7 @@ class WorkshopService {
       throw new Error("No valid fields provided for update.");
     }
 
+    // Identify which branch gets the audit log (handles branch transfers)
     const targetBranchId = safeUpdates.branch_id || existing.branch_id;
 
     return await MechanicModel.updateMechanicAndLogAudit(
@@ -59,8 +61,8 @@ class WorkshopService {
     const settingsSql = `SELECT markup_percentage, vat_percentage FROM system_settings WHERE id = 1`;
     const settingsResult = await query(settingsSql);
 
-    let GLOBAL_MARKUP_PERCENT = 0.25; // 25% Markup
-    let GLOBAL_TAX_RATE = 0.12; // 12% VAT
+    let GLOBAL_MARKUP_PERCENT = 0.25; // 25% Markup default
+    let GLOBAL_TAX_RATE = 0.12; // 12% VAT default
 
     if (settingsResult.rows.length > 0) {
       const settings = settingsResult.rows[0];

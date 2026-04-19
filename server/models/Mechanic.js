@@ -1,4 +1,4 @@
-const { query, pool } = require("../config/db"); // Path updated
+const { query, pool } = require("../config/db");
 
 class MechanicModel {
   static async findMechanicById(id) {
@@ -8,9 +8,9 @@ class MechanicModel {
   }
 
   static async getAllMechanics(branchId) {
-    // If branchId is null, it means the Admin is viewing "All Branches"
     let sql = `
-      SELECT m.id, m.first_name, m.last_name, m.specialization, m.contact_number, m.is_active, m.branch_id, b.branch_name 
+      SELECT m.id, m.first_name, m.last_name, m.specialization, m.certification_level, 
+             m.contact_number, m.status, m.branch_id, b.branch_name 
       FROM mechanics m
       LEFT JOIN branches b ON m.branch_id = b.id
       WHERE 1=1
@@ -22,7 +22,16 @@ class MechanicModel {
       sql += ` AND m.branch_id = $1`;
     }
 
-    sql += ` ORDER BY m.is_active DESC, m.last_name ASC`;
+    // Sort by Status (Active first), then alphabetically
+    sql += ` 
+      ORDER BY 
+        CASE 
+          WHEN m.status = 'ACTIVE' THEN 1 
+          WHEN m.status = 'ON_LEAVE' THEN 2 
+          ELSE 3 
+        END ASC, 
+        m.last_name ASC
+    `;
     const result = await query(sql, params);
     return result.rows;
   }
@@ -33,8 +42,8 @@ class MechanicModel {
       await client.query("BEGIN");
 
       const insertSql = `
-        INSERT INTO mechanics (branch_id, first_name, last_name, specialization, contact_number)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO mechanics (branch_id, first_name, last_name, specialization, certification_level, contact_number, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
       `;
       const mechanicResult = await client.query(insertSql, [
@@ -42,7 +51,9 @@ class MechanicModel {
         data.first_name,
         data.last_name,
         data.specialization,
+        data.certification_level || "Junior",
         data.contact_number,
+        data.status || "ACTIVE",
       ]);
       const newMechanic = mechanicResult.rows[0];
 
@@ -52,7 +63,7 @@ class MechanicModel {
       `;
       await client.query(auditSql, [
         userId,
-        data.branch_id, // Log the branch the mechanic was assigned to
+        data.branch_id,
         "MECHANIC_CREATED",
         "mechanics",
         newMechanic.id,
@@ -109,7 +120,7 @@ class MechanicModel {
       `;
       await client.query(auditSql, [
         userId,
-        targetBranchId, // The branch the mechanic currently belongs to (or was transferred to)
+        targetBranchId,
         "MECHANIC_UPDATED",
         "mechanics",
         id,
