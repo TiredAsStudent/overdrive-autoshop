@@ -10,23 +10,17 @@ const branchGuard = (req, res, next) => {
     );
   }
 
-  // SYSTEM ADMIN: Global access, can query any branch
-  if (req.user.role === "ADMIN") {
+  // SYSTEM ADMIN & MANAGER (OWNER): Global access
+  // They can query a specific branch via URL, otherwise it defaults to null (all branches)
+  if (req.user.role === "ADMIN" || req.user.role === "MANAGER") {
     req.branchId = req.query.branch_id
       ? parseInt(req.query.branch_id, 10)
-      : req.user.branchId;
-    return next();
-  }
-
-  // MANAGER: Might be locked to a branch, or might have global access (null)
-  if (req.user.role === "MANAGER") {
-    req.branchId =
-      req.user.branchId ||
-      (req.query.branch_id ? parseInt(req.query.branch_id, 10) : null);
+      : null;
     return next();
   }
 
   // STAFF: Strictly locked to their assigned branch in the JWT
+  // We completely ignore req.query.branch_id to prevent URL manipulation
   if (req.user.role === "STAFF") {
     if (!req.user.branchId) {
       return sendError(
@@ -40,7 +34,11 @@ const branchGuard = (req, res, next) => {
   }
 
   // CUSTOMER: Customers don't have branches, they have vehicles.
-  return sendError(res, STATUS_CODES.FORBIDDEN, "Access Denied.");
+  return sendError(
+    res,
+    STATUS_CODES.FORBIDDEN,
+    "Access Denied: Customers cannot perform branch operations.",
+  );
 };
 
 module.exports = branchGuard;
