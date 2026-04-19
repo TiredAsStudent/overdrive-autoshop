@@ -27,15 +27,15 @@ class SettingsController {
         // Fetch current settings to find the old logo
         const currentSettings = await SettingsService.getBusinessSettings();
 
-        // If an old logo exists, delete it ONLY IF the new one is about to be saved
+        // If an old logo exists, delete it safely
         if (currentSettings.logo_url) {
-          const oldFilePath = path.join(
-            __dirname,
-            "../../../",
-            currentSettings.logo_url,
-          );
+          const cleanPath = currentSettings.logo_url.replace(/^\//, "");
+
+          const oldFilePath = path.join(__dirname, "../../", cleanPath);
+
           if (fs.existsSync(oldFilePath)) {
             fs.unlinkSync(oldFilePath);
+            console.log("Cleanup: Deleted old logo to save space.");
           }
         }
 
@@ -55,17 +55,11 @@ class SettingsController {
         "Business settings updated successfully.",
       );
     } catch (error) {
-      // If Zod or the Service throws an error AND a file was uploaded, delete it!
-      if (req.file) {
-        const failedFilePath = path.join(
-          __dirname,
-          "../../../",
-          `uploads/branding/${req.file.filename}`,
-        );
-        if (fs.existsSync(failedFilePath)) {
-          fs.unlinkSync(failedFilePath);
+      if (req.file && req.file.path) {
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
           console.log(
-            "Cleanup: Deleted orphaned file due to validation failure.",
+            "Cleanup: Deleted orphaned file due to validation/DB failure.",
           );
         }
       }

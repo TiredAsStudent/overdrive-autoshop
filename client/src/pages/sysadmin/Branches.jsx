@@ -38,10 +38,10 @@ const Branches = () => {
     try {
       setLoading(true);
       const response = await branchApi.getAllBranches();
-      setBranches(response.data);
+      setBranches(response.data || response || []);
     } catch (error) {
       console.error("Failed to fetch branches:", error);
-      alert("Failed to load branch data.");
+      alert(error.message || "Failed to load branch data.");
     } finally {
       setLoading(false);
     }
@@ -61,10 +61,7 @@ const Branches = () => {
       setIsModalOpen(false);
       loadBranches();
     } catch (error) {
-      alert(
-        error.response?.data?.error?.message ||
-          "An error occurred saving the branch.",
-      );
+      alert(error.message || "An error occurred saving the branch.");
       throw error;
     }
   };
@@ -91,9 +88,7 @@ const Branches = () => {
           await branchApi.deleteBranch(id);
           loadBranches();
         } catch (error) {
-          alert(
-            error.response?.data?.error?.message || "Failed to archive branch.",
-          );
+          alert(error.message || "Failed to archive branch.");
         }
       },
     });
@@ -111,9 +106,7 @@ const Branches = () => {
           await branchApi.updateBranch(id, { is_active: true });
           loadBranches();
         } catch (error) {
-          alert(
-            error.response?.data?.error?.message || "Failed to restore branch.",
-          );
+          alert(error.message || "Failed to restore branch.");
         }
       },
     });
@@ -134,9 +127,7 @@ const Branches = () => {
           await branchApi.toggleMaintenance(id, !currentStatus);
           loadBranches();
         } catch (error) {
-          alert(
-            error.response?.data?.error?.message || "Failed to toggle mode.",
-          );
+          alert(error.message || "Failed to toggle mode.");
         }
       },
     });
@@ -193,7 +184,7 @@ const Branches = () => {
 
           <button
             onClick={handleCreate}
-            className="px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors whitespace-nowrap w-full sm:w-auto"
+            className="px-6 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto"
           >
             <Plus size={16} /> Add Branch
           </button>

@@ -13,7 +13,11 @@ const { STATUS_CODES } = require("./constants/statusCodes");
 const app = express();
 
 // --- SECURITY & GLOBAL MIDDLEWARE ---
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 app.set("trust proxy", 1);
 
 const allowedOrigin =
