@@ -19,8 +19,6 @@ const createBranchSchema = z.object({
       .email("Invalid email format")
       .optional()
       .or(z.literal("")),
-    invoice_header: z.string().optional(),
-    invoice_footer: z.string().optional(),
   }),
 });
 
@@ -33,8 +31,6 @@ const updateBranchSchema = z.object({
     tin: z.string().max(50).optional(),
     contact_number: z.string().max(50).optional(),
     contact_email: z.string().email().optional().or(z.literal("")),
-    invoice_header: z.string().optional(),
-    invoice_footer: z.string().optional(),
     is_active: z.boolean().optional(),
   }),
 });
