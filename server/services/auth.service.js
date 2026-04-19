@@ -1,7 +1,8 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
-const User = require("../models/User"); // We changed AuthModel to User
+const User = require("../models/User");
+const Branch = require("../models/Branch");
 const crypto = require("crypto");
 const { sendPasswordResetEmail } = require("../utils/mailer");
 
@@ -29,6 +30,22 @@ class AuthService {
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) throw new Error("Invalid credentials.");
+
+    if (user.role === "STAFF" && user.branch_id) {
+      const branch = await Branch.getStatusById(user.branch_id);
+
+      if (!branch) {
+        throw new Error("Your assigned branch does not exist.");
+      }
+      if (branch.is_maintenance_mode) {
+        throw new Error(
+          "Access Denied: Your branch is currently under Maintenance Mode.",
+        );
+      }
+      if (!branch.is_active) {
+        throw new Error("Access Denied: Your branch has been decommissioned.");
+      }
+    }
 
     const token = this.generateToken(user);
     await User.logAudit(

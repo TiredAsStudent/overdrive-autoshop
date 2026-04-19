@@ -22,12 +22,13 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Response Interceptor: Handle Global Errors (like Expired Tokens)
+// Response Interceptor: Handle Global Errors (like Expired Tokens or Locks)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const requestUrl = error.config?.url;
 
+    // Session Expired (401 Unauthorized)
     if (
       error.response &&
       error.response.status === 401 &&
@@ -37,6 +38,30 @@ api.interceptors.response.use(
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";
+    }
+
+    // Maintenance Mode Ejection & Archive Kicks (403 Forbidden)
+    if (error.response && error.response.status === 403) {
+      const errorMessage =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "";
+
+      if (errorMessage.includes("MAINTENANCE_MODE")) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        alert(
+          "SYSTEM LOCKED: Your branch is currently under Maintenance Mode. You have been securely logged out.",
+        );
+        window.location.href = "/login";
+      }
+
+      if (errorMessage.includes("BRANCH_ARCHIVED")) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        alert("ACCESS DENIED: Your assigned branch has been decommissioned.");
+        window.location.href = "/login";
+      }
     }
 
     return Promise.reject(error);

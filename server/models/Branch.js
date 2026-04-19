@@ -97,6 +97,12 @@ class Branch {
     const result = await query(sql, [id]);
     return result.rows[0];
   }
+
+  static async getStatusById(id) {
+    const sql = `SELECT is_active, is_maintenance_mode FROM branches WHERE id = $1`;
+    const result = await query(sql, [id]);
+    return result.rows[0];
+  }
 }
 
 module.exports = Branch;

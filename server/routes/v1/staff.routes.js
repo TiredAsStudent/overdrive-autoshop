@@ -22,7 +22,7 @@ const { ROLES } = require("../../constants/roles");
 // GLOBAL PORTAL SECURITY
 // Locks every single route below this line!
 // ==========================================
-router.use(verifyToken, requireRole([ROLES.STAFF, ROLES.ADMIN]));
+router.use(verifyToken, requireRole([ROLES.STAFF, ROLES.ADMIN]), branchGuard);
 
 // --- LOCAL STOCK ROOM ---
 // Accepts optional query param: ?search=oil
@@ -37,7 +37,7 @@ router.get(
 // These call the EXACT same logic as the Manager, but securely through the Staff portal API url!
 router.get("/accounts", AccountController.getAllCategories);
 router.get("/inventory/master", InventoryController.getInventory);
-router.get("/mechanics", branchGuard, MechanicController.getMechanics);
+router.get("/mechanics", MechanicController.getMechanics);
 router.get("/services", ServiceController.getServices);
 
 module.exports = router;
