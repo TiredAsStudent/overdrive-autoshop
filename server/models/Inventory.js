@@ -14,14 +14,11 @@ class InventoryModel {
         i.id, i.item_code, i.item_name, i.category, i.unit_cost, 
         i.reorder_level, i.is_active, i.last_restocked_at,
         
-        -- Enterprise Logic: Total Stock Math across all branches
         COALESCE(SUM(bi.stock_quantity), 0) AS total_physical_stock,
         COALESCE(SUM(bi.reserved_quantity), 0) AS total_reserved_stock,
         
-        -- Accounting Logic: Enterprise Asset Value (Stock * Cost)
         (COALESCE(SUM(bi.stock_quantity), 0) * i.unit_cost) AS total_asset_value,
 
-        -- Dynamic Multi-Branch Matrix
         COALESCE(
           json_agg(
             json_build_object(
@@ -30,7 +27,7 @@ class InventoryModel {
               'stock', bi.stock_quantity,
               'reserved', bi.reserved_quantity
             )
-          ) FILTER (WHERE bi.branch_id IS NOT NULL), '[]'
+          ) FILTER (WHERE bi.branch_id IS NOT NULL AND b.is_active = TRUE), '[]'
         ) AS branch_levels
       FROM inventory i
       LEFT JOIN branch_inventory bi ON i.id = bi.inventory_id
