@@ -35,7 +35,10 @@ class AccountController {
         "Chart of Account created successfully.",
       );
     } catch (error) {
-      if (error.message.includes("already in use")) {
+      if (
+        error.message.includes("already in use") ||
+        error.message.includes("Invalid code")
+      ) {
         return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
       }
       return sendError(res, STATUS_CODES.INTERNAL_ERROR, error.message);

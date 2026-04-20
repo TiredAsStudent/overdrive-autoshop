@@ -1,63 +1,52 @@
 import api from "./api";
 
-// Helper to determine which portal the user belongs to
-const getPortal = () => {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  return user?.role === "STAFF" ? "staff" : "manager";
-};
-
 const financeService = {
-  // Get all categories (Dynamically routes to /staff/accounts or /manager/accounts)
-  getCategories: async (typeFilter = "") => {
+  //  Get the 5 Mother Categories (Assets, Liabilities, Equity, Revenue, Expenses)
+  getBaseCategories: async () => {
     try {
-      const portal = getPortal();
-      const url = typeFilter
-        ? `/${portal}/accounts?type=${typeFilter}`
-        : `/${portal}/accounts`;
-      const response = await api.get(url);
+      const response = await api.get("/manager/accounts/categories");
       return response.data.data;
     } catch (error) {
       throw new Error(
-        error.response?.data?.error?.message || "Failed to fetch categories.",
+        error.response?.data?.error?.message ||
+          "Failed to fetch base categories.",
       );
     }
   },
 
-  // Create a new category (Strictly Manager)
-  createCategory: async (categoryData) => {
+  // Create a new Chart of Account
+  createAccount: async (accountData) => {
     try {
-      const response = await api.post("/manager/accounts", categoryData);
+      const response = await api.post("/manager/accounts", accountData);
       return response.data.data;
     } catch (error) {
       throw new Error(
-        error.response?.data?.error?.message || "Failed to create category.",
+        error.response?.data?.error?.message || "Failed to create account.",
       );
     }
   },
 
-  // Update a category (Strictly Manager)
-  updateCategory: async (id, updates) => {
+  // Update an existing account (Edit Label, Deactivate)
+  updateAccount: async (id, updates) => {
     try {
       const response = await api.put(`/manager/accounts/${id}`, updates);
       return response.data.data;
     } catch (error) {
       throw new Error(
-        error.response?.data?.error?.message || "Failed to update category.",
+        error.response?.data?.error?.message || "Failed to update account.",
       );
     }
   },
 
-  // Get Real-Time Balances (Strictly Manager)
-  getBalances: async (branchId = null) => {
+  // Get Enterprise Real-Time Balances (All branches side-by-side)
+  getMultiBranchBalances: async () => {
     try {
-      const url = branchId
-        ? `/manager/accounts/balances?branch_id=${branchId}`
-        : `/manager/accounts/balances`;
-      const response = await api.get(url);
+      const response = await api.get("/manager/accounts/balances");
       return response.data.data;
     } catch (error) {
       throw new Error(
-        error.response?.data?.error?.message || "Failed to fetch balances.",
+        error.response?.data?.error?.message ||
+          "Failed to fetch enterprise balances.",
       );
     }
   },

@@ -13,6 +13,12 @@ class AccountModel {
     return result.rows[0];
   }
 
+  static async getCategoryById(id) {
+    const sql = `SELECT category_name, code_range_start, code_range_end FROM account_categories WHERE id = $1`;
+    const result = await query(sql, [id]);
+    return result.rows[0];
+  }
+
   static async getAllCategories() {
     const sql = `SELECT * FROM account_categories ORDER BY id ASC`;
     const result = await query(sql);
@@ -141,6 +147,7 @@ class AccountModel {
         coa.account_code,
         coa.account_name,
         coa.staff_label,
+        coa.is_active, 
         ac.category_name,
         b.id as branch_id,
         b.branch_name,
@@ -149,7 +156,7 @@ class AccountModel {
       JOIN account_categories ac ON coa.category_id = ac.id
       CROSS JOIN branches b
       LEFT JOIN account_balances ab ON ab.account_id = coa.id AND ab.branch_id = b.id
-      WHERE b.is_active = TRUE AND coa.is_active = TRUE
+      WHERE b.is_active = TRUE -- Removed coa.is_active = TRUE here
       ORDER BY coa.account_code ASC, b.id ASC
     `;
     const result = await query(sql);
