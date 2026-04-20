@@ -1,16 +1,16 @@
-const InventoryLogic = require("../../services/inventory.service"); // Updated import path
+const InventoryService = require("../../services/inventory.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 
 class InventoryController {
   static async getInventory(req, res) {
     try {
-      const data = await InventoryLogic.getAllItems();
+      const data = await InventoryService.getAllItems();
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
         data,
-        "Inventory retrieved.",
+        "Master Inventory retrieved successfully.",
       );
     } catch (error) {
       return sendError(res, STATUS_CODES.INTERNAL_ERROR, error.message);
@@ -19,7 +19,7 @@ class InventoryController {
 
   static async createInventoryItem(req, res) {
     try {
-      const data = await InventoryLogic.createItem(
+      const data = await InventoryService.createItem(
         req.body,
         req.user.id,
         req.ip,
@@ -28,7 +28,7 @@ class InventoryController {
         res,
         STATUS_CODES.CREATED,
         data,
-        "Item added to Master Inventory.",
+        "Item added to Master Inventory. Branch trackers initialized.",
       );
     } catch (error) {
       if (error.message.includes("already exists")) {
@@ -40,7 +40,7 @@ class InventoryController {
 
   static async updateInventoryItem(req, res) {
     try {
-      const data = await InventoryLogic.updateItem(
+      const data = await InventoryService.updateItem(
         req.params.id,
         req.body,
         req.user.id,

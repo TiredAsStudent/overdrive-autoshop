@@ -3,7 +3,30 @@ const InventoryModel = require("../models/Inventory");
 class InventoryService {
   // --- FROM ADMIN/MANAGER (Master Inventory) ---
   static async getAllItems() {
-    return await InventoryModel.getAllInventoryItems();
+    const items = await InventoryModel.getAllInventoryItems();
+
+    // Apply Visual Status Logic to the Master Enterprise view
+    return items.map((item) => {
+      // Math: Available for Sale = Total Physical - Total Reserved
+      const availableQuantity =
+        Number(item.total_physical_stock) - Number(item.total_reserved_stock);
+
+      // Logic 1: Red vs Green Status
+      let status = "HEALTHY";
+      if (availableQuantity <= Number(item.reorder_level)) {
+        status = "LOW_STOCK";
+      }
+
+      // Logic 2: The Blue "Reserved" Status
+      const hasReserved = Number(item.total_reserved_stock) > 0;
+
+      return {
+        ...item,
+        available_quantity: availableQuantity,
+        status,
+        has_reserved: hasReserved,
+      };
+    });
   }
 
   static async createItem(data, userId, ipAddress) {
@@ -30,17 +53,11 @@ class InventoryService {
   static async getLocalStock(branchId, searchTerm) {
     const items = await InventoryModel.getLocalInventory(branchId, searchTerm);
 
-    // Apply the Visual Status Logic for the frontend
     return items.map((item) => {
-      // Logic 1: Red vs Green
-      let status = "HEALTHY"; // 🟢 Default Green
-
-      // If the available stock is less than or equal to the reorder level, it's low.
+      let status = "HEALTHY";
       if (Number(item.available_quantity) <= Number(item.reorder_level)) {
-        status = "LOW_STOCK"; // 🔴 Red
+        status = "LOW_STOCK";
       }
-
-      // Logic 2: The Blue "Reserved" Status
       const hasReserved = Number(item.reserved_quantity) > 0;
 
       return {

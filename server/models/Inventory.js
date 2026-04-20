@@ -1,4 +1,4 @@
-const { query, pool } = require("../config/db"); // Path updated
+const { query, pool } = require("../config/db");
 
 class InventoryModel {
   // --- ADMIN/MANAGER (Master Inventory) ---
@@ -13,6 +13,15 @@ class InventoryModel {
       SELECT 
         i.id, i.item_code, i.item_name, i.category, i.unit_cost, 
         i.reorder_level, i.is_active, i.last_restocked_at,
+        
+        -- Enterprise Logic: Total Stock Math across all branches
+        COALESCE(SUM(bi.stock_quantity), 0) AS total_physical_stock,
+        COALESCE(SUM(bi.reserved_quantity), 0) AS total_reserved_stock,
+        
+        -- Accounting Logic: Enterprise Asset Value (Stock * Cost)
+        (COALESCE(SUM(bi.stock_quantity), 0) * i.unit_cost) AS total_asset_value,
+
+        -- Dynamic Multi-Branch Matrix
         COALESCE(
           json_agg(
             json_build_object(
@@ -106,7 +115,7 @@ class InventoryModel {
         await client.query(sql, params);
       }
 
-      // 2. Log Audit securely within the transaction
+      // Log Audit securely within the transaction
       await client.query(
         `INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) VALUES ($1, $2, $3, $4, $5)`,
         [userId, "INVENTORY_ITEM_UPDATED", "inventory", id, ipAddress],
@@ -141,14 +150,12 @@ class InventoryModel {
     `;
     const params = [branchId];
 
-    // Optional Search Filter for the frontend search bar
     if (searchTerm) {
       sql += ` AND (i.item_name ILIKE $2 OR i.item_code ILIKE $2 OR i.category ILIKE $2)`;
       params.push(`%${searchTerm}%`);
     }
 
     sql += ` ORDER BY i.category ASC, i.item_name ASC`;
-
     const result = await query(sql, params);
     return result.rows;
   }
@@ -164,7 +171,7 @@ class InventoryModel {
       FROM branch_inventory bi
       JOIN branches b ON bi.branch_id = b.id
       WHERE bi.inventory_id = $1 
-        AND bi.branch_id != $2 -- Exclude the staff's current branch
+        AND bi.branch_id != $2
       ORDER BY b.branch_name ASC
     `;
     const result = await query(sql, [inventoryId, currentBranchId]);
