@@ -26,7 +26,7 @@ const AdminServices = () => {
   const [pricingSettings, setPricingSettings] = useState({
     markup: 25,
     tax: 12,
-  }); // NEW: Holds real DB rates
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -58,7 +58,6 @@ const AdminServices = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch Services, Inventory, Accounts, and Settings simultaneously
       const [servicesData, inventoryData, accountsData, settingsData] =
         await Promise.all([
           workshopService.getServices(),
@@ -70,7 +69,6 @@ const AdminServices = () => {
       setInventory(inventoryData);
       setAccounts(accountsData);
 
-      // Sync the UI with the database values!
       setPricingSettings({
         markup: parseFloat(settingsData?.markup_percentage) || 25,
         tax: parseFloat(settingsData?.vat_percentage) || 12,
@@ -96,7 +94,7 @@ const AdminServices = () => {
   }, [services, searchTerm]);
 
   useEffect(() => {
-    setCurrentPage(1); // Reset page on search
+    setCurrentPage(1);
   }, [searchTerm, itemsPerPage]);
 
   const totalItems = filteredServices.length;
@@ -125,6 +123,7 @@ const AdminServices = () => {
   const openCreateModal = () => {
     setModalMode("CREATE");
     setFormData(initialFormState);
+    setError(null); // Clear errors when opening modal
     setIsModalOpen(true);
   };
 
@@ -143,6 +142,7 @@ const AdminServices = () => {
         quantity_required: p.quantity,
       })),
     });
+    setError(null); // Clear errors when opening modal
     setIsModalOpen(true);
   };
 
@@ -198,7 +198,6 @@ const AdminServices = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
-    // Custom Validation
     if (!formData.revenue_account_id) {
       setError(
         "Accounting Error: You must link a Revenue Account to this service.",
@@ -207,7 +206,8 @@ const AdminServices = () => {
     }
 
     setIsSubmitting(true);
-    setError(null);
+    setError(null); // Clear previous errors
+
     try {
       const payload = {
         ...formData,
@@ -229,6 +229,7 @@ const AdminServices = () => {
       setIsModalOpen(false);
       await fetchData();
     } catch (err) {
+      // The specific Zod error (like "Duplicate parts") will appear here
       setError(err.message);
     } finally {
       setIsSubmitting(false);
@@ -240,7 +241,8 @@ const AdminServices = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 relative min-h-screen">
-      {error && (
+      {/* 0. MAIN PAGE ERROR BANNER (Only shows if modal is closed) */}
+      {!isModalOpen && error && (
         <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm font-bold flex justify-between items-center border border-red-200">
           <span>{error}</span>
           <button onClick={() => setError(null)}>
@@ -490,13 +492,38 @@ const AdminServices = () => {
                 </button>
               </div>
 
+              {/* --- INSIDE MODAL ERROR BANNER --- */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mx-4 sm:mx-8 mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-2xl flex justify-between items-start shadow-sm"
+                >
+                  <div className="flex items-start gap-3 text-red-600 dark:text-red-400">
+                    <ShieldCheck
+                      size={18}
+                      className="rotate-180 shrink-0 mt-0.5"
+                    />
+                    <span className="text-sm font-bold tracking-tight">
+                      {error}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setError(null)}
+                    className="text-red-400 hover:text-red-600 shrink-0 ml-4 p-1"
+                  >
+                    <X size={16} />
+                  </button>
+                </motion.div>
+              )}
+
               <form
                 onSubmit={handleFormSubmit}
-                className="flex-1 overflow-y-auto p-8 grid grid-cols-1 lg:grid-cols-5 gap-8"
+                className="flex-1 overflow-y-auto p-4 sm:p-8 grid grid-cols-1 lg:grid-cols-5 gap-8"
               >
                 {/* LEFT: Inputs */}
                 <div className="lg:col-span-3 space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-slate-400">
                         Service Title
@@ -532,7 +559,6 @@ const AdminServices = () => {
                     </div>
                   </div>
 
-                  {/* NEW: REVENUE ACCOUNT MAPPING */}
                   <div className="space-y-2 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-700/30 rounded-2xl">
                     <label className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                       <Landmark size={12} /> Revenue Account (Accounting Link)
@@ -569,7 +595,6 @@ const AdminServices = () => {
                             acc.name ||
                             acc.account_title ||
                             "Unnamed Account";
-
                           return (
                             <option key={id || index} value={id}>
                               [{code}] {name}
@@ -579,70 +604,84 @@ const AdminServices = () => {
                     </select>
                   </div>
 
-                  {/* Dynamic Parts Array */}
+                  {/* RESPONSIVE Parts Array */}
                   <div className="space-y-3 bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200 dark:border-white/10">
-                    <div className="flex justify-between items-center mb-2">
+                    <div className="flex justify-between items-center mb-4">
                       <label className="text-[10px] font-black uppercase text-slate-400">
                         Linked Inventory Parts
                       </label>
                       <button
                         type="button"
                         onClick={addPart}
-                        className="text-[10px] font-black uppercase text-amber-500 flex items-center gap-1 hover:bg-amber-50 dark:hover:bg-amber-500/10 px-2 py-1 rounded transition-colors"
+                        className="text-[10px] font-black uppercase text-amber-500 flex items-center gap-1 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-colors"
                       >
                         <Plus size={12} /> Add Part
                       </button>
                     </div>
 
-                    {formData.parts.map((part, index) => (
-                      <div key={index} className="flex gap-2 items-center">
-                        <select
-                          required
-                          value={part.inventory_id}
-                          onChange={(e) =>
-                            updatePart(index, "inventory_id", e.target.value)
-                          }
-                          className="flex-1 bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm dark:text-white focus:border-amber-500 outline-none"
+                    <div className="space-y-3">
+                      {formData.parts.map((part, index) => (
+                        <div
+                          key={index}
+                          className="flex flex-col sm:flex-row gap-2 sm:items-center bg-white dark:bg-black/20 sm:bg-transparent sm:dark:bg-transparent p-3 sm:p-0 rounded-xl border border-slate-200 dark:border-white/10 sm:border-none"
                         >
-                          <option value="" disabled>
-                            Select Part from Inventory...
-                          </option>
-                          {inventory.map((inv) => (
-                            <option key={inv.id} value={inv.id}>
-                              {inv.item_code} - {inv.item_name} (₱
-                              {inv.unit_cost})
+                          <select
+                            required
+                            value={part.inventory_id}
+                            onChange={(e) =>
+                              updatePart(index, "inventory_id", e.target.value)
+                            }
+                            className="w-full sm:flex-1 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm dark:text-white focus:border-amber-500 outline-none"
+                          >
+                            <option value="" disabled>
+                              Select Part from Inventory...
                             </option>
-                          ))}
-                        </select>
-                        <input
-                          required
-                          type="number"
-                          min="0.1"
-                          step="0.1"
-                          value={part.quantity_required}
-                          onChange={(e) =>
-                            updatePart(
-                              index,
-                              "quantity_required",
-                              e.target.value,
-                            )
-                          }
-                          className="w-24 bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-center dark:text-white focus:border-amber-500 outline-none"
-                          placeholder="Qty"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removePart(index)}
-                          className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))}
+                            {inventory.map((inv) => (
+                              <option key={inv.id} value={inv.id}>
+                                {inv.item_code} - {inv.item_name} (₱
+                                {inv.unit_cost})
+                              </option>
+                            ))}
+                          </select>
+
+                          <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                            <input
+                              required
+                              type="number"
+                              min="0.1"
+                              step="0.1"
+                              value={part.quantity_required}
+                              onChange={(e) =>
+                                updatePart(
+                                  index,
+                                  "quantity_required",
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full sm:w-24 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-center dark:text-white focus:border-amber-500 outline-none"
+                              placeholder="Qty"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removePart(index)}
+                              className="p-2 w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-xl shrink-0 transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                     {formData.parts.length === 0 && (
-                      <p className="text-xs text-slate-400 italic text-center py-2">
-                        No parts linked. This will be a Labor-Only service.
-                      </p>
+                      <div className="py-6 text-center border-2 border-dashed border-slate-200 dark:border-white/5 rounded-xl">
+                        <Package
+                          size={24}
+                          className="mx-auto mb-2 text-slate-300 dark:text-slate-600"
+                        />
+                        <p className="text-xs text-slate-400 italic">
+                          No parts linked. This will be a Labor-Only service.
+                        </p>
+                      </div>
                     )}
                   </div>
 
@@ -692,7 +731,7 @@ const AdminServices = () => {
                 </div>
 
                 {/* RIGHT: Live Preview */}
-                <div className="lg:col-span-2 bg-slate-900 rounded-3xl p-6 text-white relative overflow-hidden flex flex-col">
+                <div className="lg:col-span-2 bg-slate-900 rounded-3xl p-6 text-white relative overflow-hidden flex flex-col mt-4 lg:mt-0">
                   <div className="absolute right-0 top-0 p-4 opacity-5">
                     <Calculator size={150} />
                   </div>

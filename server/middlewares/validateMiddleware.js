@@ -29,13 +29,21 @@ const validate = (schema) => (req, res, next) => {
       }
     }
 
-    let errorMessages = "Validation failed: Invalid input data.";
+    let errorMessage = "Validation failed: Invalid input data.";
 
     try {
-      if (result.error && Array.isArray(result.error.issues)) {
-        errorMessages = result.error.issues.map((e) => e.message).join(" | ");
-      } else if (result.error && Array.isArray(result.error.errors)) {
-        errorMessages = result.error.errors.map((e) => e.message).join(" | ");
+      if (
+        result.error &&
+        Array.isArray(result.error.issues) &&
+        result.error.issues.length > 0
+      ) {
+        errorMessage = result.error.issues[0].message;
+      } else if (
+        result.error &&
+        Array.isArray(result.error.errors) &&
+        result.error.errors.length > 0
+      ) {
+        errorMessage = result.error.errors[0].message;
       }
     } catch (fallbackError) {
       console.error("Could not format Zod error cleanly:", fallbackError);
@@ -44,8 +52,8 @@ const validate = (schema) => (req, res, next) => {
     return sendError(
       res,
       STATUS_CODES.BAD_REQUEST,
-      "Validation Failed",
-      errorMessages,
+      errorMessage,
+      result.error.issues,
     );
   }
 
