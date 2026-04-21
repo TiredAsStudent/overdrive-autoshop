@@ -8,6 +8,7 @@ const InventoryController = require("../../controllers/manager/inventory.control
 const MechanicController = require("../../controllers/manager/mechanic.controller");
 const ServiceController = require("../../controllers/manager/service.controller");
 const BranchController = require("../../controllers/manager/branch.controller");
+const SettingsController = require("../../controllers/sysadmin/settings.controller");
 
 // Import Security Guards & Validations
 const validate = require("../../middlewares/validateMiddleware");
@@ -96,6 +97,7 @@ router.put(
 );
 // --- SYSTEM HELPERS ---
 router.get("/branches", BranchController.getBranches);
+router.get("/settings", SettingsController.getSettings);
 
 // --- SERVICES (COMBO MEALS) ---
 router.get("/services", ServiceController.getServices);

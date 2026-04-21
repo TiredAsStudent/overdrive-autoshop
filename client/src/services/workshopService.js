@@ -7,7 +7,6 @@ const getPortal = () => {
 
 const workshopService = {
   // --- MECHANICS ---
-  // Shared Route (Dynamically routes to /staff/mechanics or /manager/mechanics)
   getMechanics: async () => {
     try {
       const response = await api.get(`/${getPortal()}/mechanics`);
@@ -19,7 +18,6 @@ const workshopService = {
     }
   },
 
-  // Admin Only: Hire a new mechanic
   createMechanic: async (mechanicData) => {
     try {
       const response = await api.post("/manager/mechanics", mechanicData);
@@ -31,7 +29,6 @@ const workshopService = {
     }
   },
 
-  // Admin Only: Update, Transfer, or Deactivate a mechanic
   updateMechanic: async (id, updates) => {
     try {
       const response = await api.put(`/manager/mechanics/${id}`, updates);
@@ -43,7 +40,7 @@ const workshopService = {
     }
   },
 
-  // --- SYSTEM HELPER (For Dynamic Dropdowns) ---
+  // --- SYSTEM HELPER ---
   getBranches: async () => {
     try {
       const response = await api.get("/manager/branches");
@@ -56,7 +53,6 @@ const workshopService = {
   },
 
   // --- SERVICES / COMBO MEALS  ---
-  // Shared Route
   getServices: async () => {
     try {
       const response = await api.get(`/${getPortal()}/services`);
@@ -68,7 +64,6 @@ const workshopService = {
     }
   },
 
-  // Admin Only
   createService: async (serviceData) => {
     try {
       const response = await api.post("/manager/services", serviceData);
@@ -81,7 +76,6 @@ const workshopService = {
     }
   },
 
-  // Admin Only
   updateService: async (id, updates) => {
     try {
       const response = await api.put(`/manager/services/${id}`, updates);
@@ -94,7 +88,7 @@ const workshopService = {
     }
   },
 
-  // --- INVENTORY HELPER (For the Dropdown) ---
+  // --- DEPENDENCY HELPERS (Inventory & Accounts) ---
   getInventory: async () => {
     try {
       const portal = getPortal();
@@ -104,7 +98,34 @@ const workshopService = {
       return response.data.data;
     } catch (error) {
       console.warn("Inventory API not ready yet or failed:", error);
-      return []; // Return empty array so UI doesn't crash
+      return [];
+    }
+  },
+
+  getAccounts: async () => {
+    try {
+      const response = await api.get("/manager/accounts/balances");
+      let data = response.data.data;
+
+      // this flattens it into one list!
+      if (data && !Array.isArray(data) && typeof data === "object") {
+        data = Object.values(data).flat();
+      }
+
+      return data || [];
+    } catch (error) {
+      console.warn("Accounts API not ready yet or failed:", error);
+      return [];
+    }
+  },
+
+  getSystemSettings: async () => {
+    try {
+      const response = await api.get("/manager/settings");
+      return response.data.data;
+    } catch (error) {
+      console.warn("Settings API failed, falling back to defaults.", error);
+      return { markup_percentage: 25, vat_percentage: 12 };
     }
   },
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Package,
@@ -12,15 +12,28 @@ import {
   X,
   Loader2,
   Save,
+  ChevronLeft,
+  ChevronRight,
+  Landmark,
 } from "lucide-react";
 import workshopService from "../../services/workshopService";
 
 const AdminServices = () => {
   // --- UI & DATA STATE ---
   const [services, setServices] = useState([]);
-  const [inventory, setInventory] = useState([]); // Needed for the dropdown
+  const [inventory, setInventory] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [pricingSettings, setPricingSettings] = useState({
+    markup: 25,
+    tax: 12,
+  }); // NEW: Holds real DB rates
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // --- PAGINATION STATE ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(6);
 
   // --- MODAL STATE ---
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,27 +42,39 @@ const AdminServices = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- FORM STATE ---
-  const [formData, setFormData] = useState({
+  const initialFormState = {
     name: "",
     category: "Maintenance",
     labor_fee: 0,
+    revenue_account_id: "",
     description: "",
     is_active: true,
-    parts: [], // Array of { inventory_id, quantity_required }
-  });
+    parts: [],
+  };
+  const [formData, setFormData] = useState(initialFormState);
 
   // --- DATA FETCHING ---
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch both Services and Inventory simultaneously
-      const [servicesData, inventoryData] = await Promise.all([
-        workshopService.getServices(),
-        workshopService.getInventory(),
-      ]);
+      // Fetch Services, Inventory, Accounts, and Settings simultaneously
+      const [servicesData, inventoryData, accountsData, settingsData] =
+        await Promise.all([
+          workshopService.getServices(),
+          workshopService.getInventory(),
+          workshopService.getAccounts(),
+          workshopService.getSystemSettings(),
+        ]);
       setServices(servicesData);
       setInventory(inventoryData);
+      setAccounts(accountsData);
+
+      // Sync the UI with the database values!
+      setPricingSettings({
+        markup: parseFloat(settingsData?.markup_percentage) || 25,
+        tax: parseFloat(settingsData?.vat_percentage) || 12,
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -61,17 +86,45 @@ const AdminServices = () => {
     fetchData();
   }, [fetchData]);
 
+  // --- FILTERING & PAGINATION LOGIC ---
+  const filteredServices = useMemo(() => {
+    return services.filter(
+      (service) =>
+        service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        service.category.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [services, searchTerm]);
+
+  useEffect(() => {
+    setCurrentPage(1); // Reset page on search
+  }, [searchTerm, itemsPerPage]);
+
+  const totalItems = filteredServices.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedServices = filteredServices.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, currentPage - 2);
+      let end = Math.min(totalPages, currentPage + 2);
+      if (currentPage <= 3) end = maxVisiblePages;
+      else if (currentPage >= totalPages - 2)
+        start = totalPages - maxVisiblePages + 1;
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
+
   // --- MODAL HANDLERS ---
   const openCreateModal = () => {
     setModalMode("CREATE");
-    setFormData({
-      name: "",
-      category: "Maintenance",
-      labor_fee: 0,
-      description: "",
-      is_active: true,
-      parts: [],
-    });
+    setFormData(initialFormState);
     setIsModalOpen(true);
   };
 
@@ -82,6 +135,7 @@ const AdminServices = () => {
       name: service.name,
       category: service.category,
       labor_fee: service.labor_fee,
+      revenue_account_id: service.revenue_account_id || "",
       description: service.description || "",
       is_active: service.is_active,
       parts: service.parts.map((p) => ({
@@ -111,12 +165,11 @@ const AdminServices = () => {
     setFormData({ ...formData, parts: newParts });
   };
 
-  // --- LIVE PREVIEW CALCULATOR (Mimics Backend Settings) ---
+  // --- LIVE PREVIEW CALCULATOR ---
   const calculatePreview = () => {
-    const GLOBAL_MARKUP = 0.25; // 25%
-    const GLOBAL_TAX = 0.12; // 12%
+    const GLOBAL_MARKUP = pricingSettings.markup / 100;
+    const GLOBAL_TAX = pricingSettings.tax / 100;
 
-    // Sum up the unit costs of selected inventory items
     const partsBaseCost = formData.parts.reduce((sum, p) => {
       const item = inventory.find((i) => i.id === parseInt(p.inventory_id));
       const cost = item ? parseFloat(item.unit_cost) : 0;
@@ -144,12 +197,22 @@ const AdminServices = () => {
   // --- SUBMIT HANDLER ---
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+
+    // Custom Validation
+    if (!formData.revenue_account_id) {
+      setError(
+        "Accounting Error: You must link a Revenue Account to this service.",
+      );
+      return;
+    }
+
     setIsSubmitting(true);
+    setError(null);
     try {
-      // Ensure data types are correct before sending
       const payload = {
         ...formData,
         labor_fee: parseFloat(formData.labor_fee),
+        revenue_account_id: parseInt(formData.revenue_account_id),
         parts: formData.parts
           .filter((p) => p.inventory_id !== "")
           .map((p) => ({
@@ -164,7 +227,7 @@ const AdminServices = () => {
         await workshopService.updateService(editingId, payload);
       }
       setIsModalOpen(false);
-      await fetchData(); // Refresh list
+      await fetchData();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -193,29 +256,33 @@ const AdminServices = () => {
             The Recipe Book
           </h1>
           <p className="text-slate-500 dark:text-gray-400 mt-2">
-            Configure standardized service packages. Prices update automatically
-            when supplier costs change in the Approval Queue.
+            Configure standardized service packages. Link labor and inventory
+            directly to your Chart of Accounts.
           </p>
-
-          <div className="mt-6 p-4 bg-slate-900 rounded-2xl border border-white/10 shadow-xl relative overflow-hidden">
-            <div className="absolute right-0 top-0 opacity-10 p-4">
-              <Calculator size={64} />
-            </div>
-            <p className="text-[10px] font-black uppercase text-amber-500 mb-2 flex items-center gap-2">
-              <ShieldCheck size={12} /> Global Pricing Formula (Protected)
-            </p>
-            <div className="text-white font-mono text-xs overflow-x-auto pb-2 relative z-10">
-              Total = ((∑ Parts Cost × Global Markup) + Labor Fee) + Tax
-            </div>
-          </div>
         </div>
 
-        <button
-          onClick={openCreateModal}
-          className="px-8 py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-amber-500/20 uppercase text-sm whitespace-nowrap"
-        >
-          <Plus size={20} /> New Combo Meal
-        </button>
+        <div className="flex flex-col items-end gap-4 w-full xl:w-auto">
+          <button
+            onClick={openCreateModal}
+            className="px-8 py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/20 uppercase text-sm w-full xl:w-auto whitespace-nowrap"
+          >
+            <Plus size={20} /> New Combo Meal
+          </button>
+
+          <div className="relative w-full xl:w-72">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+            />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search Service Name..."
+              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl outline-none focus:border-amber-500 text-sm font-bold dark:text-white shadow-sm"
+            />
+          </div>
+        </div>
       </div>
 
       {/* 2. SERVICES GRID */}
@@ -223,51 +290,70 @@ const AdminServices = () => {
         <div className="flex flex-col items-center py-20">
           <Loader2 className="animate-spin text-amber-500" size={48} />
         </div>
+      ) : paginatedServices.length === 0 ? (
+        <div className="text-center py-20 text-slate-500 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
+          <Package size={48} className="mx-auto mb-4 opacity-20" />
+          <p className="font-bold">No combo meals found.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {services.map((service) => (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {paginatedServices.map((service) => (
             <motion.div
               key={service.id}
               whileHover={{ y: -4 }}
               className={`bg-white dark:bg-slate-800 rounded-3xl border ${service.is_active ? "border-slate-200 dark:border-white/10" : "border-red-200 opacity-75 grayscale-[30%]"} overflow-hidden shadow-sm flex flex-col`}
             >
               <div className="p-6 border-b border-slate-50 dark:border-white/5 flex justify-between items-start">
-                <div>
-                  <span className="px-2 py-1 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                    {service.category} {service.is_active ? "" : " (INACTIVE)"}
-                  </span>
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white mt-2">
+                <div className="flex-1 pr-4">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <span className="px-2 py-1 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                      {service.category}{" "}
+                      {service.is_active ? "" : " (INACTIVE)"}
+                    </span>
+                    {/* ACCOUNTING LINK BADGE */}
+                    {service.account_code && (
+                      <span className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 border border-emerald-500/20">
+                        <Landmark size={10} /> ACC: {service.account_code}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">
                     {service.name}
                   </h3>
                 </div>
                 <button
                   onClick={() => openEditModal(service)}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400 hover:text-amber-500 transition-colors"
+                  className="p-2 bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-amber-500 transition-colors shrink-0"
                 >
                   <Edit size={18} />
                 </button>
               </div>
 
-              <div className="p-6 flex-1 space-y-4">
-                <div className="space-y-2">
+              <div className="p-6 flex-1 flex flex-col space-y-4">
+                <div className="space-y-2 flex-1">
                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">
                     Recipe Ingredients
                   </p>
                   {service.parts && service.parts.length > 0 ? (
-                    service.parts.map((p, i) => (
-                      <div
-                        key={i}
-                        className="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-gray-300"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Package size={14} className="text-amber-500" />{" "}
-                          {p.part_name} (x{p.quantity})
-                        </span>
-                        <span className="font-mono text-xs opacity-60">
-                          ₱{p.unit_cost} ea
-                        </span>
-                      </div>
-                    ))
+                    <div className="space-y-2">
+                      {service.parts.map((p, i) => (
+                        <div
+                          key={i}
+                          className="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-gray-300"
+                        >
+                          <span className="flex items-center gap-2 truncate pr-2">
+                            <Package
+                              size={14}
+                              className="text-amber-500 shrink-0"
+                            />
+                            <span className="truncate">{p.part_name}</span>
+                            <span className="text-slate-400 shrink-0">
+                              (x{p.quantity})
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <p className="text-xs text-slate-400 italic">
                       Labor only (No parts required)
@@ -282,7 +368,7 @@ const AdminServices = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 mt-4 border-t border-slate-50 dark:border-white/5 flex justify-between items-end">
+                <div className="pt-4 mt-auto border-t border-slate-50 dark:border-white/5 flex justify-between items-end">
                   <div>
                     <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-500 uppercase">
                       <ShieldCheck size={12} /> Inflation Guard Active
@@ -292,7 +378,7 @@ const AdminServices = () => {
                     <p className="text-[10px] font-black text-slate-400 uppercase">
                       Standard Retail Price
                     </p>
-                    <p className="text-2xl font-black text-slate-900 dark:text-white">
+                    <p className="text-2xl font-black text-slate-900 dark:text-white leading-none mt-1">
                       {formatMoney(service.pricing_breakdown?.grand_total || 0)}
                     </p>
                   </div>
@@ -300,17 +386,79 @@ const AdminServices = () => {
               </div>
             </motion.div>
           ))}
-
-          {services.length === 0 && (
-            <div className="col-span-1 md:col-span-2 text-center py-20 text-slate-500">
-              <Package size={48} className="mx-auto mb-4 opacity-20" />
-              <p className="font-bold">No combo meals found.</p>
-            </div>
-          )}
         </div>
       )}
 
-      {/* 3. COMBO MEAL BUILDER MODAL */}
+      {/* 3. PREMIUM NUMBERED PAGINATION FOOTER */}
+      {!isLoading && totalItems > 0 && (
+        <div className="p-4 sm:px-6 border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-800 rounded-3xl shadow-sm">
+          <div className="flex items-center gap-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <span>
+              Showing{" "}
+              <span className="text-slate-900 dark:text-white">
+                {startIndex + 1}
+              </span>{" "}
+              -{" "}
+              <span className="text-slate-900 dark:text-white">
+                {Math.min(endIndex, totalItems)}
+              </span>{" "}
+              of{" "}
+              <span className="text-slate-900 dark:text-white">
+                {totalItems}
+              </span>
+            </span>
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
+            <div className="hidden sm:flex items-center gap-2">
+              <span>Cards:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 outline-none focus:border-amber-500 cursor-pointer text-slate-900 dark:text-white transition-colors"
+              >
+                <option value={6}>6</option>
+                <option value={12}>12</option>
+                <option value={24}>24</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-white/10">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronLeft size={18} />
+            </button>
+
+            <div className="flex items-center px-1 gap-1">
+              {getPageNumbers().map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`min-w-[28px] h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                    currentPage === page
+                      ? "bg-amber-500 text-slate-900 shadow-md shadow-amber-500/20"
+                      : "text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. COMBO MEAL BUILDER MODAL */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -328,7 +476,8 @@ const AdminServices = () => {
               className="relative bg-white dark:bg-slate-800 w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-                <h3 className="text-xl font-black text-slate-900 dark:text-white italic uppercase tracking-tight">
+                <h3 className="text-xl font-black text-slate-900 dark:text-white italic uppercase tracking-tight flex items-center gap-2">
+                  <Landmark className="text-emerald-500" size={24} />
                   {modalMode === "CREATE"
                     ? "New Combo Meal Builder"
                     : "Edit Recipe"}
@@ -381,6 +530,53 @@ const AdminServices = () => {
                         <option value="Electrical">Electrical</option>
                       </select>
                     </div>
+                  </div>
+
+                  {/* NEW: REVENUE ACCOUNT MAPPING */}
+                  <div className="space-y-2 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-700/30 rounded-2xl">
+                    <label className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Landmark size={12} /> Revenue Account (Accounting Link)
+                    </label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 italic">
+                      Where should the profit from this service go in the
+                      ledger?
+                    </p>
+                    <select
+                      required
+                      value={formData.revenue_account_id}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          revenue_account_id: e.target.value,
+                        })
+                      }
+                      className="w-full bg-white dark:bg-black/40 border border-emerald-200 dark:border-emerald-700/30 rounded-xl px-4 py-3 font-bold text-slate-700 dark:text-white focus:border-emerald-500 outline-none"
+                    >
+                      <option value="" disabled>
+                        Select Chart of Account...
+                      </option>
+                      {accounts
+                        .filter(
+                          (acc) =>
+                            String(acc.code).startsWith("4") ||
+                            String(acc.name).toLowerCase().includes("revenue"),
+                        )
+                        .map((acc, index) => {
+                          const id = acc.id || acc.account_id;
+                          const code = acc.account_code || acc.code || "CODE";
+                          const name =
+                            acc.account_name ||
+                            acc.name ||
+                            acc.account_title ||
+                            "Unnamed Account";
+
+                          return (
+                            <option key={id || index} value={id}>
+                              [{code}] {name}
+                            </option>
+                          );
+                        })}
+                    </select>
                   </div>
 
                   {/* Dynamic Parts Array */}
@@ -515,7 +711,7 @@ const AdminServices = () => {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-400 font-bold">
-                        Global Markup (25%)
+                        Global Markup ({pricingSettings.markup}%)
                       </span>
                       <span className="text-emerald-400 font-mono">
                         +
@@ -544,7 +740,7 @@ const AdminServices = () => {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-400 font-bold">
-                          VAT (12%)
+                          VAT ({pricingSettings.tax}%)
                         </span>
                         <span className="text-red-400 font-mono">
                           +{formatMoney(preview.tax)}
