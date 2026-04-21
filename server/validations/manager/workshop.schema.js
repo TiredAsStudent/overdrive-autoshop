@@ -35,6 +35,10 @@ const createServiceSchema = z.object({
       .max(150),
     category: z.string().min(2, "Category is required").max(50),
     labor_fee: z.coerce.number().min(0, "Labor fee cannot be negative"),
+    revenue_account_id: z.coerce
+      .number()
+      .int()
+      .positive("Revenue Account mapping is required for accounting."),
     description: z.string().optional(),
     parts: z
       .array(
@@ -44,7 +48,7 @@ const createServiceSchema = z.object({
         }),
       )
       .optional()
-      .default([]) // Allow services with zero parts (Labor-only)
+      .default([])
       .refine(
         (items) => {
           const ids = items.map((item) => item.inventory_id);
@@ -60,6 +64,7 @@ const updateServiceSchema = z.object({
     name: z.string().min(3).max(150).optional(),
     category: z.string().min(2).max(50).optional(),
     labor_fee: z.coerce.number().min(0).optional(),
+    revenue_account_id: z.coerce.number().int().positive().optional(),
     description: z.string().optional(),
     is_active: z.boolean().optional(),
     parts: z
@@ -72,7 +77,6 @@ const updateServiceSchema = z.object({
       .optional()
       .refine(
         (items) => {
-          // If undefined (not updating parts), skip the check
           if (!items) return true;
           const ids = items.map((item) => item.inventory_id);
           return new Set(ids).size === ids.length;

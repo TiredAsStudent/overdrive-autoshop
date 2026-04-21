@@ -18,9 +18,7 @@ class WorkshopService {
 
   static async updateMechanic(id, updates, userId, ipAddress) {
     const existing = await MechanicModel.findMechanicById(id);
-    if (!existing) {
-      throw new Error("Mechanic not found.");
-    }
+    if (!existing) throw new Error("Mechanic not found.");
 
     const safeUpdates = {};
     if (updates.first_name !== undefined)
@@ -31,20 +29,16 @@ class WorkshopService {
       safeUpdates.specialization = updates.specialization;
     if (updates.contact_number !== undefined)
       safeUpdates.contact_number = updates.contact_number;
-
     if (updates.certification_level !== undefined)
       safeUpdates.certification_level = updates.certification_level;
     if (updates.status !== undefined) safeUpdates.status = updates.status;
     if (updates.branch_id !== undefined)
       safeUpdates.branch_id = updates.branch_id;
 
-    if (Object.keys(safeUpdates).length === 0) {
+    if (Object.keys(safeUpdates).length === 0)
       throw new Error("No valid fields provided for update.");
-    }
 
-    // Identify which branch gets the audit log (handles branch transfers)
     const targetBranchId = safeUpdates.branch_id || existing.branch_id;
-
     return await MechanicModel.updateMechanicAndLogAudit(
       id,
       safeUpdates,
@@ -61,8 +55,8 @@ class WorkshopService {
     const settingsSql = `SELECT markup_percentage, vat_percentage FROM system_settings WHERE id = 1`;
     const settingsResult = await query(settingsSql);
 
-    let GLOBAL_MARKUP_PERCENT = 0.25; // 25% Markup default
-    let GLOBAL_TAX_RATE = 0.12; // 12% VAT default
+    let GLOBAL_MARKUP_PERCENT = 0.25;
+    let GLOBAL_TAX_RATE = 0.12;
 
     if (settingsResult.rows.length > 0) {
       const settings = settingsResult.rows[0];
@@ -128,6 +122,8 @@ class WorkshopService {
     if (data.name !== undefined) safeUpdates.name = data.name;
     if (data.category !== undefined) safeUpdates.category = data.category;
     if (data.labor_fee !== undefined) safeUpdates.labor_fee = data.labor_fee;
+    if (data.revenue_account_id !== undefined)
+      safeUpdates.revenue_account_id = data.revenue_account_id;
     if (data.description !== undefined)
       safeUpdates.description = data.description;
     if (data.is_active !== undefined) safeUpdates.is_active = data.is_active;

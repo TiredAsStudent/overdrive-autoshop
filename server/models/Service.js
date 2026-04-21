@@ -1,4 +1,4 @@
-const { query, pool } = require("../config/db"); // Path updated
+const { query, pool } = require("../config/db");
 
 class ServiceModel {
   static async findServiceByName(name) {
@@ -13,11 +13,11 @@ class ServiceModel {
     return result.rows[0];
   }
 
-  // The Dynamic Query: Pulls real-time inventory costs
   static async getAllServices(onlyActive = false) {
     let sql = `
       SELECT 
         s.id, s.name, s.category, s.labor_fee, s.description, s.is_active,
+        s.revenue_account_id, a.account_code, a.account_name,
         COALESCE(SUM(i.unit_cost * sp.quantity_required), 0) AS total_parts_base_cost,
         COALESCE(
           json_agg(
@@ -32,8 +32,9 @@ class ServiceModel {
       FROM services s
       LEFT JOIN service_parts sp ON s.id = sp.service_id
       LEFT JOIN inventory i ON sp.inventory_id = i.id
+      LEFT JOIN chart_of_accounts a ON s.revenue_account_id = a.id
       ${onlyActive ? `WHERE s.is_active = TRUE` : ``}
-      GROUP BY s.id
+      GROUP BY s.id, a.id
       ORDER BY s.category ASC, s.name ASC;
     `;
     const result = await query(sql);
@@ -50,21 +51,20 @@ class ServiceModel {
     try {
       await client.query("BEGIN");
 
-      // 1. Insert the parent Service
       const insertServiceSql = `
-        INSERT INTO services (name, category, labor_fee, description)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO services (name, category, labor_fee, revenue_account_id, description)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id;
       `;
       const sResult = await client.query(insertServiceSql, [
         serviceData.name,
         serviceData.category,
         serviceData.labor_fee,
+        serviceData.revenue_account_id,
         serviceData.description,
       ]);
       const newServiceId = sResult.rows[0].id;
 
-      // 2. Insert the Parts (if any)
       if (partsArray && partsArray.length > 0) {
         const partInsertValues = partsArray
           .map((_, index) => `($1, $${index * 2 + 2}, $${index * 2 + 3})`)
@@ -79,7 +79,6 @@ class ServiceModel {
         await client.query(insertPartsSql, partParams);
       }
 
-      // 3. Log Audit
       const auditSql = `
         INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) 
         VALUES ($1, $2, $3, $4, $5)
@@ -113,7 +112,6 @@ class ServiceModel {
     try {
       await client.query("BEGIN");
 
-      // 1. Update the Service Details
       const fields = [];
       const params = [id];
       let paramIndex = 2;
@@ -132,7 +130,6 @@ class ServiceModel {
         await client.query(updateSql, params);
       }
 
-      // 2. Update Parts (Wipe old parts and insert new ones to avoid complex diffing)
       if (partsArray !== undefined) {
         await client.query(`DELETE FROM service_parts WHERE service_id = $1`, [
           id,
@@ -153,7 +150,6 @@ class ServiceModel {
         }
       }
 
-      // 3. Log Audit
       const auditSql = `
         INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) 
         VALUES ($1, $2, $3, $4, $5)

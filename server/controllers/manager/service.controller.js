@@ -1,4 +1,4 @@
-const WorkshopServiceLogic = require("../../services/workshop.service"); // Updated import path
+const WorkshopServiceLogic = require("../../services/workshop.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 
@@ -26,10 +26,7 @@ class ServiceController {
 
   static async getServices(req, res) {
     try {
-      // If Staff asks for the list, only return ACTIVE services for the Quick-Buttons.
-      // If Admin asks, return all (active and inactive) for management.
       const onlyActive = req.user.role === "STAFF";
-
       const data =
         await WorkshopServiceLogic.getServicesWithDynamicPricing(onlyActive);
       return sendSuccess(
