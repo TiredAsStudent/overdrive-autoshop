@@ -1,9 +1,9 @@
 const jwt = require("jsonwebtoken");
+const { query } = require("../config/db");
 const { sendError } = require("../utils/responseHandler");
 const { STATUS_CODES } = require("../constants/statusCodes");
 
-// Verify the JSON Web Token
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -17,7 +17,36 @@ const verifyToken = (req, res, next) => {
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Attach the user's ID, Role, and Branch directly to the request object
+    // ====================================================
+    // KILL-SWITCH CHECK: Verify token_version against DB
+    // ====================================================
+    const sql = `SELECT token_version, is_active FROM users WHERE id = $1`;
+    const result = await query(sql, [decoded.id]);
+
+    const dbUser = result.rows[0];
+
+    if (!dbUser) {
+      return sendError(res, STATUS_CODES.FORBIDDEN, "User no longer exists.");
+    }
+
+    if (!dbUser.is_active) {
+      return sendError(
+        res,
+        STATUS_CODES.FORBIDDEN,
+        "Account has been deactivated.",
+      );
+    }
+
+    // If the Admin triggered the Kill-Switch, the database version will be higher
+    if (dbUser.token_version !== decoded.token_version) {
+      return sendError(
+        res,
+        STATUS_CODES.FORBIDDEN,
+        "Session revoked by Administrator. Please log in again.",
+      );
+    }
+
+    // Attach decoded user data to request
     req.user = decoded;
     next();
   } catch (error) {
@@ -36,14 +65,13 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// Role-Based Access Control (Check if Admin or Staff)
 const requireRole = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
       return sendError(
         res,
         STATUS_CODES.FORBIDDEN,
-        "Access denied. Insufficient permissions for this action.",
+        "Access denied. Insufficient permissions.",
       );
     }
     next();

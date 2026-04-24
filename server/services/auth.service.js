@@ -9,17 +9,22 @@ const { sendPasswordResetEmail } = require("../utils/mailer");
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 class AuthService {
-  // --Generate Token--
+  // ==========================================
+  // TOKEN GENERATOR
+  // ==========================================
   static generateToken(user) {
     const payload = {
       id: user.id,
       role: user.role,
       branchId: user.branch_id,
+      token_version: user.token_version,
     };
     return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "12h" });
   }
 
-  // --Login with Email--
+  // ==========================================
+  // LOGIN FLOWS
+  // ==========================================
   static async loginWithEmail(email, password, ipAddress) {
     const user = await User.findUserByEmail(email);
 
@@ -31,7 +36,10 @@ class AuthService {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) throw new Error("Invalid credentials.");
 
-    if (user.role === "STAFF" && user.branch_id) {
+    if (user.role === "STAFF") {
+      if (!user.branch_id) {
+        throw new Error("Access Denied: Staff must have an assigned branch.");
+      }
       const branch = await Branch.getStatusById(user.branch_id);
 
       if (!branch) {
@@ -67,7 +75,6 @@ class AuthService {
     });
     const payload = ticket.getPayload();
 
-    // Ensure the Google Email is actually verified by Google
     if (!payload.email_verified) {
       throw new Error("This Google account email is not verified.");
     }
@@ -93,16 +100,15 @@ class AuthService {
     return { user, token };
   }
 
-  // --Process forgot password--
+  // ==========================================
+  // PASSWORD RESET FLOWS
+  // ==========================================
   static async processForgotPassword(email) {
     const user = await User.findUserByEmail(email);
 
     if (!user || !user.is_active) return;
 
-    // Generate a raw, URL-safe crypto token
     const resetToken = crypto.randomBytes(32).toString("hex");
-
-    // Hash the token
     const hashedToken = crypto
       .createHash("sha256")
       .update(resetToken)
@@ -110,12 +116,10 @@ class AuthService {
 
     await User.saveResetToken(user.id, hashedToken);
 
-    // Construct URL and Send Email
     const frontendUrl =
       process.env.NODE_ENV === "development"
         ? process.env.FRONTEND_URL_DEV
         : process.env.FRONTEND_URL_PROD;
-
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     await sendPasswordResetEmail(user.email, resetLink);
@@ -128,7 +132,6 @@ class AuthService {
       .update(rawToken)
       .digest("hex");
 
-    // Check if token exists and is not expired
     const user = await User.findUserByResetToken(hashedToken);
     if (!user) {
       throw new Error(
@@ -137,11 +140,10 @@ class AuthService {
     }
 
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
-
     await User.updatePasswordAndLogAudit(
       user.id,
       newPasswordHash,
-      user.branch_id, // NULL if Admin, Number if Staff
+      user.branch_id,
       ipAddress,
     );
   }
@@ -158,20 +160,20 @@ class AuthService {
     return true;
   }
 
-  // --Verify Activation Token--
+  // ==========================================
+  // STAFF & MANAGER ACTIVATION FLOWS
+  // ==========================================
   static async verifyActivationToken(rawToken) {
     const hashedToken = crypto
       .createHash("sha256")
       .update(rawToken)
       .digest("hex");
-
     const user = await User.findUserByActivationToken(hashedToken);
 
     if (!user) {
       throw new Error("This invitation link is invalid or has expired.");
     }
 
-    // Calculate remaining time for the frontend countdown timer
     const expiresAt = new Date(user.activation_token_expires).getTime();
     const now = new Date().getTime();
     const timeRemainingMs = expiresAt - now;
@@ -180,13 +182,12 @@ class AuthService {
       firstName: user.first_name,
       email: user.email,
       role: user.role,
-      branchName: user.branch_name || "Global Enterprise", // Fallback if Admin (branch_id = NULL)
+      branchName: user.branch_name || "Enterprise Global",
       expiresAt: user.activation_token_expires,
       timeRemainingMs: timeRemainingMs > 0 ? timeRemainingMs : 0,
     };
   }
 
-  // --Process Account Activation--
   static async processActivation(rawToken, newPassword, ipAddress) {
     const hashedToken = crypto
       .createHash("sha256")
@@ -200,9 +201,7 @@ class AuthService {
       );
     }
 
-    // Hash the new password
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
-
     await User.activateUserAndLogAudit(
       user.id,
       newPasswordHash,
@@ -211,7 +210,9 @@ class AuthService {
     );
   }
 
-  // --Verify Customer Activation Token--
+  // ==========================================
+  // CUSTOMER ACTIVATION FLOWS
+  // ==========================================
   static async verifyCustomerActivationToken(rawToken) {
     const hashedToken = crypto
       .createHash("sha256")
@@ -247,17 +248,15 @@ class AuthService {
       throw new Error("This activation link is invalid or has expired.");
     }
 
-    // Hash the password
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-    // Atomic Activation
     await User.activateCustomerAndLogAudit(user.id, newPasswordHash, ipAddress);
 
-    // Auto-Login Logic
     const payload = {
       id: user.id,
       role: user.role,
       branchId: null,
+      token_version: user.token_version + 1,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {

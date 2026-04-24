@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 
 // Controllers
+const UserController = require("../../controllers/sysadmin/user.controller");
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 const SettingsController = require("../../controllers/sysadmin/settings.controller");
 
@@ -25,6 +26,10 @@ const {
   updateBranchSchema,
   toggleMaintenanceSchema,
 } = require("../../validations/sysadmin/branch.schema");
+const {
+  inviteUserSchema,
+  updateUserSchema,
+} = require("../../validations/sysadmin/user.schema");
 
 // ==========================================
 // UTILITY: Catch Multer File Errors cleanly (Turns 500s into 400s)
@@ -89,5 +94,24 @@ router.put(
   validate(updateSettingsSchema),
   SettingsController.updateSettings,
 );
+
+// ==========================================
+// SUB-TAB 2.2: USER MANAGEMENT & SECURITY
+// ==========================================
+router.get("/users", UserController.getRoster);
+
+router.post(
+  "/users/invite",
+  validate(inviteUserSchema),
+  UserController.inviteUser,
+);
+
+router.put("/users/:id", validate(updateUserSchema), UserController.updateUser);
+
+// The Security Kill-Switch
+router.post("/users/:id/kill-session", UserController.killSession);
+
+// Resend Expired Invites
+router.post("/users/:id/resend-invite", UserController.resendInvite);
 
 module.exports = router;
