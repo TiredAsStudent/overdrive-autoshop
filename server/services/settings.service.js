@@ -1,5 +1,5 @@
 const SystemSetting = require("../models/SystemSetting");
-const User = require("../models/User");
+const { logSecureAction } = require("../utils/auditLogger");
 
 class SettingsService {
   static async getBusinessSettings() {
@@ -10,10 +10,17 @@ class SettingsService {
 
   static async updateBusinessSettings(data, adminId, ipAddress) {
     const updatedSettings = await SystemSetting.update(data);
-
-    // Log the audit: Critical for tax compliance tracking
-    await User.logAudit(adminId, null, "GLOBAL_SETTINGS_UPDATED", ipAddress);
-
+    await logSecureAction(
+      adminId,
+      null,
+      "GLOBAL_SETTINGS_UPDATED",
+      "WARNING",
+      ipAddress,
+      "system_settings",
+      1,
+      null,
+      data,
+    );
     return updatedSettings;
   }
 }

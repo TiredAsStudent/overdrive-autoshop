@@ -6,6 +6,7 @@ const multer = require("multer");
 const UserController = require("../../controllers/sysadmin/user.controller");
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 const SettingsController = require("../../controllers/sysadmin/settings.controller");
+const AuditLogController = require("../../controllers/sysadmin/audit.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
@@ -30,6 +31,9 @@ const {
   inviteUserSchema,
   updateUserSchema,
 } = require("../../validations/sysadmin/user.schema");
+const {
+  getAuditLogsSchema,
+} = require("../../validations/sysadmin/auditLog.schema");
 
 // ==========================================
 // UTILITY: Catch Multer File Errors cleanly (Turns 500s into 400s)
@@ -113,5 +117,17 @@ router.post("/users/:id/kill-session", UserController.killSession);
 
 // Resend Expired Invites
 router.post("/users/:id/resend-invite", UserController.resendInvite);
+
+// ==========================================
+// SUB-TAB 4.1: AUDIT LOGS & COMPLIANCE
+// ==========================================
+router.get(
+  "/audit/export",
+  validate(getAuditLogsSchema),
+  AuditLogController.exportLogs,
+);
+
+// The Read-Only Paginated Data Route
+router.get("/audit", validate(getAuditLogsSchema), AuditLogController.getLogs);
 
 module.exports = router;

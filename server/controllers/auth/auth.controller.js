@@ -1,6 +1,7 @@
-const AuthService = require("../../services/auth.service"); // Updated import path
+const AuthService = require("../../services/auth.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
+const { logSecureAction } = require("../../utils/auditLogger");
 
 class AuthController {
   static async login(req, res) {
@@ -19,6 +20,15 @@ class AuthController {
       const data = await AuthService.loginWithEmail(email, password, req.ip);
       return sendSuccess(res, STATUS_CODES.SUCCESS, data, "Login successful.");
     } catch (error) {
+      await logSecureAction(
+        null,
+        null,
+        `LOGIN_FAILED: ${error.message}`,
+        "WARNING",
+        req.ip,
+        null,
+        null,
+      );
       return sendError(res, STATUS_CODES.UNAUTHORIZED, error.message);
     }
   }
@@ -26,7 +36,6 @@ class AuthController {
   static async googleLogin(req, res) {
     try {
       const { googleToken } = req.body;
-
       if (!googleToken) {
         return sendError(
           res,
@@ -34,7 +43,6 @@ class AuthController {
           "Google token is required.",
         );
       }
-
       const data = await AuthService.loginWithGoogle(googleToken, req.ip);
       return sendSuccess(
         res,
@@ -43,6 +51,15 @@ class AuthController {
         "Google Login successful.",
       );
     } catch (error) {
+      await logSecureAction(
+        null,
+        null,
+        `GOOGLE_LOGIN_FAILED: ${error.message}`,
+        "WARNING",
+        req.ip,
+        null,
+        null,
+      );
       return sendError(res, STATUS_CODES.UNAUTHORIZED, error.message);
     }
   }
@@ -50,9 +67,7 @@ class AuthController {
   static async forgotPassword(req, res) {
     try {
       const email = req.body.email.trim();
-
-      await AuthService.processForgotPassword(email);
-
+      await AuthService.processForgotPassword(email, req.ip);
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
@@ -71,9 +86,7 @@ class AuthController {
   static async resetPassword(req, res) {
     try {
       const { token, newPassword } = req.body;
-
       await AuthService.processResetPassword(token, newPassword, req.ip);
-
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
@@ -98,9 +111,7 @@ class AuthController {
   static async verifyInvite(req, res) {
     try {
       const { token } = req.params;
-
       const data = await AuthService.verifyActivationToken(token);
-
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
@@ -115,8 +126,6 @@ class AuthController {
   static async activateAccount(req, res) {
     try {
       const { token, newPassword, policyAgreed } = req.body;
-
-      // Double check policy agreement
       if (!policyAgreed) {
         return sendError(
           res,
@@ -124,9 +133,7 @@ class AuthController {
           "You must agree to the Data Integrity Policy to activate your account.",
         );
       }
-
       await AuthService.processActivation(token, newPassword, req.ip);
-
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
@@ -142,7 +149,6 @@ class AuthController {
     try {
       const { token } = req.params;
       const data = await AuthService.verifyCustomerActivationToken(token);
-
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
@@ -157,13 +163,11 @@ class AuthController {
   static async activateCustomerAccount(req, res) {
     try {
       const { token, newPassword } = req.body;
-
       const data = await AuthService.processCustomerActivation(
         token,
         newPassword,
         req.ip,
       );
-
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,

@@ -1,20 +1,26 @@
 const Branch = require("../models/Branch");
-const User = require("../models/User");
+const { logSecureAction } = require("../utils/auditLogger");
 
 class BranchService {
   static async createBranch(data, adminId, ipAddress) {
     const cleanCode = data.branch_code.toUpperCase().trim();
-
     const existingBranch = await Branch.findByCode(cleanCode);
-    if (existingBranch) {
+
+    if (existingBranch)
       throw new Error(`Branch code '${cleanCode}' is already in use.`);
-    }
 
-    const branchData = { ...data, branch_code: cleanCode };
-    const newBranch = await Branch.create(branchData);
-
-    // Add Audit Log for Creation
-    await User.logAudit(adminId, newBranch.id, "BRANCH_CREATED", ipAddress);
+    const newBranch = await Branch.create({ ...data, branch_code: cleanCode });
+    await logSecureAction(
+      adminId,
+      null,
+      "BRANCH_CREATED",
+      "INFO",
+      ipAddress,
+      "branches",
+      newBranch.id,
+      null,
+      data,
+    );
 
     return newBranch;
   }
@@ -31,7 +37,6 @@ class BranchService {
 
   static async updateBranch(id, data, adminId, ipAddress) {
     let cleanData = { ...data };
-
     if (data.branch_code) {
       cleanData.branch_code = data.branch_code.toUpperCase().trim();
       const existing = await Branch.findByCode(cleanData.branch_code);
@@ -45,9 +50,17 @@ class BranchService {
     const updatedBranch = await Branch.update(id, cleanData);
     if (!updatedBranch) throw new Error("Branch not found.");
 
-    // Add Audit Log for Updates
-    await User.logAudit(adminId, id, "BRANCH_UPDATED", ipAddress);
-
+    await logSecureAction(
+      adminId,
+      null,
+      "BRANCH_UPDATED",
+      "INFO",
+      ipAddress,
+      "branches",
+      id,
+      null,
+      cleanData,
+    );
     return updatedBranch;
   }
 
@@ -60,12 +73,22 @@ class BranchService {
     const result = await Branch.toggleMaintenance(id, isMaintenanceMode);
     if (!result) throw new Error("Branch not found.");
 
-    // Add Audit Log for Security Toggles
     const actionStr = isMaintenanceMode
       ? "BRANCH_MAINTENANCE_LOCKED"
       : "BRANCH_MAINTENANCE_UNLOCKED";
-    await User.logAudit(adminId, id, actionStr, ipAddress);
+    const severity = isMaintenanceMode ? "CRITICAL" : "WARNING";
 
+    await logSecureAction(
+      adminId,
+      null,
+      actionStr,
+      severity,
+      ipAddress,
+      "branches",
+      id,
+      null,
+      { maintenance: isMaintenanceMode },
+    );
     return result;
   }
 
@@ -73,9 +96,15 @@ class BranchService {
     const deleted = await Branch.softDelete(id);
     if (!deleted) throw new Error("Branch not found.");
 
-    // Add Audit Log for Deletions
-    await User.logAudit(adminId, id, "BRANCH_SOFT_DELETED", ipAddress);
-
+    await logSecureAction(
+      adminId,
+      null,
+      "BRANCH_SOFT_DELETED",
+      "CRITICAL",
+      ipAddress,
+      "branches",
+      id,
+    );
     return deleted;
   }
 }

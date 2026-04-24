@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const User = require("../models/User");
 const { sendWelcomeInviteEmail } = require("../utils/mailer");
+const { logSecureAction } = require("../utils/auditLogger");
 
 class UserService {
   static async processNewInvite(adminUser, userData, ipAddress) {
@@ -17,13 +18,7 @@ class UserService {
       .update(rawToken)
       .digest("hex");
 
-    const newUser = await User.createUserAndLogAudit(
-      adminUser.id,
-      adminUser.branchId,
-      userData,
-      hashedToken,
-      ipAddress,
-    );
+    const newUser = await User.createUser(userData, hashedToken);
 
     const frontendUrl =
       process.env.NODE_ENV === "development"
@@ -31,13 +26,24 @@ class UserService {
         : process.env.FRONTEND_URL_PROD;
     const inviteLink = `${frontendUrl}/activate?token=${rawToken}`;
 
-    // Fire and forget email
     sendWelcomeInviteEmail(
       userData.email,
       userData.firstName,
       userData.role,
       inviteLink,
     ).catch(console.error);
+
+    await logSecureAction(
+      adminUser.id,
+      adminUser.branchId,
+      `INVITED_NEW_${userData.role}`,
+      "WARNING",
+      ipAddress,
+      "users",
+      newUser.id,
+      null,
+      { new_email: userData.email },
+    );
 
     return {
       id: newUser.id,
@@ -58,31 +64,51 @@ class UserService {
     ipAddress,
   ) {
     const sanitizedUpdates = {
-      branchId: updates.branchId !== undefined ? updates.branchId : null,
-      isActive: updates.isActive !== undefined ? updates.isActive : null,
-      role: updates.role !== undefined ? updates.role : null,
-      firstName: updates.firstName !== undefined ? updates.firstName : null,
-      lastName: updates.lastName !== undefined ? updates.lastName : null,
-      email: updates.email !== undefined ? updates.email : null,
+      branch_id: updates.branchId !== undefined ? updates.branchId : undefined,
+      is_active: updates.isActive !== undefined ? updates.isActive : undefined,
+      role: updates.role !== undefined ? updates.role : undefined,
+      first_name:
+        updates.firstName !== undefined ? updates.firstName : undefined,
+      last_name: updates.lastName !== undefined ? updates.lastName : undefined,
+      email: updates.email !== undefined ? updates.email : undefined,
     };
 
-    await User.updateUserAndLogAudit(
+    await User.updateUser(targetUserId, sanitizedUpdates);
+
+    let actionStr = "UPDATED_USER_PROFILE";
+    let severity = "INFO";
+    if (updates.isActive === false) {
+      actionStr = "DEACTIVATED_USER_ACCOUNT";
+      severity = "WARNING";
+    }
+
+    await logSecureAction(
       adminUser.id,
       adminUser.branchId,
-      targetUserId,
-      sanitizedUpdates,
+      actionStr,
+      severity,
       ipAddress,
+      "users",
+      targetUserId,
+      null,
+      sanitizedUpdates,
     );
   }
 
   static async executeKillSwitch(adminUser, targetUserId, ipAddress) {
-    const targetUser = await User.incrementTokenVersion(
+    const targetUser = await User.incrementTokenVersion(targetUserId);
+    if (!targetUser) throw new Error("User not found.");
+
+    await logSecureAction(
       adminUser.id,
       adminUser.branchId,
-      targetUserId,
+      "TRIGGERED_SESSION_KILL_SWITCH",
+      "CRITICAL",
       ipAddress,
+      "users",
+      targetUserId,
     );
-    if (!targetUser) throw new Error("User not found.");
+
     return {
       message:
         "Session Kill-Switch activated. All active tokens for this user are now invalid.",
@@ -97,11 +123,8 @@ class UserService {
       .digest("hex");
 
     const user = await User.regenerateActivationToken(
-      adminUser.id,
-      adminUser.branchId,
       targetUserId,
       hashedToken,
-      ipAddress,
     );
 
     const frontendUrl =
@@ -116,6 +139,16 @@ class UserService {
       user.role,
       inviteLink,
     ).catch(console.error);
+
+    await logSecureAction(
+      adminUser.id,
+      adminUser.branchId,
+      "RESENT_INVITATION",
+      "INFO",
+      ipAddress,
+      "users",
+      targetUserId,
+    );
 
     return { message: `New invitation securely sent to ${user.email}` };
   }
