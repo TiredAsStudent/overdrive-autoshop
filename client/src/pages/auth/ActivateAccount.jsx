@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ChevronRight,
   UserCircle,
+  Globe,
 } from "lucide-react";
 import authService from "../../services/auth.service";
 
@@ -37,13 +38,14 @@ const ActivateAccount = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [policyAgreed, setPolicyAgreed] = useState(false);
 
-  // Password Strength Validation (Matching your Zod backend rules)
+  // Password Strength Validation
   const validations = {
     length: password.length >= 8,
     uppercase: /[A-Z]/.test(password),
     specialOrNumber: /[\d@$!%*?&#]/.test(password),
     match: password === confirmPassword && password.length > 0,
   };
+
   const isFormValid =
     validations.length &&
     validations.uppercase &&
@@ -51,7 +53,6 @@ const ActivateAccount = () => {
     validations.match &&
     policyAgreed;
 
-  // 1. Verify Token on Load
   useEffect(() => {
     const verifyToken = async () => {
       if (!token) {
@@ -73,7 +74,6 @@ const ActivateAccount = () => {
     verifyToken();
   }, [token]);
 
-  // 2. Live Countdown Timer Logic
   useEffect(() => {
     if (timeLeft <= 0) return;
     const interval = setInterval(() => {
@@ -98,7 +98,6 @@ const ActivateAccount = () => {
     return `${minutes}m ${seconds}s`;
   };
 
-  // 3. Handle Form Submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
@@ -108,7 +107,6 @@ const ActivateAccount = () => {
     try {
       await authService.activateAccount(token, password, policyAgreed);
       setSuccess(true);
-      // Auto-redirect to login after 3 seconds
       setTimeout(() => navigate("/login"), 3000);
     } catch (err) {
       setError(err.message);
@@ -184,7 +182,6 @@ const ActivateAccount = () => {
                 </h2>
               </div>
 
-              {/* READ ONLY IDENTITY BADGES */}
               <div className="flex flex-wrap gap-3">
                 <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/5">
                   <UserCircle size={16} className="text-slate-400" />
@@ -193,19 +190,17 @@ const ActivateAccount = () => {
                       Assigned Role
                     </p>
                     <p className="text-sm font-black text-white">
-                      {userData?.role === "ADMIN" ? "Admin (Global)" : "Staff"}
+                      {userData?.role}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/5">
-                  <ShieldCheck
-                    size={16}
-                    className={
-                      userData?.role === "ADMIN"
-                        ? "text-amber-500"
-                        : "text-blue-400"
-                    }
-                  />
+                  {userData?.role === "MANAGER" ||
+                  userData?.role === "ADMIN" ? (
+                    <Globe size={16} className="text-amber-500" />
+                  ) : (
+                    <ShieldCheck size={16} className="text-blue-400" />
+                  )}
                   <div>
                     <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold">
                       Branch Access
@@ -240,7 +235,6 @@ const ActivateAccount = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* READ ONLY EMAIL */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                   Registered Email
@@ -260,7 +254,6 @@ const ActivateAccount = () => {
                 </div>
               </div>
 
-              {/* PASSWORD SUITE */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -308,7 +301,6 @@ const ActivateAccount = () => {
                 </div>
               </div>
 
-              {/* STRENGTH VALIDATOR */}
               <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-100 dark:border-white/5 space-y-3">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                   Password Requirements
@@ -322,7 +314,7 @@ const ActivateAccount = () => {
                   <div
                     className={`flex items-center gap-2 text-xs font-bold ${validations.uppercase ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}
                   >
-                    <CheckCircle2 size={14} /> 1 Uppercase Letter
+                    <CheckCircle2 size={14} /> 1 Uppercase
                   </div>
                   <div
                     className={`flex items-center gap-2 text-xs font-bold ${validations.specialOrNumber ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}
@@ -332,7 +324,6 @@ const ActivateAccount = () => {
                 </div>
               </div>
 
-              {/* POLICY CHECKBOX */}
               <label className="flex items-start gap-4 p-4 border border-slate-200 dark:border-white/10 rounded-2xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                 <div className="relative flex items-center justify-center mt-0.5">
                   <input
@@ -353,14 +344,12 @@ const ActivateAccount = () => {
                   </p>
                   <p className="text-[10px] font-bold text-slate-500 mt-1 leading-relaxed">
                     By checking this, I acknowledge that my account is tied to a
-                    strict, immutable audit log. Actions taken (including OCR
-                    scans, invoices, and stock adjustments) are permanently
-                    recorded under my identity and cannot be deleted.
+                    strict, immutable audit log. Actions taken are permanently
+                    recorded under my identity.
                   </p>
                 </div>
               </label>
 
-              {/* SUBMIT BUTTON */}
               <button
                 type="submit"
                 disabled={!isFormValid || submitLoading}

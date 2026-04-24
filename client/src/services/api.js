@@ -34,19 +34,39 @@ api.interceptors.response.use(
       error.response.status === 401 &&
       requestUrl !== "/auth/login"
     ) {
-      // If token is invalid/expired on a normal page, clear storage and kick to login
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";
     }
 
-    // Maintenance Mode Ejection & Archive Kicks (403 Forbidden)
+    // Security Ejections & Archive Kicks (403 Forbidden)
     if (error.response && error.response.status === 403) {
       const errorMessage =
         error.response?.data?.error?.message ||
         error.response?.data?.message ||
         "";
 
+      // The Kill-Switch / Version Mismatch Catcher
+      if (errorMessage.includes("Session revoked")) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        alert(
+          "SECURITY ALERT: Your session has been revoked by the Administrator. You have been securely logged out.",
+        );
+        window.location.href = "/login";
+      }
+
+      // Deactivated Account Catcher
+      if (errorMessage.includes("Account has been deactivated")) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        alert(
+          "ACCOUNT DISABLED: Your account has been deactivated by an Administrator. You have been securely logged out.",
+        );
+        window.location.href = "/login";
+      }
+
+      // Maintenance Mode Catcher
       if (errorMessage.includes("MAINTENANCE_MODE")) {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -56,6 +76,7 @@ api.interceptors.response.use(
         window.location.href = "/login";
       }
 
+      // Archived Branch Catcher
       if (errorMessage.includes("BRANCH_ARCHIVED")) {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
