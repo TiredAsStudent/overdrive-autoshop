@@ -194,7 +194,7 @@ const BulkOrderBuilder = () => {
                       <th className="px-4 py-5 text-center">Second</th>
                       <th className="px-4 py-5 text-center">Third</th>
                       <th className="px-6 py-5 text-right text-emerald-500">
-                        OCR Unit Cost
+                        Unit Cost
                       </th>
                       <th className="px-6 py-5 text-right text-amber-500">
                         Order Qty

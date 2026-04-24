@@ -30,7 +30,7 @@ import AccountSettingsPage from "../pages/settings/AccountSettingsPage";
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import OcrIntake from "../pages/staff/OcrIntake";
 import OcrHistory from "../pages/staff/OcrHistory";
-import Workshop from "../pages/staff/Workshop";
+import WorkshopKanban from "../pages/staff/WorkshopKanban";
 import WorkshopCheckIn from "../pages/staff/WorkshopCheckIn";
 import Estimates from "../pages/staff/Estimates";
 import SalesOrders from "../pages/staff/SalesOrders";
@@ -315,7 +315,7 @@ const AnimatedDashboardRoutes = ({ user }) => {
                   path="workshop/kanban"
                   element={
                     <PageWrapper>
-                      <Workshop user={user} />
+                      <WorkshopKanban />
                     </PageWrapper>
                   }
                 />
