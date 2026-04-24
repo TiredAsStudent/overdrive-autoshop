@@ -41,7 +41,7 @@ export const sysAdminMenu = [
     icon: Settings2,
     items: [
       { name: "Business", path: "/sysadmin/settings/business" },
-      { name: "Integrations", path: "/sysadmin/settings/integrations" },
+      // { name: "Integrations", path: "/sysadmin/settings/integrations" },
     ],
   },
   {
