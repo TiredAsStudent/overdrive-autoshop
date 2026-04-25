@@ -25,12 +25,11 @@ class AccountModel {
     return result.rows;
   }
 
-  static async createAccountAndLogAudit(data, userId, ipAddress) {
+  static async createAccount(data) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // Insert into Chart of Accounts
       const insertSql = `
         INSERT INTO chart_of_accounts (category_id, account_code, account_name, staff_label, description)
         VALUES ($1, $2, $3, $4, $5)
@@ -56,19 +55,6 @@ class AccountModel {
         );
       }
 
-      // 3. Log Audit
-      const auditSql = `
-        INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) 
-        VALUES ($1, $2, $3, $4, $5)
-      `;
-      await client.query(auditSql, [
-        userId,
-        "CREATE_CHART_OF_ACCOUNT",
-        "chart_of_accounts",
-        newAccount.id,
-        ipAddress,
-      ]);
-
       await client.query("COMMIT");
       return newAccount;
     } catch (error) {
@@ -79,12 +65,11 @@ class AccountModel {
     }
   }
 
-  static async updateAccountAndLogAudit(id, updates, userId, ipAddress) {
+  static async updateAccount(id, updates) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // Security Check: Prevent editing of locked system accounts
       const checkSql = `SELECT is_system_locked FROM chart_of_accounts WHERE id = $1`;
       const checkResult = await client.query(checkSql, [id]);
 
@@ -93,7 +78,6 @@ class AccountModel {
         throw new Error("System accounts cannot be deactivated.");
       }
 
-      // Build the dynamic update query
       const fields = [];
       const params = [id];
       let paramIndex = 2;
@@ -116,19 +100,6 @@ class AccountModel {
       const result = await client.query(updateSql, params);
       const updatedAccount = result.rows[0];
 
-      //  Log Audit
-      const auditSql = `
-        INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) 
-        VALUES ($1, $2, $3, $4, $5)
-      `;
-      await client.query(auditSql, [
-        userId,
-        "UPDATE_CHART_OF_ACCOUNT",
-        "chart_of_accounts",
-        id,
-        ipAddress,
-      ]);
-
       await client.query("COMMIT");
       return updatedAccount;
     } catch (error) {
@@ -139,7 +110,6 @@ class AccountModel {
     }
   }
 
-  // THE ENTERPRISE MULTI-BRANCH QUERY
   static async getRealTimeBalances() {
     const sql = `
       SELECT 
@@ -156,7 +126,7 @@ class AccountModel {
       JOIN account_categories ac ON coa.category_id = ac.id
       CROSS JOIN branches b
       LEFT JOIN account_balances ab ON ab.account_id = coa.id AND ab.branch_id = b.id
-      WHERE b.is_active = TRUE -- Removed coa.is_active = TRUE here
+      WHERE b.is_active = TRUE
       ORDER BY coa.account_code ASC, b.id ASC
     `;
     const result = await query(sql);

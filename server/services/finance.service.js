@@ -1,14 +1,13 @@
 const AccountModel = require("../models/Account");
+const { logSecureAction } = require("../utils/auditLogger");
 
 class FinanceService {
   static async createAccount(data, userId, ipAddress) {
-    //  Fetch the rules for the selected Mother Category
     const category = await AccountModel.getCategoryById(data.category_id);
     if (!category) {
       throw new Error("Selected accounting category does not exist.");
     }
 
-    // Check if the code falls within the correct 4-digit range
     if (
       data.account_code < category.code_range_start ||
       data.account_code > category.code_range_end
@@ -18,13 +17,26 @@ class FinanceService {
       );
     }
 
-    //  Check for duplicates
     const existing = await AccountModel.checkCodeExists(data.account_code);
     if (existing) {
       throw new Error(`Account code ${data.account_code} is already in use.`);
     }
 
-    return await AccountModel.createAccountAndLogAudit(data, userId, ipAddress);
+    const newAccount = await AccountModel.createAccount(data);
+
+    await logSecureAction(
+      userId,
+      null,
+      "CREATE_CHART_OF_ACCOUNT",
+      "INFO",
+      ipAddress,
+      "chart_of_accounts",
+      newAccount.id,
+      null,
+      data,
+    );
+
+    return newAccount;
   }
 
   static async getBaseCategories() {
@@ -32,7 +44,9 @@ class FinanceService {
   }
 
   static async updateAccount(id, updates, userId, ipAddress) {
-    // Sanitize to ensure the Manager can only update safe fields
+    const oldAccount = await AccountModel.findAccountById(id);
+    if (!oldAccount) throw new Error("Account not found.");
+
     const safeUpdates = {};
     if (updates.account_name !== undefined)
       safeUpdates.account_name = updates.account_name;
@@ -47,18 +61,26 @@ class FinanceService {
       throw new Error("No valid fields provided for update.");
     }
 
-    return await AccountModel.updateAccountAndLogAudit(
-      id,
-      safeUpdates,
+    const updatedAccount = await AccountModel.updateAccount(id, safeUpdates);
+
+    await logSecureAction(
       userId,
+      null,
+      "UPDATE_CHART_OF_ACCOUNT",
+      "WARNING",
       ipAddress,
+      "chart_of_accounts",
+      id,
+      oldAccount,
+      safeUpdates,
     );
+
+    return updatedAccount;
   }
 
   static async getMultiBranchBalances() {
     const rawData = await AccountModel.getRealTimeBalances();
 
-    // Format data to group balances by Account for the UI
     const formattedAccounts = {};
 
     rawData.forEach((row) => {

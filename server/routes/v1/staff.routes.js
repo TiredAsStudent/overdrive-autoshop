@@ -20,21 +20,17 @@ const { ROLES } = require("../../constants/roles");
 
 // ==========================================
 // GLOBAL PORTAL SECURITY
-// Locks every single route below this line!
 // ==========================================
-router.use(verifyToken, requireRole([ROLES.STAFF, ROLES.ADMIN]), branchGuard);
+router.use(verifyToken, requireRole(ROLES.STAFF, ROLES.ADMIN), branchGuard);
 
 // --- LOCAL STOCK ROOM ---
-// Accepts optional query param: ?search=oil
 router.get("/inventory/local", StaffInventoryController.getLocalStock);
-// Pass the inventory_id in the URL
 router.get(
   "/inventory/:inventoryId/global",
   StaffInventoryController.getGlobalStock,
 );
 
-// --- SHARED READ-ONLY ROUTES (For Staff Dropdowns & Kanban) ---
-// These call the EXACT same logic as the Manager, but securely through the Staff portal API url!
+// --- SHARED READ-ONLY ROUTES ---
 router.get("/accounts/categories", AccountController.getBaseCategories);
 router.get("/inventory/master", InventoryController.getInventory);
 router.get("/mechanics", MechanicController.getMechanics);

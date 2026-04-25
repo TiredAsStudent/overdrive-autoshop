@@ -1,15 +1,25 @@
 const MechanicModel = require("../models/Mechanic");
 const ServiceModel = require("../models/Service");
+const { logSecureAction } = require("../utils/auditLogger");
 const { query } = require("../config/db");
 
 class WorkshopService {
-  // --- MECHANIC LOGIC ---
   static async createMechanic(data, userId, ipAddress) {
-    return await MechanicModel.createMechanicAndLogAudit(
-      data,
+    const newMechanic = await MechanicModel.createMechanic(data);
+
+    await logSecureAction(
       userId,
+      data.branch_id,
+      "MECHANIC_CREATED",
+      "INFO",
       ipAddress,
+      "mechanics",
+      newMechanic.id,
+      null,
+      data,
     );
+
+    return newMechanic;
   }
 
   static async getMechanics(branchId) {
@@ -39,16 +49,23 @@ class WorkshopService {
       throw new Error("No valid fields provided for update.");
 
     const targetBranchId = safeUpdates.branch_id || existing.branch_id;
-    return await MechanicModel.updateMechanicAndLogAudit(
-      id,
-      safeUpdates,
-      targetBranchId,
+    const updatedMechanic = await MechanicModel.updateMechanic(id, safeUpdates);
+
+    await logSecureAction(
       userId,
+      targetBranchId,
+      "MECHANIC_UPDATED",
+      "WARNING",
       ipAddress,
+      "mechanics",
+      id,
+      existing,
+      safeUpdates,
     );
+
+    return updatedMechanic;
   }
 
-  // --- SERVICE PACKAGES LOGIC ---
   static async getServicesWithDynamicPricing(onlyActive) {
     const rawServices = await ServiceModel.getAllServices(onlyActive);
 
@@ -98,12 +115,21 @@ class WorkshopService {
     }
 
     const { parts, ...serviceData } = data;
-    return await ServiceModel.createServiceAndLogAudit(
-      serviceData,
-      parts,
+    const newService = await ServiceModel.createService(serviceData, parts);
+
+    await logSecureAction(
       userId,
+      null,
+      "SERVICE_PACKAGE_CREATED",
+      "INFO",
       ipAddress,
+      "services",
+      newService.id,
+      null,
+      data,
     );
+
+    return newService;
   }
 
   static async updateService(id, data, userId, ipAddress) {
@@ -129,14 +155,25 @@ class WorkshopService {
     if (data.is_active !== undefined) safeUpdates.is_active = data.is_active;
 
     const partsArray = data.parts;
-
-    return await ServiceModel.updateServiceAndLogAudit(
+    const finalState = await ServiceModel.updateService(
       id,
       safeUpdates,
       partsArray,
-      userId,
-      ipAddress,
     );
+
+    await logSecureAction(
+      userId,
+      null,
+      "SERVICE_PACKAGE_UPDATED",
+      "WARNING",
+      ipAddress,
+      "services",
+      id,
+      existing,
+      data,
+    );
+
+    return finalState;
   }
 }
 

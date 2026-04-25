@@ -22,7 +22,6 @@ class MechanicModel {
       sql += ` AND m.branch_id = $1`;
     }
 
-    // Sort by Status (Active first), then alphabetically
     sql += ` 
       ORDER BY 
         CASE 
@@ -36,7 +35,7 @@ class MechanicModel {
     return result.rows;
   }
 
-  static async createMechanicAndLogAudit(data, userId, ipAddress) {
+  static async createMechanic(data) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -55,23 +54,9 @@ class MechanicModel {
         data.contact_number,
         data.status || "ACTIVE",
       ]);
-      const newMechanic = mechanicResult.rows[0];
-
-      const auditSql = `
-        INSERT INTO audit_logs (user_id, branch_id, action, target_resource, target_id, ip_address) 
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `;
-      await client.query(auditSql, [
-        userId,
-        data.branch_id,
-        "MECHANIC_CREATED",
-        "mechanics",
-        newMechanic.id,
-        ipAddress,
-      ]);
 
       await client.query("COMMIT");
-      return newMechanic;
+      return mechanicResult.rows[0];
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -80,13 +65,7 @@ class MechanicModel {
     }
   }
 
-  static async updateMechanicAndLogAudit(
-    id,
-    updates,
-    targetBranchId,
-    userId,
-    ipAddress,
-  ) {
+  static async updateMechanic(id, updates) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -112,23 +91,9 @@ class MechanicModel {
         RETURNING *
       `;
       const result = await client.query(updateSql, params);
-      const updatedMechanic = result.rows[0];
-
-      const auditSql = `
-        INSERT INTO audit_logs (user_id, branch_id, action, target_resource, target_id, ip_address) 
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `;
-      await client.query(auditSql, [
-        userId,
-        targetBranchId,
-        "MECHANIC_UPDATED",
-        "mechanics",
-        id,
-        ipAddress,
-      ]);
 
       await client.query("COMMIT");
-      return updatedMechanic;
+      return result.rows[0];
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

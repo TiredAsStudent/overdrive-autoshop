@@ -1,18 +1,29 @@
 const AccountModel = require("../models/Account");
+const { logSecureAction } = require("../utils/auditLogger");
 
 class BillingService {
   static async createCategory(data, userId, ipAddress) {
-    // Prevent duplicate buckets
+    // Note: Assuming these methods exist in a CategoryModel extension or similar
     const existing = await AccountModel.findCategoryByName(data.name);
     if (existing) {
       throw new Error("An account category with this name already exists.");
     }
 
-    return await AccountModel.createCategoryAndLogAudit(
-      data,
+    const newCategory = await AccountModel.createCategory(data);
+
+    await logSecureAction(
       userId,
+      null,
+      "CREATE_ACCOUNT_CATEGORY",
+      "INFO",
       ipAddress,
+      "account_categories",
+      newCategory.id,
+      null,
+      data,
     );
+
+    return newCategory;
   }
 
   static async getCategories(typeFilter) {
@@ -25,7 +36,6 @@ class BillingService {
       throw new Error("Category not found.");
     }
 
-    // If changing name, ensure it doesn't conflict with another category
     if (
       updates.name &&
       updates.name.toLowerCase() !== existing.name.toLowerCase()
@@ -40,7 +50,6 @@ class BillingService {
       }
     }
 
-    // to prevent malicious column updates in the dynamic SQL.
     const safeUpdates = {};
     if (updates.name !== undefined) safeUpdates.name = updates.name;
     if (updates.description !== undefined)
@@ -48,17 +57,25 @@ class BillingService {
     if (updates.is_active !== undefined)
       safeUpdates.is_active = updates.is_active;
 
-    // Check if there's actually anything to update
     if (Object.keys(safeUpdates).length === 0) {
       throw new Error("No valid fields provided for update.");
     }
 
-    return await AccountModel.updateCategoryAndLogAudit(
-      id,
-      safeUpdates, // <-- Passing the sanitized object here
+    const updatedCategory = await AccountModel.updateCategory(id, safeUpdates);
+
+    await logSecureAction(
       userId,
+      null,
+      "UPDATE_ACCOUNT_CATEGORY",
+      "WARNING",
       ipAddress,
+      "account_categories",
+      id,
+      existing,
+      safeUpdates,
     );
+
+    return updatedCategory;
   }
 
   static async getRealTimeBalances(branchId) {

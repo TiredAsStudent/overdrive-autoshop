@@ -1,23 +1,19 @@
 const InventoryModel = require("../models/Inventory");
+const { logSecureAction } = require("../utils/auditLogger");
 
 class InventoryService {
-  // --- FROM ADMIN/MANAGER (Master Inventory) ---
   static async getAllItems() {
     const items = await InventoryModel.getAllInventoryItems();
 
-    // Apply Visual Status Logic to the Master Enterprise view
     return items.map((item) => {
-      // Math: Available for Sale = Total Physical - Total Reserved
       const availableQuantity =
         Number(item.total_physical_stock) - Number(item.total_reserved_stock);
 
-      // Logic 1: Red vs Green Status
       let status = "HEALTHY";
       if (availableQuantity <= Number(item.reorder_level)) {
         status = "LOW_STOCK";
       }
 
-      // Logic 2: The Blue "Reserved" Status
       const hasReserved = Number(item.total_reserved_stock) > 0;
 
       return {
@@ -36,7 +32,22 @@ class InventoryService {
         `An item with SKU/Code '${data.item_code}' already exists.`,
       );
     }
-    return await InventoryModel.createItemAndLogAudit(data, userId, ipAddress);
+
+    const newItem = await InventoryModel.createItem(data);
+
+    await logSecureAction(
+      userId,
+      null,
+      "INVENTORY_ITEM_CREATED",
+      "INFO",
+      ipAddress,
+      "inventory",
+      newItem.id,
+      null,
+      data,
+    );
+
+    return newItem;
   }
 
   static async updateItem(id, data, userId, ipAddress) {
@@ -46,10 +57,24 @@ class InventoryService {
         throw new Error("This SKU/Code is already assigned to another item.");
       }
     }
-    return await InventoryModel.updateItem(id, data, userId, ipAddress);
+
+    const updatedItem = await InventoryModel.updateItem(id, data);
+
+    await logSecureAction(
+      userId,
+      null,
+      "INVENTORY_ITEM_UPDATED",
+      "WARNING",
+      ipAddress,
+      "inventory",
+      id,
+      null, // Add a findById to your model later if you want strict Deltas here
+      data,
+    );
+
+    return updatedItem;
   }
 
-  // --- FROM STAFF (Local Stock Tracking) ---
   static async getLocalStock(branchId, searchTerm) {
     const items = await InventoryModel.getLocalInventory(branchId, searchTerm);
 

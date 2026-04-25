@@ -1,4 +1,4 @@
-const OcrServiceLogic = require("../../services/ocr.service"); // Updated import path
+const OcrServiceLogic = require("../../services/ocr.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 
@@ -45,7 +45,6 @@ class OcrController {
       );
 
       let msg = "Receipt successfully approved. Ledger and Inventory updated.";
-      // The Inflation Guard Trigger Message
       if (result.inflationDetected) {
         msg +=
           " INFLATION ALERT: Part costs have increased. Associated Combo Meals have been automatically adjusted.";
@@ -59,7 +58,8 @@ class OcrController {
 
   static async reject(req, res) {
     try {
-      await OcrServiceLogic.rejectScan(req.params.id, req.user.id);
+      await OcrServiceLogic.rejectScan(req.params.id, req.user.id, req.ip);
+
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,

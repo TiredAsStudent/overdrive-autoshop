@@ -1,4 +1,4 @@
-const { query, pool } = require("../config/db"); // Path updated
+const { query, pool } = require("../config/db");
 
 class OcrModel {
   static async getPendingScans() {
@@ -35,24 +35,17 @@ class OcrModel {
     return { ...scanResult.rows[0], items: itemsResult.rows };
   }
 
-  static async approveAndExecuteTransaction(
-    scanId,
-    finalData,
-    adminId,
-    ipAddress,
-  ) {
+  static async approveAndExecuteTransaction(scanId, finalData, adminId) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // Fetch the original scan to get the Branch ID
       const scanRes = await client.query(
         `SELECT branch_id FROM receipt_scans WHERE id = $1`,
         [scanId],
       );
       const branchId = scanRes.rows[0].branch_id;
 
-      // ACTION A.1: Save Admin Corrections
       await client.query(
         `UPDATE receipt_scans 
          SET status = 'APPROVED', reviewed_by = $1, reviewed_at = NOW(), 
@@ -65,12 +58,11 @@ class OcrModel {
           finalData.vendor_name,
           finalData.invoice_number || null,
           finalData.receipt_date,
-          finalData.account_category_id, // ALIGNED WITH 007
+          finalData.account_category_id,
           scanId,
         ],
       );
 
-      // ACTION A.2: Wipe AI Items and Save Admin's Corrected Items
       await client.query(
         `DELETE FROM receipt_scan_items WHERE receipt_scan_id = $1`,
         [scanId],
@@ -93,13 +85,11 @@ class OcrModel {
         );
 
         if (item.inventory_id) {
-          // B.1 Increments Branch Specific Stock (ALIGNED WITH 010: stock_quantity)
           await client.query(
             `UPDATE branch_inventory SET stock_quantity = stock_quantity + $1 WHERE branch_id = $2 AND inventory_id = $3`,
             [item.quantity, branchId, item.inventory_id],
           );
 
-          // C.1 Check for Inflation / Price Changes
           const invRes = await client.query(
             `SELECT unit_cost FROM inventory WHERE id = $1`,
             [item.inventory_id],
@@ -117,9 +107,6 @@ class OcrModel {
         }
       }
 
-      // ACTION D: Accounting - Double Entry in financial_ledger (ALIGNED WITH 007)
-
-      // 1. DEBIT the Expense Account (e.g., Inventory Parts Expense)
       await client.query(
         `INSERT INTO financial_ledger (branch_id, account_category_id, amount, transaction_type, reference_type, reference_id) 
          VALUES ($1, $2, $3, 'DEBIT', 'RECEIPT_SCAN', $4)`,
@@ -131,7 +118,6 @@ class OcrModel {
         ],
       );
 
-      // 2. CREDIT the Payment Account (e.g., Cash or Accounts Payable)
       await client.query(
         `INSERT INTO financial_ledger (branch_id, account_category_id, amount, transaction_type, reference_type, reference_id) 
          VALUES ($1, $2, $3, 'CREDIT', 'RECEIPT_SCAN', $4)`,
@@ -143,21 +129,12 @@ class OcrModel {
         ],
       );
 
-      // Audit Log
-      await client.query(
-        `INSERT INTO audit_logs (user_id, branch_id, action, target_resource, target_id, ip_address) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          adminId,
-          branchId,
-          "APPROVED_OCR_RECEIPT",
-          "receipt_scans",
-          scanId,
-          ipAddress,
-        ],
-      );
-
       await client.query("COMMIT");
-      return { success: true, inflationDetected: priceInflationDetected };
+      return {
+        success: true,
+        inflationDetected: priceInflationDetected,
+        branchId,
+      };
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

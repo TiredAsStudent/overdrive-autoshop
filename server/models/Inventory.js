@@ -1,7 +1,6 @@
 const { query, pool } = require("../config/db");
 
 class InventoryModel {
-  // --- ADMIN/MANAGER (Master Inventory) ---
   static async checkItemCodeExists(itemCode) {
     const sql = `SELECT id FROM inventory WHERE item_code = $1`;
     const result = await query(sql, [itemCode]);
@@ -39,16 +38,15 @@ class InventoryModel {
     return result.rows;
   }
 
-  static async createItemAndLogAudit(data, userId, ipAddress) {
+  static async createItem(data) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // 1. Insert into Master Inventory
       const insertSql = `
         INSERT INTO inventory (item_code, item_name, category, unit_cost, reorder_level)
         VALUES ($1, $2, $3, $4, $5)
-        RETURNING id;
+        RETURNING id, item_code, item_name, category, unit_cost, reorder_level;
       `;
       const result = await client.query(insertSql, [
         data.item_code,
@@ -57,30 +55,26 @@ class InventoryModel {
         data.unit_cost,
         data.reorder_level,
       ]);
-      const newId = result.rows[0].id;
+      const newItem = result.rows[0];
 
-      // 2. Automatically create stock trackers (0 stock) for ALL existing branches
       const branchResult = await client.query("SELECT id FROM branches");
       if (branchResult.rows.length > 0) {
         const branchValues = branchResult.rows
           .map((_, index) => `($1, $${index + 2}, 0, 0)`)
           .join(", ");
 
-        const branchParams = [newId, ...branchResult.rows.map((b) => b.id)];
+        const branchParams = [
+          newItem.id,
+          ...branchResult.rows.map((b) => b.id),
+        ];
         await client.query(
           `INSERT INTO branch_inventory (inventory_id, branch_id, stock_quantity, reserved_quantity) VALUES ${branchValues}`,
           branchParams,
         );
       }
 
-      // 3. Log Audit
-      await client.query(
-        `INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) VALUES ($1, $2, $3, $4, $5)`,
-        [userId, "INVENTORY_ITEM_CREATED", "inventory", newId, ipAddress],
-      );
-
       await client.query("COMMIT");
-      return { id: newId };
+      return newItem;
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -89,7 +83,7 @@ class InventoryModel {
     }
   }
 
-  static async updateItem(id, updates, userId, ipAddress) {
+  static async updateItem(id, updates) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -108,15 +102,11 @@ class InventoryModel {
 
       if (fields.length > 0) {
         fields.push(`updated_at = NOW()`);
-        const sql = `UPDATE inventory SET ${fields.join(", ")} WHERE id = $1`;
-        await client.query(sql, params);
+        const sql = `UPDATE inventory SET ${fields.join(", ")} WHERE id = $1 RETURNING *`;
+        const result = await client.query(sql, params);
+        await client.query("COMMIT");
+        return result.rows[0];
       }
-
-      // Log Audit securely within the transaction
-      await client.query(
-        `INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) VALUES ($1, $2, $3, $4, $5)`,
-        [userId, "INVENTORY_ITEM_UPDATED", "inventory", id, ipAddress],
-      );
 
       await client.query("COMMIT");
       return { id };
@@ -128,7 +118,6 @@ class InventoryModel {
     }
   }
 
-  // --- STAFF (Local Branch Inventory Views) ---
   static async getLocalInventory(branchId, searchTerm = "") {
     let sql = `
       SELECT 

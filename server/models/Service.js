@@ -8,7 +8,19 @@ class ServiceModel {
   }
 
   static async findServiceById(id) {
-    const sql = `SELECT id, name FROM services WHERE id = $1`;
+    const sql = `
+      SELECT 
+        s.id, s.name, s.category, s.labor_fee, s.description, s.is_active, s.revenue_account_id,
+        COALESCE(
+          json_agg(
+            json_build_object('inventory_id', sp.inventory_id, 'quantity_required', sp.quantity_required)
+          ) FILTER (WHERE sp.inventory_id IS NOT NULL), '[]'
+        ) AS parts
+      FROM services s
+      LEFT JOIN service_parts sp ON s.id = sp.service_id
+      WHERE s.id = $1
+      GROUP BY s.id
+    `;
     const result = await query(sql, [id]);
     return result.rows[0];
   }
@@ -41,12 +53,7 @@ class ServiceModel {
     return result.rows;
   }
 
-  static async createServiceAndLogAudit(
-    serviceData,
-    partsArray,
-    userId,
-    ipAddress,
-  ) {
+  static async createService(serviceData, partsArray) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -54,7 +61,7 @@ class ServiceModel {
       const insertServiceSql = `
         INSERT INTO services (name, category, labor_fee, revenue_account_id, description)
         VALUES ($1, $2, $3, $4, $5)
-        RETURNING id;
+        RETURNING *;
       `;
       const sResult = await client.query(insertServiceSql, [
         serviceData.name,
@@ -63,14 +70,14 @@ class ServiceModel {
         serviceData.revenue_account_id,
         serviceData.description,
       ]);
-      const newServiceId = sResult.rows[0].id;
+      const newService = sResult.rows[0];
 
       if (partsArray && partsArray.length > 0) {
         const partInsertValues = partsArray
           .map((_, index) => `($1, $${index * 2 + 2}, $${index * 2 + 3})`)
           .join(", ");
 
-        const partParams = [newServiceId];
+        const partParams = [newService.id];
         partsArray.forEach((p) => {
           partParams.push(p.inventory_id, p.quantity_required);
         });
@@ -79,20 +86,8 @@ class ServiceModel {
         await client.query(insertPartsSql, partParams);
       }
 
-      const auditSql = `
-        INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) 
-        VALUES ($1, $2, $3, $4, $5)
-      `;
-      await client.query(auditSql, [
-        userId,
-        "SERVICE_PACKAGE_CREATED",
-        "services",
-        newServiceId,
-        ipAddress,
-      ]);
-
       await client.query("COMMIT");
-      return { id: newServiceId };
+      return newService;
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -101,13 +96,7 @@ class ServiceModel {
     }
   }
 
-  static async updateServiceAndLogAudit(
-    id,
-    updates,
-    partsArray,
-    userId,
-    ipAddress,
-  ) {
+  static async updateService(id, updates, partsArray) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -150,20 +139,14 @@ class ServiceModel {
         }
       }
 
-      const auditSql = `
-        INSERT INTO audit_logs (user_id, action, target_resource, target_id, ip_address) 
-        VALUES ($1, $2, $3, $4, $5)
-      `;
-      await client.query(auditSql, [
-        userId,
-        "SERVICE_PACKAGE_UPDATED",
-        "services",
-        id,
-        ipAddress,
-      ]);
-
       await client.query("COMMIT");
-      return { id };
+
+      // Fetch full updated entity to return
+      const finalState = await client.query(
+        `SELECT * FROM services WHERE id = $1`,
+        [id],
+      );
+      return finalState.rows[0];
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
