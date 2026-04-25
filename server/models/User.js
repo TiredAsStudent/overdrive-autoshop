@@ -40,7 +40,13 @@ class User {
   }
 
   static async findCustomerByActivationToken(hashedToken) {
-    const sql = `SELECT u.id, u.first_name, u.email, u.role, u.activation_token_expires, u.token_version, v.make, v.model, v.plate_number FROM users u LEFT JOIN vehicles v ON v.owner_id = u.id WHERE u.activation_token = $1 AND u.role = 'CUSTOMER' LIMIT 1`;
+    const sql = `
+      SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.activation_token_expires, u.token_version, 
+             v.make, v.model, v.plate_number 
+      FROM users u 
+      LEFT JOIN vehicles v ON v.owner_id = u.id 
+      WHERE u.activation_token = $1 AND u.role = 'CUSTOMER' LIMIT 1
+    `;
     const result = await query(sql, [hashedToken]);
     return result.rows[0];
   }

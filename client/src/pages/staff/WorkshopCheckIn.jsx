@@ -24,7 +24,6 @@ const WorkshopCheckIn = () => {
   const [successData, setSuccessData] = useState(null);
   const [error, setError] = useState(null);
 
-  // The Explicit Tab Toggle for New Registrations
   const [activeTab, setActiveTab] = useState("pathA");
 
   const [formData, setFormData] = useState({
@@ -65,6 +64,7 @@ const WorkshopCheckIn = () => {
         setFormData((prev) => ({
           ...prev,
           plate_number: res.vehicle.plate_number,
+          email: res.vehicle.email || "",
         }));
       } else {
         setVehicleData(false);
@@ -95,7 +95,7 @@ const WorkshopCheckIn = () => {
       if (!payload.mechanic_id) delete payload.mechanic_id;
       if (!payload.year) delete payload.year;
 
-      // Tab Cleanup: Don't send Path A data if they used Path B, etc.
+      // Tab Cleanup: If staff chose Path A, clear out manual details so the customer fills them in
       if (!vehicleData) {
         if (activeTab === "pathA") {
           delete payload.first_name;
@@ -103,9 +103,8 @@ const WorkshopCheckIn = () => {
           delete payload.make;
           delete payload.model;
           delete payload.year;
-        } else {
-          delete payload.email; // Path B purely manual
         }
+        // Note: Email is ALWAYS sent now, regardless of the tab!
       }
 
       const res = await checkInService.submitCheckIn(payload);
@@ -277,61 +276,102 @@ const WorkshopCheckIn = () => {
           {/* Right Column: Form */}
           <div className="lg:col-span-8 bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
             <form onSubmit={handleSubmitCheckIn} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">
-                    Current Odometer (km)
-                  </label>
-                  <input
-                    required
-                    placeholder="000,000 (km)"
-                    type="number"
-                    name="odometer"
-                    value={formData.odometer}
-                    onChange={handleInputChange}
-                    className="w-full mt-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none focus:border-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">
-                    Service Intent
-                  </label>
-                  <select
-                    required
-                    name="service_intent"
-                    value={formData.service_intent}
-                    onChange={handleInputChange}
-                    className="w-full mt-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none focus:border-amber-500"
-                  >
-                    <option value="">Select Category...</option>
-                    <option value="Engine">Engine & Tune-up</option>
-                    <option value="Underchassis">
-                      Underchassis / Suspension
-                    </option>
-                    <option value="Brakes">Brakes & Safety</option>
-                    <option value="Aircon">Aircon System</option>
-                    <option value="General">General Checkup</option>
-                  </select>
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b border-slate-200 dark:border-white/10 pb-3 mb-6">
+                  Service Ticket
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      Current Odometer
+                    </label>
+                    <input
+                      required
+                      placeholder="000,000 (km)"
+                      type="number"
+                      name="odometer"
+                      value={formData.odometer}
+                      onChange={handleInputChange}
+                      className="w-full mt-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm dark:text-white outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      Service Intent
+                    </label>
+                    <select
+                      required
+                      name="service_intent"
+                      value={formData.service_intent}
+                      onChange={handleInputChange}
+                      className="w-full mt-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm dark:text-white outline-none focus:border-amber-500"
+                    >
+                      <option value="">Select Category...</option>
+                      <option value="Engine">Engine & Tune-up</option>
+                      <option value="Underchassis">
+                        Underchassis / Suspension
+                      </option>
+                      <option value="Brakes">Brakes & Safety</option>
+                      <option value="Aircon">Aircon System</option>
+                      <option value="General">General Checkup</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* Hybrid Registration Box */}
+              {/* NEW REGISTRATION SECTION */}
               {!vehicleData && (
-                <div className="mt-6">
-                  <div className="flex gap-2 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">
+                <div className="bg-slate-50 dark:bg-white/5 p-6 rounded-2xl border border-slate-200 dark:border-white/10">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white mb-4">
+                    Customer Portal Setup
+                  </h3>
+
+                  {/* Email is now MANDATORY and sits globally above the tabs */}
+                  <div className="mb-6">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                      <Mail size={12} /> Email Address (Required)
+                    </label>
+                    <input
+                      required
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="customer@example.com"
+                      className="w-full mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm dark:text-white outline-none focus:border-amber-500 shadow-sm"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                      An activation link will be sent to this email to secure
+                      the Digital Passport.
+                    </p>
+                  </div>
+
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 border-t border-slate-200 dark:border-white/10 pt-4">
+                    Vehicle Details
+                  </h3>
+
+                  <div className="flex gap-2 mb-4">
                     <button
                       type="button"
                       onClick={() => setActiveTab("pathA")}
-                      className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-colors ${activeTab === "pathA" ? "bg-amber-500 text-slate-900" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                      className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-colors ${
+                        activeTab === "pathA"
+                          ? "bg-amber-500 text-slate-900"
+                          : "text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
+                      }`}
                     >
-                      Digital Invite
+                      Let Customer Fill
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab("pathB")}
-                      className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-colors flex items-center gap-1 ${activeTab === "pathB" ? "bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                      className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-colors flex items-center gap-1 ${
+                        activeTab === "pathB"
+                          ? "bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white"
+                          : "text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
+                      }`}
                     >
-                      <Edit3 size={14} /> Manual
+                      <Edit3 size={14} /> I will fill it now
                     </button>
                   </div>
 
@@ -343,25 +383,10 @@ const WorkshopCheckIn = () => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -5 }}
                       >
-                        <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl mb-4 flex items-start gap-2">
-                          <Mail className="text-blue-500 shrink-0" size={16} />
-                          <p className="text-[10px] font-medium text-blue-700 dark:text-blue-300">
-                            Fastest method. System emails a secure link allowing
-                            the customer to register their own car details.
-                          </p>
+                        <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl text-xs font-bold text-blue-700 dark:text-blue-300">
+                          To save time, the customer will enter their Name,
+                          Make, and Model when they click their Activation Link.
                         </div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">
-                          Customer Email
-                        </label>
-                        <input
-                          required={activeTab === "pathA"}
-                          type="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          placeholder="customer@example.com"
-                          className="w-full mt-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none focus:border-amber-500"
-                        />
                       </motion.div>
                     ) : (
                       <motion.div
@@ -377,12 +402,12 @@ const WorkshopCheckIn = () => {
                               First Name
                             </label>
                             <input
-                              placeholder="Juan"
                               required={activeTab === "pathB"}
                               name="first_name"
+                              placeholder="e.g., Juan"
                               value={formData.first_name}
                               onChange={handleInputChange}
-                              className="w-full mt-1 bg-slate-50 dark:bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none"
+                              className="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none"
                             />
                           </div>
                           <div>
@@ -390,12 +415,12 @@ const WorkshopCheckIn = () => {
                               Last Name
                             </label>
                             <input
-                              placeholder="Dela Cruz"
                               required={activeTab === "pathB"}
                               name="last_name"
+                              placeholder="e.g., Dela Cruz"
                               value={formData.last_name}
                               onChange={handleInputChange}
-                              className="w-full mt-1 bg-slate-50 dark:bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none"
+                              className="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none"
                             />
                           </div>
                         </div>
@@ -405,11 +430,11 @@ const WorkshopCheckIn = () => {
                               Make
                             </label>
                             <input
-                              placeholder="e.g., Toyota"
                               name="make"
+                              placeholder="e.g., Toyota"
                               value={formData.make}
                               onChange={handleInputChange}
-                              className="w-full mt-1 bg-slate-50 dark:bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none"
+                              className="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none"
                             />
                           </div>
                           <div>
@@ -417,11 +442,11 @@ const WorkshopCheckIn = () => {
                               Model
                             </label>
                             <input
-                              placeholder="e.g., Vios"
                               name="model"
+                              placeholder="e.g., Vios"
                               value={formData.model}
                               onChange={handleInputChange}
-                              className="w-full mt-1 bg-slate-50 dark:bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none"
+                              className="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none"
                             />
                           </div>
                           <div>
@@ -429,12 +454,12 @@ const WorkshopCheckIn = () => {
                               Year
                             </label>
                             <input
-                              placeholder="YYYY (e.g., 2024)"
                               type="number"
                               name="year"
+                              placeholder="YYYY"
                               value={formData.year}
                               onChange={handleInputChange}
-                              className="w-full mt-1 bg-slate-50 dark:bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none"
+                              className="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm dark:text-white outline-none"
                             />
                           </div>
                         </div>
@@ -448,7 +473,7 @@ const WorkshopCheckIn = () => {
                 <button
                   type="submit"
                   disabled={submitLoading}
-                  className="px-8 py-3 bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-900 font-black rounded-xl uppercase text-xs tracking-widest flex items-center gap-2 hover:scale-[1.02] transition-transform shadow-lg"
+                  className="px-8 py-4 bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-900 font-black rounded-xl uppercase text-xs tracking-widest flex items-center gap-2 hover:scale-[1.02] transition-transform shadow-lg"
                 >
                   {submitLoading ? "Processing..." : "Generate Ticket"}{" "}
                   <ChevronRight size={16} />
@@ -476,7 +501,13 @@ const WorkshopCheckIn = () => {
           </p>
 
           {successData.warning && (
-            <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-left flex items-start gap-3 mb-6 text-amber-600 dark:text-amber-500 text-xs font-bold">
+            <div
+              className={`border p-3 rounded-xl text-left flex items-start gap-3 mb-6 text-xs font-bold ${
+                successData.warning.includes("Security")
+                  ? "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400"
+                  : "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-500"
+              }`}
+            >
               <AlertTriangle size={16} className="shrink-0" />{" "}
               {successData.warning}
             </div>

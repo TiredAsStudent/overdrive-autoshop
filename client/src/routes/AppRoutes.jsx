@@ -17,6 +17,7 @@ import LoginPage from "../pages/auth/LoginPage";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import ActivateAccount from "../pages/auth/ActivateAccount";
+import ActivateCustomer from "../pages/auth/ActivateCustomer";
 
 // --- ERROR PAGES ---
 import AccessDenied from "../pages/error/AccessDenied";
@@ -527,6 +528,10 @@ const AppRoutes = () => {
         <Route
           path="/activate"
           element={user ? <Navigate to="/" replace /> : <ActivateAccount />}
+        />
+        <Route
+          path="/activate-customer"
+          element={user ? <Navigate to="/" replace /> : <ActivateCustomer />}
         />
 
         {/* 2. ERROR ROUTE */}

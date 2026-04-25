@@ -89,6 +89,33 @@ const authService = {
       );
     }
   },
+
+  // --- CUSTOMER ACTIVATION ENDPOINTS ---
+  verifyCustomerInvite: async (token) => {
+    try {
+      const response = await api.get(`/auth/verify-customer-invite/${token}`);
+      return response.data.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message || "Invalid or expired link.",
+      );
+    }
+  },
+
+  activateCustomerAccount: async (token, newPassword, profileData) => {
+    try {
+      const response = await api.post("/auth/activate-customer", {
+        token,
+        newPassword,
+        ...profileData, // Spreads first_name, last_name, make, model, year
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message || "Activation failed.",
+      );
+    }
+  },
 };
 
 export default authService;

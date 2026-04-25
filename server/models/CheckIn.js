@@ -115,6 +115,49 @@ class CheckInModel {
       client.release();
     }
   }
+
+  static async linkNewVehicleToExisting(ownerId, plateNumber, checkInData) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const vehicleSql = `
+        INSERT INTO vehicles (owner_id, plate_number, make, model, year, last_odometer_reading, next_service_odometer) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
+      `;
+      const vehicleRes = await client.query(vehicleSql, [
+        ownerId,
+        plateNumber,
+        checkInData.make || null,
+        checkInData.model || null,
+        checkInData.year || null,
+        checkInData.odometer,
+        checkInData.nextServiceOdo,
+      ]);
+
+      const jobSql = `
+        INSERT INTO job_cards (branch_id, vehicle_id, mechanic_id, staff_id, service_intent, check_in_odometer, next_service_odometer) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
+      `;
+      const jobRes = await client.query(jobSql, [
+        checkInData.branchId,
+        vehicleRes.rows[0].id,
+        checkInData.mechanicId || null,
+        checkInData.staffId,
+        checkInData.serviceIntent,
+        checkInData.odometer,
+        checkInData.nextServiceOdo,
+      ]);
+
+      await client.query("COMMIT");
+      return { vehicleId: vehicleRes.rows[0].id, jobCardId: jobRes.rows[0].id };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 module.exports = CheckInModel;
