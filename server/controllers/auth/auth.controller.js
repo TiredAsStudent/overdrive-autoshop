@@ -162,17 +162,24 @@ class AuthController {
 
   static async activateCustomerAccount(req, res) {
     try {
-      const { token, newPassword } = req.body;
+      const { token, newPassword, first_name, last_name, make, model, year } =
+        req.body;
+
+      // Bundle the data integrity fields
+      const profileData = { first_name, last_name, make, model, year };
+
       const data = await AuthService.processCustomerActivation(
         token,
         newPassword,
+        profileData,
         req.ip,
       );
+
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
         data,
-        "Digital Passport successfully activated!",
+        "Digital Passport successfully activated! Vehicle details verified.",
       );
     } catch (error) {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);

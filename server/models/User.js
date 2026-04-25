@@ -44,10 +44,60 @@ class User {
     const result = await query(sql, [hashedToken]);
     return result.rows[0];
   }
+  static async activateCustomerWithProfile(
+    userId,
+    newPasswordHash,
+    profileData,
+  ) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
 
-  static async activateCustomer(userId, newPasswordHash) {
-    const updateSql = `UPDATE users SET password_hash = $1, is_active = TRUE, activation_token = NULL, activation_token_expires = NULL, updated_at = NOW(), token_version = token_version + 1 WHERE id = $2`;
-    await query(updateSql, [newPasswordHash, userId]);
+      // Activate Account & Update Customer Name
+      const updateSql = `
+        UPDATE users 
+        SET 
+          password_hash = $1, 
+          is_active = TRUE, 
+          activation_token = NULL, 
+          activation_token_expires = NULL, 
+          first_name = $2,
+          last_name = $3,
+          updated_at = NOW(), 
+          token_version = token_version + 1 
+        WHERE id = $4
+      `;
+      await client.query(updateSql, [
+        newPasswordHash,
+        profileData.first_name,
+        profileData.last_name,
+        userId,
+      ]);
+
+      // Update Vehicle Specifics
+      const vehicleSql = `
+        UPDATE vehicles 
+        SET 
+          make = $1, 
+          model = $2, 
+          year = $3, 
+          updated_at = NOW()
+        WHERE owner_id = $4
+      `;
+      await client.query(vehicleSql, [
+        profileData.make,
+        profileData.model,
+        profileData.year,
+        userId,
+      ]);
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async checkEmailExists(email) {

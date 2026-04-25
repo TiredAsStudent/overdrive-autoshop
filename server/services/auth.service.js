@@ -226,19 +226,35 @@ class AuthService {
     };
   }
 
-  static async processCustomerActivation(rawToken, newPassword, ipAddress) {
+  static async processCustomerActivation(
+    rawToken,
+    newPassword,
+    profileData,
+    ipAddress,
+  ) {
     const hashedToken = crypto
       .createHash("sha256")
       .update(rawToken)
       .digest("hex");
+
+    // Verify token and find the pending customer
     const user = await User.findCustomerByActivationToken(hashedToken);
 
-    if (!user)
+    if (!user) {
       throw new Error("This activation link is invalid or has expired.");
+    }
 
+    // Hash the new password securely
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
-    await User.activateCustomer(user.id, newPasswordHash);
 
+    // Execute the Atomic Transaction (Password + Profile + Vehicle)
+    await User.activateCustomerWithProfile(
+      user.id,
+      newPasswordHash,
+      profileData,
+    );
+
+    // Record the compliance event
     await logSecureAction(
       user.id,
       null,
@@ -247,18 +263,26 @@ class AuthService {
       ipAddress,
       "users",
       user.id,
+      null,
+      {
+        updated_make: profileData.make,
+        updated_model: profileData.model,
+      },
     );
 
+    // Generate their first active session token
     const payload = {
       id: user.id,
       role: user.role,
       branchId: null,
       token_version: user.token_version + 1,
     };
+
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: "12h",
     });
-    return { token, firstName: user.first_name };
+
+    return { token, firstName: profileData.first_name };
   }
 }
 
