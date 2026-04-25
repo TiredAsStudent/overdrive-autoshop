@@ -3,6 +3,7 @@ const router = express.Router();
 
 // Import Staff-Specific Controllers
 const StaffInventoryController = require("../../controllers/staff/inventory.controller");
+const StaffOcrController = require("../../controllers/staff/ocr.controller");
 const CheckInController = require("../../controllers/staff/checkin.controller");
 
 // Import Manager Controllers for the "Shared Read-Only" dropdowns!
@@ -18,10 +19,12 @@ const {
 } = require("../../middlewares/authMiddleware");
 const branchGuard = require("../../middlewares/branchMiddleware");
 const validate = require("../../middlewares/validateMiddleware");
+const { uploadReceipt } = require("../../middlewares/uploadMiddleware");
 const { ROLES } = require("../../constants/roles");
 
-// Import Validation Schema
+// Import Validation Schemas
 const { checkInSchema } = require("../../validations/staff/checkin.schema");
+const { ocrSubmitSchema } = require("../../validations/staff/ocr.schema");
 
 // ==========================================
 // GLOBAL PORTAL SECURITY
@@ -47,6 +50,21 @@ router.post(
   "/checkin",
   validate(checkInSchema),
   CheckInController.submitCheckIn,
+);
+
+// --- OCR INTAKE: SUB-TAB 1 ---
+// Endpoint 1: Upload and Analyze
+router.post(
+  "/ocr/analyze",
+  uploadReceipt.single("receipt"),
+  StaffOcrController.analyzeReceipt,
+);
+
+// Endpoint 2: Submit verified data (Human-in-the-Loop Handshake)
+router.post(
+  "/ocr/submit",
+  validate(ocrSubmitSchema), // The Security Gate
+  StaffOcrController.submitVerifiedReceipt,
 );
 
 module.exports = router;

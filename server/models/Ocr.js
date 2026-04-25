@@ -148,6 +148,74 @@ class OcrModel {
     await query(sql, [adminId, scanId]);
     return true;
   }
+
+  static async checkDuplicateHash(hash) {
+    const sql = `SELECT id, vendor_name, receipt_date FROM receipt_scans WHERE file_hash = $1 LIMIT 1`;
+    const result = await query(sql, [hash]);
+    return result.rows[0];
+  }
+
+  static async createPendingScan(data) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // 1. Insert Header
+      const scanSql = `
+        INSERT INTO receipt_scans 
+        (branch_id, uploaded_by, image_url, vendor_name, invoice_number, receipt_date, total_amount, tax_amount, account_category_id, ai_metadata, file_hash, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'PENDING')
+        RETURNING id
+      `;
+      const scanRes = await client.query(scanSql, [
+        data.branch_id,
+        data.uploaded_by,
+        data.image_url,
+        data.vendor_name,
+        data.invoice_number,
+        data.receipt_date,
+        data.total_amount,
+        data.tax_amount,
+        data.account_category_id,
+        JSON.stringify(data.ai_metadata),
+        data.file_hash,
+      ]);
+      const scanId = scanRes.rows[0].id;
+
+      // 2. Insert Line Items
+      if (data.items && data.items.length > 0) {
+        const itemValues = data.items
+          .map(
+            (_, i) =>
+              `($1, $${i * 5 + 2}, $${i * 5 + 3}, $${i * 5 + 4}, $${i * 5 + 5}, $${i * 5 + 6})`,
+          )
+          .join(", ");
+        const itemParams = [scanId];
+        data.items.forEach((item) =>
+          itemParams.push(
+            null,
+            item.description,
+            item.quantity,
+            item.unit_cost,
+            item.total_price,
+          ),
+        );
+
+        await client.query(
+          `INSERT INTO receipt_scan_items (receipt_scan_id, inventory_id, description, quantity, unit_cost, total_price) VALUES ${itemValues}`,
+          itemParams,
+        );
+      }
+
+      await client.query("COMMIT");
+      return scanId;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 module.exports = OcrModel;
