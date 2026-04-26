@@ -4,7 +4,7 @@ class OcrModel {
   static async getPendingScans() {
     const sql = `
       SELECT 
-        rs.id, rs.image_url, rs.vendor_name, rs.total_amount, rs.ai_confidence_score, rs.created_at,
+        rs.id, rs.image_url, rs.vendor_name, rs.total_amount, rs.tax_amount, rs.ai_confidence_score, rs.created_at,
         b.branch_name,
         u.first_name || ' ' || u.last_name AS uploaded_by_name
       FROM receipt_scans rs
@@ -40,21 +40,24 @@ class OcrModel {
     try {
       await client.query("BEGIN");
 
+      // Get Branch Context from the original scan
       const scanRes = await client.query(
         `SELECT branch_id FROM receipt_scans WHERE id = $1`,
         [scanId],
       );
       const branchId = scanRes.rows[0].branch_id;
 
+      // Update the Scan Header
       await client.query(
         `UPDATE receipt_scans 
          SET status = 'APPROVED', reviewed_by = $1, reviewed_at = NOW(), 
-             total_amount = $2, vendor_name = $3, invoice_number = $4, 
-             receipt_date = $5, account_category_id = $6 
-         WHERE id = $7`,
+             total_amount = $2, tax_amount = $3, vendor_name = $4, invoice_number = $5, 
+             receipt_date = $6, account_category_id = $7 
+         WHERE id = $8`,
         [
           adminId,
           finalData.total_amount,
+          finalData.tax_amount,
           finalData.vendor_name,
           finalData.invoice_number || null,
           finalData.receipt_date,
@@ -63,6 +66,7 @@ class OcrModel {
         ],
       );
 
+      // Clear old draft items and insert verified ones
       await client.query(
         `DELETE FROM receipt_scan_items WHERE receipt_scan_id = $1`,
         [scanId],
@@ -84,12 +88,14 @@ class OcrModel {
           ],
         );
 
+        // === TRIPLE-ACTION A: INVENTORY UPDATES ===
         if (item.inventory_id) {
           await client.query(
             `UPDATE branch_inventory SET stock_quantity = stock_quantity + $1 WHERE branch_id = $2 AND inventory_id = $3`,
             [item.quantity, branchId, item.inventory_id],
           );
 
+          // Inflation Guard Logic
           const invRes = await client.query(
             `SELECT unit_cost FROM inventory WHERE id = $1`,
             [item.inventory_id],
@@ -97,7 +103,7 @@ class OcrModel {
           const currentCost = parseFloat(invRes.rows[0].unit_cost);
           const newCost = parseFloat(item.unit_cost);
 
-          if (newCost !== currentCost) {
+          if (newCost > currentCost) {
             priceInflationDetected = true;
             await client.query(
               `UPDATE inventory SET unit_cost = $1 WHERE id = $2`,
@@ -107,8 +113,10 @@ class OcrModel {
         }
       }
 
+      // === TRIPLE-ACTION B: FINANCIAL LEDGER ENTRIES ===
+      // DEBIT: The Asset/Expense acquired
       await client.query(
-        `INSERT INTO financial_ledger (branch_id, account_category_id, amount, transaction_type, reference_type, reference_id) 
+        `INSERT INTO financial_ledger (branch_id, account_id, amount, transaction_type, reference_type, reference_id) 
          VALUES ($1, $2, $3, 'DEBIT', 'RECEIPT_SCAN', $4)`,
         [
           branchId,
@@ -118,14 +126,34 @@ class OcrModel {
         ],
       );
 
+      // CREDIT: The Cash/Bank Account used to pay for it
       await client.query(
-        `INSERT INTO financial_ledger (branch_id, account_category_id, amount, transaction_type, reference_type, reference_id) 
+        `INSERT INTO financial_ledger (branch_id, account_id, amount, transaction_type, reference_type, reference_id) 
          VALUES ($1, $2, $3, 'CREDIT', 'RECEIPT_SCAN', $4)`,
         [
           branchId,
           finalData.payment_account_id,
           finalData.total_amount,
           scanId,
+        ],
+      );
+
+      // === TRIPLE-ACTION C: REAL-TIME BALANCE UPDATES ===
+      // Increase the Expense/Asset bucket
+      await client.query(
+        `INSERT INTO account_balances (account_id, branch_id, balance) VALUES ($1, $2, $3) 
+         ON CONFLICT (account_id, branch_id) DO UPDATE SET balance = account_balances.balance + EXCLUDED.balance, updated_at = NOW()`,
+        [finalData.account_category_id, branchId, finalData.total_amount],
+      );
+
+      // Decrease the Payment bucket (Cash/Bank)
+      await client.query(
+        `INSERT INTO account_balances (account_id, branch_id, balance) VALUES ($1, $2, $3) 
+         ON CONFLICT (account_id, branch_id) DO UPDATE SET balance = account_balances.balance + EXCLUDED.balance, updated_at = NOW()`,
+        [
+          finalData.payment_account_id,
+          branchId,
+          -Math.abs(finalData.total_amount),
         ],
       );
 
@@ -143,9 +171,9 @@ class OcrModel {
     }
   }
 
-  static async rejectScan(scanId, adminId) {
-    const sql = `UPDATE receipt_scans SET status = 'REJECTED', reviewed_by = $1, reviewed_at = NOW() WHERE id = $2`;
-    await query(sql, [adminId, scanId]);
+  static async rejectScan(scanId, reason, adminId) {
+    const sql = `UPDATE receipt_scans SET status = 'REJECTED', reviewed_by = $1, reviewed_at = NOW(), rejection_note = $2 WHERE id = $3`;
+    await query(sql, [adminId, reason, scanId]);
     return true;
   }
 
@@ -163,8 +191,8 @@ class OcrModel {
       // 1. Insert Header
       const scanSql = `
         INSERT INTO receipt_scans 
-        (branch_id, uploaded_by, image_url, vendor_name, invoice_number, receipt_date, total_amount, tax_amount, account_category_id, ai_metadata, file_hash, status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'PENDING')
+        (branch_id, uploaded_by, image_url, vendor_name, invoice_number, receipt_date, total_amount, tax_amount, account_category_id, ai_metadata, ai_confidence_score, file_hash, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'PENDING')
         RETURNING id
       `;
       const scanRes = await client.query(scanSql, [
@@ -177,7 +205,8 @@ class OcrModel {
         data.total_amount,
         data.tax_amount,
         data.account_category_id,
-        JSON.stringify(data.ai_metadata),
+        JSON.stringify(data.aiData || data.ai_metadata), // Fallback support depending on payload mapping
+        data.ai_confidence_score || 0, // Inserts the confidence score
         data.file_hash,
       ]);
       const scanId = scanRes.rows[0].id;

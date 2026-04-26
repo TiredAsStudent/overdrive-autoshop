@@ -25,6 +25,7 @@ class GeminiService {
       Strict Rules:
       1. "tax_amount": Extract the 12% VAT amount if explicitly written (e.g., "VAT: 120.00"). If it is not explicitly separated on the receipt, return 0. Do not guess.
       2. "invoice_number": Look for "SI #", "Invoice No.", or "OR #". If none exists, return null.
+      3. "confidence_score": Evaluate the clarity of the image and text. Return an integer from 0 to 100 representing how confident you are in your extraction.
       
       Return ONLY a raw JSON object with the following structure (no markdown, no backticks):
       {
@@ -33,6 +34,7 @@ class GeminiService {
         "receipt_date": "YYYY-MM-DD",
         "total_amount": Number,
         "tax_amount": Number,
+        "confidence_score": Number,
         "items": [
           { "description": "String", "quantity": Number, "unit_cost": Number, "total_price": Number }
         ]

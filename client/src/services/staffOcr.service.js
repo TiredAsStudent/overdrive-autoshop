@@ -59,7 +59,7 @@ const staffOcrService = {
    */
   getAccountCategories: async () => {
     try {
-      const response = await api.get("/staff/accounts/categories");
+      const response = await api.get("/staff/accounts/balances");
       return response.data.data || response.data;
     } catch (error) {
       throw new Error("Failed to load account categories.");

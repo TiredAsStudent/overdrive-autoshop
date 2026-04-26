@@ -44,10 +44,10 @@ class OcrController {
         req.ip,
       );
 
-      let msg = "Receipt successfully approved. Ledger and Inventory updated.";
+      let msg =
+        "Receipt successfully approved. Ledger, Balances, and Inventory updated.";
       if (result.inflationDetected) {
-        msg +=
-          " INFLATION ALERT: Part costs have increased. Associated Combo Meals have been automatically adjusted.";
+        msg += " INFLATION ALERT: Supplier pricing exceeded database records.";
       }
 
       return sendSuccess(res, STATUS_CODES.SUCCESS, result, msg);
@@ -58,13 +58,19 @@ class OcrController {
 
   static async reject(req, res) {
     try {
-      await OcrServiceLogic.rejectScan(req.params.id, req.user.id, req.ip);
+      const { reason } = req.body;
+      await OcrServiceLogic.rejectScan(
+        req.params.id,
+        reason,
+        req.user.id,
+        req.ip,
+      );
 
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
         null,
-        "Receipt rejected. No ledger or inventory changes made.",
+        "Receipt rejected. Note sent back to Maker.",
       );
     } catch (error) {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);

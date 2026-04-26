@@ -342,7 +342,7 @@ export const OcrReviewer = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-slate-50 dark:bg-white/5 rounded-3xl border border-slate-200 dark:border-white/10">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1">
-                <Tag size={12} /> Expense Category *
+                <Tag size={12} /> Expense/Assets Category *
               </label>
               <select
                 required
@@ -356,13 +356,11 @@ export const OcrReviewer = ({
                 </option>
                 {categories
                   .filter(
-                    (c) =>
-                      c.category_name === "Expenses" ||
-                      c.category_name === "Assets",
+                    (c) => c.category === "Expenses" || c.category === "Assets",
                   )
                   .map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.category_name}
+                      {c.category} - {c.label}
                     </option>
                   ))}
               </select>
@@ -383,10 +381,10 @@ export const OcrReviewer = ({
                   Select payment source...
                 </option>
                 {categories
-                  .filter((c) => c.category_name === "Assets")
+                  .filter((c) => c.category === "Assets")
                   .map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.category_name} - {c.staff_label || "Default"}
+                      {c.category} - {c.label}
                     </option>
                   ))}
               </select>

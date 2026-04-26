@@ -24,7 +24,54 @@ class OcrService {
       adminId,
     );
 
-    // CRITICAL THESIS DATA: The AI output vs the Manager's corrections
+    // ==========================================
+    // EDIT DISTANCE
+    // ==========================================
+    let editDistance = 0;
+    const totalFields = 5; // Vendor, Invoice, Date, Total, Tax
+    let accuracyScore = 0;
+
+    // Parse the JSONB metadata stored during staff upload
+    let aiData = {};
+    if (scan.ai_metadata) {
+      aiData =
+        typeof scan.ai_metadata === "string"
+          ? JSON.parse(scan.ai_metadata)
+          : scan.ai_metadata;
+
+      // Compare AI raw string vs Manager's final string
+      if (
+        String(aiData.vendor_name || "").trim() !==
+        String(finalData.vendor_name || "").trim()
+      )
+        editDistance++;
+      if (
+        String(aiData.invoice_number || "").trim() !==
+        String(finalData.invoice_number || "").trim()
+      )
+        editDistance++;
+      if (
+        String(aiData.receipt_date || "").trim() !==
+        String(finalData.receipt_date || "").trim()
+      )
+        editDistance++;
+      if (
+        parseFloat(aiData.total_amount || 0) !==
+        parseFloat(finalData.total_amount || 0)
+      )
+        editDistance++;
+      if (
+        parseFloat(aiData.tax_amount || 0) !==
+        parseFloat(finalData.tax_amount || 0)
+      )
+        editDistance++;
+
+      accuracyScore = Math.round(
+        ((totalFields - editDistance) / totalFields) * 100,
+      );
+    }
+
+    // Write research metric to immutable Audit Log
     await logSecureAction(
       adminId,
       result.branchId,
@@ -33,20 +80,26 @@ class OcrService {
       ipAddress,
       "receipt_scans",
       id,
-      scan, // The old values (AI's raw extraction)
-      finalData, // The new values (Manager's corrections)
+      { ai_extraction: aiData }, // Old Values
+      {
+        manager_correction: finalData,
+        RESEARCH_METRICS: {
+          edit_distance: editDistance,
+          accuracy_score: accuracyScore,
+        },
+      }, // New Values
     );
 
     return result;
   }
 
-  static async rejectScan(id, adminId, ipAddress) {
+  static async rejectScan(id, reason, adminId, ipAddress) {
     const scan = await OcrModel.getScanDetails(id);
     if (!scan) throw new Error("Receipt scan not found.");
     if (scan.status !== "PENDING")
       throw new Error(`Scan is already ${scan.status}.`);
 
-    await OcrModel.rejectScan(id, adminId);
+    await OcrModel.rejectScan(id, reason, adminId);
 
     await logSecureAction(
       adminId,
@@ -57,7 +110,7 @@ class OcrService {
       "receipt_scans",
       id,
       { status: "PENDING" },
-      { status: "REJECTED" },
+      { status: "REJECTED", reason: reason },
     );
 
     return { success: true };

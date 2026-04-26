@@ -50,7 +50,7 @@ router.get(
 );
 
 // --- SHARED READ-ONLY ROUTES ---
-router.get("/accounts/categories", AccountController.getBaseCategories);
+router.get("/accounts/balances", AccountController.getBalances);
 router.get("/inventory/master", InventoryController.getInventory);
 router.get("/mechanics", MechanicController.getMechanics);
 router.get("/services", ServiceController.getServices);

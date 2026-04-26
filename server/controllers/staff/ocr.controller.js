@@ -55,6 +55,7 @@ class StaffOcrController {
           processed: `/${processedImagePath.replace(/\\/g, "/")}`,
         },
         extractedData: aiData,
+        aiConfidence: aiData?.confidence_score || 0, // Maps the score or defaults to 0
       });
     } catch (error) {
       res.status(500).json({ message: error.message });
