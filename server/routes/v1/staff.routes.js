@@ -129,4 +129,6 @@ router.patch(
   EstimateController.updateStatus,
 );
 
+router.post("/estimates/:id/convert", EstimateController.convertEstimate);
+
 module.exports = router;

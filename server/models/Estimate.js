@@ -21,7 +21,21 @@ class EstimateModel {
   }
 
   static async getEstimateById(id, branchId) {
-    const headerSql = `SELECT * FROM billing_transactions WHERE id = $1 AND branch_id = $2 AND type = 'ESTIMATE'`;
+    const headerSql = `
+      SELECT 
+        bt.*, 
+        jc.check_in_odometer, jc.diagnostic_notes,
+        v.plate_number, v.make, v.model, v.year,
+        u.first_name || ' ' || u.last_name AS customer_name,
+        u.email AS customer_email,
+        b.branch_name, b.branch_code, b.address, b.tin, b.contact_number
+      FROM billing_transactions bt
+      JOIN job_cards jc ON bt.job_card_id = jc.id
+      JOIN vehicles v ON jc.vehicle_id = v.id
+      JOIN users u ON bt.customer_id = u.id
+      JOIN branches b ON bt.branch_id = b.id
+      WHERE bt.id = $1 AND bt.branch_id = $2 AND bt.type = 'ESTIMATE'
+    `;
     const itemsSql = `SELECT * FROM billing_items WHERE transaction_id = $1`;
 
     const [headerRes, itemsRes] = await Promise.all([
@@ -38,7 +52,6 @@ class EstimateModel {
     try {
       await client.query("BEGIN");
 
-      // 1. Insert Header
       const headerSql = `
         INSERT INTO billing_transactions 
         (job_card_id, branch_id, customer_id, type, status, total_amount, tax_amount, expires_at)
@@ -55,14 +68,12 @@ class EstimateModel {
       ]);
       const newEstimateId = headerRes.rows[0].id;
 
-      // 2. Generate and Update Custom Reference Number (e.g., EST-BIN-1001)
       const refNumber = `EST-${branchCode.toUpperCase()}-${1000 + newEstimateId}`;
       await client.query(
         `UPDATE billing_transactions SET reference_number = $1 WHERE id = $2`,
         [refNumber, newEstimateId],
       );
 
-      // 3. Bulk Insert Line Items
       const itemValues = items
         .map(
           (_, i) =>
@@ -108,6 +119,57 @@ class EstimateModel {
     `;
     const result = await query(sql, [status, id, branchId]);
     return result.rows[0];
+  }
+
+  // NEW: The Master Logic for Converting an Estimate -> Sales Order
+  static async convertToSalesOrder(estimateId, branchId) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // 1. Get the items tied to this estimate
+      const itemsRes = await client.query(
+        `SELECT * FROM billing_items WHERE transaction_id = $1`,
+        [estimateId],
+      );
+      const items = itemsRes.rows;
+
+      // 2. Reserve Inventory (Changes them to "Blue Status" in the stockroom)
+      for (const item of items) {
+        if (!item.is_labor && item.inventory_id) {
+          await client.query(
+            `UPDATE branch_inventory 
+             SET reserved_quantity = reserved_quantity + $1 
+             WHERE inventory_id = $2 AND branch_id = $3`,
+            [item.quantity, item.inventory_id, branchId],
+          );
+        }
+      }
+
+      // 3. Convert Transaction Type and Status
+      const updateTxSql = `
+        UPDATE billing_transactions 
+        SET type = 'SALES_ORDER', status = 'APPROVED', updated_at = NOW() 
+        WHERE id = $1 AND branch_id = $2 
+        RETURNING job_card_id, reference_number
+      `;
+      const txRes = await client.query(updateTxSql, [estimateId, branchId]);
+      const jobCardId = txRes.rows[0].job_card_id;
+
+      // 4. Kanban Sync: Automatically shift the Job Card to "ONGOING"
+      await client.query(
+        `UPDATE job_cards SET status = 'ONGOING', updated_at = NOW() WHERE id = $1 AND status = 'PENDING'`,
+        [jobCardId],
+      );
+
+      await client.query("COMMIT");
+      return txRes.rows[0];
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 

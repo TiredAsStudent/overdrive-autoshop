@@ -25,7 +25,7 @@ const createEstimateSchema = z.object({
 
 const updateEstimateStatusSchema = z.object({
   body: z.object({
-    status: z.enum(["DRAFT", "SENT", "APPROVED", "CANCELLED"], {
+    status: z.enum(["DRAFT", "APPROVED", "CANCELLED"], {
       required_error: "Status is required",
       invalid_type_error: "Invalid status state",
     }),

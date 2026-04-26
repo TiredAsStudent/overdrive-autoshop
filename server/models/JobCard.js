@@ -20,6 +20,7 @@ class JobCardModel {
         v.plate_number, 
         v.make, 
         v.model,
+        u.id AS customer_id,
         u.first_name || ' ' || u.last_name AS customer_name,
         m.id AS mechanic_id,
         m.first_name || ' ' || m.last_name AS mechanic_name,

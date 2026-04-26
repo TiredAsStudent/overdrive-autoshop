@@ -73,6 +73,27 @@ class EstimateController {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
+
+  static async convertEstimate(req, res) {
+    try {
+      const data = await EstimateService.convertToSalesOrder(
+        req.params.id,
+        req.user,
+        req.ip,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        data,
+        "Quote successfully converted to active Sales Order.",
+      );
+    } catch (error) {
+      const statusCode = error.message.includes("CRITICAL")
+        ? STATUS_CODES.BAD_REQUEST
+        : STATUS_CODES.INTERNAL_ERROR;
+      return sendError(res, statusCode, error.message);
+    }
+  }
 }
 
 module.exports = EstimateController;

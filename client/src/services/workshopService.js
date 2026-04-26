@@ -52,7 +52,7 @@ const workshopService = {
     }
   },
 
-  // --- SERVICES / COMBO MEALS  ---
+  // --- SERVICES / COMBO MEALS ---
   getServices: async () => {
     try {
       const response = await api.get(`/${getPortal()}/services`);
@@ -106,12 +106,9 @@ const workshopService = {
     try {
       const response = await api.get("/manager/accounts/balances");
       let data = response.data.data;
-
-      // this flattens it into one list!
       if (data && !Array.isArray(data) && typeof data === "object") {
         data = Object.values(data).flat();
       }
-
       return data || [];
     } catch (error) {
       console.warn("Accounts API not ready yet or failed:", error);
@@ -121,7 +118,8 @@ const workshopService = {
 
   getSystemSettings: async () => {
     try {
-      const response = await api.get("/manager/settings");
+      const portal = getPortal(); // Dynamically gets 'staff' or 'manager'
+      const response = await api.get(`/${portal}/settings`);
       return response.data.data;
     } catch (error) {
       console.warn("Settings API failed, falling back to defaults.", error);

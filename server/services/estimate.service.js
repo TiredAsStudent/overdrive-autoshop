@@ -1,7 +1,7 @@
 const EstimateModel = require("../models/Estimate");
 const SystemSetting = require("../models/SystemSetting");
 const Branch = require("../models/Branch");
-const { query } = require("../config/db"); // Direct query for stock check
+const { query } = require("../config/db");
 const { logSecureAction } = require("../utils/auditLogger");
 
 class EstimateService {
@@ -17,7 +17,6 @@ class EstimateService {
   }
 
   static async createEstimate(data, staffUser, ipAddress) {
-    // 1. Fetch Global Tax & Branch Code
     const [settings, branch] = await Promise.all([
       SystemSetting.getSettings(),
       Branch.findById(staffUser.branchId),
@@ -27,10 +26,9 @@ class EstimateService {
     let subtotal = 0;
     const processedItems = [];
 
-    // 2. Real-Time Stock Validation & Math Processing
+    // Real-Time Stock Check
     for (const item of data.items) {
       if (!item.is_labor && item.inventory_id) {
-        // Verify Branch has enough available physical stock
         const stockSql = `
           SELECT (stock_quantity - reserved_quantity) AS available 
           FROM branch_inventory 
@@ -44,7 +42,7 @@ class EstimateService {
 
         if (available < item.quantity) {
           throw new Error(
-            `Stock Error: Only ${available} units available for ${item.description}. Cannot estimate ${item.quantity}.`,
+            `Stock Error: Only ${available} units available for ${item.description}.`,
           );
         }
       }
@@ -58,11 +56,10 @@ class EstimateService {
       });
     }
 
-    // 3. Final Calculations
     const taxAmount = subtotal * taxRate;
     const grandTotal = subtotal + taxAmount;
 
-    // Set 7-day expiry
+    // 7-day expiry enforcement
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -75,14 +72,12 @@ class EstimateService {
       expires_at: expiresAt,
     };
 
-    // 4. Save to Database
     const newEstimate = await EstimateModel.createEstimate(
       headerData,
       processedItems,
       branch.branch_code,
     );
 
-    // 5. Immutable Audit Log
     await logSecureAction(
       staffUser.id,
       staffUser.branchId,
@@ -115,8 +110,57 @@ class EstimateService {
       "billing_transactions",
       id,
     );
-
     return updated;
+  }
+
+  static async convertToSalesOrder(id, staffUser, ipAddress) {
+    const estimate = await EstimateModel.getEstimateById(
+      id,
+      staffUser.branchId,
+    );
+    if (!estimate) throw new Error("Estimate not found.");
+    if (estimate.status === "APPROVED" || estimate.type === "SALES_ORDER") {
+      throw new Error(
+        "This quote has already been converted to a Sales Order.",
+      );
+    }
+
+    // Re-verify stock before final commitment
+    for (const item of estimate.items) {
+      if (!item.is_labor && item.inventory_id) {
+        const stockSql = `SELECT (stock_quantity - reserved_quantity) AS available FROM branch_inventory WHERE inventory_id = $1 AND branch_id = $2`;
+        const stockRes = await query(stockSql, [
+          item.inventory_id,
+          staffUser.branchId,
+        ]);
+        const available = stockRes.rows[0]?.available || 0;
+
+        if (available < item.quantity) {
+          throw new Error(
+            `CRITICAL: Stock exhausted for ${item.description} while waiting for approval.`,
+          );
+        }
+      }
+    }
+
+    const result = await EstimateModel.convertToSalesOrder(
+      id,
+      staffUser.branchId,
+    );
+
+    await logSecureAction(
+      staffUser.id,
+      staffUser.branchId,
+      "ESTIMATE_CONVERTED_TO_SALES_ORDER",
+      "INFO",
+      ipAddress,
+      "billing_transactions",
+      id,
+      { status: estimate.status, type: estimate.type },
+      { status: "APPROVED", type: "SALES_ORDER", reserved_parts: true },
+    );
+
+    return result;
   }
 }
 
