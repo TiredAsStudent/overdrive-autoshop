@@ -1,11 +1,11 @@
-const JobCardService = require("../../services/jobcard.service");
+const StaffJobCardService = require("../../services/staffJobCard.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 
 class JobCardController {
   static async getBoard(req, res) {
     try {
-      const data = await JobCardService.getBranchBoard(req.user.branchId);
+      const data = await StaffJobCardService.getBranchBoard(req.user.branchId);
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
@@ -19,7 +19,7 @@ class JobCardController {
 
   static async updateStatus(req, res) {
     try {
-      const data = await JobCardService.updateJobStatus(
+      const data = await StaffJobCardService.updateJobStatus(
         req.params.id,
         req.body.status,
         req.user,
@@ -32,16 +32,18 @@ class JobCardController {
         `Job moved to ${req.body.status}`,
       );
     } catch (error) {
-      const code = error.message.includes("Security")
-        ? STATUS_CODES.FORBIDDEN
-        : STATUS_CODES.BAD_REQUEST;
+      const code = error.message.includes("Validation Gate")
+        ? STATUS_CODES.BAD_REQUEST
+        : error.message.includes("Security")
+          ? STATUS_CODES.FORBIDDEN
+          : STATUS_CODES.INTERNAL_ERROR;
       return sendError(res, code, error.message);
     }
   }
 
   static async assignMechanic(req, res) {
     try {
-      const data = await JobCardService.assignMechanic(
+      const data = await StaffJobCardService.assignMechanic(
         req.params.id,
         req.body.mechanic_id,
         req.user,
@@ -60,7 +62,7 @@ class JobCardController {
 
   static async updateDiagnosis(req, res) {
     try {
-      const data = await JobCardService.updateDiagnosis(
+      const data = await StaffJobCardService.updateDiagnosis(
         req.params.id,
         req.body.diagnostic_notes,
         req.user,

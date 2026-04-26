@@ -16,6 +16,8 @@ class JobCardModel {
         jc.check_in_odometer, 
         jc.diagnostic_notes,
         jc.customer_notes,
+        jc.started_at,
+        jc.completed_at,
         jc.created_at,
         v.plate_number, 
         v.make, 
@@ -40,11 +42,20 @@ class JobCardModel {
   }
 
   static async updateStatus(id, status) {
+    // AUTOMATED TIME-TRACKING LOGIC
+    let timeTrackingSql = "";
+    if (status === "ONGOING") {
+      // Only set started_at if it hasn't been set before (prevents overwriting if they move it back and forth)
+      timeTrackingSql = ", started_at = COALESCE(started_at, NOW())";
+    } else if (status === "DONE") {
+      timeTrackingSql = ", completed_at = COALESCE(completed_at, NOW())";
+    }
+
     const sql = `
       UPDATE job_cards 
-      SET status = $1, updated_at = NOW() 
+      SET status = $1, updated_at = NOW() ${timeTrackingSql}
       WHERE id = $2 
-      RETURNING id, status, vehicle_id
+      RETURNING id, status, vehicle_id, started_at, completed_at
     `;
     const result = await query(sql, [status, id]);
     return result.rows[0];

@@ -4,7 +4,7 @@ const updateStatusSchema = z.object({
   body: z.object({
     status: z.enum(["PENDING", "ONGOING", "DONE"], {
       required_error: "Job status is required",
-      invalid_type_error: "Status must be PENDING, ONGOING, or DONE",
+      invalid_type_error: "Status must be exactly PENDING, ONGOING, or DONE",
     }),
   }),
 });
@@ -24,8 +24,9 @@ const updateDiagnosisSchema = z.object({
     diagnostic_notes: z
       .string()
       .trim()
-      .max(1000, "Notes are too long")
-      .optional(),
+      .max(2000, "Diagnostic notes are too long (Max 2000 chars)")
+      .optional()
+      .nullable(),
   }),
 });
 
