@@ -7,6 +7,7 @@ const StaffOcrController = require("../../controllers/staff/ocr.controller");
 const CheckInController = require("../../controllers/staff/checkin.controller");
 const JobCardController = require("../../controllers/staff/jobcard.controller");
 const EstimateController = require("../../controllers/staff/estimate.controller");
+const BillingController = require("../../controllers/staff/billing.controller");
 
 // Import Manager Controllers for the "Shared Read-Only" dropdowns!
 const AccountController = require("../../controllers/manager/finance.controller");
@@ -130,5 +131,13 @@ router.patch(
 );
 
 router.post("/estimates/:id/convert", EstimateController.convertEstimate);
+
+// --- BILLING: SALES ORDERS (SUB-TAB 2) ---
+router.get("/sales-orders", BillingController.getSalesOrders);
+router.post("/sales-orders/:id/cancel", BillingController.cancelOrder);
+router.post("/sales-orders/:id/finalize", BillingController.finalizeInvoice);
+
+// --- BILLING: INVOICES (SUB-TAB 3) ---
+router.get("/invoices", BillingController.getInvoices);
 
 module.exports = router;

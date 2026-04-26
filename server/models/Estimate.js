@@ -77,7 +77,7 @@ class EstimateModel {
       const itemValues = items
         .map(
           (_, i) =>
-            `($1, $${i * 6 + 2}, $${i * 6 + 3}, $${i * 6 + 4}, $${i * 6 + 5}, $${i * 6 + 6}, $${i * 6 + 7})`,
+            `($1, $${i * 7 + 2}, $${i * 7 + 3}, $${i * 7 + 4}, $${i * 7 + 5}, $${i * 7 + 6}, $${i * 7 + 7}, $${i * 7 + 8})`,
         )
         .join(", ");
 
@@ -88,6 +88,7 @@ class EstimateModel {
           item.description,
           item.quantity,
           item.unit_cost,
+          item.base_cost || 0.0,
           item.total_price,
           item.is_labor,
         );
@@ -95,7 +96,7 @@ class EstimateModel {
 
       const itemsSql = `
         INSERT INTO billing_items 
-        (transaction_id, inventory_id, description, quantity, unit_cost, total_price, is_labor) 
+        (transaction_id, inventory_id, description, quantity, unit_cost, base_cost, total_price, is_labor) 
         VALUES ${itemValues}
       `;
       await client.query(itemsSql, itemParams);
@@ -121,7 +122,6 @@ class EstimateModel {
     return result.rows[0];
   }
 
-  // NEW: The Master Logic for Converting an Estimate -> Sales Order
   static async convertToSalesOrder(estimateId, branchId) {
     const client = await pool.connect();
     try {
