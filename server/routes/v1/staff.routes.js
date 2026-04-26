@@ -6,6 +6,7 @@ const StaffInventoryController = require("../../controllers/staff/inventory.cont
 const StaffOcrController = require("../../controllers/staff/ocr.controller");
 const CheckInController = require("../../controllers/staff/checkin.controller");
 const JobCardController = require("../../controllers/staff/jobcard.controller");
+const EstimateController = require("../../controllers/staff/estimate.controller");
 
 // Import Manager Controllers for the "Shared Read-Only" dropdowns!
 const AccountController = require("../../controllers/manager/finance.controller");
@@ -32,6 +33,10 @@ const {
   assignMechanicSchema,
   updateDiagnosisSchema,
 } = require("../../validations/staff/jobcard.schema");
+const {
+  createEstimateSchema,
+  updateEstimateStatusSchema,
+} = require("../../validations/staff/estimate.schema");
 
 const handleReceiptUpload = (req, res, next) => {
   const upload = uploadReceipt.single("receipt");
@@ -106,6 +111,22 @@ router.patch(
   "/jobs/:id/diagnosis",
   validate(updateDiagnosisSchema),
   JobCardController.updateDiagnosis,
+);
+
+// --- BILLING: ESTIMATES (SUB-TAB 1) ---
+router.get("/estimates", EstimateController.getEstimates);
+router.get("/estimates/:id", EstimateController.getEstimateDetails);
+
+router.post(
+  "/estimates",
+  validate(createEstimateSchema),
+  EstimateController.createEstimate,
+);
+
+router.patch(
+  "/estimates/:id/status",
+  validate(updateEstimateStatusSchema),
+  EstimateController.updateStatus,
 );
 
 module.exports = router;
