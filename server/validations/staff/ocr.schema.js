@@ -25,6 +25,10 @@ const ocrSubmitSchema = z.object({
       .number()
       .int()
       .positive("Please select a valid account category"),
+    payment_account_id: z.coerce
+      .number()
+      .int()
+      .positive("Select the payment source used"),
 
     // --- Security & Auditing Evidence ---
     originalImage: z

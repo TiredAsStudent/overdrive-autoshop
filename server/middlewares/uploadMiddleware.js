@@ -12,7 +12,7 @@ const receiptDir = "uploads/receipts/";
 
 // Common file filter
 const imageFileFilter = (req, file, cb) => {
-  const filetypes = /jpeg|jpg|png|webp/;
+  const filetypes = /jpeg|jpg|png|webp|jfif/;
   const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = filetypes.test(file.mimetype);
   if (extname && mimetype) return cb(null, true);

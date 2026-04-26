@@ -7,7 +7,6 @@ class GeminiService {
       throw new Error("AI Engine not configured.");
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    // Using flash for high speed multimodal analysis
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const imageParts = [
@@ -20,8 +19,13 @@ class GeminiService {
     ];
 
     const prompt = `
-      Act as an expert accounting OCR system for an auto repair shop. 
+      Act as an expert accounting OCR system for a Philippine auto repair shop. 
       Analyze this receipt and extract the details.
+      
+      Strict Rules:
+      1. "tax_amount": Extract the 12% VAT amount if explicitly written (e.g., "VAT: 120.00"). If it is not explicitly separated on the receipt, return 0. Do not guess.
+      2. "invoice_number": Look for "SI #", "Invoice No.", or "OR #". If none exists, return null.
+      
       Return ONLY a raw JSON object with the following structure (no markdown, no backticks):
       {
         "vendor_name": "String",
@@ -39,7 +43,6 @@ class GeminiService {
       const result = await model.generateContent([prompt, ...imageParts]);
       const responseText = result.response.text();
 
-      // Clean potential markdown formatting from AI output
       const cleanJsonStr = responseText
         .replace(/```json/g, "")
         .replace(/```/g, "")

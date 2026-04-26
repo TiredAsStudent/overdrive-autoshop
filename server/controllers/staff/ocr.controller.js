@@ -89,6 +89,31 @@ class StaffOcrController {
       res.status(500).json({ message: error.message });
     }
   }
+
+  // ACTION 3: Cancel & Cleanup Ghost Files
+  static async cancelAnalysis(req, res) {
+    try {
+      const { imagePath } = req.body;
+      if (!imagePath)
+        return res.status(400).json({ message: "No image path provided." });
+
+      const cleanPath = imagePath.replace(/^\//, "");
+      const processedPath = cleanPath.replace(
+        /(\.[a-zA-Z0-9]+)$/i,
+        "_processed$1",
+      );
+
+      const fs = require("fs");
+      if (fs.existsSync(cleanPath)) fs.unlinkSync(cleanPath);
+      if (fs.existsSync(processedPath)) fs.unlinkSync(processedPath);
+
+      res.status(200).json({
+        message: "Original and processed images cleaned up securely.",
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Cleanup failed: " + error.message });
+    }
+  }
 }
 
 module.exports = StaffOcrController;
