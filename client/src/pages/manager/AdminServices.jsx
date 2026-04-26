@@ -550,11 +550,14 @@ const AdminServices = () => {
                         }
                         className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 font-bold dark:text-white focus:border-amber-500 outline-none"
                       >
-                        <option value="Maintenance">Maintenance</option>
                         <option value="Engine">Engine</option>
+                        <option value="Transmission">Transmission</option>
                         <option value="Brakes">Brakes</option>
-                        <option value="Suspension">Suspension</option>
-                        <option value="Electrical">Electrical</option>
+                        <option value="Under chassis">Under chassis</option>
+                        <option value="OBD / ECU Scanning">
+                          OBD / ECU Scanning
+                        </option>
+                        <option value="Aircon">Aircon</option>
                       </select>
                     </div>
                   </div>

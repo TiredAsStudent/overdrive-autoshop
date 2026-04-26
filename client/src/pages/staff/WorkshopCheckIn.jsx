@@ -307,13 +307,14 @@ const WorkshopCheckIn = () => {
                       className="w-full mt-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm dark:text-white outline-none focus:border-amber-500"
                     >
                       <option value="">Select Category...</option>
-                      <option value="Engine">Engine & Tune-up</option>
-                      <option value="Underchassis">
-                        Underchassis / Suspension
+                      <option value="Engine">Engine</option>
+                      <option value="Transmission">Transmission</option>
+                      <option value="Brakes">Brakes</option>
+                      <option value="Under chassis">Under chassis</option>
+                      <option value="OBD / ECU Scanning">
+                        OBD / ECU Scanning
                       </option>
-                      <option value="Brakes">Brakes & Safety</option>
-                      <option value="Aircon">Aircon System</option>
-                      <option value="General">General Checkup</option>
+                      <option value="Aircon">Aircon</option>
                     </select>
                   </div>
                 </div>
