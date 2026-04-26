@@ -137,11 +137,13 @@ class EstimateModel {
       // 2. Reserve Inventory (Changes them to "Blue Status" in the stockroom)
       for (const item of items) {
         if (!item.is_labor && item.inventory_id) {
+          const qtyToReserve = parseInt(item.quantity, 10);
+
           await client.query(
             `UPDATE branch_inventory 
              SET reserved_quantity = reserved_quantity + $1 
              WHERE inventory_id = $2 AND branch_id = $3`,
-            [item.quantity, item.inventory_id, branchId],
+            [qtyToReserve, item.inventory_id, branchId],
           );
         }
       }

@@ -6,22 +6,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Wrench,
-  FileSignature,
   PackageCheck,
   Receipt,
   Loader2,
   CreditCard,
   FileText,
-  Calculator,
-  PlusCircle,
 } from "lucide-react";
-
 import staffJobCardService from "../../services/staffJobCard.service";
 import workshopService from "../../services/workshopService";
 
-// ==========================================
-// 1. SHARED UI COMPONENTS
-// ==========================================
 const StatusBadge = ({ status, type = "neutral" }) => {
   const colorMap = {
     success:
@@ -30,7 +23,6 @@ const StatusBadge = ({ status, type = "neutral" }) => {
       "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20",
     danger:
       "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20",
-    info: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200 dark:border-blue-500/20",
     neutral:
       "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-gray-300 border-slate-200 dark:border-white/10",
   };
@@ -43,37 +35,30 @@ const StatusBadge = ({ status, type = "neutral" }) => {
   );
 };
 
-// ==========================================
-// 2. KANBAN CARD COMPONENT
-// ==========================================
 const KanbanCard = ({
   job,
-  mechanics = [],
+  mechanics,
   onMove,
   onAssign,
   onUpdateDiagnosis,
 }) => {
-  const {
-    id,
-    plate_number,
-    make,
-    model,
-    mechanic_id,
-    status,
-    diagnostic_notes,
-    billing_type,
-    billing_status,
-  } = job;
-
-  // Local state for the diagnosis text area so it doesn't lag while typing
-  const [localDiagnosis, setLocalDiagnosis] = useState(diagnostic_notes || "");
-  const [error, setError] = useState("");
+  const [localDiagnosis, setLocalDiagnosis] = useState(
+    job.diagnostic_notes || "",
+  );
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  // Sync local state if backend data changes
   useEffect(() => {
-    setLocalDiagnosis(diagnostic_notes || "");
-  }, [diagnostic_notes]);
+    setLocalDiagnosis(job.diagnostic_notes || "");
+  }, [job.diagnostic_notes]);
+
+  const handleBlur = async () => {
+    if (localDiagnosis !== (job.diagnostic_notes || "")) {
+      setIsSaving(true);
+      await onUpdateDiagnosis(job.id, localDiagnosis);
+      setIsSaving(false);
+    }
+  };
 
   const handleFinishJob = () => {
     if (!localDiagnosis || localDiagnosis.trim().length < 5) {
@@ -81,25 +66,15 @@ const KanbanCard = ({
       setTimeout(() => setError(""), 3000);
       return;
     }
-    onMove(id, status);
+    onMove(job.id, job.status);
   };
 
-  // Only trigger API when user clicks outside the textbox (onBlur)
-  const handleBlur = async () => {
-    if (localDiagnosis !== (diagnostic_notes || "")) {
-      setIsSaving(true);
-      await onUpdateDiagnosis(id, localDiagnosis);
-      setIsSaving(false);
-    }
-  };
-
-  // Determine Billing Badge Styling
   let billingColor = "neutral";
-  if (billing_status === "APPROVED" || billing_status === "PAID")
+  if (job.billing_status === "APPROVED" || job.billing_status === "PAID")
     billingColor = "success";
-  if (billing_status === "DRAFT" || billing_status === "SENT")
+  if (job.billing_status === "DRAFT" || job.billing_status === "SENT")
     billingColor = "warning";
-  if (billing_status === "CANCELLED") billingColor = "danger";
+  if (job.billing_status === "CANCELLED") billingColor = "danger";
 
   return (
     <motion.div
@@ -107,39 +82,35 @@ const KanbanCard = ({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className={`p-5 bg-white dark:bg-slate-800 rounded-2xl border shadow-sm group transition-all 
-        ${status === "DONE" ? "border-emerald-200 dark:border-emerald-500/20" : "border-slate-200 dark:border-white/10 hover:border-amber-400 dark:hover:border-overdrive-yellow/50"}`}
+      className={`p-5 bg-white dark:bg-slate-800 rounded-2xl border shadow-sm transition-all ${job.status === "DONE" ? "border-emerald-200 dark:border-emerald-500/20" : "border-slate-200 dark:border-white/10 hover:border-amber-400"}`}
     >
       <div className="flex justify-between items-start mb-2">
         <h4 className="font-black text-slate-900 dark:text-white text-xl tracking-tighter">
-          {plate_number}
+          {job.plate_number}
         </h4>
-        {/* Dynamic Billing Badge */}
-        {billing_type ? (
+        {job.billing_type ? (
           <StatusBadge
-            status={`${billing_type}: ${billing_status}`}
+            status={`${job.billing_type}: ${job.billing_status}`}
             type={billingColor}
           />
         ) : (
           <StatusBadge status="NO BILLING YET" type="neutral" />
         )}
       </div>
-
-      <p className="text-xs text-slate-500 dark:text-gray-400 font-bold mb-4 uppercase tracking-widest flex items-center gap-1">
-        {make || "Unknown Make"} {model || ""}
+      <p className="text-xs text-slate-500 dark:text-gray-400 font-bold mb-4 uppercase tracking-widest">
+        {job.make || "Unknown Make"} {job.model || ""}
       </p>
 
-      {/* MECHANIC ASSIGNMENT */}
       <div className="mb-4">
         <label className="text-[10px] uppercase font-black text-slate-400 block mb-1.5 tracking-widest">
           Assigned Mechanic
         </label>
         <div className="relative">
           <select
-            value={mechanic_id || ""}
-            onChange={(e) => onAssign(id, e.target.value)}
-            disabled={status === "DONE"}
-            className="w-full pl-9 pr-3 py-2 text-xs font-bold bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl text-slate-700 dark:text-gray-300 outline-none focus:border-amber-500 appearance-none disabled:opacity-70 transition-all cursor-pointer"
+            value={job.mechanic_id || ""}
+            onChange={(e) => onAssign(job.id, e.target.value)}
+            disabled={job.status === "DONE"}
+            className="w-full pl-9 pr-3 py-2 text-xs font-bold bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl text-slate-700 dark:text-gray-300 outline-none focus:border-amber-500 appearance-none disabled:opacity-70 cursor-pointer"
           >
             <option value="">-- Unassigned --</option>
             {mechanics.map((m) => (
@@ -155,9 +126,8 @@ const KanbanCard = ({
         </div>
       </div>
 
-      {/* THE DIGITAL DIAGNOSIS */}
       <AnimatePresence>
-        {(status === "ONGOING" || status === "DONE") && (
+        {(job.status === "ONGOING" || job.status === "DONE") && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -183,75 +153,53 @@ const KanbanCard = ({
               value={localDiagnosis}
               onChange={(e) => setLocalDiagnosis(e.target.value)}
               onBlur={handleBlur}
-              disabled={status === "DONE"}
+              disabled={job.status === "DONE"}
               placeholder="e.g. Brake pads worn down to 2mm..."
               rows="2"
-              className={`w-full p-3 text-xs font-medium bg-slate-50 dark:bg-black/20 border rounded-xl outline-none transition-all resize-none 
-                ${error ? "border-red-400 dark:border-red-500" : "border-slate-200 dark:border-white/5 focus:border-amber-500"} 
-                text-slate-700 dark:text-gray-300 disabled:opacity-70`}
+              className={`w-full p-3 text-xs font-medium bg-slate-50 dark:bg-black/20 border rounded-xl outline-none resize-none ${error ? "border-red-400 dark:border-red-500" : "border-slate-200 dark:border-white/5 focus:border-amber-500"} text-slate-700 dark:text-gray-300 disabled:opacity-70`}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ESTIMATE / PART LINKING HOOKS (For Future Billing Tab Integration) */}
-      <div className="flex gap-2 mb-4">
-        {status === "PENDING" && !billing_type && (
-          <button className="flex-1 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 border border-blue-200 dark:border-blue-500/20 hover:bg-blue-100 transition-colors">
-            <Calculator size={12} /> Create Estimate
-          </button>
-        )}
-        {status === "ONGOING" && (
-          <button className="flex-1 py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 transition-colors">
-            <PlusCircle size={12} /> Link Parts/Services
-          </button>
-        )}
-      </div>
-
-      {/* AUTOMATION TRIGGERS & ACTIONS */}
       <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-100 dark:border-white/5">
         <div className="flex-1">
-          {status === "PENDING" && (
+          {job.status === "PENDING" && (
             <span className="text-[9px] font-bold text-slate-400 uppercase flex items-center gap-1">
               <Wrench size={10} /> Awaiting Bay
             </span>
           )}
-          {status === "ONGOING" && (
+          {job.status === "ONGOING" && (
             <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase flex items-center gap-1">
               <PackageCheck size={10} /> Work In Progress
             </span>
           )}
-          {status === "DONE" && (
+          {job.status === "DONE" && (
             <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1">
               <Receipt size={10} /> Pending Payment
             </span>
           )}
         </div>
-
-        {/* Action Buttons mapping to Next State */}
-        {status === "PENDING" && (
+        {job.status === "PENDING" && (
           <button
-            onClick={() => onMove(id, status)}
-            disabled={!mechanic_id}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all
-              ${mechanic_id ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105 shadow-lg" : "bg-slate-100 dark:bg-white/5 text-slate-400 cursor-not-allowed"}`}
+            onClick={() => onMove(job.id, job.status)}
+            disabled={!job.mechanic_id}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${job.mechanic_id ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105 shadow-lg" : "bg-slate-100 dark:bg-white/5 text-slate-400 cursor-not-allowed"}`}
           >
             Start Job <ArrowRight size={14} />
           </button>
         )}
-
-        {status === "ONGOING" && (
+        {job.status === "ONGOING" && (
           <button
             onClick={handleFinishJob}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 dark:bg-overdrive-yellow text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 shadow-lg shadow-amber-500/20 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 shadow-lg shadow-amber-500/20 transition-all"
           >
             Finish Job <CheckCircle2 size={14} />
           </button>
         )}
-
-        {status === "DONE" && (
+        {job.status === "DONE" && (
           <button className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 shadow-lg shadow-emerald-500/20 transition-all">
-            <CreditCard size={14} /> Finalize Invoice
+            <CreditCard size={14} /> Ready to Invoice
           </button>
         )}
       </div>
@@ -259,23 +207,19 @@ const KanbanCard = ({
   );
 };
 
-// ==========================================
-// 3. MAIN WORKSHOP KANBAN COMPONENT
-// ==========================================
 const WorkshopKanban = () => {
   const [jobs, setJobs] = useState([]);
   const [mechanics, setMechanics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 1. Initial Data Fetch
   useEffect(() => {
     const fetchKanbanData = async () => {
       setIsLoading(true);
       try {
         const [boardData, mechanicsData] = await Promise.all([
           staffJobCardService.getBoard(),
-          workshopService.getMechanics(), // Pulls mechanics locked to this branch
+          workshopService.getMechanics(),
         ]);
         setJobs(boardData);
         setMechanics(mechanicsData.filter((m) => m.status === "ACTIVE"));
@@ -288,11 +232,9 @@ const WorkshopKanban = () => {
     fetchKanbanData();
   }, []);
 
-  // 2. Assign Mechanic API Call (With Production Rollback)
   const handleAssignMechanic = async (jobId, mechanicId) => {
-    const snapshot = [...jobs]; // Save state for rollback
+    const snapshot = [...jobs];
     try {
-      // Optimistic UI Update
       setJobs(
         jobs.map((j) =>
           j.id === jobId ? { ...j, mechanic_id: mechanicId } : j,
@@ -300,13 +242,12 @@ const WorkshopKanban = () => {
       );
       await staffJobCardService.assignMechanic(jobId, mechanicId);
     } catch (err) {
-      setJobs(snapshot); // Rollback on failure
+      setJobs(snapshot);
       setError("Failed to assign mechanic: " + err.message);
       setTimeout(() => setError(null), 5000);
     }
   };
 
-  // 3. Update Diagnosis API Call (With Production Rollback)
   const handleUpdateDiagnosis = async (jobId, text) => {
     const snapshot = [...jobs];
     try {
@@ -323,39 +264,33 @@ const WorkshopKanban = () => {
     }
   };
 
-  // 4. Move Job Card API Call (With Production Rollback)
   const handleMoveJob = async (jobId, currentStatus) => {
-    // Determine next logical status
     let nextStatus = "PENDING";
     if (currentStatus === "PENDING") nextStatus = "ONGOING";
     if (currentStatus === "ONGOING") nextStatus = "DONE";
 
-    const snapshot = [...jobs]; // Save state for rollback
-
+    const snapshot = [...jobs];
     try {
-      // Optimistic UI Update
       setJobs(
-        jobs.map((job) => {
-          if (job.id === jobId) return { ...job, status: nextStatus };
-          return job;
-        }),
+        jobs.map((job) =>
+          job.id === jobId ? { ...job, status: nextStatus } : job,
+        ),
       );
       await staffJobCardService.updateStatus(jobId, nextStatus);
     } catch (err) {
-      setJobs(snapshot); // Rollback on failure
+      setJobs(snapshot);
       setError("Failed to move job card: " + err.message);
       setTimeout(() => setError(null), 5000);
     }
   };
 
-  // The 3 Database-Driven Columns
   const columns = [
     { id: "PENDING", title: "Pending Queue" },
     { id: "ONGOING", title: "Active Workshop (WIP)" },
     { id: "DONE", title: "Ready for Release" },
   ];
 
-  if (isLoading) {
+  if (isLoading)
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="animate-spin text-amber-500 mb-4" size={48} />
@@ -364,20 +299,25 @@ const WorkshopKanban = () => {
         </p>
       </div>
     );
-  }
 
   return (
     <div className="max-w-[1400px] mx-auto py-6 animate-in fade-in duration-500">
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 border border-red-200 dark:border-red-500/30">
-          <AlertCircle size={16} /> {error}
-        </div>
-      )}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="mb-6 p-4 bg-red-50 text-red-600 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 border border-red-200"
+          >
+            <AlertCircle size={16} /> {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {columns.map((col) => {
           const columnJobs = jobs.filter((j) => j.status === col.id);
-
           return (
             <div
               key={col.id}
@@ -391,7 +331,6 @@ const WorkshopKanban = () => {
                   {columnJobs.length}
                 </div>
               </div>
-
               <div className="flex flex-col gap-4 flex-1">
                 <AnimatePresence mode="popLayout">
                   {columnJobs.length === 0 ? (

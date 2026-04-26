@@ -54,11 +54,13 @@ class BillingModel {
       // 2. Revert the Reserved Status in Inventory
       for (const item of itemsRes.rows) {
         if (item.inventory_id) {
+          const qtyToRelease = parseInt(item.quantity, 10);
+
           await client.query(
             `UPDATE branch_inventory 
              SET reserved_quantity = GREATEST(reserved_quantity - $1, 0) 
              WHERE inventory_id = $2 AND branch_id = $3`,
-            [item.quantity, item.inventory_id, branchId],
+            [qtyToRelease, item.inventory_id, branchId],
           );
         }
       }
@@ -117,12 +119,14 @@ class BillingModel {
       // 3. Deduct Physical Inventory (Moving out of Reserved and out of Stock entirely)
       for (const item of items) {
         if (!item.is_labor && item.inventory_id) {
+          const qtyToDeduct = parseInt(item.quantity, 10);
+
           await client.query(
             `UPDATE branch_inventory 
              SET stock_quantity = stock_quantity - $1,
                  reserved_quantity = GREATEST(reserved_quantity - $1, 0)
              WHERE inventory_id = $2 AND branch_id = $3`,
-            [item.quantity, item.inventory_id, branchId],
+            [qtyToDeduct, item.inventory_id, branchId],
           );
           totalCogs += parseFloat(item.base_cost) * parseFloat(item.quantity);
         }
