@@ -14,7 +14,11 @@ const createEstimateSchema = z.object({
             .nullable()
             .optional(),
           description: z.string().trim().min(2, "Description is required"),
-          quantity: z.coerce.number().positive("Quantity must be at least 1"),
+          quantity: z.coerce
+            .number()
+            .int("Quantity must be a whole number")
+            .positive("Quantity must be at least 1"),
+          base_cost: z.coerce.number().min(0, "Base cost cannot be negative"),
           unit_cost: z.coerce.number().min(0, "Unit cost cannot be negative"),
           is_labor: z.boolean().default(false),
         }),

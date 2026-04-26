@@ -17,16 +17,19 @@ class EstimateService {
   }
 
   static async createEstimate(data, staffUser, ipAddress) {
+    // Inter-Portal Connectivity: Pull Global Rules & Branch Context
     const [settings, branch] = await Promise.all([
       SystemSetting.getSettings(),
       Branch.findById(staffUser.branchId),
     ]);
+
+    // Fallbacks in case Admin hasn't configured settings yet
     const taxRate = parseFloat(settings?.vat_percentage || 12) / 100;
 
     let subtotal = 0;
     const processedItems = [];
 
-    // Real-Time Stock Check
+    // Server-Side Verification: Real-Time Stock Check
     for (const item of data.items) {
       if (!item.is_labor && item.inventory_id) {
         const stockSql = `
@@ -42,7 +45,7 @@ class EstimateService {
 
         if (available < item.quantity) {
           throw new Error(
-            `Stock Error: Only ${available} units available for ${item.description}.`,
+            `Stock Error: Only ${available} units available for ${item.description}. Cannot issue quote.`,
           );
         }
       }
@@ -56,10 +59,11 @@ class EstimateService {
       });
     }
 
+    // Server-Side Financial Math
     const taxAmount = subtotal * taxRate;
     const grandTotal = subtotal + taxAmount;
 
-    // 7-day expiry enforcement
+    // 7-Day Expiry Enforcement
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -78,6 +82,7 @@ class EstimateService {
       branch.branch_code,
     );
 
+    // Audit Logging
     await logSecureAction(
       staffUser.id,
       staffUser.branchId,
@@ -87,30 +92,14 @@ class EstimateService {
       "billing_transactions",
       newEstimate.id,
       null,
-      { reference_number: newEstimate.reference_number, total: grandTotal },
+      {
+        reference_number: newEstimate.reference_number,
+        total: grandTotal,
+        expires: expiresAt,
+      },
     );
 
     return newEstimate;
-  }
-
-  static async updateEstimateStatus(id, status, staffUser, ipAddress) {
-    const updated = await EstimateModel.updateStatus(
-      id,
-      staffUser.branchId,
-      status,
-    );
-    if (!updated) throw new Error("Estimate not found.");
-
-    await logSecureAction(
-      staffUser.id,
-      staffUser.branchId,
-      `ESTIMATE_STATUS_${status}`,
-      "INFO",
-      ipAddress,
-      "billing_transactions",
-      id,
-    );
-    return updated;
   }
 
   static async convertToSalesOrder(id, staffUser, ipAddress) {
@@ -118,14 +107,15 @@ class EstimateService {
       id,
       staffUser.branchId,
     );
+
     if (!estimate) throw new Error("Estimate not found.");
     if (estimate.status === "APPROVED" || estimate.type === "SALES_ORDER") {
       throw new Error(
-        "This quote has already been converted to a Sales Order.",
+        "This quote has already been converted to an active Sales Order.",
       );
     }
 
-    // Re-verify stock before final commitment
+    // Critical Re-verification: Did the parts run out while waiting for customer approval?
     for (const item of estimate.items) {
       if (!item.is_labor && item.inventory_id) {
         const stockSql = `SELECT (stock_quantity - reserved_quantity) AS available FROM branch_inventory WHERE inventory_id = $1 AND branch_id = $2`;
@@ -137,7 +127,7 @@ class EstimateService {
 
         if (available < item.quantity) {
           throw new Error(
-            `CRITICAL: Stock exhausted for ${item.description} while waiting for approval.`,
+            `CRITICAL: Stock exhausted for ${item.description} while waiting for customer approval. Cannot convert.`,
           );
         }
       }
@@ -161,6 +151,28 @@ class EstimateService {
     );
 
     return result;
+  }
+
+  static async updateEstimateStatus(id, status, staffUser, ipAddress) {
+    const updated = await EstimateModel.updateStatus(
+      id,
+      staffUser.branchId,
+      status,
+    );
+
+    if (!updated) throw new Error("Estimate not found.");
+
+    await logSecureAction(
+      staffUser.id,
+      staffUser.branchId,
+      `ESTIMATE_STATUS_${status}`,
+      "INFO",
+      ipAddress,
+      "billing_transactions",
+      id,
+    );
+
+    return updated;
   }
 }
 

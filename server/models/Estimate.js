@@ -52,6 +52,7 @@ class EstimateModel {
     try {
       await client.query("BEGIN");
 
+      // 1. Insert Header
       const headerSql = `
         INSERT INTO billing_transactions 
         (job_card_id, branch_id, customer_id, type, status, total_amount, tax_amount, expires_at)
@@ -68,12 +69,14 @@ class EstimateModel {
       ]);
       const newEstimateId = headerRes.rows[0].id;
 
+      // 2. Generate and Apply Reference Number
       const refNumber = `EST-${branchCode.toUpperCase()}-${1000 + newEstimateId}`;
       await client.query(
         `UPDATE billing_transactions SET reference_number = $1 WHERE id = $2`,
         [refNumber, newEstimateId],
       );
 
+      // 3. Dynamic Parameter Builder for Line Items
       const itemValues = items
         .map(
           (_, i) =>
@@ -88,12 +91,13 @@ class EstimateModel {
           item.description,
           item.quantity,
           item.unit_cost,
-          item.base_cost || 0.0,
+          item.base_cost || 0.0, // The COGS Snapshot
           item.total_price,
           item.is_labor,
         );
       });
 
+      // 4. Insert Line Items
       const itemsSql = `
         INSERT INTO billing_items 
         (transaction_id, inventory_id, description, quantity, unit_cost, base_cost, total_price, is_labor) 
@@ -111,34 +115,20 @@ class EstimateModel {
     }
   }
 
-  static async updateStatus(id, branchId, status) {
-    const sql = `
-      UPDATE billing_transactions 
-      SET status = $1, updated_at = NOW() 
-      WHERE id = $2 AND branch_id = $3 AND type = 'ESTIMATE'
-      RETURNING id, status, reference_number
-    `;
-    const result = await query(sql, [status, id, branchId]);
-    return result.rows[0];
-  }
-
   static async convertToSalesOrder(estimateId, branchId) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // 1. Get the items tied to this estimate
       const itemsRes = await client.query(
-        `SELECT * FROM billing_items WHERE transaction_id = $1`,
+        `SELECT inventory_id, quantity FROM billing_items WHERE transaction_id = $1`,
         [estimateId],
       );
-      const items = itemsRes.rows;
 
-      // 2. Reserve Inventory (Changes them to "Blue Status" in the stockroom)
-      for (const item of items) {
-        if (!item.is_labor && item.inventory_id) {
+      // Inventory Reservation Logic (Blue Status)
+      for (const item of itemsRes.rows) {
+        if (item.inventory_id) {
           const qtyToReserve = parseInt(item.quantity, 10);
-
           await client.query(
             `UPDATE branch_inventory 
              SET reserved_quantity = reserved_quantity + $1 
@@ -148,7 +138,7 @@ class EstimateModel {
         }
       }
 
-      // 3. Convert Transaction Type and Status
+      // Convert Transaction
       const updateTxSql = `
         UPDATE billing_transactions 
         SET type = 'SALES_ORDER', status = 'APPROVED', updated_at = NOW() 
@@ -158,7 +148,7 @@ class EstimateModel {
       const txRes = await client.query(updateTxSql, [estimateId, branchId]);
       const jobCardId = txRes.rows[0].job_card_id;
 
-      // 4. Kanban Sync: Automatically shift the Job Card to "ONGOING"
+      // Kanban Sync
       await client.query(
         `UPDATE job_cards SET status = 'ONGOING', updated_at = NOW() WHERE id = $1 AND status = 'PENDING'`,
         [jobCardId],

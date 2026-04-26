@@ -48,6 +48,7 @@ class EstimateController {
         `Estimate ${data.reference_number} drafted successfully.`,
       );
     } catch (error) {
+      // Differentiate between generic server issues and business logic blocks (like Low Stock)
       const statusCode = error.message.includes("Stock Error")
         ? STATUS_CODES.BAD_REQUEST
         : STATUS_CODES.INTERNAL_ERROR;
@@ -85,7 +86,7 @@ class EstimateController {
         res,
         STATUS_CODES.SUCCESS,
         data,
-        "Quote successfully converted to active Sales Order.",
+        "Quote successfully converted to active Sales Order. Inventory reserved.",
       );
     } catch (error) {
       const statusCode = error.message.includes("CRITICAL")
