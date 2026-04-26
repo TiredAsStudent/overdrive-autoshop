@@ -17,7 +17,7 @@ export const OcrReviewer = ({
   image,
   method,
   aiAnalysis,
-  categories = [], // Default to empty array to prevent map errors
+  categories = [],
   vatRate = 12,
   onCancel,
   onSubmit,
@@ -36,7 +36,7 @@ export const OcrReviewer = ({
     total_amount: aiAnalysis?.extractedData?.total_amount || "",
     tax_amount: aiAnalysis?.extractedData?.tax_amount || "",
     account_category_id: "",
-    payment_account_id: "", // NEW: Added payment source for accurate ledger balancing
+    payment_account_id: "",
     items:
       aiAnalysis?.extractedData?.items?.length > 0
         ? aiAnalysis.extractedData.items
@@ -51,9 +51,16 @@ export const OcrReviewer = ({
     );
   }, [formData.items]);
 
+  const totalAmountVal = parseFloat(formData.total_amount || 0);
   const isTotalMismatched =
-    Math.abs(calculatedItemsSum - parseFloat(formData.total_amount || 0)) >
-    0.01;
+    Math.abs(calculatedItemsSum - totalAmountVal) > 0.01;
+  const mismatchAmount = (totalAmountVal - calculatedItemsSum).toFixed(2);
+
+  // Check if the missing amount perfectly matches the typed tax amount
+  const isMismatchExactVat =
+    Math.abs(
+      parseFloat(mismatchAmount) - parseFloat(formData.tax_amount || 0),
+    ) < 0.01 && parseFloat(formData.tax_amount) > 0;
 
   // --- DYNAMIC SOURCE TRACKING (For Research Metric) ---
   const getSource = (field) => {
@@ -86,10 +93,28 @@ export const OcrReviewer = ({
     const vatDecimal = vatRate / 100;
 
     if (!isNaN(total) && total > 0) {
-      // Dynamic Inclusive VAT Formula
       const vat = total - total / (1 + vatDecimal);
       setFormData((prev) => ({ ...prev, tax_amount: vat.toFixed(2) }));
     }
+  };
+
+  // Smart-Fix Handler to automatically inject the VAT Row
+  const handleAutoAddVATRow = () => {
+    const vatAmount = parseFloat(formData.tax_amount || 0).toFixed(2);
+    if (vatAmount <= 0) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        {
+          description: `Input VAT (${vatRate}%)`,
+          quantity: 1,
+          unit_cost: vatAmount,
+          total_price: vatAmount,
+        },
+      ],
+    }));
   };
 
   const handleItemChange = (index, field, value) => {
@@ -330,11 +355,28 @@ export const OcrReviewer = ({
             </div>
           </div>
 
-          {/* Mismatch Warning UI */}
+          {/* NEW: Mismatch Warning & Smart-Fix UI */}
           {isTotalMismatched && (
-            <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl flex items-center gap-3 text-red-600 dark:text-red-400 text-[10px] font-black uppercase tracking-widest">
-              <AlertTriangle size={16} /> Total Mismatch: Line items sum to ₱
-              {calculatedItemsSum.toLocaleString()}
+            <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-3 text-red-600 dark:text-red-400 text-[10px] sm:text-xs font-black uppercase tracking-widest">
+                <AlertTriangle size={16} className="shrink-0" />
+                <span>
+                  Total Mismatch: Items sum to ₱
+                  {calculatedItemsSum.toLocaleString()} (Missing ₱
+                  {Math.abs(parseFloat(mismatchAmount)).toLocaleString()})
+                </span>
+              </div>
+
+              {/* SMART-FIX BUTTON */}
+              {isMismatchExactVat && (
+                <button
+                  type="button"
+                  onClick={handleAutoAddVATRow}
+                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors shrink-0 shadow-md flex items-center gap-1"
+                >
+                  <Plus size={14} /> Add VAT Row
+                </button>
+              )}
             </div>
           )}
 
