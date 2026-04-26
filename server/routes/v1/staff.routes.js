@@ -5,6 +5,7 @@ const router = express.Router();
 const StaffInventoryController = require("../../controllers/staff/inventory.controller");
 const StaffOcrController = require("../../controllers/staff/ocr.controller");
 const CheckInController = require("../../controllers/staff/checkin.controller");
+const JobCardController = require("../../controllers/staff/jobcard.controller");
 
 // Import Manager Controllers for the "Shared Read-Only" dropdowns!
 const AccountController = require("../../controllers/manager/finance.controller");
@@ -26,6 +27,11 @@ const { ROLES } = require("../../constants/roles");
 // Import Validation Schemas
 const { checkInSchema } = require("../../validations/staff/checkin.schema");
 const { ocrSubmitSchema } = require("../../validations/staff/ocr.schema");
+const {
+  updateStatusSchema,
+  assignMechanicSchema,
+  updateDiagnosisSchema,
+} = require("../../validations/staff/jobcard.schema");
 
 const handleReceiptUpload = (req, res, next) => {
   const upload = uploadReceipt.single("receipt");
@@ -80,5 +86,26 @@ router.post(
 );
 
 router.post("/ocr/cancel", StaffOcrController.cancelAnalysis);
+
+// --- WORKSHOP: KANBAN JOB BOARD ---
+router.get("/jobs/board", JobCardController.getBoard);
+
+router.patch(
+  "/jobs/:id/status",
+  validate(updateStatusSchema),
+  JobCardController.updateStatus,
+);
+
+router.patch(
+  "/jobs/:id/mechanic",
+  validate(assignMechanicSchema),
+  JobCardController.assignMechanic,
+);
+
+router.patch(
+  "/jobs/:id/diagnosis",
+  validate(updateDiagnosisSchema),
+  JobCardController.updateDiagnosis,
+);
 
 module.exports = router;
