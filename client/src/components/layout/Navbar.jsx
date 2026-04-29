@@ -12,7 +12,7 @@ import {
   Moon,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
-import { useAuth } from "../../context/AuthContext"; // 1. Hooked into our new Auth Context
+import { useAuth } from "../../context/AuthContext";
 
 const Navbar = ({ user }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -20,7 +20,7 @@ const Navbar = ({ user }) => {
 
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { logout } = useAuth(); // 2. Pull the secure logout function
+  const { logout } = useAuth();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -33,8 +33,8 @@ const Navbar = ({ user }) => {
   }, []);
 
   const handleLogout = () => {
-    logout(); // 3. This safely clears localStorage via the context
-    navigate("/login"); // Routed to the correct login path
+    logout();
+    navigate("/login");
   };
 
   // 4. Dynamic Display Logic for real PostgreSQL Data
@@ -45,7 +45,6 @@ const Navbar = ({ user }) => {
   let displayRole = "Staff";
   if (user?.role?.toUpperCase() === "ADMIN") displayRole = "Administrator";
   if (user?.role?.toUpperCase() === "MANAGER") displayRole = "Manager";
-  if (user?.role?.toUpperCase() === "CUSTOMER") displayRole = "Customer";
 
   return (
     <header className="h-16 shrink-0 w-full border-b border-gray-200 dark:border-white/10 bg-white dark:bg-overdrive-dark flex items-center justify-between px-6 lg:px-8 z-20 transition-colors duration-300">
