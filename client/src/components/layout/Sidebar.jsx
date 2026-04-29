@@ -1,243 +1,187 @@
-import { NavLink, useNavigate } from "react-router-dom";
-import { useContext, useState } from "react";
-import { AuthContext } from "../../context/AuthContext";
+import React, { useState } from "react";
+import { ChevronRight, Shield, Car, ShieldCheck } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import BannerLogo from "../../assets/OverdriveLogo2.png";
+// Pulling all 4 menus
 import {
-  LayoutDashboard,
-  Car,
-  Package,
-  ScanLine,
-  Wrench,
-  PieChart,
-  Users,
-  MapPin,
-  ClipboardList,
-  Settings,
-  Menu,
-  LogOut,
-} from "lucide-react";
-import logoImg from "../../assets/overdrive_logo-removebg-preview.png";
+  sysAdminMenu,
+  managerMenu,
+  staffMenu,
+  customerMenu,
+} from "../../config/navigation";
+import { useApp } from "../../context/AppContext";
 
-const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
-  const { user, logout } = useContext(AuthContext);
-  const navigate = useNavigate();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+const Sidebar = ({ user }) => {
+  const location = useLocation();
+  const [openSubMenu, setOpenSubMenu] = useState(null);
+  const { activeVehicle } = useApp();
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
+  // 1. Logic to handle 4 Roles
+  const isSysAdmin = user?.role?.toUpperCase() === "ADMIN";
+  const isManager = user?.role?.toUpperCase() === "MANAGER";
+  const isCustomer = user?.role?.toUpperCase() === "CUSTOMER";
+
+  let menuGroups = staffMenu; // Default to staff
+  if (isSysAdmin) menuGroups = sysAdminMenu;
+  else if (isManager) menuGroups = managerMenu;
+  else if (isCustomer) menuGroups = customerMenu;
+
+  const toggleSubMenu = (label) => {
+    setOpenSubMenu(openSubMenu === label ? null : label);
   };
 
-  const navItems = [
-    {
-      name: "Dashboard",
-      path: `/${user?.role}`,
-      icon: LayoutDashboard,
-      roles: ["admin", "staff"],
-    },
-    {
-      name: "Vehicle Archive",
-      path: `/${user?.role}/vehicles`,
-      icon: Car,
-      roles: ["admin", "staff"],
-    },
-    {
-      name: "Job Cards",
-      path: `/${user?.role}/jobs`,
-      icon: Wrench,
-      roles: ["admin", "staff"],
-    },
-    {
-      name: "Inventory",
-      path: `/${user?.role}/inventory`,
-      icon: Package,
-      roles: ["admin", "staff"],
-    },
-    {
-      name: "OCR Intake",
-      path: `/${user?.role}/ocr`,
-      icon: ScanLine,
-      roles: ["admin", "staff"],
-    },
-    {
-      name: "Financials",
-      path: `/admin/financials`,
-      icon: PieChart,
-      roles: ["admin"],
-    },
-    {
-      name: "Branch Control",
-      path: `/admin/branches`,
-      icon: MapPin,
-      roles: ["admin"],
-    },
-    {
-      name: "Audit Logs",
-      path: `/admin/audit`,
-      icon: ClipboardList,
-      roles: ["admin"],
-    },
-    {
-      name: "Manage Users",
-      path: `/admin/users`,
-      icon: Users,
-      roles: ["admin"],
-    },
-  ];
-
-  const allowedLinks = navItems.filter((item) =>
-    item.roles.includes(user?.role),
-  );
-
   return (
-    <>
-      {/* Mobile Overlay */}
-      {isMobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-
-      {/* Sidebar Container*/}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-zinc-950 text-white flex flex-col transition-all duration-300 ease-in-out border-r border-zinc-800 md:static md:inset-0 
-          ${isMobileOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0"}
-          ${isCollapsed ? "md:w-20" : "md:w-64"}
-        `}
+    <div className="h-screen w-64 shrink-0 bg-white dark:bg-overdrive-dark text-slate-900 dark:text-white flex flex-col border-r border-slate-200 dark:border-white/5 z-30 relative transition-colors duration-300">
+      {/* Brand Logo Section */}
+      <div
+        className="relative h-20 flex items-center justify-center shrink-0 border-b-2 border-yellow-600 shadow-lg overflow-hidden"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(90deg, #facc15 0px, #facc15 16px, #ca8a04 16px, #ca8a04 20px)",
+        }}
       >
-        {/* Top Header & Logo Area */}
-        <div
-          className={`flex h-20 items-center border-b border-zinc-800 transition-all duration-300 ${isCollapsed ? "justify-center px-0" : "justify-between px-5"}`}
-        >
-          {!isCollapsed && (
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="bg-white p-1 rounded-lg shadow-sm shrink-0">
-                <img
-                  src={logoImg}
-                  alt="Overdrive Logo"
-                  className="h-6 w-auto object-contain"
-                />
-              </div>
-              <span className="text-white font-black tracking-widest text-base uppercase mt-0.5">
-                Overdrive
-              </span>
-            </div>
+        <img
+          src={BannerLogo}
+          alt="Logo"
+          className="w-full h-full object-contain scale-110 relative z-10"
+        />
+      </div>
+
+      {/* ACCESS BADGE */}
+      <div className="p-6 flex flex-col gap-1 pb-2">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-gray-500 font-bold">
+          {isSysAdmin || isManager
+            ? "Access Level"
+            : isCustomer
+              ? "Portal Status"
+              : "Current Context"}
+        </span>
+        <div className="bg-amber-50 dark:bg-overdrive-yellow/10 border border-amber-200 dark:border-overdrive-yellow/20 rounded-lg px-3 py-2 flex items-center gap-2">
+          {(isSysAdmin || isManager) && (
+            <Shield className="h-4 w-4 text-amber-600 dark:text-overdrive-yellow" />
+          )}
+          {isCustomer && <ShieldCheck className="h-4 w-4 text-emerald-600" />}
+          {!isSysAdmin && !isManager && !isCustomer && (
+            <div className="h-2 w-2 rounded-full bg-overdrive-yellow animate-pulse" />
           )}
 
-          <button
-            onClick={() => {
-              if (window.innerWidth >= 768) setIsCollapsed(!isCollapsed);
-              else setIsMobileOpen(false);
-            }}
-            className="p-2 text-zinc-400 hover:text-yellow-400 hover:bg-zinc-800/50 rounded-lg transition-all focus:outline-none shrink-0"
-          >
-            <Menu size={24} />
-          </button>
+          <span className="text-amber-700 dark:text-overdrive-yellow font-black text-sm uppercase italic tracking-tighter">
+            {isSysAdmin
+              ? "God Mode"
+              : isManager
+                ? "Enterprise Owner"
+                : isCustomer
+                  ? "Verified Owner"
+                  : user?.assigned_branch || "Main Branch"}
+          </span>
         </div>
+      </div>
 
-        {/* Navigation Links */}
-        <nav className="flex-1 mt-6 px-3 space-y-2">
-          {allowedLinks.map((link) => {
-            const Icon = link.icon;
-            return (
-              <NavLink
-                key={link.name}
-                to={link.path}
-                end={link.path === `/${user?.role}`}
-                onClick={() => {
-                  if (window.innerWidth < 768) setIsMobileOpen(false);
-                }}
-                className={({ isActive }) =>
-                  `group relative flex items-center h-11 rounded-xl transition-all duration-300 overflow-visible shrink-0 ${
-                    isCollapsed
-                      ? "justify-center w-11 mx-auto"
-                      : "px-4 gap-4 w-full"
-                  } ${
-                    isActive
-                      ? "bg-yellow-400 text-zinc-950 font-black shadow-[0_0_15px_rgba(250,204,21,0.2)]"
-                      : "text-zinc-400 hover:bg-zinc-800/80 hover:text-white font-semibold"
-                  }`
-                }
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+        <h3 className="px-2 mb-2 text-[10px] font-bold uppercase text-slate-500 dark:text-gray-500">
+          Navigations
+        </h3>
+
+        {menuGroups.map((group) => {
+          const isGroupActive = group.items.some((item) =>
+            location.pathname.includes(item.path),
+          );
+          const isOpen = openSubMenu === group.label || isGroupActive;
+
+          return (
+            <div key={group.label} className="mb-1">
+              <button
+                onClick={() => toggleSubMenu(group.label)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group ${isGroupActive ? "text-slate-900 dark:text-overdrive-yellow bg-slate-100 dark:bg-white/5" : "text-slate-600 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white"}`}
               >
-                <Icon size={20} className="shrink-0" />
-
-                {!isCollapsed && (
-                  <span className="whitespace-nowrap text-[15px] transition-all duration-300">
-                    {link.name}
-                  </span>
-                )}
-
-                {/* Tooltip */}
-                {isCollapsed && (
-                  <div className="absolute left-full ml-5 px-3 py-2 bg-yellow-400 text-zinc-950 text-xs font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-100 flex items-center">
-                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-yellow-400 rotate-45 rounded-sm"></div>
-                    {link.name}
-                  </div>
-                )}
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        {/* Bottom Area: Settings & Logout */}
-        <div className="p-4 mb-2 border-t border-zinc-800/50 flex flex-col gap-2 shrink-0">
-          {user?.role === "admin" && (
-            <NavLink
-              to="/admin/settings"
-              onClick={() => {
-                if (window.innerWidth < 768) setIsMobileOpen(false);
-              }}
-              className={({ isActive }) =>
-                `group relative flex items-center h-11 rounded-xl transition-all duration-300 overflow-visible ${
-                  isCollapsed
-                    ? "justify-center w-11 mx-auto"
-                    : "px-4 gap-4 w-full"
-                } ${
-                  isActive
-                    ? "bg-yellow-400 text-zinc-950 font-black shadow-[0_0_15px_rgba(250,204,21,0.2)]"
-                    : "text-zinc-400 hover:bg-zinc-800/80 hover:text-white font-semibold"
-                }`
-              }
-            >
-              <Settings size={20} className="shrink-0" />
-              {!isCollapsed && (
-                <span className="whitespace-nowrap text-[15px] transition-all duration-300">
-                  Settings
-                </span>
-              )}
-              {isCollapsed && (
-                <div className="absolute left-full ml-5 px-3 py-2 bg-yellow-400 text-zinc-950 text-xs font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-50 flex items-center">
-                  <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-yellow-400 rotate-45 rounded-sm"></div>
-                  Settings
+                <div className="flex items-center gap-3">
+                  <group.icon
+                    size={18}
+                    className={
+                      isGroupActive
+                        ? "text-amber-500 dark:text-overdrive-yellow"
+                        : "text-slate-400 dark:text-gray-500 group-hover:text-amber-500 dark:group-hover:text-overdrive-yellow transition-colors"
+                    }
+                  />
+                  {group.label}
                 </div>
-              )}
-            </NavLink>
-          )}
+                <motion.div
+                  animate={{ rotate: isOpen ? 90 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronRight
+                    size={14}
+                    className="text-slate-400 dark:text-gray-500"
+                  />
+                </motion.div>
+              </button>
 
-          <button
-            onClick={handleLogout}
-            className={`group relative flex items-center h-11 rounded-xl hover:bg-red-500 hover:text-white text-zinc-400 transition-all duration-300 overflow-visible ${
-              isCollapsed
-                ? "justify-center w-11 mx-auto bg-zinc-900"
-                : "px-4 gap-4 w-full"
-            }`}
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="ml-9 mt-1 space-y-1 border-l border-slate-200 dark:border-white/10">
+                      {group.items.map((subItem) => {
+                        const isSubActive = location.pathname === subItem.path;
+                        return (
+                          <Link
+                            key={subItem.name}
+                            to={subItem.path}
+                            className={`block px-4 py-2 text-xs transition-all relative ${isSubActive ? "text-slate-900 dark:text-overdrive-yellow font-bold" : "font-medium text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:translate-x-1"}`}
+                          >
+                            {isSubActive && (
+                              <motion.div
+                                layoutId="activeDot"
+                                className="absolute left-[-1px] top-1/2 -translate-y-1/2 w-1 h-4 bg-amber-500 dark:bg-overdrive-yellow rounded-r-full"
+                              />
+                            )}
+                            {subItem.name}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* ACTIVE SESSION */}
+      <AnimatePresence>
+        {(activeVehicle || isCustomer) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="mt-auto p-4 bg-amber-500/10 dark:bg-overdrive-yellow/5 border-t border-slate-200 dark:border-white/10"
           >
-            <LogOut size={20} className="shrink-0" />
-            {!isCollapsed && (
-              <span className="whitespace-nowrap text-[15px] font-bold">
-                Logout
+            <p className="text-[10px] uppercase font-black text-amber-600 dark:text-overdrive-yellow mb-1 tracking-widest flex items-center gap-1">
+              {isCustomer ? (
+                <ShieldCheck size={10} />
+              ) : (
+                <div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              )}
+              {isCustomer ? "Authenticated Car" : "Active Session"}
+            </p>
+            <div className="flex items-center justify-between">
+              <span className="font-black text-slate-900 dark:text-white tracking-widest uppercase italic">
+                {isCustomer ? user?.plate || "ABC 1234" : activeVehicle}
               </span>
-            )}
-            {isCollapsed && (
-              <div className="absolute left-full ml-5 px-3 py-2 bg-red-500 text-white text-xs font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-xl z-100 flex items-center">
-                <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-red-500 rotate-45 rounded-sm"></div>
-                Logout
-              </div>
-            )}
-          </button>
-        </div>
-      </aside>
-    </>
+              <Car size={16} className="text-slate-400 opacity-50" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 
