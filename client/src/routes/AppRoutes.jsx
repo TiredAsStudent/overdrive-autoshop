@@ -17,7 +17,6 @@ import LoginPage from "../pages/auth/LoginPage";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import ActivateAccount from "../pages/auth/ActivateAccount";
-import ActivateCustomer from "../pages/auth/ActivateCustomer";
 
 // --- ERROR PAGES ---
 import AccessDenied from "../pages/error/AccessDenied";
@@ -28,53 +27,16 @@ import UserProfilePage from "../pages/profile/UserProfilePage";
 import AccountSettingsPage from "../pages/settings/AccountSettingsPage";
 
 // --- STAFF PAGES ---
-import StaffDashboard from "../pages/staff/StaffDashboard";
-import OcrIntake from "../pages/staff/OcrIntake";
-import OcrHistory from "../pages/staff/OcrHistory";
-import WorkshopKanban from "../pages/staff/WorkshopKanban";
-import WorkshopCheckIn from "../pages/staff/WorkshopCheckIn";
-import Estimates from "../pages/staff/Estimates";
-import SalesOrders from "../pages/staff/SalesOrders";
-import Invoices from "../pages/staff/Invoices";
-import StockRoom from "../pages/staff/StockRoom";
-import MovementRequests from "../pages/staff/MovementRequest";
-import CustomerDirectory from "../pages/staff/CustomerDirectory";
-import ServicePassport from "../pages/staff/ServicePassport";
-import PortalSupport from "../pages/staff/PortalSupport";
 
 // --- SYS ADMIN PAGES ---
 import Overview from "../pages/sysadmin/Overview";
 import Branches from "../pages/sysadmin/Branches";
 import Users from "../pages/sysadmin/Users";
 import BusinessSettings from "../pages/sysadmin/BusinessSettings";
-import Integrations from "../pages/sysadmin/Integrations";
 import AuditLogs from "../pages/sysadmin/AuditLogs";
 import SystemHealth from "../pages/sysadmin/SystemHealth";
 
 // --- MANAGER PAGES ---
-import ManagerOverview from "../pages/manager/AdminOverview";
-import BranchRanking from "../pages/manager/BranchRanking";
-import OcrApprovals from "../pages/manager/OcrApprovals";
-import StockAdjustments from "../pages/manager/StockAdjustments";
-import AdminServices from "../pages/manager/AdminServices";
-import MechanicRegistry from "../pages/manager/MechanicRegistry";
-import AdminStockOverview from "../pages/manager/AdminStockOverview";
-import BulkOrderBuilder from "../pages/manager/BulkOrderBuilder";
-import AdminTransfers from "../pages/manager/AdminTransfers";
-import AdminAccounts from "../pages/manager/AdminAccounts";
-import AdminReports from "../pages/manager/AdminReports";
-import AdminTaxes from "../pages/manager/AdminTaxes";
-import AdminCustomerDirectory from "../pages/manager/AdminCustomerDirectory";
-import AdminServiceHistory from "../pages/manager/AdminServiceHistory";
-
-// --- CUSTOMER PAGES ---
-import CustomerDashboard from "../pages/customer/CustomerDashboard";
-import CustomerInstructions from "../pages/customer/CustomerInstructions";
-import CustomerTimeline from "../pages/customer/CustomerTimeline";
-import CustomerTechnicalLogs from "../pages/customer/CustomerTechnicalLogs";
-import CustomerEstimates from "../pages/customer/CustomerEstimates";
-import CustomerInvoices from "../pages/customer/CustomerInvoices";
-import CustomerGarage from "../pages/customer/CustomerGarage";
 
 const AnimatedDashboardRoutes = ({ user }) => {
   const location = useLocation();
@@ -100,7 +62,7 @@ const AnimatedDashboardRoutes = ({ user }) => {
           }
         />
 
-        {/* === SYS ADMIN (Strictly IT/Global) === */}
+        {/* === SYS ADMIN === */}
         <Route
           path="/sysadmin/*"
           element={
@@ -139,14 +101,6 @@ const AnimatedDashboardRoutes = ({ user }) => {
                   }
                 />
                 <Route
-                  path="settings/integrations"
-                  element={
-                    <PageWrapper>
-                      <Integrations />
-                    </PageWrapper>
-                  }
-                />
-                <Route
                   path="records/audit"
                   element={
                     <PageWrapper>
@@ -167,307 +121,22 @@ const AnimatedDashboardRoutes = ({ user }) => {
           }
         />
 
-        {/* === MANAGER (Enterprise Owner) === */}
+        {/* === MANAGER === */}
         <Route
           path="/manager/*"
           element={
             <ProtectedRoute allowedRoles={["MANAGER"]}>
-              <Routes>
-                <Route
-                  path="dashboard/overview"
-                  element={
-                    <PageWrapper>
-                      <ManagerOverview />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="dashboard/ranking"
-                  element={
-                    <PageWrapper>
-                      <BranchRanking />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="approvals/ocr"
-                  element={
-                    <PageWrapper>
-                      <OcrApprovals />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="approvals/stock"
-                  element={
-                    <PageWrapper>
-                      <StockAdjustments />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="workshop/services"
-                  element={
-                    <PageWrapper>
-                      <AdminServices />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="workshop/mechanics"
-                  element={
-                    <PageWrapper>
-                      <MechanicRegistry />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="inventory/overview"
-                  element={
-                    <PageWrapper>
-                      <AdminStockOverview />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="inventory/bulk"
-                  element={
-                    <PageWrapper>
-                      <BulkOrderBuilder />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="inventory/transfers"
-                  element={
-                    <PageWrapper>
-                      <AdminTransfers />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="finance/accounts"
-                  element={
-                    <PageWrapper>
-                      <AdminAccounts />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="finance/reports"
-                  element={
-                    <PageWrapper>
-                      <AdminReports />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="finance/taxes"
-                  element={
-                    <PageWrapper>
-                      <AdminTaxes />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="customers/directory"
-                  element={
-                    <PageWrapper>
-                      <AdminCustomerDirectory />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="customers/history"
-                  element={
-                    <PageWrapper>
-                      <AdminServiceHistory />
-                    </PageWrapper>
-                  }
-                />
-              </Routes>
+              <Routes></Routes>
             </ProtectedRoute>
           }
         />
 
-        {/* === STAFF (Daily Operations) === */}
+        {/* === STAFF === */}
         <Route
           path="/staff/*"
           element={
             <ProtectedRoute allowedRoles={["STAFF"]}>
-              <Routes>
-                <Route
-                  path="dashboard/stats"
-                  element={
-                    <PageWrapper>
-                      <StaffDashboard />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="workshop/check-in"
-                  element={
-                    <PageWrapper>
-                      <WorkshopCheckIn />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="workshop/kanban"
-                  element={
-                    <PageWrapper>
-                      <WorkshopKanban />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="billing/estimates"
-                  element={
-                    <PageWrapper>
-                      <Estimates user={user} />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="billing/orders"
-                  element={
-                    <PageWrapper>
-                      <SalesOrders user={user} />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="billing/invoices"
-                  element={
-                    <PageWrapper>
-                      <Invoices user={user} />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="ocr/new"
-                  element={
-                    <PageWrapper>
-                      <OcrIntake />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="ocr/history"
-                  element={
-                    <PageWrapper>
-                      <OcrHistory />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="inventory/stock"
-                  element={
-                    <PageWrapper>
-                      <StockRoom user={user} />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="inventory/requests"
-                  element={
-                    <PageWrapper>
-                      <MovementRequests user={user} />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="customers/directory"
-                  element={
-                    <PageWrapper>
-                      <CustomerDirectory user={user} />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="customers/passport"
-                  element={
-                    <PageWrapper>
-                      <ServicePassport user={user} />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="customers/support"
-                  element={
-                    <PageWrapper>
-                      <PortalSupport user={user} />
-                    </PageWrapper>
-                  }
-                />
-              </Routes>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* === CUSTOMER (Digital Garage) === */}
-        <Route
-          path="/customer/*"
-          element={
-            <ProtectedRoute allowedRoles={["CUSTOMER"]}>
-              <Routes>
-                <Route
-                  path="dashboard/status"
-                  element={
-                    <PageWrapper>
-                      <CustomerDashboard />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="dashboard/instructions"
-                  element={
-                    <PageWrapper>
-                      <CustomerInstructions />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="history/timeline"
-                  element={
-                    <PageWrapper>
-                      <CustomerTimeline />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="history/logs"
-                  element={
-                    <PageWrapper>
-                      <CustomerTechnicalLogs />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="documents/estimates"
-                  element={
-                    <PageWrapper>
-                      <CustomerEstimates />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="documents/invoices"
-                  element={
-                    <PageWrapper>
-                      <CustomerInvoices />
-                    </PageWrapper>
-                  }
-                />
-                <Route
-                  path="garage"
-                  element={
-                    <PageWrapper>
-                      <CustomerGarage />
-                    </PageWrapper>
-                  }
-                />
-              </Routes>
+              <Routes></Routes>
             </ProtectedRoute>
           }
         />
@@ -477,18 +146,8 @@ const AnimatedDashboardRoutes = ({ user }) => {
           path="/sysadmin"
           element={<Navigate to="/sysadmin/overview" replace />}
         />
-        <Route
-          path="/manager"
-          element={<Navigate to="/manager/dashboard/overview" replace />}
-        />
-        <Route
-          path="/staff"
-          element={<Navigate to="/staff/dashboard/stats" replace />}
-        />
-        <Route
-          path="/customer"
-          element={<Navigate to="/customer/dashboard/status" replace />}
-        />
+        <Route path="/manager" element={<Navigate to="" replace />} />
+        <Route path="/staff" element={<Navigate to="" replace />} />
       </Routes>
     </AnimatePresence>
   );
@@ -497,26 +156,27 @@ const AnimatedDashboardRoutes = ({ user }) => {
 const AppRoutes = () => {
   const { user } = useAuth();
 
+  const getDashboardRoute = (role) => {
+    switch (role) {
+      case "ADMIN":
+        return "/sysadmin/overview";
+      case "MANAGER":
+        return "/manager/dashboard/overview";
+      case "STAFF":
+      default:
+        return "/staff/dashboard/stats";
+    }
+  };
+
   return (
     <Router>
       <Routes>
-        {/* 1. LOGIN REDIRECT - Automatically sends returning users to their portal */}
+        {/* LOGIN */}
         <Route
           path="/login"
           element={
             user ? (
-              <Navigate
-                to={
-                  user.role === "ADMIN"
-                    ? "/sysadmin/overview"
-                    : user.role === "MANAGER"
-                      ? "/manager/dashboard/overview"
-                      : user.role === "STAFF"
-                        ? "/staff/dashboard/stats"
-                        : "/customer/dashboard/status"
-                }
-                replace
-              />
+              <Navigate to={getDashboardRoute(user.role)} replace />
             ) : (
               <LoginPage />
             )
@@ -529,15 +189,11 @@ const AppRoutes = () => {
           path="/activate"
           element={user ? <Navigate to="/" replace /> : <ActivateAccount />}
         />
-        <Route
-          path="/activate-customer"
-          element={user ? <Navigate to="/" replace /> : <ActivateCustomer />}
-        />
 
-        {/* 2. ERROR ROUTE */}
+        {/* ERROR ROUTE */}
         <Route path="/403" element={<AccessDenied user={user} />} />
 
-        {/* 3. WRAPPED DASHBOARD ROUTES (Security Check) */}
+        {/* WRAPPED DASHBOARD ROUTES */}
         <Route
           path="/*"
           element={
@@ -549,10 +205,10 @@ const AppRoutes = () => {
           }
         />
 
-        {/* 4. ROOT REDIRECT */}
+        {/* ROOT REDIRECT */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* 5. 404 CATCH-ALL */}
+        {/* 404 CATCH-ALL */}
         <Route path="*" element={<NotFound user={user} />} />
       </Routes>
     </Router>
