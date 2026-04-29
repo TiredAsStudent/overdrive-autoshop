@@ -276,33 +276,6 @@ const StaffDashboard = ({ user = MOCK_USER }) => {
               ))}
             </div>
           </div>
-
-          {/* Customer Communication Feed */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2">
-              <MessageSquare size={14} /> Customer Portal Msgs
-            </h2>
-            <div className="space-y-3">
-              {customerMessages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className="bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/10 p-4 rounded-2xl cursor-pointer hover:border-blue-300 dark:hover:border-blue-500/30 transition-colors"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/20 px-2 py-0.5 rounded uppercase tracking-widest">
-                      Plate: {msg.plate}
-                    </span>
-                    <span className="text-[9px] font-bold text-blue-400 uppercase">
-                      {msg.time}
-                    </span>
-                  </div>
-                  <p className="text-xs font-bold text-blue-800 dark:text-blue-200">
-                    "{msg.message}"
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 

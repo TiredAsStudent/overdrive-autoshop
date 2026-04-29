@@ -152,8 +152,8 @@ export const staffMenu = [
     label: "Customers",
     icon: UserCircle,
     items: [
-      { name: "Directory", path: "/staff/customers/directory" },
-      { name: "Service Passport", path: "/staff/customers/passport" },
+      // { name: "Directory", path: "/staff/customers/directory" },
+      // { name: "Service Passport", path: "/staff/customers/passport" },
       { name: "Portal Support", path: "/staff/customers/support" },
     ],
   },
