@@ -95,70 +95,7 @@ const sendWelcomeInviteEmail = async (toEmail, firstName, role, inviteLink) => {
   await transporter.sendMail(mailOptions);
 };
 
-const sendCustomerInviteEmail = async (toEmail, plateNumber, inviteLink) => {
-  const mailOptions = {
-    from: `"Overdrive Auto Shop" <${process.env.EMAIL_USER}>`,
-    to: toEmail,
-    subject: `Overdrive: Activate Your Digital Service Passport`,
-    html: `
-      <div style="background-color: #121212; padding: 40px 20px; font-family: sans-serif; color: #ffffff;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #1e1e1e; border-radius: 12px; overflow: hidden;">
-          <div style="background-color: #FACC15; padding: 24px; text-align: center;">
-            <h1 style="color: #121212; margin: 0;">OVERDRIVE AUTO SHOP</h1>
-          </div>
-          <div style="padding: 40px 32px;">
-            <h2 style="color: #ffffff;">Your vehicle is checked in!</h2>
-            <p style="color: #cccccc; line-height: 1.6;">
-              We have received your vehicle (Plate: <strong style="color: #FACC15;">${plateNumber}</strong>) at the shop. 
-              To track your service status live and access your permanent digital receipt, please activate your Customer Portal.
-            </p>
-            <div style="text-align: center; margin-bottom: 32px; margin-top: 32px;">
-              <a href="${inviteLink}" style="background-color: #FACC15; color: #121212; padding: 14px 32px; text-decoration: none; font-weight: bold; border-radius: 6px;">
-                ACTIVATE MY DIGITAL PASSPORT
-              </a>
-            </div>
-            <p style="color: #888888; font-size: 14px;">Or copy this link: <br><a href="${inviteLink}" style="color: #FACC15; word-break: break-all;">${inviteLink}</a></p>
-          </div>
-        </div>
-      </div>
-    `,
-  };
-  await transporter.sendMail(mailOptions);
-};
-
-const sendNewVehicleSecurityAlert = async (toEmail, plateNumber) => {
-  const mailOptions = {
-    from: `"Overdrive Auto Shop" <${process.env.EMAIL_USER}>`,
-    to: toEmail,
-    subject: `Security Alert: New Vehicle Added to Your Garage`,
-    html: `
-      <div style="background-color: #121212; padding: 40px 20px; font-family: sans-serif; color: #ffffff;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #1e1e1e; border-radius: 12px; overflow: hidden; border: 1px solid #333;">
-          <div style="background-color: #ef4444; padding: 24px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 2px;">SECURITY NOTIFICATION</h1>
-          </div>
-          <div style="padding: 40px 32px;">
-            <h2 style="color: #ffffff;">A new vehicle was linked to your account.</h2>
-            <p style="color: #cccccc; line-height: 1.6;">
-              This is an automated alert to let you know that a vehicle with the plate number <strong style="color: #ef4444;">${plateNumber}</strong> was just registered at Overdrive Auto Shop using your email address.
-            </p>
-            <p style="color: #cccccc; line-height: 1.6; margin-top: 20px;">
-              <strong>If this was you:</strong> No action is needed. You can track this vehicle in your Digital Garage.
-            </p>
-            <p style="color: #ef4444; line-height: 1.6; font-weight: bold; margin-top: 20px;">
-              If you did NOT authorize this, please contact the shop immediately so we can secure your account and audit log.
-            </p>
-          </div>
-        </div>
-      </div>
-    `,
-  };
-  await transporter.sendMail(mailOptions);
-};
-
 module.exports = {
   sendPasswordResetEmail,
   sendWelcomeInviteEmail,
-  sendCustomerInviteEmail,
-  sendNewVehicleSecurityAlert,
 };
