@@ -161,10 +161,10 @@ const AppRoutes = () => {
       case "ADMIN":
         return "/sysadmin/overview";
       case "MANAGER":
-        return "";
+        return "/manager/overview";
       case "STAFF":
       default:
-        return "";
+        return "/staff/overview";
     }
   };
 

@@ -1,77 +1,92 @@
 require("dotenv").config();
-const { Pool } = require("pg");
 const bcrypt = require("bcrypt");
+const { pool, connectDB } = require("../../config/db");
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: parseInt(process.env.DB_PORT, 10),
-});
-
-async function runSeed() {
-  const client = await pool.connect();
+const seedDatabase = async () => {
   try {
-    console.log("🌱 Starting Database Seed Process...");
-    await client.query("BEGIN");
+    await connectDB();
+    console.log("🌱 Seeding initialized...");
 
-    // ---------------------------------------------------------
-    // 2. CREATE ALL THREE BRANCHES
-    // ---------------------------------------------------------
-    const branches = [
-      { id: 1, name: "Main Branch", location: "Biñan, Laguna" },
-      { id: 2, name: "Second Branch", location: "Batino, Calamba" },
-      { id: 3, name: "Third Branch", location: "Cabuyao, Laguna" },
+    // 1. Insert Default Branch
+    const branchRes = await pool.query(`
+      INSERT INTO branches (branch_name, branch_code, address, is_active)
+      VALUES ('Main Branch', 'MAIN', 'Calamba City', true)
+      ON CONFLICT (branch_code) DO NOTHING
+      RETURNING id;
+    `);
+    const branchId = branchRes.rows[0]?.id || 1;
+
+    // 2. Insert System Settings
+    await pool.query(`
+      INSERT INTO system_settings (id, company_name) 
+      VALUES (1, 'Overdrive Auto Shop')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
+    // 3. Hash Passwords & Insert Users
+    const usersToSeed = [
+      {
+        email: "admin@overdrive.com",
+        pass: "NewAdminBoss@2026!",
+        role: "ADMIN",
+        branch_id: null,
+        fname: "System",
+        lname: "Admin",
+      },
+      {
+        email: "manager@overdrive.com",
+        pass: "Password123!",
+        role: "MANAGER",
+        branch_id: null,
+        fname: "The",
+        lname: "Manager",
+      },
+      {
+        email: "stafftest@overdrive.com",
+        pass: "SecurePassword123!",
+        role: "STAFF",
+        branch_id: branchId,
+        fname: "First",
+        lname: "Staff",
+      },
+      {
+        email: "stafftest2@overdrive.com",
+        pass: "Leocereno_123",
+        role: "STAFF",
+        branch_id: branchId,
+        fname: "Second",
+        lname: "Staff",
+      },
+      {
+        email: "stafftest3@overdrive.com",
+        pass: "Chriscereno_123",
+        role: "STAFF",
+        branch_id: branchId,
+        fname: "Third",
+        lname: "Staff",
+      },
     ];
 
-    for (const b of branches) {
-      await client.query(
+    for (const u of usersToSeed) {
+      const hash = await bcrypt.hash(u.pass, 10);
+      await pool.query(
         `
-        INSERT INTO branches (id, branch_name, location) 
-        VALUES ($1, $2, $3) 
-        ON CONFLICT (id) DO NOTHING;
+        INSERT INTO users (email, password_hash, role, branch_id, first_name, last_name, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, true)
+        ON CONFLICT (email) DO NOTHING;
       `,
-        [b.id, b.name, b.location],
+        [u.email, hash, u.role, u.branch_id, u.fname, u.lname],
       );
-      console.log(`✅ Verified Branch: ${b.name}`);
     }
 
-    // ---------------------------------------------------------
-    // 3. CREATE THE GLOBAL SUPER ADMIN (branch_id = NULL)
-    // ---------------------------------------------------------
-    const adminEmail = "admin@overdrive.com";
-    const rawPassword = "Admin@123!";
-    const userCheck = await client.query(
-      `SELECT id FROM users WHERE email = $1`,
-      [adminEmail],
+    console.log(
+      "✅ Seeding completed successfully. Your test accounts are ready.",
     );
-
-    if (userCheck.rows.length === 0) {
-      const passwordHash = await bcrypt.hash(rawPassword, 10);
-
-      const userQuery = `
-        INSERT INTO users (branch_id, role, email, password_hash, first_name, last_name) 
-        VALUES (NULL, 'ADMIN', $1, $2, 'System', 'Admin')
-        RETURNING id;
-      `;
-      const userRes = await client.query(userQuery, [adminEmail, passwordHash]);
-      console.log(
-        `✅ Created Global Super Admin: ${adminEmail} (ID: ${userRes.rows[0].id})`,
-      );
-    } else {
-      console.log(`⚡ Global Super Admin already exists: ${adminEmail}`);
-    }
-
-    await client.query("COMMIT");
-    console.log("\n🎉 SEEDING COMPLETE! The system is ready.");
+    process.exit(0);
   } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("❌ Seeding Failed:", error);
-  } finally {
-    client.release();
-    await pool.end();
+    console.error("❌ Seeding failed:", error);
+    process.exit(1);
   }
-}
+};
 
-runSeed();
+seedDatabase();
