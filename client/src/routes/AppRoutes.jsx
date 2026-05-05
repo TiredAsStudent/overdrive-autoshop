@@ -45,6 +45,7 @@ import Overview from "../pages/sysadmin/Overview";
 import Branches from "../pages/sysadmin/Branches";
 import Users from "../pages/sysadmin/Users";
 import BusinessSettings from "../pages/sysadmin/BusinessSettings";
+import AiAssistant from "../pages/sysadmin/AiAssistant";
 import AuditLogs from "../pages/sysadmin/AuditLogs";
 import SystemHealth from "../pages/sysadmin/SystemHealth";
 
@@ -112,7 +113,7 @@ const AnimatedDashboardRoutes = ({ user }) => {
                   }
                 />
                 <Route
-                  path="management/branches"
+                  path="management/branches-registry"
                   element={
                     <PageWrapper>
                       <Branches />
@@ -120,7 +121,7 @@ const AnimatedDashboardRoutes = ({ user }) => {
                   }
                 />
                 <Route
-                  path="management/users"
+                  path="management/users-accounts"
                   element={
                     <PageWrapper>
                       <Users />
@@ -128,7 +129,7 @@ const AnimatedDashboardRoutes = ({ user }) => {
                   }
                 />
                 <Route
-                  path="settings/business"
+                  path="settings/business-logic"
                   element={
                     <PageWrapper>
                       <BusinessSettings />
@@ -136,7 +137,15 @@ const AnimatedDashboardRoutes = ({ user }) => {
                   }
                 />
                 <Route
-                  path="records/audit"
+                  path="settings/ai-assistant"
+                  element={
+                    <PageWrapper>
+                      <AiAssistant />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="records/audit-trail"
                   element={
                     <PageWrapper>
                       <AuditLogs />
@@ -144,7 +153,7 @@ const AnimatedDashboardRoutes = ({ user }) => {
                   }
                 />
                 <Route
-                  path="records/health"
+                  path="records/system-health"
                   element={
                     <PageWrapper>
                       <SystemHealth />

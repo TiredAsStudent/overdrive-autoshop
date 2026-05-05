@@ -35,21 +35,27 @@ export const sysAdminMenu = [
     label: "Management",
     icon: Database,
     items: [
-      { name: "Branches", path: "/sysadmin/management/branches" },
-      { name: "Users", path: "/sysadmin/management/users" },
+      {
+        name: "Branch Registry",
+        path: "/sysadmin/management/branches-registry",
+      },
+      { name: "Users Accounts", path: "/sysadmin/management/users-accounts" },
     ],
   },
   {
     label: "Settings",
     icon: Settings2,
-    items: [{ name: "Business", path: "/sysadmin/settings/business" }],
+    items: [
+      { name: "Business Logic", path: "/sysadmin/settings/business-logic" },
+      { name: "AI Assistant", path: "/sysadmin/settings/ai-assistant" },
+    ],
   },
   {
     label: "Records",
     icon: ShieldAlert,
     items: [
-      { name: "Audit", path: "/sysadmin/records/audit" },
-      { name: "Health", path: "/sysadmin/records/health" },
+      { name: "Audit Trail", path: "/sysadmin/records/audit-trail" },
+      { name: "System Health", path: "/sysadmin/records/system-health" },
     ],
   },
 ];
