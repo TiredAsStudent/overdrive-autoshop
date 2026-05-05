@@ -8,7 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 const ROLE_REDIRECTS = {
   ADMIN: "/sysadmin/dashboard/overview",
   MANAGER: "/manager/dashboard/overview",
-  STAFF: "/staff/dashboard/stats",
+  STAFF: "/staff/dashboard/overview",
 };
 
 const LoginForm = () => {

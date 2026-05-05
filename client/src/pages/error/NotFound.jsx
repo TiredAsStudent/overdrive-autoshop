@@ -7,7 +7,7 @@ import Button from "../../components/ui/Buttons";
 const ROLE_REDIRECTS = {
   ADMIN: "/sysadmin/dashboard/overview",
   MANAGER: "/manager/dashboard/overview",
-  STAFF: "/staff/dashboard/stats",
+  STAFF: "/staff/dashboard/overview",
 };
 
 const NotFound = ({ user }) => {

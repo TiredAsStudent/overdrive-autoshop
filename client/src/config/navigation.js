@@ -12,6 +12,16 @@ import {
   Calculator,
   FileBarChart2,
   WalletCards,
+  ShoppingCart,
+  Receipt,
+  FileText,
+  FilePlus,
+  FileCheck2,
+  History,
+  ScanLine,
+  Hourglass,
+  Boxes,
+  ArrowLeftRight,
 } from "lucide-react";
 
 // === SYSTEM ADMIN MENU ===
@@ -129,5 +139,42 @@ export const managerMenu = [
   },
 ];
 
-// === STAFF MENU ===
-export const staffMenu = [];
+export const staffMenu = [
+  {
+    label: "Dashboard",
+    icon: Activity,
+    items: [{ name: "Overview", path: "/staff/dashboard/overview" }],
+  },
+
+  {
+    label: "Sales",
+    icon: ShoppingCart,
+    items: [
+      { name: "Estimates", path: "/staff/sales/estimates" },
+      { name: "Sales Orders", path: "/staff/sales/sales-orders" },
+      { name: "Invoices", path: "/staff/sales/invoices" },
+      { name: "Payment Postings", path: "/staff/sales/payments-postings" },
+      { name: "Sales History", path: "/staff/sales/sales-history" },
+    ],
+  },
+
+  {
+    label: "Expenses",
+    icon: Receipt,
+    items: [
+      { name: "Receipt Scanning", path: "/staff/expenses/receipt-scanning" },
+      { name: "Submission Status", path: "/staff/expenses/submission-status" },
+      { name: "Expense History", path: "/staff/expenses/expense-history" },
+    ],
+  },
+
+  {
+    label: "Inventory",
+    icon: Package,
+    items: [
+      { name: "Stock Inventory", path: "/staff/inventory/stock-inventory" },
+      { name: "Stock Adjustments", path: "/staff/inventory/stock-adjustments" },
+      { name: "Stock Transfers", path: "/staff/inventory/stock-transfers" },
+    ],
+  },
+];

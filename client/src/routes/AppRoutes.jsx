@@ -27,6 +27,18 @@ import UserProfilePage from "../pages/profile/UserProfilePage";
 import AccountSettingsPage from "../pages/settings/AccountSettingsPage";
 
 // --- STAFF PAGES ---
+import StaffOverview from "../pages/staff/Overview";
+import StaffEstimates from "../pages/staff/Estimates";
+import StaffSalesOrders from "../pages/staff/SalesOrders";
+import StaffInvoices from "../pages/staff/Invoices";
+import StaffPaymentsPostings from "../pages/staff/PaymentsPostings";
+import StaffSalesHistory from "../pages/staff/SalesHistory";
+import StaffReceiptScanning from "../pages/staff/ReceiptScanning";
+import StaffSubmissionStatus from "../pages/staff/SubmissionStatus";
+import StaffExpenseHistory from "../pages/staff/ExpenseHistory";
+import StaffStockInventory from "../pages/staff/StockInventory";
+import StaffStockAdjustments from "../pages/staff/StockAdjustments";
+import StaffStockTransfers from "../pages/staff/StockTransfers";
 
 // --- SYS ADMIN PAGES ---
 import Overview from "../pages/sysadmin/Overview";
@@ -364,7 +376,115 @@ const AnimatedDashboardRoutes = ({ user }) => {
           path="/staff/*"
           element={
             <ProtectedRoute allowedRoles={["STAFF"]}>
-              <Routes></Routes>
+              <Routes>
+                <Route
+                  path="dashboard/overview"
+                  element={
+                    <PageWrapper>
+                      <StaffOverview />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="sales/estimates"
+                  element={
+                    <PageWrapper>
+                      <StaffEstimates />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="sales/sales-orders"
+                  element={
+                    <PageWrapper>
+                      <StaffSalesOrders />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="sales/invoices"
+                  element={
+                    <PageWrapper>
+                      <StaffInvoices />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="sales/payments-postings"
+                  element={
+                    <PageWrapper>
+                      <StaffPaymentsPostings />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="sales/sales-history"
+                  element={
+                    <PageWrapper>
+                      <StaffSalesHistory />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="expenses/receipt-scanning"
+                  element={
+                    <PageWrapper>
+                      <StaffReceiptScanning />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="expenses/submission-status"
+                  element={
+                    <PageWrapper>
+                      <StaffSubmissionStatus />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="expenses/expense-history"
+                  element={
+                    <PageWrapper>
+                      <StaffExpenseHistory />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="inventory/stock-inventory"
+                  element={
+                    <PageWrapper>
+                      <StaffStockInventory />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="inventory/stock-adjustments"
+                  element={
+                    <PageWrapper>
+                      <StaffStockAdjustments />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="inventory/stock-transfers"
+                  element={
+                    <PageWrapper>
+                      <StaffStockTransfers />
+                    </PageWrapper>
+                  }
+                />
+              </Routes>
             </ProtectedRoute>
           }
         />
@@ -378,7 +498,10 @@ const AnimatedDashboardRoutes = ({ user }) => {
           path="/manager"
           element={<Navigate to="/manager/dashboard/overview" replace />}
         />
-        <Route path="/staff" element={<Navigate to="" replace />} />
+        <Route
+          path="/staff"
+          element={<Navigate to="/staff/dashboard/overview" replace />}
+        />
       </Routes>
     </AnimatePresence>
   );
@@ -395,7 +518,7 @@ const AppRoutes = () => {
         return "/manager/dashboard/overview";
       case "STAFF":
       default:
-        return "/staff/overview";
+        return "/staff/dashboard/overview";
     }
   };
 
