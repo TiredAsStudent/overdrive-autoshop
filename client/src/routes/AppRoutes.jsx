@@ -37,6 +37,29 @@ import AuditLogs from "../pages/sysadmin/AuditLogs";
 import SystemHealth from "../pages/sysadmin/SystemHealth";
 
 // --- MANAGER PAGES ---
+import ManagerOverview from "../pages/manager/Overview";
+import ManagerExpenseApprovals from "../pages/manager/ExpenseApprovals";
+import ManagerStockAdjustment from "../pages/manager/StockAdjustment";
+import ManagerRejectionLogs from "../pages/manager/RejectionLogs";
+import ManagerServices from "../pages/manager/Services";
+import ManagerMechanics from "../pages/manager/Mechanics";
+import ManagerStockOverview from "../pages/manager/StockOverview";
+import ManagerStockValue from "../pages/manager/StockValue";
+import ManagerCOGSTracking from "../pages/manager/COGSTracking";
+import ManagerStockTransfers from "../pages/manager/StockTransfers";
+import ManagerGeneralLedger from "../pages/manager/GeneralLedger";
+import ManagerChartOfAccounts from "../pages/manager/ChartOfAccounts";
+import ManagerJournalEntries from "../pages/manager/JournalEntries";
+import ManagerTrialBalance from "../pages/manager/TrialBalance";
+import ManagerVATLedger from "../pages/manager/VATLedger";
+import ManagerIncomeStatement from "../pages/manager/IncomeStatement";
+import ManagerBalanceSheet from "../pages/manager/BalanceSheet";
+import ManagerCashFlowStatement from "../pages/manager/CashFlowStatement";
+import ManagerRevenueReports from "../pages/manager/RevenueReports";
+import ManagerExpenseReports from "../pages/manager/ExpenseReports";
+import ManagerAccountsPayable from "../pages/manager/AccountsPayable";
+import ManagerAccountsReceivable from "../pages/manager/AccountsReceivable";
+import ManagerSupplierLedger from "../pages/manager/SupplierLedger";
 
 const AnimatedDashboardRoutes = ({ user }) => {
   const location = useLocation();
@@ -69,7 +92,7 @@ const AnimatedDashboardRoutes = ({ user }) => {
             <ProtectedRoute allowedRoles={["ADMIN"]}>
               <Routes>
                 <Route
-                  path="overview"
+                  path="dashboard/overview"
                   element={
                     <PageWrapper>
                       <Overview />
@@ -126,7 +149,212 @@ const AnimatedDashboardRoutes = ({ user }) => {
           path="/manager/*"
           element={
             <ProtectedRoute allowedRoles={["MANAGER"]}>
-              <Routes></Routes>
+              <Routes>
+                <Route
+                  path="dashboard/overview"
+                  element={
+                    <PageWrapper>
+                      <ManagerOverview />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="approvals/expense-approvals"
+                  element={
+                    <PageWrapper>
+                      <ManagerExpenseApprovals />
+                    </PageWrapper>
+                  }
+                />
+                <Route
+                  path="approvals/stock-adjustment"
+                  element={
+                    <PageWrapper>
+                      <ManagerStockAdjustment />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="approvals/rejection-logs"
+                  element={
+                    <PageWrapper>
+                      <ManagerRejectionLogs />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="workshop/services"
+                  element={
+                    <PageWrapper>
+                      <ManagerServices />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="workshop/mechanics"
+                  element={
+                    <PageWrapper>
+                      <ManagerMechanics />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="inventory/stock-overview"
+                  element={
+                    <PageWrapper>
+                      <ManagerStockOverview />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="inventory/stock-value"
+                  element={
+                    <PageWrapper>
+                      <ManagerStockValue />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="inventory/cogs-tracking"
+                  element={
+                    <PageWrapper>
+                      <ManagerCOGSTracking />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="inventory/stock-transfers"
+                  element={
+                    <PageWrapper>
+                      <ManagerStockTransfers />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="accounting/general-ledger"
+                  element={
+                    <PageWrapper>
+                      <ManagerGeneralLedger />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="accounting/chart-of-accounts"
+                  element={
+                    <PageWrapper>
+                      <ManagerChartOfAccounts />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="accounting/journal-entries"
+                  element={
+                    <PageWrapper>
+                      <ManagerJournalEntries />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="accounting/trial-balance"
+                  element={
+                    <PageWrapper>
+                      <ManagerTrialBalance />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="accounting/vat-ledger"
+                  element={
+                    <PageWrapper>
+                      <ManagerVATLedger />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="reports/income-statement"
+                  element={
+                    <PageWrapper>
+                      <ManagerIncomeStatement />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="reports/balance-sheet"
+                  element={
+                    <PageWrapper>
+                      <ManagerBalanceSheet />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="reports/cash-flow-statement"
+                  element={
+                    <PageWrapper>
+                      <ManagerCashFlowStatement />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="reports/revenue-reports"
+                  element={
+                    <PageWrapper>
+                      <ManagerRevenueReports />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="reports/expense-reports"
+                  element={
+                    <PageWrapper>
+                      <ManagerExpenseReports />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="balances/accounts-payable"
+                  element={
+                    <PageWrapper>
+                      <ManagerAccountsPayable />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="balances/accounts-receivable"
+                  element={
+                    <PageWrapper>
+                      <ManagerAccountsReceivable />
+                    </PageWrapper>
+                  }
+                />
+
+                <Route
+                  path="balances/supplier-ledger"
+                  element={
+                    <PageWrapper>
+                      <ManagerSupplierLedger />
+                    </PageWrapper>
+                  }
+                />
+              </Routes>
             </ProtectedRoute>
           }
         />
@@ -144,9 +372,12 @@ const AnimatedDashboardRoutes = ({ user }) => {
         {/* REDIRECTS INSIDE THE LAYOUT */}
         <Route
           path="/sysadmin"
-          element={<Navigate to="/sysadmin/overview" replace />}
+          element={<Navigate to="/sysadmin/dashboard/overview" replace />}
         />
-        <Route path="/manager" element={<Navigate to="" replace />} />
+        <Route
+          path="/manager"
+          element={<Navigate to="/manager/dashboard/overview" replace />}
+        />
         <Route path="/staff" element={<Navigate to="" replace />} />
       </Routes>
     </AnimatePresence>
@@ -159,9 +390,9 @@ const AppRoutes = () => {
   const getDashboardRoute = (role) => {
     switch (role) {
       case "ADMIN":
-        return "/sysadmin/overview";
+        return "/sysadmin/dashboard/overview";
       case "MANAGER":
-        return "/manager/overview";
+        return "/manager/dashboard/overview";
       case "STAFF":
       default:
         return "/staff/overview";

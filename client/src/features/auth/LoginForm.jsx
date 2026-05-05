@@ -32,7 +32,7 @@ const LoginForm = () => {
       // The 4-Portal Traffic Cop
       switch (loggedInUser.role) {
         case "ADMIN": // System IT Admin
-          navigate("/sysadmin/overview");
+          navigate("/sysadmin/dashboard/overview");
           break;
         case "MANAGER": // Enterprise Owner
           navigate("/manager/dashboard/overview");
