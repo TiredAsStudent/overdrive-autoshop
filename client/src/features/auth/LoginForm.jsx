@@ -5,49 +5,72 @@ import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Buttons";
 import { useAuth } from "../../context/AuthContext";
 
+const ROLE_REDIRECTS = {
+  ADMIN: "/sysadmin/dashboard/overview",
+  MANAGER: "/manager/dashboard/overview",
+  STAFF: "/staff/dashboard/stats",
+};
+
 const LoginForm = () => {
-  const [credentials, setCredentials] = useState({ email: "", password: "" });
+  const [credentials, setCredentials] = useState({
+    email: "",
+    password: "",
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
 
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { id, value } = e.target;
-    setCredentials((prev) => ({ ...prev, [id]: value }));
-    if (error) setError(null);
+
+    setCredentials((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
+
+    if (error) setError("");
+  };
+
+  const validateInputs = () => {
+    const cleanEmail = credentials.email.trim().toLowerCase();
+    const cleanPassword = credentials.password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      setError("Please enter your email and password.");
+      return false;
+    }
+
+    return {
+      email: cleanEmail,
+      password: cleanPassword,
+    };
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
+    const validated = validateInputs();
+    if (!validated) return;
+
     setLoading(true);
-    setError(null);
+    setError("");
 
     try {
-      // Trigger Login
-      const loggedInUser = await login(credentials.email, credentials.password);
+      const loggedInUser = await login(validated.email, validated.password);
 
-      // The 4-Portal Traffic Cop
-      switch (loggedInUser.role) {
-        case "ADMIN": // System IT Admin
-          navigate("/sysadmin/dashboard/overview");
-          break;
-        case "MANAGER": // Enterprise Owner
-          navigate("/manager/dashboard/overview");
-          break;
-        case "STAFF": // Daily Operations
-          navigate("/staff/dashboard/stats");
-          break;
-        case "CUSTOMER": // Digital Passport
-          navigate("/customer/dashboard/status");
-          break;
-        default:
-          throw new Error("Unrecognized access level. Please contact support.");
+      const redirectPath = ROLE_REDIRECTS[loggedInUser.role];
+
+      if (!redirectPath) {
+        throw new Error("Unauthorized portal access.");
       }
+
+      navigate(redirectPath);
     } catch (err) {
-      setError(err.message || "Access Denied. Invalid credentials.");
+      setError(err.message || "Access denied. Please verify your credentials.");
     } finally {
       setLoading(false);
     }
@@ -56,7 +79,7 @@ const LoginForm = () => {
   return (
     <div className="w-full space-y-6">
       {error && (
-        <div className="flex items-center gap-3 p-4 text-xs font-black uppercase tracking-tighter text-red-600 bg-red-50 border-l-4 border-red-600 rounded-r-xl animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="flex items-center gap-3 p-4 text-xs font-black uppercase tracking-wide text-red-700 bg-red-50 border-l-4 border-red-600 rounded-r-xl animate-in fade-in slide-in-from-top-2 duration-300">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{error}</span>
         </div>
@@ -73,10 +96,11 @@ const LoginForm = () => {
             onChange={handleChange}
             required
             disabled={loading}
+            autoComplete="username"
             className="text-slate-900 font-bold h-14"
           />
 
-          <div className="relative group">
+          <div className="relative">
             <Input
               id="password"
               label="Password"
@@ -86,13 +110,15 @@ const LoginForm = () => {
               onChange={handleChange}
               required
               disabled={loading}
+              autoComplete="current-password"
               className="text-slate-900 font-bold h-14 pr-12"
             />
+
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => setShowPassword((prev) => !prev)}
               className="absolute right-4 top-[38px] p-1 text-slate-400 hover:text-slate-900 transition-colors z-10"
-              tabIndex="-1"
+              tabIndex={-1}
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
