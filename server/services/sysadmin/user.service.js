@@ -26,6 +26,7 @@ class UserService {
         : process.env.FRONTEND_URL_PROD;
     const inviteLink = `${frontendUrl}/activate?token=${rawToken}`;
 
+    // Async email send
     sendWelcomeInviteEmail(
       userData.email,
       userData.firstName,
@@ -42,7 +43,7 @@ class UserService {
       "users",
       newUser.id,
       null,
-      { new_email: userData.email },
+      { new_email: userData.email, assigned_branch: userData.branchId },
     );
 
     return {
@@ -63,6 +64,19 @@ class UserService {
     updates,
     ipAddress,
   ) {
+    // Self-Preservation Check: Admin cannot demote or deactivate themselves
+    if (
+      adminUser.id === targetUserId &&
+      (updates.isActive === false || updates.role !== "ADMIN")
+    ) {
+      throw new Error(
+        "Security Violation: You cannot deactivate or demote your own active Administrator session.",
+      );
+    }
+
+    const oldUser = await User.findUserById(targetUserId);
+    if (!oldUser) throw new Error("User not found.");
+
     const sanitizedUpdates = {
       branch_id: updates.branchId !== undefined ? updates.branchId : undefined,
       is_active: updates.isActive !== undefined ? updates.isActive : undefined,
@@ -73,12 +87,18 @@ class UserService {
       email: updates.email !== undefined ? updates.email : undefined,
     };
 
-    await User.updateUser(targetUserId, sanitizedUpdates);
+    const updatedUser = await User.updateUser(targetUserId, sanitizedUpdates);
 
     let actionStr = "UPDATED_USER_PROFILE";
     let severity = "INFO";
+
     if (updates.isActive === false) {
       actionStr = "DEACTIVATED_USER_ACCOUNT";
+      severity = "CRITICAL";
+      // Auto-trigger the Session Kill Switch if deactivated
+      await User.incrementTokenVersion(targetUserId);
+    } else if (updates.branchId !== oldUser.branch_id) {
+      actionStr = "BRANCH_TRANSFER_EXECUTED";
       severity = "WARNING";
     }
 
@@ -90,12 +110,27 @@ class UserService {
       ipAddress,
       "users",
       targetUserId,
-      null,
-      sanitizedUpdates,
+      {
+        branch_id: oldUser.branch_id,
+        is_active: oldUser.is_active,
+        role: oldUser.role,
+      },
+      {
+        branch_id: updatedUser.branch_id,
+        is_active: updatedUser.is_active,
+        role: updatedUser.role,
+      },
     );
   }
 
   static async executeKillSwitch(adminUser, targetUserId, ipAddress) {
+    // Self-Preservation Check: Admin cannot kill their own token from here
+    if (adminUser.id === targetUserId) {
+      throw new Error(
+        "Invalid Action: You cannot kill your own active session from the dashboard. Please use the Logout button.",
+      );
+    }
+
     const targetUser = await User.incrementTokenVersion(targetUserId);
     if (!targetUser) throw new Error("User not found.");
 
@@ -111,7 +146,7 @@ class UserService {
 
     return {
       message:
-        "Session Kill-Switch activated. All active tokens for this user are now invalid.",
+        "Session Kill-Switch activated. All active browser tokens for this user are now invalidated.",
     };
   }
 
@@ -150,7 +185,7 @@ class UserService {
       targetUserId,
     );
 
-    return { message: `New invitation securely sent to ${user.email}` };
+    return { message: `New secure invitation link sent to ${user.email}` };
   }
 }
 
