@@ -2,7 +2,7 @@ const { query } = require("../config/db");
 
 class AuditLog {
   // ==========================================
-  // PAGINATED FETCH
+  // PAGINATED FETCH (FOR DASHBOARD VIEW)
   // ==========================================
   static async getLogs({
     limit,
@@ -21,6 +21,8 @@ class AuditLog {
         COALESCE(u.role::text, 'UNKNOWN') AS user_role,
         al.severity,
         al.action,
+        al.target_resource,
+        al.target_id,
         al.old_values,
         al.new_values,
         COALESCE(b.branch_name, 'Enterprise Global') AS branch_context,
@@ -63,7 +65,7 @@ class AuditLog {
   }
 
   // ==========================================
-  // TOTAL COUNT
+  // TOTAL COUNT (FOR PAGINATION MATH)
   // ==========================================
   static async getTotalCount({
     search,
@@ -106,7 +108,7 @@ class AuditLog {
   }
 
   // ==========================================
-  // BULK FETCH (FOR THE CSV EXPORT ENGINE)
+  // BULK FETCH (FOR ISO 25010 CSV EXPORT ENGINE)
   // ==========================================
   static async getLogsForExport({
     search,
@@ -122,6 +124,8 @@ class AuditLog {
         COALESCE(u.role::text, 'UNKNOWN') AS user_role,
         al.severity,
         al.action,
+        al.target_resource,
+        al.target_id,
         al.old_values,
         al.new_values,
         COALESCE(b.branch_name, 'Enterprise Global') AS branch_context,
@@ -135,6 +139,7 @@ class AuditLog {
     const values = [];
     let paramIndex = 1;
 
+    // Apply exact same filters as the paginated fetch
     if (search) {
       sql += ` AND (al.action ILIKE $${paramIndex} OR u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex})`;
       values.push(`%${search}%`);
@@ -156,7 +161,7 @@ class AuditLog {
       paramIndex += 2;
     }
 
-    // Limit export to 10,000 rows to prevent server memory crashes during compliance pulls
+    // Hard Limit to prevent server memory crashes during massive compliance pulls
     sql += ` ORDER BY al.created_at DESC LIMIT 10000`;
 
     const result = await query(sql, values);

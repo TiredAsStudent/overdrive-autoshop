@@ -3,12 +3,12 @@ const { query } = require("../config/db");
 /**
  * Global Utility for logging immutable actions across the Overdrive System.
  * * @param {Number} userId - The ID of the user performing the action
- * @param {Number} branchId - The Branch ID (null if Global/Manager)
- * @param {String} action - The action string (e.g., 'OCR_RECEIPT_MODIFIED', 'LOGIN_FAILED')
+ * @param {Number} branchId - The Branch ID (null if Global/Admin)
+ * @param {String} action - The action string (e.g., 'OCR_RECEIPT_APPROVED', 'BRANCH_MAINTENANCE_LOCKED')
  * @param {String} severity - 'INFO', 'WARNING', or 'CRITICAL'
  * @param {String} ipAddress - req.ip
- * @param {String} targetResource - The table affected (e.g., 'invoices', 'users')
- * @param {Number} targetId - The ID of the record affected
+ * @param {String} targetResource - The table affected (e.g., 'invoices') OR 'general_ledger' for Financial Linkage
+ * @param {Number} targetId - The ID of the record (e.g., GL Transaction ID)
  * @param {Object} oldValues - JSON object of the data before the change (optional)
  * @param {Object} newValues - JSON object of the data after the change (optional)
  */
@@ -40,6 +40,8 @@ const logSecureAction = async (
       newValues ? JSON.stringify(newValues) : null,
     ]);
   } catch (error) {
+    // We use console.error here so the main thread doesn't crash if logging fails,
+    // but it alerts the server administrator immediately.
     console.error("FATAL AUDIT FAILURE:", error.message);
   }
 };

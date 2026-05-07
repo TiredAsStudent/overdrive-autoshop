@@ -47,7 +47,7 @@ class AuditLogController {
 
       const csvData = await AuditLogService.generateCSVExport(filters);
 
-      // Force browser to download as CSV file
+      // Force browser to download as CSV file securely
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(
         "Content-Disposition",
@@ -56,7 +56,6 @@ class AuditLogController {
 
       return res.status(STATUS_CODES.SUCCESS).send(csvData);
     } catch (error) {
-      // If error (like no records found), return standard JSON error
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }

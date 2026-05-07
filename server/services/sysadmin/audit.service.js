@@ -29,7 +29,7 @@ class AuditLogService {
   }
 
   // ==========================================
-  // CSV GENERATOR
+  // ISO 25010 CSV GENERATOR
   // ==========================================
   static async generateCSVExport(filters) {
     const logs = await AuditLogModel.getLogsForExport(filters);
@@ -46,6 +46,8 @@ class AuditLogService {
       "Role",
       "Severity",
       "Action",
+      "Target Resource",
+      "Target ID (Transaction Link)",
       "Branch",
       "IP Address",
       "Old Data",
@@ -67,12 +69,14 @@ class AuditLogService {
         log.user_role,
         log.severity,
         log.action,
+        log.target_resource || "N/A",
+        log.target_id ? String(log.target_id) : "N/A",
         log.branch_context,
         log.ip_address,
         oldDataStr,
         newDataStr,
       ]
-        .map((value) => `"${value}"`) // Wrap every field in quotes
+        .map((value) => `"${value}"`) // Wrap every field in quotes to handle commas within JSON
         .join(",");
     });
 
