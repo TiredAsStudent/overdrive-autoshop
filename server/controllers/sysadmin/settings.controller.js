@@ -22,29 +22,27 @@ class SettingsController {
     try {
       const updateData = { ...req.body };
 
-      // If a new logo was uploaded
+      // File Replacement Logic: If a new logo is uploaded, delete the old one
       if (req.file) {
-        // Fetch current settings to find the old logo
         const currentSettings = await SettingsService.getBusinessSettings();
 
-        // If an old logo exists, delete it safely
         if (currentSettings.logo_url) {
           const cleanPath = currentSettings.logo_url.replace(/^\//, "");
-
           const oldFilePath = path.join(__dirname, "../../", cleanPath);
 
           if (fs.existsSync(oldFilePath)) {
             fs.unlinkSync(oldFilePath);
-            console.log("Cleanup: Deleted old logo to save space.");
+            console.log(
+              "Cleanup: Deleted old corporate logo to save server storage.",
+            );
           }
         }
-
         updateData.logo_url = `/uploads/branding/${req.file.filename}`;
       }
 
       const settings = await SettingsService.updateBusinessSettings(
         updateData,
-        req.user.id,
+        req.user,
         req.ip,
       );
 
@@ -52,14 +50,15 @@ class SettingsController {
         res,
         200,
         settings,
-        "Business settings updated successfully.",
+        "Business logic updated successfully.",
       );
     } catch (error) {
+      // Rollback: If DB update fails, delete the newly uploaded file to prevent orphan files
       if (req.file && req.file.path) {
         if (fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
           console.log(
-            "Cleanup: Deleted orphaned file due to validation/DB failure.",
+            "Cleanup: Deleted orphaned file due to validation or database failure.",
           );
         }
       }
