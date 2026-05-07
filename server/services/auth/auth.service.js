@@ -1,11 +1,12 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
-const User = require("../models/User");
-const Branch = require("../models/Branch");
 const crypto = require("crypto");
-const { sendPasswordResetEmail } = require("../utils/mailer");
-const { logSecureAction } = require("../utils/auditLogger");
+
+const User = require("../../models/User");
+const Branch = require("../../models/Branch");
+const { sendPasswordResetEmail } = require("../../utils/mailer");
+const { logSecureAction } = require("../../utils/auditLogger");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 

@@ -1,4 +1,4 @@
-const SettingsService = require("../../services/settings.service");
+const SettingsService = require("../../services/sysadmin/settings.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const fs = require("fs");
 const path = require("path");

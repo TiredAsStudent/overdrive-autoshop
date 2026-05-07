@@ -1,5 +1,5 @@
-const SystemSetting = require("../models/SystemSetting");
-const { logSecureAction } = require("../utils/auditLogger");
+const SystemSetting = require("../../models/SystemSetting");
+const { logSecureAction } = require("../../utils/auditLogger");
 
 class SettingsService {
   static async getBusinessSettings() {

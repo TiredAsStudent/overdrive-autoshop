@@ -1,7 +1,7 @@
 const crypto = require("crypto");
-const User = require("../models/User");
-const { sendWelcomeInviteEmail } = require("../utils/mailer");
-const { logSecureAction } = require("../utils/auditLogger");
+const User = require("../../models/User");
+const { sendWelcomeInviteEmail } = require("../../utils/mailer");
+const { logSecureAction } = require("../../utils/auditLogger");
 
 class UserService {
   static async processNewInvite(adminUser, userData, ipAddress) {

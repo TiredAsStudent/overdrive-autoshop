@@ -1,4 +1,4 @@
-const BranchService = require("../../services/branch.service");
+const BranchService = require("../../services/sysadmin/branch.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 

@@ -1,4 +1,4 @@
-const AuthService = require("../../services/auth.service");
+const AuthService = require("../../services/auth/auth.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 const { logSecureAction } = require("../../utils/auditLogger");

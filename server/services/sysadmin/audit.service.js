@@ -1,4 +1,4 @@
-const AuditLogModel = require("../models/AuditLog");
+const AuditLogModel = require("../../models/AuditLog");
 
 class AuditLogService {
   static async fetchPaginatedLogs(filters) {
@@ -72,7 +72,7 @@ class AuditLogService {
         oldDataStr,
         newDataStr,
       ]
-        .map((value) => `"${value}"`) // Wrap every field in quotes to handle commas within data
+        .map((value) => `"${value}"`) // Wrap every field in quotes
         .join(",");
     });
 

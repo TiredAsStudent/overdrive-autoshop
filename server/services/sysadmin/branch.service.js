@@ -1,5 +1,5 @@
-const Branch = require("../models/Branch");
-const { logSecureAction } = require("../utils/auditLogger");
+const Branch = require("../../models/Branch");
+const { logSecureAction } = require("../../utils/auditLogger");
 
 class BranchService {
   static async createBranch(data, adminId, ipAddress) {

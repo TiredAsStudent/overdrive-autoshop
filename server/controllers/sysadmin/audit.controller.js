@@ -1,4 +1,4 @@
-const AuditLogService = require("../../services/audit.service");
+const AuditLogService = require("../../services/sysadmin/audit.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 
