@@ -1,6 +1,6 @@
 import api from "../api";
 
-export const branchApi = {
+export const branchService = {
   // Fetch all active branches
   getAllBranches: async () => {
     try {

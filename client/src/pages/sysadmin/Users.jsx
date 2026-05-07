@@ -20,8 +20,8 @@ import {
   PowerOff,
 } from "lucide-react";
 import StatusBadge from "../../components/ui/StatusBadge";
-import userService from "../../services/sysadmin/userServices";
-import { branchApi } from "../../services/sysadmin/branchServices";
+import userService from "../../services/sysadmin/user.service";
+import { branchService } from "../../services/sysadmin/branch.service";
 import { useAuth } from "../../context/AuthContext";
 
 const UsersTab = () => {
@@ -73,7 +73,7 @@ const UsersTab = () => {
     try {
       const [userRoster, branchDataResponse] = await Promise.all([
         userService.getRoster(),
-        branchApi.getAllBranches(),
+        branchService.getAllBranches(),
       ]);
 
       setUsers(userRoster);

@@ -1,6 +1,6 @@
 import api from "../api";
 
-const userService = {
+export const userService = {
   getRoster: async () => {
     try {
       const response = await api.get("/sysadmin/users");
@@ -59,5 +59,3 @@ const userService = {
     }
   },
 };
-
-export default userService;

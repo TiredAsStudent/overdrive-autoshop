@@ -12,7 +12,7 @@ import {
   RotateCcw,
   Archive,
 } from "lucide-react";
-import { branchApi } from "../../services/sysadmin/branchServices";
+import { branchService } from "../../services/sysadmin/branch.service";
 import BranchModal from "../../features/sysadmin/components/BranchModal";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 
@@ -37,7 +37,7 @@ const Branches = () => {
   const loadBranches = async () => {
     try {
       setLoading(true);
-      const response = await branchApi.getAllBranches();
+      const response = await branchService.getAllBranches();
       setBranches(response.data || response || []);
     } catch (error) {
       console.error("Failed to fetch branches:", error);
@@ -54,9 +54,9 @@ const Branches = () => {
   const handleModalSubmit = async (formData) => {
     try {
       if (selectedBranch) {
-        await branchApi.updateBranch(selectedBranch.id, formData);
+        await branchService.updateBranch(selectedBranch.id, formData);
       } else {
-        await branchApi.createBranch(formData);
+        await branchService.createBranch(formData);
       }
       setIsModalOpen(false);
       loadBranches();
@@ -85,7 +85,7 @@ const Branches = () => {
       variant: "danger",
       onConfirm: async () => {
         try {
-          await branchApi.deleteBranch(id);
+          await branchService.deleteBranch(id);
           loadBranches();
         } catch (error) {
           alert(error.message || "Failed to archive branch.");
@@ -103,7 +103,7 @@ const Branches = () => {
       variant: "info",
       onConfirm: async () => {
         try {
-          await branchApi.updateBranch(id, { is_active: true });
+          await branchService.updateBranch(id, { is_active: true });
           loadBranches();
         } catch (error) {
           alert(error.message || "Failed to restore branch.");
@@ -124,7 +124,7 @@ const Branches = () => {
       variant: variant,
       onConfirm: async () => {
         try {
-          await branchApi.toggleMaintenance(id, !currentStatus);
+          await branchService.toggleMaintenance(id, !currentStatus);
           loadBranches();
         } catch (error) {
           alert(error.message || "Failed to toggle mode.");

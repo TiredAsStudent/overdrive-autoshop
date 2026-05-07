@@ -11,7 +11,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { settingsApi } from "../../services/sysadmin/settingsServices";
+import { settingsService } from "../../services/sysadmin/settings.service";
 
 const BusinessSettings = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -39,8 +39,8 @@ const BusinessSettings = () => {
     try {
       setIsLoading(true);
       setError("");
-      const response = await settingsApi.getSettings();
-      const data = response.data; // Note: if your service returns response.data directly, this might just be `const data = await settingsApi.getSettings();`
+      const response = await settingsService.getSettings();
+      const data = response.data; // Note: if your service returns response.data directly, this might just be `const data = await settingsService.getSettings();`
 
       // Ensure we extract correctly depending on how the thick service is set up
       const settingsData = data?.data || data;
@@ -120,7 +120,7 @@ const BusinessSettings = () => {
         submitData.append("logo", logoFile);
       }
 
-      await settingsApi.updateSettings(submitData);
+      await settingsService.updateSettings(submitData);
       setSuccessMsg("Business settings updated successfully.");
 
       // Clear success message after 3 seconds

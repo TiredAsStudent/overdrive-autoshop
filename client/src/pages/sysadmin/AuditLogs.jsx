@@ -18,8 +18,8 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-import { auditApi } from "../../services/sysadmin/auditServices";
-import { branchApi } from "../../services/sysadmin/branchServices";
+import { auditService } from "../../services/sysadmin/audit.service";
+import { branchService } from "../../services/sysadmin/branch.service";
 
 const AuditLogs = () => {
   // State: Data
@@ -50,7 +50,7 @@ const AuditLogs = () => {
   useEffect(() => {
     const loadBranches = async () => {
       try {
-        const res = await branchApi.getAllBranches();
+        const res = await branchService.getAllBranches();
         // FILTER: Only keep branches where is_active is true
         const activeBranches = (res.data || []).filter(
           (b) => b.is_active === true,
@@ -85,7 +85,7 @@ const AuditLogs = () => {
         branchId: branchFilter || undefined,
       };
 
-      const response = await auditApi.getLogs(params);
+      const response = await auditService.getLogs(params);
       setLogs(response.data.logs);
       setPagination(response.data.pagination);
     } catch (err) {
@@ -105,7 +105,7 @@ const AuditLogs = () => {
     setIsExporting(true);
     setError(null);
     try {
-      await auditApi.exportLogs({
+      await auditService.exportLogs({
         search: debouncedSearch || undefined,
         severity: severityFilter || undefined,
         branchId: branchFilter || undefined,

@@ -1,6 +1,6 @@
 import api from "../api";
 
-export const auditApi = {
+export const auditService = {
   // Fetch paginated logs with filters
   getLogs: async (params) => {
     try {
