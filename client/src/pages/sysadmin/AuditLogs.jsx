@@ -13,10 +13,11 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
-  Lock,
   Eye,
   RefreshCw,
   X,
+  Lock,
+  Database,
 } from "lucide-react";
 import { auditService } from "../../services/sysadmin/audit.service";
 import { branchService } from "../../services/sysadmin/branch.service";
@@ -46,12 +47,11 @@ const AuditLogs = () => {
   // State: Data Delta Modal
   const [selectedDelta, setSelectedDelta] = useState(null);
 
-  //  Initial Setup: Fetch active branches for the dropdown
+  // Initial Setup: Fetch active branches for the dropdown
   useEffect(() => {
     const loadBranches = async () => {
       try {
         const res = await branchService.getAllBranches();
-        // FILTER: Only keep branches where is_active is true
         const activeBranches = (res.data || []).filter(
           (b) => b.is_active === true,
         );
@@ -100,7 +100,7 @@ const AuditLogs = () => {
     fetchLogs();
   }, [pagination.currentPage, debouncedSearch, severityFilter, branchFilter]);
 
-  // 4. Handle CSV Export
+  // Handle CSV Export
   const handleExport = async () => {
     setIsExporting(true);
     setError(null);
@@ -157,9 +157,9 @@ const AuditLogs = () => {
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
               Security Audit Logs
             </h1>
-            <p className="text-sm font-medium text-slate-500 dark:text-gray-400">
-              Immutable ledger of all system actions, authentication events, and
-              data modifications.
+            <p className="text-sm font-medium text-slate-500 dark:text-gray-400 flex items-center gap-1">
+              <Lock size={12} /> Immutable ledger of system actions and
+              financial triggers.
             </p>
           </div>
         </div>
@@ -237,12 +237,14 @@ const AuditLogs = () => {
       {/* ACTIVITY TABLE */}
       <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-white/10 overflow-hidden shadow-2xl flex flex-col">
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[900px]">
+          {/* Increased min-width to 1100px to accommodate the new Transaction Link column */}
+          <table className="w-full text-left min-w-[1100px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-black/40 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-white/5">
                 <th className="px-6 py-5">Timestamp</th>
                 <th className="px-6 py-5">User Identity</th>
                 <th className="px-6 py-5">Action & Severity</th>
+                <th className="px-6 py-5">Transaction Link</th>
                 <th className="px-6 py-5">Data Delta</th>
                 <th className="px-6 py-5 text-right">Network IP</th>
               </tr>
@@ -251,7 +253,7 @@ const AuditLogs = () => {
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan="5"
+                    colSpan="6"
                     className="px-8 py-12 text-center text-slate-500 font-bold animate-pulse"
                   >
                     Decrypting Audit Trail...
@@ -260,7 +262,7 @@ const AuditLogs = () => {
               ) : logs.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="5"
+                    colSpan="6"
                     className="px-8 py-12 text-center text-slate-500 font-bold"
                   >
                     No activity logs found matching your parameters.
@@ -328,6 +330,27 @@ const AuditLogs = () => {
                         </div>
                       </div>
                     </td>
+
+                    {/* TRANSACTION LINKAGE COLUMN */}
+                    <td className="px-6 py-6">
+                      {log.target_resource ? (
+                        <div className="flex flex-col gap-1 bg-slate-50 dark:bg-black/20 px-3 py-2 rounded-lg border border-slate-100 dark:border-white/5 w-fit">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                            <Database size={10} /> {log.target_resource}
+                          </span>
+                          {log.target_id && (
+                            <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                              REF ID: {log.target_id}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium italic pl-2">
+                          Unlinked
+                        </span>
+                      )}
+                    </td>
+
                     <td className="px-6 py-6">
                       {log.old_values || log.new_values ? (
                         <button
@@ -368,7 +391,7 @@ const AuditLogs = () => {
                 setPagination((p) => ({ ...p, currentPage: p.currentPage - 1 }))
               }
               disabled={!pagination.hasPrevPage || isLoading}
-              className="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/5 disabled:opacity-30 transition-all"
+              className="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/5 disabled:opacity-30 transition-all cursor-pointer"
             >
               <ChevronLeft size={16} />
             </button>
@@ -377,7 +400,7 @@ const AuditLogs = () => {
                 setPagination((p) => ({ ...p, currentPage: p.currentPage + 1 }))
               }
               disabled={!pagination.hasNextPage || isLoading}
-              className="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/5 disabled:opacity-30 transition-all"
+              className="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/5 disabled:opacity-30 transition-all cursor-pointer"
             >
               <ChevronRight size={16} />
             </button>
@@ -394,7 +417,7 @@ const AuditLogs = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedDelta(null)}
-              className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm cursor-pointer"
             />
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
@@ -413,7 +436,7 @@ const AuditLogs = () => {
                 </div>
                 <button
                   onClick={() => setSelectedDelta(null)}
-                  className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-400 transition-colors"
+                  className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-400 transition-colors cursor-pointer"
                 >
                   <X size={20} />
                 </button>
