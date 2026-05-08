@@ -7,6 +7,7 @@ import {
   Search,
   Loader2,
   FileText,
+  CornerDownRight,
 } from "lucide-react";
 import { coaService } from "../../services/manager/coa.service";
 import CoaModal from "../../features/manager/components/CoaModal";
@@ -84,7 +85,8 @@ const ChartOfAccounts = () => {
     return (
       acc.account_name.toLowerCase().includes(searchLower) ||
       acc.account_code.toLowerCase().includes(searchLower) ||
-      acc.account_type.toLowerCase().includes(searchLower)
+      acc.account_type.toLowerCase().includes(searchLower) ||
+      (acc.parent_name && acc.parent_name.toLowerCase().includes(searchLower))
     );
   });
 
@@ -157,81 +159,94 @@ const ChartOfAccounts = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-white/5">
-              {filteredAccounts.map((acc) => (
-                <tr
-                  key={acc.id}
-                  className={`group transition-colors ${
-                    acc.status === "Inactive"
-                      ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale"
-                      : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
-                  }`}
-                >
-                  {/* Code & Name */}
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2.5 bg-slate-100 dark:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400">
-                        <FileText size={16} />
+              {filteredAccounts.map((acc) => {
+                const isSubAccount = !!acc.parent_id;
+
+                return (
+                  <tr
+                    key={acc.id}
+                    className={`group transition-colors ${
+                      acc.status === "Inactive"
+                        ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale"
+                        : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    {/* Code & Name with VISUAL NESTING */}
+                    <td className={`px-8 py-5 ${isSubAccount ? "pl-16" : ""}`}>
+                      <div className="flex items-center gap-4">
+                        {isSubAccount ? (
+                          <div className="p-2 text-slate-400 dark:text-slate-500">
+                            <CornerDownRight size={20} />
+                          </div>
+                        ) : (
+                          <div className="p-2.5 bg-slate-100 dark:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400">
+                            <FileText size={16} />
+                          </div>
+                        )}
+
+                        <div>
+                          <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                            <span
+                              className={`${isSubAccount ? "text-slate-500" : "text-amber-600 dark:text-amber-500"} font-mono`}
+                            >
+                              {acc.account_code}
+                            </span>
+                            {" - "} {acc.account_name}
+                          </p>
+                          <p
+                            className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[250px] mt-0.5"
+                            title={acc.description}
+                          >
+                            {acc.description || "No description provided."}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                          <span className="text-amber-600 dark:text-amber-500 font-mono">
-                            {acc.account_code}
-                          </span>
-                          {" - "} {acc.account_name}
-                        </p>
-                        <p
-                          className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[250px] mt-0.5"
-                          title={acc.description}
-                        >
-                          {acc.description || "No description provided."}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Type Badge */}
-                  <td className="px-8 py-5">
-                    <span
-                      className={`inline-flex px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest border ${getTypeColor(acc.account_type)}`}
-                    >
-                      {acc.account_type}
-                    </span>
-                  </td>
-
-                  {/* System Protection */}
-                  <td className="px-8 py-5">
-                    {acc.is_system_protected ? (
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500">
-                        <Lock size={12} /> Protected
+                    {/* Type Badge */}
+                    <td className="px-8 py-5">
+                      <span
+                        className={`inline-flex px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest border ${getTypeColor(acc.account_type)}`}
+                      >
+                        {acc.account_type}
                       </span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        Custom
+                    </td>
+
+                    {/* System Protection */}
+                    <td className="px-8 py-5">
+                      {acc.is_system_protected ? (
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500">
+                          <Lock size={12} /> Protected
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          Custom
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-8 py-5">
+                      <span
+                        className={`text-[10px] font-black uppercase tracking-widest ${acc.status === "Active" ? "text-emerald-500" : "text-slate-400"}`}
+                      >
+                        {acc.status}
                       </span>
-                    )}
-                  </td>
+                    </td>
 
-                  {/* Status */}
-                  <td className="px-8 py-5">
-                    <span
-                      className={`text-[10px] font-black uppercase tracking-widest ${acc.status === "Active" ? "text-emerald-500" : "text-slate-400"}`}
-                    >
-                      {acc.status}
-                    </span>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-8 py-5 text-right">
-                    <button
-                      onClick={() => handleEdit(acc)}
-                      title="Edit Account"
-                      className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors cursor-pointer inline-flex"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    {/* Actions */}
+                    <td className="px-8 py-5 text-right">
+                      <button
+                        onClick={() => handleEdit(acc)}
+                        title="Edit Account"
+                        className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors cursor-pointer inline-flex"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
 
               {filteredAccounts.length === 0 && !loading && (
                 <tr>
@@ -256,6 +271,7 @@ const ChartOfAccounts = () => {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleModalSubmit}
         initialData={selectedAccount}
+        accounts={accounts}
       />
     </div>
   );

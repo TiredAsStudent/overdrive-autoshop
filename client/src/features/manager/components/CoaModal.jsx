@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Save, Lock, Loader2 } from "lucide-react";
+import { X, Save, Lock, Loader2, GitMerge } from "lucide-react";
 
-const CoaModal = ({ isOpen, onClose, onSubmit, initialData }) => {
+const CoaModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  initialData,
+  accounts = [],
+}) => {
   const isEditing = !!initialData;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -12,25 +18,28 @@ const CoaModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     account_type: "Expense",
     description: "",
     status: "Active",
+    parent_id: "",
   });
 
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
         setFormData({
-          account_code: initialData.account_code, // Read-only during edit
+          account_code: initialData.account_code,
           account_name: initialData.account_name,
-          account_type: initialData.account_type, // Read-only during edit
+          account_type: initialData.account_type,
           description: initialData.description || "",
           status: initialData.status || "Active",
+          parent_id: initialData.parent_id || "",
         });
       } else {
         setFormData({
           account_code: "",
           account_name: "",
-          account_type: "Expense", // Default
+          account_type: "Expense",
           description: "",
           status: "Active",
+          parent_id: "",
         });
       }
     }
@@ -38,20 +47,39 @@ const CoaModal = ({ isOpen, onClose, onSubmit, initialData }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [name]: value };
+      // SMART LOGIC: If they change the Account Type, clear the Parent ID so there isn't a mismatch
+      if (name === "account_type" && prev.account_type !== value) {
+        newData.parent_id = "";
+      }
+      return newData;
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await onSubmit(formData);
+      await onSubmit({
+        ...formData,
+        // Convert string to number, or send empty string for backend to nullify
+        parent_id: formData.parent_id ? parseInt(formData.parent_id, 10) : "",
+      });
     } catch (error) {
       alert(error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // SMART LOGIC: Filter accounts to only show valid parents
+  const validParents = accounts.filter(
+    (acc) =>
+      acc.account_type === formData.account_type && // Must be same type
+      acc.id !== initialData?.id && // Cannot be its own parent
+      !acc.parent_id, // Keep it to 1 level deep (Parent -> Child only)
+  );
 
   return (
     <AnimatePresence>
@@ -61,7 +89,7 @@ const CoaModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden"
+            className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden"
           >
             <div className="p-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50 dark:bg-black/20">
               <div>
@@ -117,6 +145,32 @@ const CoaModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </div>
               </div>
 
+              {/* NEW: Hierarchy Setup */}
+              <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-200 dark:border-white/10">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
+                  <GitMerge size={12} className="text-amber-500" /> Parent
+                  Account (Optional)
+                </label>
+                <select
+                  name="parent_id"
+                  disabled={initialData?.is_system_protected} // Don't let them move core accounts
+                  value={formData.parent_id}
+                  onChange={handleChange}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none transition-all disabled:opacity-50"
+                >
+                  <option value="">-- No Parent (Top-Level Account) --</option>
+                  {validParents.map((parent) => (
+                    <option key={parent.id} value={parent.id}>
+                      {parent.account_code} - {parent.account_name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[9px] text-slate-500 mt-2 uppercase tracking-wider">
+                  Nesting an account will make it a sub-ledger of the selected
+                  parent.
+                </p>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                   Account Name
@@ -125,7 +179,7 @@ const CoaModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   type="text"
                   name="account_name"
                   required
-                  placeholder="e.g. Shop Supplies"
+                  placeholder="e.g. Electricity Bill"
                   value={formData.account_name}
                   onChange={handleChange}
                   className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none transition-all"
@@ -139,14 +193,13 @@ const CoaModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 <textarea
                   name="description"
                   rows="2"
-                  placeholder="Brief explanation of what this account tracks..."
+                  placeholder="Brief explanation..."
                   value={formData.description}
                   onChange={handleChange}
                   className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none transition-all resize-none"
                 />
               </div>
 
-              {/* Status Toggle - Only show if editing and NOT system protected */}
               {isEditing && (
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">

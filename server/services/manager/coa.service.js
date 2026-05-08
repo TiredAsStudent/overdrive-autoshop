@@ -8,11 +8,23 @@ class CoaService {
       throw new Error(`Account Code '${data.account_code}' is already in use.`);
     }
 
+    if (data.parent_id) {
+      const parent = await ChartOfAccount.findById(data.parent_id);
+      if (!parent) throw new Error("Assigned Parent Account does not exist.");
+
+      // Accounting Rule: Child must match Parent's core category
+      if (parent.account_type !== data.account_type) {
+        throw new Error(
+          `Sub-account type (${data.account_type}) must match Parent type (${parent.account_type}).`,
+        );
+      }
+    }
+
     const newAccount = await ChartOfAccount.create(data);
 
     await logSecureAction(
       managerId,
-      null, // COA is global across all branches
+      null,
       "COA_ACCOUNT_CREATED",
       "INFO",
       ipAddress,
@@ -33,11 +45,27 @@ class CoaService {
     const oldAccount = await ChartOfAccount.findById(id);
     if (!oldAccount) throw new Error("Account not found.");
 
-    // Enforce System Protection Rule
     if (oldAccount.is_system_protected && data.status === "Inactive") {
-      throw new Error(
-        "Critical System accounts cannot be deactivated to protect historical reporting.",
-      );
+      throw new Error("Critical System accounts cannot be deactivated.");
+    }
+
+    // Anti-Infinite Loop & Hierarchy Validation
+    if (data.parent_id) {
+      if (parseInt(data.parent_id, 10) === parseInt(id, 10)) {
+        throw new Error(
+          "System Architecture Error: An account cannot be its own parent.",
+        );
+      }
+
+      const parent = await ChartOfAccount.findById(data.parent_id);
+      if (!parent) throw new Error("Assigned Parent Account does not exist.");
+
+      // Ensure the parent isn't a different category than this account
+      if (parent.account_type !== oldAccount.account_type) {
+        throw new Error(
+          `Cannot nest under a ${parent.account_type} account. Types must match.`,
+        );
+      }
     }
 
     const updatedAccount = await ChartOfAccount.update(id, data);
@@ -46,7 +74,7 @@ class CoaService {
       managerId,
       null,
       "COA_ACCOUNT_UPDATED",
-      "WARNING", // Financial master data change merits a warning
+      "WARNING",
       ipAddress,
       "chart_of_accounts",
       id,
