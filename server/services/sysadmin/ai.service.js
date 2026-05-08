@@ -63,7 +63,7 @@ class AiService {
 
       const genAI = new GoogleGenerativeAI(apiKeyToTest);
       const model = genAI.getGenerativeModel({
-        model: providedModel || "gemini-1.5-flash",
+        model: providedModel || "gemini-2.5-flash",
       });
 
       // Send a tiny ping
@@ -81,7 +81,22 @@ class AiService {
         throw new Error("Unexpected response from AI service.");
       }
     } catch (error) {
-      throw new Error(`AI Connection Failed: ${error.message}`);
+      const errorMsg = error.message || "";
+
+      if (errorMsg.includes("API key not valid")) {
+        throw new Error(
+          "Connection Failed: The provided API Key is invalid or expired.",
+        );
+      } else if (errorMsg.includes("404") || errorMsg.includes("not found")) {
+        throw new Error(
+          "Connection Failed: The selected AI model is currently offline or retired.",
+        );
+      }
+
+      // Fallback for any other errors
+      throw new Error(
+        "AI Connection Failed. Please check your network and API key.",
+      );
     }
   }
 }

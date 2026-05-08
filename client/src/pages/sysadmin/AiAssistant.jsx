@@ -289,11 +289,12 @@ const AiAssistant = () => {
                     onChange={handleChange}
                     className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-colors appearance-none"
                   >
-                    <option value="gemini-1.5-flash">
-                      Gemini 1.5 Flash (Optimized for Speed & Basic Receipts)
+                    {/* UPDATE: The new active models */}
+                    <option value="gemini-2.5-flash">
+                      Gemini 2.5 Flash (Optimized for Speed & Basic Receipts)
                     </option>
-                    <option value="gemini-1.5-pro">
-                      Gemini 1.5 Pro (Optimized for Complex & Messy Handwriting)
+                    <option value="gemini-2.5-pro">
+                      Gemini 2.5 Pro (Optimized for Complex & Messy Handwriting)
                     </option>
                   </select>
                 </div>
