@@ -3,6 +3,9 @@ const router = express.Router();
 
 // Controllers
 const CoaController = require("../../controllers/manager/coa.controller");
+const MechanicController = require("../../controllers/manager/mechanic.controller");
+
+const BranchController = require("../../controllers/sysadmin/branch.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
@@ -17,11 +20,22 @@ const {
   createCoaSchema,
   updateCoaSchema,
 } = require("../../validations/manager/coa.schema");
+const {
+  createMechanicSchema,
+  updateMechanicSchema,
+} = require("../../validations/manager/mechanic.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Only
 // ==========================================
 router.use(verifyToken, requireRole(ROLES.MANAGER, ROLES.ADMIN));
+
+// ==========================================
+// UTILITIES
+// ==========================================
+router.get("/branches", BranchController.getAllBranches);
+
+router.get("/branches/active", BranchController.getActiveBranches);
 
 // ==========================================
 // SUB-TAB: CHART OF ACCOUNTS
@@ -38,6 +52,23 @@ router.put(
   "/chart-of-accounts/:id",
   validate(updateCoaSchema),
   CoaController.updateAccount,
+);
+
+// ==========================================
+// SUB-TAB: MECHANICS REGISTRY
+// ==========================================
+router.post(
+  "/mechanics",
+  validate(createMechanicSchema),
+  MechanicController.createMechanic,
+);
+
+router.get("/mechanics", MechanicController.getMechanics);
+
+router.put(
+  "/mechanics/:id",
+  validate(updateMechanicSchema),
+  MechanicController.updateMechanic,
 );
 
 module.exports = router;

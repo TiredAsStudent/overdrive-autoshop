@@ -39,6 +39,24 @@ class BranchController {
     }
   }
 
+  static async getActiveBranches(req, res) {
+    try {
+      const branches = await BranchService.getActiveBranches();
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        branches,
+        "Active branches retrieved.",
+      );
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to retrieve active branches.",
+      );
+    }
+  }
+
   static async getBranch(req, res) {
     try {
       const branch = await BranchService.getBranchById(req.params.id);

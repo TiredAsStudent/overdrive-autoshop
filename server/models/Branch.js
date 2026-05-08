@@ -98,6 +98,12 @@ class Branch {
     const result = await query(sql, [id]);
     return result.rows[0];
   }
+
+  static async findActive() {
+    const sql = `SELECT id, branch_name, branch_code FROM branches WHERE is_active = TRUE ORDER BY branch_name ASC`;
+    const result = await query(sql);
+    return result.rows;
+  }
 }
 
 module.exports = Branch;

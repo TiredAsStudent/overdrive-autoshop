@@ -33,6 +33,10 @@ class BranchService {
     return await Branch.findAll();
   }
 
+  static async getActiveBranches() {
+    return await Branch.findActive();
+  }
+
   static async getBranchById(id) {
     const branch = await Branch.findById(id);
     if (!branch) throw new Error("Branch not found.");
