@@ -4,6 +4,7 @@ const router = express.Router();
 // Controllers
 const CoaController = require("../../controllers/manager/coa.controller");
 const MechanicController = require("../../controllers/manager/mechanic.controller");
+const ServiceController = require("../../controllers/manager/service.controller");
 
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 
@@ -24,6 +25,10 @@ const {
   createMechanicSchema,
   updateMechanicSchema,
 } = require("../../validations/manager/mechanic.schema");
+const {
+  createServiceSchema,
+  updateServiceSchema,
+} = require("../../validations/manager/service.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Only
@@ -69,6 +74,23 @@ router.put(
   "/mechanics/:id",
   validate(updateMechanicSchema),
   MechanicController.updateMechanic,
+);
+
+// ==========================================
+// SUB-TAB: SERVICES (LABOR CATALOG)
+// ==========================================
+router.post(
+  "/services",
+  validate(createServiceSchema),
+  ServiceController.createService,
+);
+
+router.get("/services", ServiceController.getServices);
+
+router.put(
+  "/services/:id",
+  validate(updateServiceSchema),
+  ServiceController.updateService,
 );
 
 module.exports = router;
