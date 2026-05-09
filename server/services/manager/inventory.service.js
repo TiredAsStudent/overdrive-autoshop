@@ -5,15 +5,10 @@ const { logSecureAction } = require("../../utils/auditLogger");
 class InventoryService {
   static async createInventoryItem(data, managerId, ipAddress) {
     const cleanSku = data.sku.toUpperCase().trim();
-    const existing = await Inventory.findBySku(cleanSku);
-    if (existing)
-      throw new Error(
-        `SKU '${cleanSku}' already exists in the master catalog.`,
-      );
+    if (await Inventory.findBySku(cleanSku))
+      throw new Error(`SKU '${cleanSku}' already exists.`);
 
-    // Fetch active branches so the new item is trackable everywhere immediately
     const activeBranches = await Branch.findActive();
-
     const newItem = await Inventory.createItem(
       { ...data, sku: cleanSku },
       activeBranches,
@@ -30,17 +25,40 @@ class InventoryService {
       null,
       newItem,
     );
-
     return newItem;
+  }
+
+  static async updateInventoryItem(id, data, managerId, ipAddress) {
+    const oldItem = await Inventory.findById(id);
+    if (!oldItem) throw new Error("Inventory item not found.");
+
+    const updatedItem = await Inventory.update(id, data);
+
+    const actionType =
+      data.is_active === false
+        ? "INVENTORY_ITEM_DEACTIVATED"
+        : "INVENTORY_ITEM_UPDATED";
+    await logSecureAction(
+      managerId,
+      null,
+      actionType,
+      "WARNING",
+      ipAddress,
+      "inventory_items",
+      id,
+      oldItem,
+      updatedItem,
+    );
+
+    return updatedItem;
   }
 
   static async getStockOverview(branchId) {
     if (branchId) {
-      const branch = await Branch.findById(branchId);
-      if (!branch) throw new Error("Branch not found.");
+      if (!(await Branch.findById(branchId)))
+        throw new Error("Branch not found.");
       return await Inventory.getBranchOverview(branchId);
     }
-    // If no branch is specified, return the entire company's consolidated stock
     return await Inventory.getConsolidatedOverview();
   }
 }

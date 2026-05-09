@@ -42,6 +42,25 @@ class InventoryController {
       );
     }
   }
+
+  static async updateItem(req, res) {
+    try {
+      const item = await InventoryService.updateInventoryItem(
+        req.params.id,
+        req.body,
+        req.user.id,
+        req.ip,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        item,
+        "Inventory item updated successfully.",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
 }
 
 module.exports = InventoryController;

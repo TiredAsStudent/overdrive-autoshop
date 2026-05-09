@@ -32,6 +32,7 @@ const {
 } = require("../../validations/manager/service.schema");
 const {
   createItemSchema,
+  updateItemSchema,
 } = require("../../validations/manager/inventory.schema");
 
 // ==========================================
@@ -105,8 +106,11 @@ router.post(
   validate(createItemSchema),
   InventoryController.createItem,
 );
-
-// This endpoint dynamically handles both Consolidated (no query) and Branch-Specific (?branch_id=1) views
 router.get("/inventory", InventoryController.getOverview);
+router.put(
+  "/inventory/:id",
+  validate(updateItemSchema),
+  InventoryController.updateItem,
+);
 
 module.exports = router;
