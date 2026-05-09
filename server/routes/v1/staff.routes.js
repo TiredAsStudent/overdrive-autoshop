@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
 
-// Controllers & Services
+// Controllers
 const StaffExpenseController = require("../../controllers/staff/expense.controller");
-
 const SupplierController = require("../../controllers/manager/supplier.controller");
+const StaffSettingsController = require("../../controllers/staff/settings.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
@@ -30,10 +30,11 @@ router.use(verifyToken, requireRole(ROLES.STAFF));
 // ==========================================
 router.get("/suppliers/active", SupplierController.getActive);
 
+router.get("/settings/vat", StaffSettingsController.getVatRate);
+
 // ==========================================
 // EXPENSES: RECEIPT SCANNING FLOW
 // ==========================================
-
 // Step 1: Upload image and trigger Gemini OCR
 router.post(
   "/expenses/scan",

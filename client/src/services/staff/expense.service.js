@@ -7,13 +7,11 @@ export const staffExpenseService = {
       const formData = new FormData();
       formData.append("receipt_image", imageFile);
 
-      // Note: We use multipart/form-data for the file upload
       const response = await api.post("/staff/expenses/scan", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      return response.data; // { success, message, data: { image_url, extracted_data } }
+      return response.data;
     } catch (error) {
-      // Even if AI fails, the backend returns the image_url so we can fallback to manual entry
       if (error.response?.data?.data?.image_url) {
         return error.response.data;
       }
@@ -52,6 +50,17 @@ export const staffExpenseService = {
     } catch (error) {
       console.warn("Supplier fetch failed.", error);
       return { data: [] };
+    }
+  },
+
+  // Helper: Fetch dynamic system VAT rate
+  getSystemVat: async () => {
+    try {
+      const response = await api.get("/staff/settings/vat");
+      return response.data.data.vat_percentage;
+    } catch (error) {
+      console.warn("VAT fetch failed. Defaulting to 12%.", error);
+      return 12; // Safe standard fallback
     }
   },
 };

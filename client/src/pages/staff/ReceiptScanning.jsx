@@ -23,7 +23,7 @@ const getConfidenceBorder = (score) => {
 };
 
 const ReceiptScanning = () => {
-  const [step, setStep] = useState("upload"); // 'upload' | 'processing' | 'verify'
+  const [step, setStep] = useState("upload");
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [scanResult, setScanResult] = useState(null);
@@ -32,6 +32,8 @@ const ReceiptScanning = () => {
   const fileInputRef = useRef(null);
 
   const [suppliers, setSuppliers] = useState([]);
+  const [vatRate, setVatRate] = useState(12); // Dynamic VAT State
+
   const [formData, setFormData] = useState({
     supplier_id: "",
     transaction_date: new Date().toISOString().split("T")[0],
@@ -43,21 +45,26 @@ const ReceiptScanning = () => {
     receipt_image_url: "",
   });
 
-  // Load suppliers on mount
+  // Load suppliers and dynamic VAT on mount
   useEffect(() => {
-    const fetchSuppliers = async () => {
-      const res = await staffExpenseService.getSuppliers();
-      setSuppliers(res.data || []);
+    const initData = async () => {
+      const [supRes, vatRes] = await Promise.all([
+        staffExpenseService.getSuppliers(),
+        staffExpenseService.getSystemVat(),
+      ]);
+      setSuppliers(supRes.data || []);
+      setVatRate(parseFloat(vatRes) || 12);
     };
-    fetchSuppliers();
+    initData();
   }, []);
 
   // --- Dynamic VAT Calculation Effect ---
-  // Automatically updates Base and VAT when Total or the Checkbox changes
   useEffect(() => {
     const total = parseFloat(formData.total_amount) || 0;
+    const decimalVat = vatRate / 100;
+
     if (formData.apply_standard_vat && total > 0) {
-      const calculatedVat = (total / 1.12) * 0.12;
+      const calculatedVat = (total / (1 + decimalVat)) * decimalVat;
       const calculatedBase = total - calculatedVat;
       setFormData((prev) => ({
         ...prev,
@@ -65,14 +72,18 @@ const ReceiptScanning = () => {
         base_amount: calculatedBase.toFixed(2),
       }));
     } else if (!formData.apply_standard_vat && total > 0) {
-      // If manual entry without standard VAT, base = total - user inputted VAT
       const userVat = parseFloat(formData.vat_amount) || 0;
       setFormData((prev) => ({
         ...prev,
         base_amount: Math.max(0, total - userVat).toFixed(2),
       }));
     }
-  }, [formData.total_amount, formData.apply_standard_vat, formData.vat_amount]);
+  }, [
+    formData.total_amount,
+    formData.apply_standard_vat,
+    formData.vat_amount,
+    vatRate,
+  ]);
 
   // --- Handlers ---
   const handleFileSelect = async (e) => {
@@ -91,14 +102,12 @@ const ReceiptScanning = () => {
     setStep("processing");
 
     try {
-      // Trigger AI Scan immediately upon upload
       const res = await staffExpenseService.scanReceipt(selectedFile);
       const { image_url, extracted_data } = res.data;
 
       setScanResult({ image_url, extracted_data });
 
       if (extracted_data) {
-        // Attempt to auto-match supplier by name
         const matchedSupplier = suppliers.find((s) =>
           s.supplier_name
             .toLowerCase()
@@ -118,7 +127,6 @@ const ReceiptScanning = () => {
           receipt_image_url: image_url,
         });
       } else {
-        // Fallback to manual mode if AI failed but image uploaded
         setFormData((prev) => ({
           ...prev,
           receipt_image_url: image_url,
@@ -159,7 +167,6 @@ const ReceiptScanning = () => {
 
       setSuccessMessage("Expense successfully submitted to Manager Queue!");
 
-      // Reset Scanner after 2.5 seconds
       setTimeout(() => {
         resetScanner();
       }, 2500);
@@ -339,7 +346,6 @@ const ReceiptScanning = () => {
               onSubmit={handleSubmit}
               className="space-y-5 flex-1 overflow-y-auto pr-2 pb-4 custom-scrollbar"
             >
-              {/* Top Details */}
               <div className="space-y-5">
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
@@ -403,7 +409,7 @@ const ReceiptScanning = () => {
 
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-500 mb-2">
-                      Input VAT (₱)
+                      Input VAT ({vatRate}%) Optional
                     </label>
                     <input
                       type="number"
@@ -428,7 +434,7 @@ const ReceiptScanning = () => {
                   </div>
                 </div>
 
-                {/* Automation Toggle */}
+                {/* Dynamic Automation Toggle */}
                 <label className="flex items-center gap-3 cursor-pointer pt-3 mt-3 border-t border-slate-200 dark:border-white/10">
                   <input
                     type="checkbox"
@@ -439,8 +445,8 @@ const ReceiptScanning = () => {
                   />
                   <div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Calculator size={14} className="text-indigo-500" /> Apply
-                      12% Auto-VAT
+                      <Calculator size={14} className="text-indigo-500" /> Apply{" "}
+                      {vatRate}% Auto-VAT
                     </p>
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">
                       Check if VAT is inclusive but unreadable on receipt.
