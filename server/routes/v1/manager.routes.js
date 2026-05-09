@@ -7,6 +7,8 @@ const MechanicController = require("../../controllers/manager/mechanic.controlle
 const ServiceController = require("../../controllers/manager/service.controller");
 const InventoryController = require("../../controllers/manager/inventory.controller");
 const VatController = require("../../controllers/manager/vat.controller");
+const ExpenseController = require("../../controllers/manager/expense.controller");
+const SupplierController = require("../../controllers/manager/supplier.controller");
 
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 
@@ -39,6 +41,10 @@ const {
   getLedgerSchema,
   closePeriodSchema,
 } = require("../../validations/manager/vat.schema");
+const {
+  approveExpenseSchema,
+  rejectExpenseSchema,
+} = require("../../validations/manager/expense.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Only
@@ -51,6 +57,8 @@ router.use(verifyToken, requireRole(ROLES.MANAGER, ROLES.ADMIN));
 router.get("/branches", BranchController.getAllBranches);
 
 router.get("/branches/active", BranchController.getActiveBranches);
+
+router.get("/suppliers/active", SupplierController.getActive);
 
 // ==========================================
 // SUB-TAB: CHART OF ACCOUNTS
@@ -132,6 +140,23 @@ router.post(
   "/vat-ledger/close-period",
   validate(closePeriodSchema),
   VatController.closePeriod,
+);
+
+// ==========================================
+// SUB-TAB: EXPENSE APPROVALS (MAKER-CHECKER)
+// ==========================================
+router.get("/expenses/pending", ExpenseController.getPending);
+
+router.post(
+  "/expenses/:id/approve",
+  validate(approveExpenseSchema),
+  ExpenseController.approve,
+);
+
+router.post(
+  "/expenses/:id/reject",
+  validate(rejectExpenseSchema),
+  ExpenseController.reject,
 );
 
 module.exports = router;
