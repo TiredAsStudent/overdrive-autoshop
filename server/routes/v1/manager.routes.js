@@ -5,6 +5,7 @@ const router = express.Router();
 const CoaController = require("../../controllers/manager/coa.controller");
 const MechanicController = require("../../controllers/manager/mechanic.controller");
 const ServiceController = require("../../controllers/manager/service.controller");
+const InventoryController = require("../../controllers/manager/inventory.controller");
 
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 
@@ -29,6 +30,9 @@ const {
   createServiceSchema,
   updateServiceSchema,
 } = require("../../validations/manager/service.schema");
+const {
+  createItemSchema,
+} = require("../../validations/manager/inventory.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Only
@@ -92,5 +96,17 @@ router.put(
   validate(updateServiceSchema),
   ServiceController.updateService,
 );
+
+// ==========================================
+// SUB-TAB: STOCK OVERVIEW (INVENTORY)
+// ==========================================
+router.post(
+  "/inventory",
+  validate(createItemSchema),
+  InventoryController.createItem,
+);
+
+// This endpoint dynamically handles both Consolidated (no query) and Branch-Specific (?branch_id=1) views
+router.get("/inventory", InventoryController.getOverview);
 
 module.exports = router;
