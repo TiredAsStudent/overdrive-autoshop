@@ -49,8 +49,19 @@ export const expenseService = {
       const response = await api.get("/manager/suppliers/active");
       return response.data;
     } catch (error) {
-      console.warn("Supplier fetch failed or not yet implemented.", error);
-      return { data: [] }; // Fallback to empty array if supplier route isn't built yet
+      console.warn("Supplier fetch failed.", error);
+      return { data: [] };
+    }
+  },
+
+  // Fetch active branches for the dynamic dropdown
+  getActiveBranches: async () => {
+    try {
+      const response = await api.get("/manager/branches/active");
+      return response.data;
+    } catch (error) {
+      console.warn("Branch fetch failed.", error);
+      return { data: [] };
     }
   },
 };

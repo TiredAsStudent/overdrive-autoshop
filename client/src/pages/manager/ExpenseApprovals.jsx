@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { CheckSquare, MapPin, Loader2, ScanFace, FileText } from "lucide-react";
+import {
+  CheckSquare,
+  MapPin,
+  Loader2,
+  ScanFace,
+  FileText,
+  AlertTriangle,
+} from "lucide-react";
 import { expenseService } from "../../services/manager/expense.service";
 import ExpenseApprovalModal from "../../features/manager/components/ExpenseApprovalModal";
 
@@ -11,22 +18,37 @@ const formatCurrency = (amount) =>
 const ExpenseApprovals = () => {
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
+
   const [suppliers, setSuppliers] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState("");
 
   // Modal State
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  useEffect(() => {
+    const initDropdowns = async () => {
+      try {
+        // Fetch both branches and suppliers at the exact same time for speed
+        const [branchRes, supRes] = await Promise.all([
+          expenseService.getActiveBranches(),
+          expenseService.getSuppliers(),
+        ]);
+        setBranches(branchRes.data || []);
+        setSuppliers(supRes.data || []);
+      } catch (error) {
+        console.error("Failed to load dropdown data:", error.message);
+      }
+    };
+    initDropdowns();
+  }, []);
+
   const fetchQueue = async () => {
     setLoading(true);
     try {
       const res = await expenseService.getPending(selectedBranch);
       setExpenses(res.data || []);
-
-      // Fetch suppliers for the dropdown inside the modal
-      const supRes = await expenseService.getSuppliers();
-      setSuppliers(supRes.data || []);
     } catch (error) {
       alert(error.message);
     } finally {
@@ -39,6 +61,7 @@ const ExpenseApprovals = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBranch]);
 
+  // Actions
   const openVerification = (expense) => {
     setSelectedExpense(expense);
     setIsModalOpen(true);
@@ -51,7 +74,7 @@ const ExpenseApprovals = () => {
 
   const handleReject = async (id, reason) => {
     await expenseService.reject(id, reason);
-    fetchQueue(); // Refresh queue
+    fetchQueue();
   };
 
   return (
@@ -90,9 +113,11 @@ const ExpenseApprovals = () => {
             className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none cursor-pointer appearance-none focus:ring-2 focus:ring-indigo-500 transition-all"
           >
             <option value="">All Branches</option>
-            <option value="1">Calamba HQ</option>
-            <option value="2">Biñan Branch</option>
-            <option value="3">Batino Branch</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.branch_code} - {b.branch_name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
