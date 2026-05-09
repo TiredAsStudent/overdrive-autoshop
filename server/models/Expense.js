@@ -142,13 +142,33 @@ class Expense {
   }
 
   // Reject an expense back to staff
-  static async reject(expenseId, reason) {
+  static async reject(expenseId, reason, category) {
     const sql = `
-      UPDATE expenses SET status = 'REJECTED', rejection_reason = $1, updated_at = NOW()
-      WHERE id = $2 RETURNING *
+      UPDATE expenses 
+      SET status = 'REJECTED', rejection_reason = $1, rejection_category = $2, updated_at = NOW()
+      WHERE id = $3 RETURNING *
     `;
-    const result = await query(sql, [reason, expenseId]);
+    const result = await query(sql, [reason, category, expenseId]);
     return result.rows[0];
+  }
+
+  // Fetch permanent archive of rejected expenses
+  static async getRejectedLogs(branchId) {
+    let sql = `
+      SELECT e.*, s.supplier_name, u.first_name || ' ' || u.last_name as staff_name
+      FROM expenses e
+      LEFT JOIN suppliers s ON e.supplier_id = s.id
+      JOIN users u ON e.submitted_by = u.id
+      WHERE e.status = 'REJECTED'
+    `;
+    const values = [];
+    if (branchId) {
+      sql += ` AND e.branch_id = $1`;
+      values.push(branchId);
+    }
+    sql += ` ORDER BY e.updated_at DESC`; // Show most recently rejected first
+    const result = await query(sql, values);
+    return result.rows;
   }
 }
 

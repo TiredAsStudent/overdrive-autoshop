@@ -6,8 +6,11 @@ class ExpenseService {
     return await Expense.getPending(branchId);
   }
 
+  static async getRejectionLogs(branchId) {
+    return await Expense.getRejectedLogs(branchId);
+  }
+
   static async approveExpense(expenseId, data, branchId, managerId, ipAddress) {
-    // 1. Capstone Detail: Duplicate Detection
     if (data.supplier_id) {
       const isDuplicate = await Expense.checkDuplicate(
         data.supplier_id,
@@ -21,10 +24,8 @@ class ExpenseService {
       }
     }
 
-    // 2. Execute Atomic Transaction
     await Expense.approveAtomic(expenseId, data, branchId);
 
-    // 3. Log the secure Maker-Checker action
     await logSecureAction(
       managerId,
       branchId,
@@ -43,11 +44,12 @@ class ExpenseService {
   static async rejectExpense(
     expenseId,
     reason,
+    category,
     branchId,
     managerId,
     ipAddress,
   ) {
-    const rejected = await Expense.reject(expenseId, reason);
+    const rejected = await Expense.reject(expenseId, reason, category);
 
     await logSecureAction(
       managerId,
@@ -58,7 +60,7 @@ class ExpenseService {
       "expenses",
       expenseId,
       { status: "PENDING" },
-      { status: "REJECTED", reason },
+      { status: "REJECTED", reason, category },
     );
 
     return rejected;

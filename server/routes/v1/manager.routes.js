@@ -143,9 +143,11 @@ router.post(
 );
 
 // ==========================================
-// SUB-TAB: EXPENSE APPROVALS (MAKER-CHECKER)
+// SUB-TAB: EXPENSE APPROVALS (MAKER-CHECKER) & REJECTIONS
 // ==========================================
 router.get("/expenses/pending", ExpenseController.getPending);
+
+router.get("/expenses/rejection-logs", ExpenseController.getRejectionLogs);
 
 router.post(
   "/expenses/:id/approve",

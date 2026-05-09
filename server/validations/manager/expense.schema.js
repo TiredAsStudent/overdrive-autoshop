@@ -8,6 +8,20 @@ const rejectExpenseSchema = z.object({
         5,
         "You must provide a specific reason for rejection to guide the staff.",
       ),
+    rejection_category: z.enum(
+      [
+        "IMAGE_QUALITY",
+        "DATA_MISMATCH",
+        "UNAUTHORIZED",
+        "DUPLICATE",
+        "POLICY_VIOLATION",
+        "OTHER",
+      ],
+      {
+        required_error:
+          "Please select a specific rejection category for the audit trail.",
+      },
+    ),
   }),
 });
 
@@ -18,7 +32,7 @@ const approveExpenseSchema = z.object({
     base_amount: z.coerce.number().min(0),
     vat_amount: z.coerce.number().min(0),
     total_amount: z.coerce.number().min(0),
-    expense_account_id: z.number().int().positive(), // Where to charge this (e.g., COGS, Utilities)
+    expense_account_id: z.number().int().positive(),
     items: z
       .array(
         z.object({
@@ -27,7 +41,7 @@ const approveExpenseSchema = z.object({
           unit_price: z.coerce.number().min(0),
         }),
       )
-      .optional(), // Optional, only needed if buying physical parts
+      .optional(),
   }),
 });
 

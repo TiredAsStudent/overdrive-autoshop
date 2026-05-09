@@ -5,7 +5,6 @@ const { STATUS_CODES } = require("../../constants/statusCodes");
 class ExpenseController {
   static async getPending(req, res) {
     try {
-      // If manager selects a branch from the dropdown, use it. Otherwise, use their assigned branch.
       const branchId = req.query.branch_id || req.user.branchId;
       const data = await ExpenseService.getPendingExpenses(branchId);
       return sendSuccess(
@@ -19,10 +18,29 @@ class ExpenseController {
     }
   }
 
+  static async getRejectionLogs(req, res) {
+    try {
+      const branchId = req.query.branch_id || req.user.branchId;
+      const data = await ExpenseService.getRejectionLogs(branchId);
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        data,
+        "Rejection logs loaded successfully.",
+      );
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to load rejection logs.",
+        error.message,
+      );
+    }
+  }
+
   static async approve(req, res) {
     try {
       const expenseId = req.params.id;
-      // Inject transaction date for duplicate check from frontend payload
       const branchId = req.body.branch_id || req.user.branchId;
 
       const result = await ExpenseService.approveExpense(
@@ -41,12 +59,13 @@ class ExpenseController {
   static async reject(req, res) {
     try {
       const expenseId = req.params.id;
-      const { rejection_reason } = req.body;
+      const { rejection_reason, rejection_category } = req.body;
       const branchId = req.user.branchId;
 
       await ExpenseService.rejectExpense(
         expenseId,
         rejection_reason,
+        rejection_category,
         branchId,
         req.user.id,
         req.ip,

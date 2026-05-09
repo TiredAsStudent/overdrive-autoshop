@@ -64,4 +64,19 @@ export const expenseService = {
       return { data: [] };
     }
   },
+
+  // Fetch the permanent archive of rejected expenses
+  getRejectionLogs: async (branchId = "") => {
+    try {
+      const response = await api.get(
+        `/manager/expenses/rejection-logs?branch_id=${branchId}`,
+      );
+      return response.data; // { success, data: [...] }
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to load rejection logs.",
+      );
+    }
+  },
 };
