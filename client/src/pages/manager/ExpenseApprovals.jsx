@@ -10,6 +10,15 @@ import {
 import { expenseService } from "../../services/manager/expense.service";
 import ExpenseApprovalModal from "../../features/manager/components/ExpenseApprovalModal";
 
+const getImageUrl = (path) => {
+  if (!path) return "";
+  if (path.startsWith("blob:") || path.startsWith("http")) return path;
+  const baseUrl =
+    import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+    "http://localhost:5000";
+  return `${baseUrl}${path}`;
+};
+
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
     amount || 0,
@@ -153,7 +162,7 @@ const ExpenseApprovals = () => {
               {/* Receipt Preview Thumbnail */}
               <div className="h-40 bg-slate-100 dark:bg-slate-900 relative overflow-hidden border-b border-slate-200 dark:border-white/10">
                 <img
-                  src={expense.receipt_image_url}
+                  src={getImageUrl(expense.receipt_image_url)}
                   alt="Receipt Thumbnail"
                   className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500"
                 />

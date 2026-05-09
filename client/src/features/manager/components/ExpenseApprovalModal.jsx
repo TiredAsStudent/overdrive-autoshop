@@ -11,6 +11,15 @@ import {
 } from "lucide-react";
 import ConfirmModal from "../../../components/shared/ConfirmModal";
 
+const getImageUrl = (path) => {
+  if (!path) return "";
+  if (path.startsWith("blob:") || path.startsWith("http")) return path;
+  const baseUrl =
+    import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+    "http://localhost:5000";
+  return `${baseUrl}${path}`;
+};
+
 // Helper for AI Confidence Highlighting
 const getConfidenceColor = (score) => {
   if (!score)
@@ -150,7 +159,7 @@ const ExpenseApprovalModal = ({
                 </div>
                 <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
                   <img
-                    src={expense.receipt_image_url}
+                    src={getImageUrl(expense.receipt_image_url)}
                     alt="Receipt Scan"
                     className="max-w-full max-h-full object-contain rounded-xl shadow-lg border border-slate-200 dark:border-white/10"
                   />

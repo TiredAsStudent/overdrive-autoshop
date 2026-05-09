@@ -170,6 +170,31 @@ class Expense {
     const result = await query(sql, values);
     return result.rows;
   }
+
+  static async create(data) {
+    const sql = `
+      INSERT INTO expenses (
+        branch_id, submitted_by, supplier_id, transaction_date, 
+        base_amount, vat_amount, total_amount, 
+        receipt_image_url, ai_confidence_score, status
+      ) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PENDING')
+      RETURNING *;
+    `;
+    const values = [
+      data.branch_id,
+      data.submitted_by,
+      data.supplier_id || null,
+      data.transaction_date,
+      data.base_amount,
+      data.vat_amount,
+      data.total_amount,
+      data.receipt_image_url,
+      data.ai_confidence_score || 1.0,
+    ];
+    const result = await query(sql, values);
+    return result.rows[0];
+  }
 }
 
 module.exports = Expense;
