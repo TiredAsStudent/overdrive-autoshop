@@ -86,7 +86,7 @@ class Inventory {
         i.id, i.sku, i.item_name, i.category, i.unit_cost, i.selling_price, i.is_active,
         COALESCE(SUM(b.quantity), 0) AS total_quantity,
         (COALESCE(SUM(b.quantity), 0) * i.unit_cost) AS total_asset_value,
-        MAX(b.reorder_point) as reorder_point -- Bring a reference to the global point
+        MAX(b.reorder_point) as reorder_point
       FROM inventory_items i
       LEFT JOIN branch_inventory b ON i.id = b.item_id
       WHERE ($1::boolean = TRUE OR i.is_active = TRUE)
@@ -111,6 +111,15 @@ class Inventory {
     `;
     const result = await query(sql, [branchId, showArchived]);
     return result.rows;
+  }
+
+  static async seedNewBranch(branchId) {
+    const sql = `
+      INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
+      SELECT $1, id, 0, 5 FROM inventory_items
+      ON CONFLICT DO NOTHING
+    `;
+    await query(sql, [branchId]);
   }
 }
 

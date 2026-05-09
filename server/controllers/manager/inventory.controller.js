@@ -60,7 +60,7 @@ class InventoryController {
       const branchId = req.query.branch_id
         ? parseInt(req.query.branch_id, 10)
         : null;
-      const showArchived = req.query.archived === "true"; // Capture the toggle
+      const showArchived = req.query.archived === "true";
 
       const overview = await InventoryService.getStockOverview(
         branchId,

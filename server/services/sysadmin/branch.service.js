@@ -1,34 +1,8 @@
 const Branch = require("../../models/Branch");
+const Inventory = require("../../models/Inventory");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class BranchService {
-  static async createBranch(data, adminId, ipAddress) {
-    // Enforce Uppercase Prefix Logic (e.g., 'cab' -> 'CAB')
-    const cleanCode = data.branch_code.toUpperCase().trim();
-    const existingBranch = await Branch.findByCode(cleanCode);
-
-    if (existingBranch) {
-      throw new Error(`Branch Prefix Code '${cleanCode}' is already in use.`);
-    }
-
-    const newBranch = await Branch.create({ ...data, branch_code: cleanCode });
-
-    // Log the exact Transaction ID link for forensic auditing
-    await logSecureAction(
-      adminId,
-      null,
-      "BRANCH_CREATED",
-      "INFO",
-      ipAddress,
-      "branches", // target_resource
-      newBranch.id, // target_id
-      null,
-      newBranch,
-    );
-
-    return newBranch;
-  }
-
   static async getAllBranches() {
     return await Branch.findAll();
   }
@@ -37,97 +11,97 @@ class BranchService {
     return await Branch.findActive();
   }
 
-  static async getBranchById(id) {
-    const branch = await Branch.findById(id);
-    if (!branch) throw new Error("Branch not found.");
-    return branch;
+  static async createBranch(data, adminId, ipAddress) {
+    const existingBranch = await Branch.findByCode(data.branch_code);
+    if (existingBranch) {
+      throw new Error(`Branch Code '${data.branch_code}' is already in use.`);
+    }
+
+    const newBranch = await Branch.create(data);
+
+    await Inventory.seedNewBranch(newBranch.id);
+
+    await logSecureAction(
+      adminId,
+      newBranch.id,
+      "BRANCH_CREATED",
+      "INFO",
+      ipAddress,
+      "branches",
+      newBranch.id,
+      null,
+      newBranch,
+    );
+
+    return newBranch;
   }
 
   static async updateBranch(id, data, adminId, ipAddress) {
     const oldBranch = await Branch.findById(id);
     if (!oldBranch) throw new Error("Branch not found.");
 
-    let cleanData = { ...data };
-
-    if (data.branch_code) {
-      cleanData.branch_code = data.branch_code.toUpperCase().trim();
-      const existing = await Branch.findByCode(cleanData.branch_code);
-      if (existing && existing.id !== parseInt(id, 10)) {
-        throw new Error(
-          `Branch Prefix Code '${cleanData.branch_code}' is already assigned to another location.`,
-        );
-      }
-    }
-
-    const updatedBranch = await Branch.update(id, cleanData);
+    const updatedBranch = await Branch.update(id, data);
 
     await logSecureAction(
       adminId,
-      null,
-      "BRANCH_PROFILE_UPDATED",
-      "WARNING", // Warning severity because changing legal identity is sensitive
+      id,
+      "BRANCH_UPDATED",
+      "WARNING",
       ipAddress,
       "branches",
       id,
-      oldBranch, // old_values for Data Delta comparison
-      updatedBranch, // new_values
+      oldBranch,
+      updatedBranch,
     );
 
     return updatedBranch;
   }
 
-  static async toggleMaintenanceMode(
-    id,
-    isMaintenanceMode,
-    adminId,
-    ipAddress,
-  ) {
-    const branch = await Branch.findById(id);
-    if (!branch) throw new Error("Branch not found.");
+  static async toggleMaintenance(id, isMaintenanceMode, adminId, ipAddress) {
+    const oldBranch = await Branch.findById(id);
+    if (!oldBranch) throw new Error("Branch not found.");
 
-    const result = await Branch.toggleMaintenance(id, isMaintenanceMode);
+    const updatedBranch = await Branch.toggleMaintenance(id, isMaintenanceMode);
 
-    const actionStr = isMaintenanceMode
-      ? "BRANCH_MAINTENANCE_LOCKED"
-      : "BRANCH_MAINTENANCE_UNLOCKED";
-    const severity = isMaintenanceMode ? "CRITICAL" : "WARNING"; // CRITICAL because it freezes operations
+    const action = isMaintenanceMode
+      ? "BRANCH_MAINTENANCE_ENABLED"
+      : "BRANCH_MAINTENANCE_DISABLED";
+    const severity = isMaintenanceMode ? "CRITICAL" : "INFO";
 
     await logSecureAction(
       adminId,
-      null,
-      actionStr,
+      id,
+      action,
       severity,
       ipAddress,
       "branches",
       id,
-      { is_maintenance_mode: branch.is_maintenance_mode },
-      { is_maintenance_mode: isMaintenanceMode },
+      { is_maintenance_mode: oldBranch.is_maintenance_mode },
+      { is_maintenance_mode: updatedBranch.is_maintenance_mode },
     );
 
-    return result;
+    return updatedBranch;
   }
 
   static async deleteBranch(id, adminId, ipAddress) {
-    const branch = await Branch.findById(id);
-    if (!branch) throw new Error("Branch not found.");
+    const oldBranch = await Branch.findById(id);
+    if (!oldBranch) throw new Error("Branch not found.");
 
-    if (!branch.is_active) throw new Error("Branch is already archived.");
-
-    const deleted = await Branch.softDelete(id);
+    const deletedBranch = await Branch.softDelete(id);
 
     await logSecureAction(
       adminId,
-      null,
-      "BRANCH_ARCHIVED",
+      id,
+      "BRANCH_DEACTIVATED",
       "CRITICAL",
       ipAddress,
       "branches",
       id,
-      { is_active: true },
-      { is_active: false },
+      { is_active: oldBranch.is_active },
+      { is_active: deletedBranch.is_active },
     );
 
-    return deleted;
+    return deletedBranch;
   }
 }
 

@@ -63,7 +63,6 @@ const InventoryModal = ({
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Auto-Markup Dynamic Calculation
     if (name === "unit_cost" && !editData) {
       const cost = parseFloat(value) || 0;
       const markupMultiplier = 1 + systemMarkup / 100;
@@ -183,7 +182,6 @@ const InventoryModal = ({
                     <label className="block text-[10px] font-black uppercase tracking-widest text-orange-500 mb-2 flex items-center gap-1">
                       <AlertTriangle size={12} /> Global Reorder Point
                     </label>
-
                     <input
                       type="number"
                       name="initial_reorder_point"

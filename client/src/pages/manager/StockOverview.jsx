@@ -39,26 +39,20 @@ const StockOverview = () => {
   const [branches, setBranches] = useState([]);
   const [systemMarkup, setSystemMarkup] = useState(20);
 
-  // Filters & Toggles
   const [selectedBranch, setSelectedBranch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showArchived, setShowArchived] = useState(false); // Archive Toggle State
+  const [showArchived, setShowArchived] = useState(false);
 
   const [loading, setLoading] = useState(true);
-
-  // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-
-  // Dynamic Confirmation Modals (Archive vs Restore)
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     item: null,
     actionType: null,
   });
 
-  // Initial Fetches (Branches & Markup)
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -90,7 +84,6 @@ const StockOverview = () => {
     }
   };
 
-  // Reload when branch or archive toggle changes
   useEffect(() => {
     loadInventory();
   }, [selectedBranch, showArchived]);
@@ -167,7 +160,6 @@ const StockOverview = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-          {/* Archive Toggle Button */}
           <button
             onClick={() => setShowArchived(!showArchived)}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 border transition-colors ${showArchived ? "bg-slate-800 text-white border-slate-700 dark:bg-white dark:text-slate-900" : "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-900/50 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
@@ -239,7 +231,7 @@ const StockOverview = () => {
         </div>
       </div>
 
-      {/* DASHBOARD CARDS (Calculates Active Parts Only) */}
+      {/* DASHBOARD CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
@@ -315,8 +307,6 @@ const StockOverview = () => {
                 const isConsolidated = selectedBranch === "";
                 const isLowStock = !isConsolidated && item.is_low_stock;
                 const isOutOfStock = qty <= 0;
-
-                // Dim rows that are deactivated
                 const rowClass = item.is_active
                   ? "hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
                   : "bg-slate-50/30 dark:bg-slate-900/30 opacity-60 grayscale";
@@ -425,7 +415,7 @@ const StockOverview = () => {
               {filteredItems.length === 0 && !loading && (
                 <tr>
                   <td
-                    colSpan="5"
+                    colSpan="6"
                     className="px-8 py-12 text-center text-slate-400"
                   >
                     <Package size={32} className="mx-auto mb-2 opacity-20" />
