@@ -12,6 +12,8 @@ import {
   Edit2,
   Trash2,
   Tag,
+  RefreshCw,
+  Archive,
 } from "lucide-react";
 import { inventoryService } from "../../services/manager/inventory.service";
 import InventoryModal from "../../features/manager/components/InventoryModal";
@@ -35,11 +37,13 @@ const CATEGORIES = [
 const StockOverview = () => {
   const [inventory, setInventory] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [systemMarkup, setSystemMarkup] = useState(20);
 
-  // Filters
+  // Filters & Toggles
   const [selectedBranch, setSelectedBranch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false); // Archive Toggle State
 
   const [loading, setLoading] = useState(true);
 
@@ -47,27 +51,37 @@ const StockOverview = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
+  // Dynamic Confirmation Modals (Archive vs Restore)
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     item: null,
+    actionType: null,
   });
 
+  // Initial Fetches (Branches & Markup)
   useEffect(() => {
-    const fetchBranches = async () => {
+    const fetchInitialData = async () => {
       try {
-        const res = await inventoryService.getActiveBranches();
-        setBranches(res.data || []);
+        const [branchRes, markupRes] = await Promise.all([
+          inventoryService.getActiveBranches(),
+          inventoryService.getSystemMarkup(),
+        ]);
+        setBranches(branchRes.data || []);
+        setSystemMarkup(markupRes.data.markup_percentage);
       } catch (error) {
-        console.error("Failed to load branches");
+        console.error("Initialization Failed", error);
       }
     };
-    fetchBranches();
+    fetchInitialData();
   }, []);
 
   const loadInventory = async () => {
     try {
       setLoading(true);
-      const res = await inventoryService.getOverview(selectedBranch || null);
+      const res = await inventoryService.getOverview(
+        selectedBranch || null,
+        showArchived,
+      );
       setInventory(res.data || []);
     } catch (error) {
       alert(error.message);
@@ -76,9 +90,10 @@ const StockOverview = () => {
     }
   };
 
+  // Reload when branch or archive toggle changes
   useEffect(() => {
     loadInventory();
-  }, [selectedBranch]);
+  }, [selectedBranch, showArchived]);
 
   const handleSaveItem = async (data) => {
     if (editingItem) {
@@ -91,11 +106,12 @@ const StockOverview = () => {
     loadInventory();
   };
 
-  const handleDeactivate = async () => {
+  const handleStatusChange = async () => {
     if (!confirmModal.item) return;
     try {
+      const newStatus = confirmModal.actionType === "RESTORE";
       await inventoryService.updateItem(confirmModal.item.id, {
-        is_active: false,
+        is_active: newStatus,
       });
       loadInventory();
     } catch (error) {
@@ -108,7 +124,6 @@ const StockOverview = () => {
     setIsModalOpen(true);
   };
 
-  // Advanced Filtering
   const filteredItems = inventory.filter((i) => {
     const matchesSearch =
       i.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -118,16 +133,20 @@ const StockOverview = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const totalItems = inventory.length;
-  const totalStockQty = inventory.reduce(
-    (sum, item) => sum + Number(item.total_quantity ?? item.quantity ?? 0),
-    0,
-  );
-  const totalAssetValue = inventory.reduce(
-    (sum, item) =>
-      sum + Number(item.total_asset_value ?? item.branch_asset_value ?? 0),
-    0,
-  );
+  const totalItems = inventory.filter((i) => i.is_active).length;
+  const totalStockQty = inventory
+    .filter((i) => i.is_active)
+    .reduce(
+      (sum, item) => sum + Number(item.total_quantity ?? item.quantity ?? 0),
+      0,
+    );
+  const totalAssetValue = inventory
+    .filter((i) => i.is_active)
+    .reduce(
+      (sum, item) =>
+        sum + Number(item.total_asset_value ?? item.branch_asset_value ?? 0),
+      0,
+    );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700 pb-10">
@@ -148,8 +167,16 @@ const StockOverview = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-          {/* Branch Filter */}
-          <div className="relative w-full sm:w-48">
+          {/* Archive Toggle Button */}
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 border transition-colors ${showArchived ? "bg-slate-800 text-white border-slate-700 dark:bg-white dark:text-slate-900" : "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-900/50 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+          >
+            <Archive size={14} />{" "}
+            {showArchived ? "Hide Archived" : "Show Archived"}
+          </button>
+
+          <div className="relative w-full sm:w-40">
             <MapPin
               className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
               size={16}
@@ -159,7 +186,7 @@ const StockOverview = () => {
               onChange={(e) => setSelectedBranch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none cursor-pointer appearance-none"
             >
-              <option value="">🌎 All Branches</option>
+              <option value="">All Branches</option>
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.branch_name}
@@ -168,7 +195,6 @@ const StockOverview = () => {
             </select>
           </div>
 
-          {/* NEW: Category Filter */}
           <div className="relative w-full sm:w-40">
             <Tag
               className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -187,7 +213,6 @@ const StockOverview = () => {
             </select>
           </div>
 
-          {/* Search */}
           <div className="relative w-full sm:w-48">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -195,7 +220,7 @@ const StockOverview = () => {
             />
             <input
               type="text"
-              placeholder="Search SKU or Name..."
+              placeholder="Search Part..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl text-sm outline-none"
@@ -214,9 +239,8 @@ const StockOverview = () => {
         </div>
       </div>
 
-      {/* DASHBOARD CARDS */}
+      {/* DASHBOARD CARDS (Calculates Active Parts Only) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* ... (Keep existing 3 cards: Unique Parts, Physical Stock, Asset Value) ... */}
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
             <Package className="text-slate-500" size={20} />
@@ -292,15 +316,22 @@ const StockOverview = () => {
                 const isLowStock = !isConsolidated && item.is_low_stock;
                 const isOutOfStock = qty <= 0;
 
+                // Dim rows that are deactivated
+                const rowClass = item.is_active
+                  ? "hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+                  : "bg-slate-50/30 dark:bg-slate-900/30 opacity-60 grayscale";
+
                 return (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
-                  >
+                  <tr key={item.id} className={rowClass}>
                     <td className="px-8 py-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                          {item.item_name}
+                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                          {item.item_name}{" "}
+                          {!item.is_active && (
+                            <span className="text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded uppercase tracking-widest">
+                              Archived
+                            </span>
+                          )}
                         </span>
                         <span className="text-[10px] text-blue-600 dark:text-blue-400 font-mono mt-0.5">
                           {item.sku}
@@ -324,7 +355,7 @@ const StockOverview = () => {
                     </td>
                     <td className="px-8 py-4 text-center">
                       <div
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-mono text-xs font-black ${isOutOfStock ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-500" : isLowStock ? "bg-orange-50 border-orange-200 text-orange-600 dark:bg-orange-500/10 dark:border-orange-500/20 dark:text-orange-500" : "bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-500"}`}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-mono text-xs font-black ${!item.is_active ? "bg-slate-100 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700" : isOutOfStock ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-500" : isLowStock ? "bg-orange-50 border-orange-200 text-orange-600 dark:bg-orange-500/10 dark:border-orange-500/20 dark:text-orange-500" : "bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-500"}`}
                       >
                         {isOutOfStock ? (
                           <AlertCircle size={14} />
@@ -346,25 +377,46 @@ const StockOverview = () => {
                         item.total_asset_value ?? item.branch_asset_value ?? 0,
                       )}
                     </td>
-                    {/* NEW: Actions Column */}
                     <td className="px-8 py-4">
                       <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => openEdit(item)}
-                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
-                          title="Edit Pricing"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setConfirmModal({ isOpen: true, item })
-                          }
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
-                          title="Deactivate Part"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {item.is_active ? (
+                          <>
+                            <button
+                              onClick={() => openEdit(item)}
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+                              title="Edit Part"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() =>
+                                setConfirmModal({
+                                  isOpen: true,
+                                  item,
+                                  actionType: "ARCHIVE",
+                                })
+                              }
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Archive Part"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              setConfirmModal({
+                                isOpen: true,
+                                item,
+                                actionType: "RESTORE",
+                              })
+                            }
+                            className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center gap-1 text-[10px] font-black uppercase tracking-widest"
+                            title="Restore Part"
+                          >
+                            <RefreshCw size={14} /> Restore
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -393,16 +445,29 @@ const StockOverview = () => {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSaveItem}
         editData={editingItem}
+        systemMarkup={systemMarkup}
       />
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false, item: null })}
-        onConfirm={handleDeactivate}
-        title="Deactivate Part?"
-        message={`This will remove ${confirmModal.item?.sku} from active circulation. Historical data will be preserved.`}
-        confirmText="Deactivate"
-        variant="danger"
+        onClose={() =>
+          setConfirmModal({ isOpen: false, item: null, actionType: null })
+        }
+        onConfirm={handleStatusChange}
+        title={
+          confirmModal.actionType === "RESTORE"
+            ? "Restore Part?"
+            : "Deactivate Part?"
+        }
+        message={
+          confirmModal.actionType === "RESTORE"
+            ? `This will return ${confirmModal.item?.sku} to active circulation.`
+            : `This will hide ${confirmModal.item?.sku} from active lists. Historical data will be preserved.`
+        }
+        confirmText={
+          confirmModal.actionType === "RESTORE" ? "Restore" : "Deactivate"
+        }
+        variant={confirmModal.actionType === "RESTORE" ? "info" : "danger"}
       />
     </div>
   );

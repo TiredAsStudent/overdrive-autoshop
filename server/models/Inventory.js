@@ -1,6 +1,12 @@
 const { query } = require("../config/db");
 
 class Inventory {
+  static async getSystemMarkup() {
+    const sql = `SELECT markup_percentage FROM system_settings WHERE id = 1`;
+    const result = await query(sql);
+    return result.rows[0]?.markup_percentage || 20.0;
+  }
+
   static async createItem(data, activeBranches) {
     const sqlItem = `
       INSERT INTO inventory_items (sku, item_name, category, unit_cost, selling_price) 
@@ -64,26 +70,34 @@ class Inventory {
       id,
     ];
     const result = await query(sql, values);
-    return result.rows[0];
+    const updatedItem = result.rows[0];
+
+    if (data.initial_reorder_point !== undefined) {
+      const sqlOverride = `UPDATE branch_inventory SET reorder_point = $1 WHERE item_id = $2`;
+      await query(sqlOverride, [data.initial_reorder_point, id]);
+    }
+
+    return updatedItem;
   }
 
-  static async getConsolidatedOverview() {
+  static async getConsolidatedOverview(showArchived) {
     const sql = `
       SELECT 
         i.id, i.sku, i.item_name, i.category, i.unit_cost, i.selling_price, i.is_active,
         COALESCE(SUM(b.quantity), 0) AS total_quantity,
-        (COALESCE(SUM(b.quantity), 0) * i.unit_cost) AS total_asset_value
+        (COALESCE(SUM(b.quantity), 0) * i.unit_cost) AS total_asset_value,
+        MAX(b.reorder_point) as reorder_point -- Bring a reference to the global point
       FROM inventory_items i
       LEFT JOIN branch_inventory b ON i.id = b.item_id
-      WHERE i.is_active = TRUE
+      WHERE ($1::boolean = TRUE OR i.is_active = TRUE)
       GROUP BY i.id
-      ORDER BY i.category ASC, i.item_name ASC
+      ORDER BY i.is_active DESC, i.category ASC, i.item_name ASC
     `;
-    const result = await query(sql);
+    const result = await query(sql, [showArchived]);
     return result.rows;
   }
 
-  static async getBranchOverview(branchId) {
+  static async getBranchOverview(branchId, showArchived) {
     const sql = `
       SELECT 
         i.id, i.sku, i.item_name, i.category, i.unit_cost, i.selling_price, i.is_active,
@@ -92,10 +106,10 @@ class Inventory {
         CASE WHEN b.quantity <= b.reorder_point THEN true ELSE false END AS is_low_stock
       FROM inventory_items i
       JOIN branch_inventory b ON i.id = b.item_id
-      WHERE b.branch_id = $1 AND i.is_active = TRUE
-      ORDER BY is_low_stock DESC, i.category ASC, i.item_name ASC
+      WHERE b.branch_id = $1 AND ($2::boolean = TRUE OR i.is_active = TRUE)
+      ORDER BY i.is_active DESC, is_low_stock DESC, i.category ASC, i.item_name ASC
     `;
-    const result = await query(sql, [branchId]);
+    const result = await query(sql, [branchId, showArchived]);
     return result.rows;
   }
 }

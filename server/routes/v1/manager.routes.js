@@ -101,6 +101,7 @@ router.put(
 // ==========================================
 // SUB-TAB: STOCK OVERVIEW (INVENTORY)
 // ==========================================
+router.get("/inventory/settings/markup", InventoryController.getMarkup);
 router.post(
   "/inventory",
   validate(createItemSchema),

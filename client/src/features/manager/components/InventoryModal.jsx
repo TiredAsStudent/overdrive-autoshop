@@ -11,7 +11,6 @@ import {
   Calculator,
 } from "lucide-react";
 
-// Standardized Overdrive Categories
 const CATEGORIES = [
   "Fluids",
   "Filters",
@@ -21,9 +20,14 @@ const CATEGORIES = [
   "Engine",
   "Accessories",
 ];
-const SYSTEM_MARKUP = 1.2; // 20% Markup Business Logic
 
-const InventoryModal = ({ isOpen, onClose, onSubmit, editData = null }) => {
+const InventoryModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  editData = null,
+  systemMarkup = 20,
+}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     sku: "",
@@ -34,7 +38,6 @@ const InventoryModal = ({ isOpen, onClose, onSubmit, editData = null }) => {
     initial_reorder_point: 5,
   });
 
-  // Populate data if editing
   useEffect(() => {
     if (editData) {
       setFormData({
@@ -60,10 +63,11 @@ const InventoryModal = ({ isOpen, onClose, onSubmit, editData = null }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Smart Markup Logic Trigger
+    // Auto-Markup Dynamic Calculation
     if (name === "unit_cost" && !editData) {
       const cost = parseFloat(value) || 0;
-      const suggestedPrice = (cost * SYSTEM_MARKUP).toFixed(2);
+      const markupMultiplier = 1 + systemMarkup / 100;
+      const suggestedPrice = (cost * markupMultiplier).toFixed(2);
       setFormData((prev) => ({
         ...prev,
         unit_cost: value,
@@ -179,15 +183,15 @@ const InventoryModal = ({ isOpen, onClose, onSubmit, editData = null }) => {
                     <label className="block text-[10px] font-black uppercase tracking-widest text-orange-500 mb-2 flex items-center gap-1">
                       <AlertTriangle size={12} /> Global Reorder Point
                     </label>
+
                     <input
                       type="number"
                       name="initial_reorder_point"
                       required
                       min="0"
-                      disabled={!!editData}
                       value={formData.initial_reorder_point}
                       onChange={handleChange}
-                      className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none disabled:opacity-50"
+                      className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
                     />
                   </div>
                 </div>
@@ -215,7 +219,7 @@ const InventoryModal = ({ isOpen, onClose, onSubmit, editData = null }) => {
                       </span>
                       {!editData && (
                         <span className="flex items-center gap-1 text-[8px] text-blue-500">
-                          <Calculator size={10} /> 20% Auto-Markup
+                          <Calculator size={10} /> {systemMarkup}% Auto-Markup
                         </span>
                       )}
                     </label>
