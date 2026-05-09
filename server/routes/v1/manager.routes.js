@@ -6,6 +6,7 @@ const CoaController = require("../../controllers/manager/coa.controller");
 const MechanicController = require("../../controllers/manager/mechanic.controller");
 const ServiceController = require("../../controllers/manager/service.controller");
 const InventoryController = require("../../controllers/manager/inventory.controller");
+const VatController = require("../../controllers/manager/vat.controller");
 
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 
@@ -34,6 +35,10 @@ const {
   createItemSchema,
   updateItemSchema,
 } = require("../../validations/manager/inventory.schema");
+const {
+  getLedgerSchema,
+  closePeriodSchema,
+} = require("../../validations/manager/vat.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Only
@@ -112,6 +117,21 @@ router.put(
   "/inventory/:id",
   validate(updateItemSchema),
   InventoryController.updateItem,
+);
+
+// ==========================================
+// SUB-TAB: VAT LEDGER
+// ==========================================
+router.get(
+  "/vat-ledger",
+  validate(getLedgerSchema),
+  VatController.getDashboard,
+);
+
+router.post(
+  "/vat-ledger/close-period",
+  validate(closePeriodSchema),
+  VatController.closePeriod,
 );
 
 module.exports = router;
