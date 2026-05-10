@@ -24,18 +24,29 @@ class ExpenseService {
       }
     }
 
-    await Expense.approveAtomic(expenseId, data, branchId);
+    // Execute Atomic Query and extract the exact General Ledger ID
+    const { gl_transaction_id } = await Expense.approveAtomic(
+      expenseId,
+      data,
+      branchId,
+    );
 
+    // Write to the Audit Trail linking directly to the General Ledger
     await logSecureAction(
       managerId,
       branchId,
       "OCR_EXPENSE_APPROVED",
       "WARNING",
       ipAddress,
-      "expenses",
-      expenseId,
-      { status: "PENDING" },
-      { status: "APPROVED", verified_total: data.total_amount },
+      "general_ledger", // Target Resource: Now accurate
+      gl_transaction_id, // Target ID: Direct link to the GL entry
+      { status: "PENDING", source_expense_id: expenseId },
+      {
+        status: "APPROVED",
+        verified_total: data.total_amount,
+        payment_method: data.payment_method,
+        expense_account: data.expense_account_id,
+      },
     );
 
     return { message: "Expense securely verified and posted to ledgers." };

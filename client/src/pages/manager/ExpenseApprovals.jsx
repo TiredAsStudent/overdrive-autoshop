@@ -8,6 +8,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { expenseService } from "../../services/manager/expense.service";
+import { coaService } from "../../services/manager/coa.service"; // NEW IMPORT
 import ExpenseApprovalModal from "../../features/manager/components/ExpenseApprovalModal";
 
 const getImageUrl = (path) => {
@@ -30,6 +31,7 @@ const ExpenseApprovals = () => {
 
   const [suppliers, setSuppliers] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [accounts, setAccounts] = useState([]); // NEW STATE FOR LEDGER ACCOUNTS
   const [selectedBranch, setSelectedBranch] = useState("");
 
   // Modal State
@@ -39,13 +41,15 @@ const ExpenseApprovals = () => {
   useEffect(() => {
     const initDropdowns = async () => {
       try {
-        // Fetch both branches and suppliers at the exact same time for speed
-        const [branchRes, supRes] = await Promise.all([
+        // Fetch branches, suppliers, and the Chart of Accounts concurrently
+        const [branchRes, supRes, coaRes] = await Promise.all([
           expenseService.getActiveBranches(),
           expenseService.getSuppliers(),
+          coaService.getAllAccounts(),
         ]);
         setBranches(branchRes.data || []);
         setSuppliers(supRes.data || []);
+        setAccounts(coaRes.data || []);
       } catch (error) {
         console.error("Failed to load dropdown data:", error.message);
       }
@@ -228,6 +232,7 @@ const ExpenseApprovals = () => {
         onApprove={handleApprove}
         onReject={handleReject}
         suppliers={suppliers}
+        accounts={accounts} // PASS ACCOUNTS HERE
       />
     </div>
   );

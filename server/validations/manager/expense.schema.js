@@ -33,7 +33,8 @@ const approveExpenseSchema = z.object({
     base_amount: z.coerce.number().min(0),
     vat_amount: z.coerce.number().min(0),
     total_amount: z.coerce.number().min(0),
-    expense_account_id: z.number().int().positive(),
+    expense_account_id: z.string().min(3),
+    payment_method: z.enum(["AP", "CASH"]).default("AP"),
     items: z
       .array(
         z.object({

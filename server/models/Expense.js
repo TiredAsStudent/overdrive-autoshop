@@ -15,7 +15,7 @@ class Expense {
       sql += ` AND e.branch_id = $1`;
       values.push(branchId);
     }
-    sql += ` ORDER BY e.created_at ASC`; // Oldest first
+    sql += ` ORDER BY e.created_at ASC`;
     const result = await query(sql, values);
     return result.rows;
   }
@@ -70,40 +70,46 @@ class Expense {
       }
 
       // 3. Post to General Ledger (Double Entry Accounting)
-      // Debit: The Expense/Asset Account (e.g., Shop Utilities or Inventory Asset)
-      await client.query(
+
+      // DEBIT: The Dynamic Expense Account (e.g., 5000 COGS, 5100 Salaries, 5200 Utilities)
+      const debitRes = await client.query(
         `
         INSERT INTO general_ledger (branch_id, transaction_date, account_id, debit, reference_type, reference_id)
         VALUES ($1, $2, (SELECT id FROM chart_of_accounts WHERE account_code = $3::text LIMIT 1), $4, 'EXPENSE_RECEIPT', $5)
+        RETURNING id
       `,
         [
           branchId,
           txnDate,
-          data.expense_account_id.toString(),
+          data.expense_account_id,
           data.base_amount,
           expenseId,
         ],
       );
 
-      // Debit: Input VAT (Account 1300 or similar, assuming standard setup)
+      // CAPTURE THE GENERATED GL ID FOR THE AUDIT TRAIL
+      const glTransactionId = debitRes.rows[0].id;
+
+      // DEBIT: Input VAT (Account 1300)
       if (data.vat_amount > 0) {
-        // NOTE: In production, fetch the exact Input VAT account ID. Hardcoding for example logic.
         await client.query(
           `
           INSERT INTO general_ledger (branch_id, transaction_date, account_id, debit, reference_type, reference_id)
-          VALUES ($1, $2, (SELECT id FROM chart_of_accounts WHERE account_name ILIKE '%Input VAT%' LIMIT 1), $3, 'EXPENSE_RECEIPT', $4)
+          VALUES ($1, $2, (SELECT id FROM chart_of_accounts WHERE account_code = '1300' LIMIT 1), $3, 'EXPENSE_RECEIPT', $4)
         `,
           [branchId, txnDate, data.vat_amount, expenseId],
         );
       }
 
-      // Credit: Accounts Payable (Account 2000)
+      // CREDIT: Dynamic Liability or Asset (Accounts Payable vs. Cash-on-Hand)
+      const creditAccountCode =
+        data.payment_method === "CASH" ? "1000" : "2000";
       await client.query(
         `
         INSERT INTO general_ledger (branch_id, transaction_date, account_id, credit, reference_type, reference_id)
-        VALUES ($1, $2, (SELECT id FROM chart_of_accounts WHERE account_code = '2000' LIMIT 1), $3, 'EXPENSE_RECEIPT', $4)
+        VALUES ($1, $2, (SELECT id FROM chart_of_accounts WHERE account_code = $3::text LIMIT 1), $4, 'EXPENSE_RECEIPT', $5)
       `,
-        [branchId, txnDate, data.total_amount, expenseId],
+        [branchId, txnDate, creditAccountCode, data.total_amount, expenseId],
       );
 
       // 4. Update Inventory & Moving Average Cost (If Line Items exist)
@@ -132,7 +138,7 @@ class Expense {
       }
 
       await client.query("COMMIT"); // EVERYTHING SUCCEEDS
-      return true;
+      return { success: true, gl_transaction_id: glTransactionId };
     } catch (error) {
       await client.query("ROLLBACK"); // EVERYTHING REVERTS
       throw error;
@@ -166,7 +172,7 @@ class Expense {
       sql += ` AND e.branch_id = $1`;
       values.push(branchId);
     }
-    sql += ` ORDER BY e.updated_at DESC`; // Show most recently rejected first
+    sql += ` ORDER BY e.updated_at DESC`;
     const result = await query(sql, values);
     return result.rows;
   }
