@@ -14,13 +14,18 @@ node_modules/
 dist/
 dist-ssr/
 build/
+coverage/
+.cache/
+
+# Uploaded Files
+server/uploads/
 
 # Environment Variables
 .env
 .env.*
 !.env.example
 
-# Editor Directories
+# IDE Files
 .vscode/*
 !.vscode/extensions.json
 .idea

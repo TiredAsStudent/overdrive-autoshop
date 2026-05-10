@@ -1,35 +1,31 @@
 const { Pool } = require("pg");
 require("dotenv").config();
 
-const requiredEnv = ["DB_USER", "DB_HOST", "DB_NAME", "DB_PASSWORD", "DB_PORT"];
-const missingEnv = requiredEnv.filter((env) => !process.env[env]);
+const isProduction = process.env.NODE_ENV === "production";
 
-if (missingEnv.length > 0) {
-  console.error(
-    `FATAL ERROR: Missing Database Environment Variables: ${missingEnv.join(", ")}`,
-  );
-  process.exit(1);
-}
+const pool = new Pool(
+  isProduction
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      }
+    : {
+        user: process.env.DB_USER,
+        host: process.env.DB_HOST,
+        database: process.env.DB_NAME,
+        password: process.env.DB_PASSWORD,
+        port: parseInt(process.env.DB_PORT, 10),
+      },
+);
 
-// Configure the Connection Pool
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: parseInt(process.env.DB_PORT, 10),
-  max: 20, // Handles 20 concurrent connections
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
-
-// Test Connection on Startup
 const connectDB = async () => {
   try {
     const client = await pool.connect();
-    console.log(
-      `Database Connected: [${process.env.DB_NAME}] on port ${process.env.DB_PORT}`,
-    );
+
+    console.log("Database Connected Successfully");
+
     client.release();
   } catch (err) {
     console.error("Database Connection Failed:", err.message);
@@ -37,9 +33,8 @@ const connectDB = async () => {
   }
 };
 
-// Catch idle client errors globally
 pool.on("error", (err) => {
-  console.error("Unexpected error on idle client:", err);
+  console.error("Unexpected DB Error:", err);
   process.exit(-1);
 });
 
