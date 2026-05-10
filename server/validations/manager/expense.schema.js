@@ -28,6 +28,7 @@ const rejectExpenseSchema = z.object({
 // The Approval Schema handles the corrected/verified data from the Manager
 const approveExpenseSchema = z.object({
   body: z.object({
+    branch_id: z.number().int().positive().optional(),
     supplier_id: z.number().int().positive().optional().nullable(),
     base_amount: z.coerce.number().min(0),
     vat_amount: z.coerce.number().min(0),

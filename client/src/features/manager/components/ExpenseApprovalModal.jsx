@@ -81,6 +81,7 @@ const ExpenseApprovalModal = ({
     try {
       await onApprove(expense.id, {
         ...formData,
+        branch_id: parseInt(expense.branch_id, 10),
         supplier_id: formData.supplier_id
           ? parseInt(formData.supplier_id, 10)
           : null,
@@ -275,6 +276,7 @@ const ExpenseApprovalModal = ({
                 <AnimatePresence>
                   {isRejecting && (
                     <motion.div
+                      key="rejection-panel"
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}

@@ -74,12 +74,12 @@ class Expense {
       await client.query(
         `
         INSERT INTO general_ledger (branch_id, transaction_date, account_id, debit, reference_type, reference_id)
-        VALUES ($1, $2, $3, $4, 'EXPENSE_RECEIPT', $5)
+        VALUES ($1, $2, (SELECT id FROM chart_of_accounts WHERE account_code = $3::text LIMIT 1), $4, 'EXPENSE_RECEIPT', $5)
       `,
         [
           branchId,
           txnDate,
-          data.expense_account_id,
+          data.expense_account_id.toString(),
           data.base_amount,
           expenseId,
         ],

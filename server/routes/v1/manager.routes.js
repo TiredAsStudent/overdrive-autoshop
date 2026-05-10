@@ -45,6 +45,10 @@ const {
   approveExpenseSchema,
   rejectExpenseSchema,
 } = require("../../validations/manager/expense.schema");
+const {
+  createSupplierSchema,
+  updateSupplierSchema,
+} = require("../../validations/manager/supplier.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Only
@@ -125,6 +129,25 @@ router.put(
   "/inventory/:id",
   validate(updateItemSchema),
   InventoryController.updateItem,
+);
+
+// ==========================================
+// SUB-TAB: SUPPLIER LEDGER
+// ==========================================
+router.post(
+  "/suppliers",
+  validate(createSupplierSchema),
+  SupplierController.create,
+);
+
+router.get("/suppliers/ledger", SupplierController.getLedger);
+
+router.get("/suppliers/:id/timeline", SupplierController.getTimeline);
+
+router.put(
+  "/suppliers/:id",
+  validate(updateSupplierSchema),
+  SupplierController.update,
 );
 
 // ==========================================
