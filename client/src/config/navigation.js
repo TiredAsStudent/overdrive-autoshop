@@ -1,24 +1,27 @@
 import {
-  LayoutDashboard,
-  CheckSquare,
+  Activity,
+  Database,
+  Settings2,
+  ShieldAlert,
+  GitBranch,
+  Users2,
+  Building2,
+  ClipboardCheck,
   Wrench,
   Package,
-  CircleDollarSign,
-  Users2,
-  Settings2,
-  Home,
-  FileText,
-  Camera,
-  Inbox,
-  UserCircle,
-  History,
-  ShieldCheck,
-  Car,
-  Activity,
+  Calculator,
+  FileBarChart2,
+  WalletCards,
+  ShoppingCart,
   Receipt,
-  ShieldAlert,
-  Database,
-  Server,
+  FileText,
+  FilePlus,
+  FileCheck2,
+  History,
+  ScanLine,
+  Hourglass,
+  Boxes,
+  ArrowLeftRight,
 } from "lucide-react";
 
 // === SYSTEM ADMIN MENU ===
@@ -26,30 +29,33 @@ export const sysAdminMenu = [
   {
     label: "Dashboard",
     icon: Activity,
-    items: [{ name: "Overview", path: "/sysadmin/overview" }],
+    items: [{ name: "Overview", path: "/sysadmin/dashboard/overview" }],
   },
   {
     label: "Management",
     icon: Database,
     items: [
-      { name: "Branches", path: "/sysadmin/management/branches" },
-      { name: "Users", path: "/sysadmin/management/users" },
+      {
+        name: "Branch Registry",
+        path: "/sysadmin/management/branches-registry",
+      },
+      { name: "Users Accounts", path: "/sysadmin/management/users-accounts" },
     ],
   },
   {
     label: "Settings",
     icon: Settings2,
     items: [
-      { name: "Business", path: "/sysadmin/settings/business" },
-      // { name: "Integrations", path: "/sysadmin/settings/integrations" },
+      { name: "Business Logic", path: "/sysadmin/settings/business-logic" },
+      { name: "AI Assistant", path: "/sysadmin/settings/ai-assistant" },
     ],
   },
   {
     label: "Records",
     icon: ShieldAlert,
     items: [
-      { name: "Audit", path: "/sysadmin/records/audit" },
-      { name: "Health", path: "/sysadmin/records/health" },
+      { name: "Audit Trail", path: "/sysadmin/records/audit-trail" },
+      { name: "System Health", path: "/sysadmin/records/system-health" },
     ],
   },
 ];
@@ -58,20 +64,23 @@ export const sysAdminMenu = [
 export const managerMenu = [
   {
     label: "Dashboard",
-    icon: LayoutDashboard,
-    items: [
-      { name: "Overview", path: "/manager/dashboard/overview" },
-      { name: "Branch Stats", path: "/manager/dashboard/ranking" },
-    ],
+    icon: Activity,
+    items: [{ name: "Overview", path: "/manager/dashboard/overview" }],
   },
+
   {
-    label: "Approval Queue",
-    icon: CheckSquare,
+    label: "Approvals",
+    icon: ClipboardCheck,
     items: [
-      { name: "OCR Verifications", path: "/manager/approvals/ocr" },
-      { name: "Stock Adjustments", path: "/manager/approvals/stock" },
+      {
+        name: "Expense Approvals",
+        path: "/manager/approvals/expense-approvals",
+      },
+      { name: "Stock Adjustment", path: "/manager/approvals/stock-adjustment" },
+      { name: "Rejection Logs", path: "/manager/approvals/rejection-logs" },
     ],
   },
+
   {
     label: "Workshop",
     icon: Wrench,
@@ -80,114 +89,98 @@ export const managerMenu = [
       { name: "Mechanics", path: "/manager/workshop/mechanics" },
     ],
   },
+
   {
     label: "Inventory",
     icon: Package,
     items: [
-      { name: "Stock Overview", path: "/manager/inventory/overview" },
-      { name: "Bulk Order", path: "/manager/inventory/bulk" },
-      { name: "Transfers", path: "/manager/inventory/transfers" },
+      { name: "Stock Overview", path: "/manager/inventory/stock-overview" },
+      { name: "Stock Value", path: "/manager/inventory/stock-value" },
+      { name: "COGS Tracking", path: "/manager/inventory/cogs-tracking" },
+      { name: "Stock Transfers", path: "/manager/inventory/stock-transfers" },
     ],
   },
+
   {
-    label: "Finance",
-    icon: CircleDollarSign,
+    label: "Accounting",
+    icon: Calculator,
     items: [
-      { name: "Accounts", path: "/manager/finance/accounts" },
-      { name: "Reports", path: "/manager/finance/reports" },
-      { name: "Taxes", path: "/manager/finance/taxes" },
+      { name: "General Ledger", path: "/manager/accounting/general-ledger" },
+      {
+        name: "Chart of Accounts",
+        path: "/manager/accounting/chart-of-accounts",
+      },
+      { name: "Journal Entries", path: "/manager/accounting/journal-entries" },
+      { name: "Trial Balance", path: "/manager/accounting/trial-balance" },
+      { name: "VAT Ledger", path: "/manager/accounting/vat-ledger" },
     ],
   },
+
   {
-    label: "Customers",
-    icon: Users2,
+    label: "Reports",
+    icon: FileBarChart2,
     items: [
-      { name: "Directory", path: "/manager/customers/directory" },
-      { name: "Service History", path: "/manager/customers/history" },
+      { name: "Income Statement", path: "/manager/reports/income-statement" },
+      { name: "Balance Sheet", path: "/manager/reports/balance-sheet" },
+      {
+        name: "Cash Flow Statement",
+        path: "/manager/reports/cash-flow-statement",
+      },
+      { name: "Revenue Reports", path: "/manager/reports/revenue-reports" },
+      { name: "Expense Reports", path: "/manager/reports/expense-reports" },
+    ],
+  },
+
+  {
+    label: "Balances",
+    icon: WalletCards,
+    items: [
+      { name: "Accounts Payable", path: "/manager/balances/accounts-payable" },
+      {
+        name: "Accounts Receivable",
+        path: "/manager/balances/accounts-receivable",
+      },
+      { name: "Supplier Ledger", path: "/manager/balances/supplier-ledger" },
     ],
   },
 ];
 
-// === STAFF MENU ===
 export const staffMenu = [
   {
     label: "Dashboard",
-    icon: Home,
-    items: [{ name: "Local Stats", path: "/staff/dashboard/stats" }],
+    icon: Activity,
+    items: [{ name: "Overview", path: "/staff/dashboard/overview" }],
   },
-  {
-    label: "Workshop",
-    icon: LayoutDashboard,
-    items: [
-      { name: "Check-In", path: "/staff/workshop/check-in" },
-      { name: "Kanban Board", path: "/staff/workshop/kanban" },
-    ],
-  },
-  {
-    label: "Billing",
-    icon: FileText,
-    items: [
-      { name: "Estimates", path: "/staff/billing/estimates" },
-      { name: "Sales Orders", path: "/staff/billing/orders" },
-      { name: "Invoices", path: "/staff/billing/invoices" },
-    ],
-  },
-  {
-    label: "OCR Intake",
-    icon: Camera,
-    items: [
-      { name: "New Intake", path: "/staff/ocr/new" },
-      { name: "Submission History", path: "/staff/ocr/history" },
-    ],
-  },
-  {
-    label: "Inventory",
-    icon: Inbox,
-    items: [
-      { name: "Stock Room", path: "/staff/inventory/stock" },
-      { name: "Stock Requests", path: "/staff/inventory/requests" },
-    ],
-  },
-  {
-    label: "Customers",
-    icon: UserCircle,
-    items: [
-      // { name: "Directory", path: "/staff/customers/directory" },
-      // { name: "Service Passport", path: "/staff/customers/passport" },
-      { name: "Portal Support", path: "/staff/customers/support" },
-    ],
-  },
-];
 
-// === CUSTOMER MENU ===
-export const customerMenu = [
   {
-    label: "Dashboard",
-    icon: Home,
+    label: "Sales",
+    icon: ShoppingCart,
     items: [
-      { name: "Live Status", path: "/customer/dashboard/status" },
-      { name: "Instructions", path: "/customer/dashboard/instructions" },
+      { name: "Estimates", path: "/staff/sales/estimates" },
+      { name: "Sales Orders", path: "/staff/sales/sales-orders" },
+      { name: "Invoices", path: "/staff/sales/invoices" },
+      { name: "Payment Postings", path: "/staff/sales/payments-postings" },
+      { name: "Sales History", path: "/staff/sales/sales-history" },
     ],
   },
+
   {
-    label: "History",
-    icon: History,
-    items: [
-      { name: "Timeline", path: "/customer/history/timeline" },
-      { name: "Technical Details", path: "/customer/history/logs" },
-    ],
-  },
-  {
-    label: "Documents",
+    label: "Expenses",
     icon: Receipt,
     items: [
-      { name: "Estimates", path: "/customer/documents/estimates" },
-      { name: "Invoices", path: "/customer/documents/invoices" },
+      { name: "Receipt Scanning", path: "/staff/expenses/receipt-scanning" },
+      { name: "Submission Status", path: "/staff/expenses/submission-status" },
+      { name: "Expense History", path: "/staff/expenses/expense-history" },
     ],
   },
+
   {
-    label: "My Garage",
-    icon: Car,
-    items: [{ name: "Vehicle Stalls", path: "/customer/garage" }],
+    label: "Inventory",
+    icon: Package,
+    items: [
+      { name: "Stock Inventory", path: "/staff/inventory/stock-inventory" },
+      { name: "Stock Adjustments", path: "/staff/inventory/stock-adjustments" },
+      { name: "Stock Transfers", path: "/staff/inventory/stock-transfers" },
+    ],
   },
 ];

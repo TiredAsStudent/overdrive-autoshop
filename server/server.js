@@ -67,8 +67,6 @@ app.use("/api/v1/manager", require("./routes/v1/manager.routes"));
 app.use("/api/v1/staff", require("./routes/v1/staff.routes"));
 app.use("/api/v1/sysadmin", require("./routes/v1/sysadmin.routes"));
 
-// app.use("/api/v1/customer", require("./routes/v1/customer.routes"));
-
 // --- GLOBAL ERROR CATCHING ---
 // Handle 404 - Route Not Found
 app.use((req, res, next) => {

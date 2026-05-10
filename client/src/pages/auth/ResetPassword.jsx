@@ -10,7 +10,7 @@ import {
   ChevronRight,
   ShieldCheck,
 } from "lucide-react";
-import authService from "../../services/auth.service";
+import authService from "../../services/auth/auth.service";
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();

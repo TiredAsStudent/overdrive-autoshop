@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import BannerLogo from "../../assets/Banner_Logo.png";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Buttons";
-import authService from "../../services/auth.service";
+import authService from "../../services/auth/auth.service";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");

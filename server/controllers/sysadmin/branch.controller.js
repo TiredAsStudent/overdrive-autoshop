@@ -1,4 +1,4 @@
-const BranchService = require("../../services/branch.service");
+const BranchService = require("../../services/sysadmin/branch.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 
@@ -14,7 +14,7 @@ class BranchController {
         res,
         STATUS_CODES.CREATED,
         branch,
-        "Branch created successfully.",
+        "Branch identity created successfully.",
       );
     } catch (error) {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
@@ -28,13 +28,31 @@ class BranchController {
         res,
         STATUS_CODES.SUCCESS,
         branches,
-        "Branches retrieved successfully.",
+        "Enterprise branches retrieved.",
       );
     } catch (error) {
       return sendError(
         res,
         STATUS_CODES.INTERNAL_ERROR,
         "Failed to retrieve branches.",
+      );
+    }
+  }
+
+  static async getActiveBranches(req, res) {
+    try {
+      const branches = await BranchService.getActiveBranches();
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        branches,
+        "Active branches retrieved.",
+      );
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to retrieve active branches.",
       );
     }
   }
@@ -46,7 +64,7 @@ class BranchController {
         res,
         STATUS_CODES.SUCCESS,
         branch,
-        "Branch retrieved successfully.",
+        "Branch profile retrieved.",
       );
     } catch (error) {
       return sendError(res, STATUS_CODES.NOT_FOUND, error.message);
@@ -65,7 +83,7 @@ class BranchController {
         res,
         STATUS_CODES.SUCCESS,
         branch,
-        "Branch updated successfully.",
+        "Branch legal identity updated successfully.",
       );
     } catch (error) {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
@@ -75,7 +93,6 @@ class BranchController {
   static async toggleMaintenance(req, res) {
     try {
       const { is_maintenance_mode } = req.body;
-      // Passed req.user.id and req.ip for traceability
       const branch = await BranchService.toggleMaintenanceMode(
         req.params.id,
         is_maintenance_mode,
@@ -85,7 +102,7 @@ class BranchController {
 
       const statusMsg = is_maintenance_mode
         ? "locked into Maintenance Mode"
-        : "unlocked and active";
+        : "unlocked and operational";
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
@@ -104,7 +121,7 @@ class BranchController {
         res,
         STATUS_CODES.SUCCESS,
         null,
-        "Branch successfully removed from active registry.",
+        "Branch successfully archived.",
       );
     } catch (error) {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);

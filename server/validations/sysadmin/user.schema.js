@@ -14,28 +14,42 @@ const inviteUserSchema = z.object({
     })
     .refine(
       (data) => {
-        // Strict Branch Lock Enforcement
+        // Strict Branch Lock Enforcement during creation
         if (data.role === ROLES.STAFF && !data.branchId) return false;
         if (data.role === ROLES.MANAGER && data.branchId) return false;
         return true;
       },
       {
         message:
-          "STAFF requires a branch assignment. MANAGER is a global role and must not have a branch.",
+          "STAFF requires a specific branch assignment. MANAGER is a global role and must not be tied to a single branch.",
         path: ["branchId"],
       },
     ),
 });
 
 const updateUserSchema = z.object({
-  body: z.object({
-    branchId: z.number().int().positive().nullable().optional(),
-    isActive: z.boolean().optional(),
-    role: z.enum([ROLES.MANAGER, ROLES.STAFF]).optional(),
-    firstName: z.string().trim().min(1).optional(),
-    lastName: z.string().trim().min(1).optional(),
-    email: z.string().email().trim().optional(),
-  }),
+  body: z
+    .object({
+      branchId: z.number().int().positive().nullable().optional(),
+      isActive: z.boolean().optional(),
+      role: z.enum([ROLES.MANAGER, ROLES.STAFF]).optional(),
+      firstName: z.string().trim().min(1).optional(),
+      lastName: z.string().trim().min(1).optional(),
+      email: z.string().email().trim().optional(),
+    })
+    .refine(
+      (data) => {
+        // Enforce the lock even during updates: If you make them STAFF, they MUST have a branch.
+        if (data.role === ROLES.STAFF && data.branchId === null) return false;
+        if (data.role === ROLES.MANAGER && data.branchId) return false;
+        return true;
+      },
+      {
+        message:
+          "Invalid configuration: STAFF must be locked to a branch, and MANAGER must be global.",
+        path: ["branchId"],
+      },
+    ),
 });
 
 module.exports = { inviteUserSchema, updateUserSchema };

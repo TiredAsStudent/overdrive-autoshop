@@ -1,115 +1,187 @@
 const express = require("express");
 const router = express.Router();
 
-// Import all Manager Controllers
-const OcrController = require("../../controllers/manager/approval.controller");
-const AccountController = require("../../controllers/manager/finance.controller");
-const InventoryController = require("../../controllers/manager/inventory.controller");
+// Controllers
+const CoaController = require("../../controllers/manager/coa.controller");
 const MechanicController = require("../../controllers/manager/mechanic.controller");
 const ServiceController = require("../../controllers/manager/service.controller");
-const BranchController = require("../../controllers/manager/branch.controller");
-const SettingsController = require("../../controllers/sysadmin/settings.controller");
+const InventoryController = require("../../controllers/manager/inventory.controller");
+const VatController = require("../../controllers/manager/vat.controller");
+const ExpenseController = require("../../controllers/manager/expense.controller");
+const SupplierController = require("../../controllers/manager/supplier.controller");
 
-// Import Security Guards & Validations
+const BranchController = require("../../controllers/sysadmin/branch.controller");
+
+// Middlewares
 const validate = require("../../middlewares/validateMiddleware");
 const {
   verifyToken,
   requireRole,
 } = require("../../middlewares/authMiddleware");
-const branchGuard = require("../../middlewares/branchMiddleware");
 const { ROLES } = require("../../constants/roles");
 
+// Validations
 const {
-  approveReceiptSchema,
-} = require("../../validations/manager/approval.schema");
-const {
-  createCategorySchema,
-  updateCategorySchema,
-} = require("../../validations/manager/finance.schema");
-const {
-  createInventorySchema,
-  updateInventorySchema,
-} = require("../../validations/manager/inventory.schema");
+  createCoaSchema,
+  updateCoaSchema,
+} = require("../../validations/manager/coa.schema");
 const {
   createMechanicSchema,
   updateMechanicSchema,
+} = require("../../validations/manager/mechanic.schema");
+const {
   createServiceSchema,
   updateServiceSchema,
-} = require("../../validations/manager/workshop.schema");
+} = require("../../validations/manager/service.schema");
+const {
+  createItemSchema,
+  updateItemSchema,
+} = require("../../validations/manager/inventory.schema");
+const {
+  getLedgerSchema,
+  closePeriodSchema,
+} = require("../../validations/manager/vat.schema");
+const {
+  approveExpenseSchema,
+  rejectExpenseSchema,
+} = require("../../validations/manager/expense.schema");
+const {
+  createSupplierSchema,
+  updateSupplierSchema,
+} = require("../../validations/manager/supplier.schema");
 
 // ==========================================
-// GLOBAL PORTAL SECURITY
-// Locks every single route below this line!
+// GLOBAL SECURITY: Manager & Admin Only
 // ==========================================
-router.use(verifyToken, requireRole(ROLES.ADMIN, ROLES.MANAGER));
+router.use(verifyToken, requireRole(ROLES.MANAGER, ROLES.ADMIN));
 
-// --- APPROVAL QUEUE (OCR) ---
-router.get("/ocr", OcrController.getQueue);
-router.get("/ocr/:id", OcrController.getDetails);
-router.post(
-  "/ocr/:id/approve",
-  validate(approveReceiptSchema),
-  OcrController.approve,
-);
-router.post("/ocr/:id/reject", OcrController.reject);
+// ==========================================
+// UTILITIES
+// ==========================================
+router.get("/branches", BranchController.getAllBranches);
 
-// --- FINANCE & ACCOUNTS ---
-router.get("/accounts/categories", AccountController.getBaseCategories);
+router.get("/branches/active", BranchController.getActiveBranches);
+
+router.get("/suppliers/active", SupplierController.getActive);
+
+// ==========================================
+// SUB-TAB: CHART OF ACCOUNTS
+// ==========================================
 router.post(
-  "/accounts",
-  validate(createCategorySchema),
-  AccountController.createAccount,
+  "/chart-of-accounts",
+  validate(createCoaSchema),
+  CoaController.createAccount,
 );
-router.get("/accounts/balances", AccountController.getBalances);
+
+router.get("/chart-of-accounts", CoaController.getAccounts);
 
 router.put(
-  "/accounts/:id",
-  validate(updateCategorySchema),
-  AccountController.updateAccount,
+  "/chart-of-accounts/:id",
+  validate(updateCoaSchema),
+  CoaController.updateAccount,
 );
 
-// --- MASTER INVENTORY ---
-router.get("/inventory", InventoryController.getInventory);
-router.post(
-  "/inventory",
-  validate(createInventorySchema),
-  InventoryController.createInventoryItem,
-);
-router.put(
-  "/inventory/:id",
-  validate(updateInventorySchema),
-  InventoryController.updateInventoryItem,
-);
-
-// --- WORKSHOP & MECHANICS ---
-router.get("/mechanics", branchGuard, MechanicController.getMechanics);
+// ==========================================
+// SUB-TAB: MECHANICS REGISTRY
+// ==========================================
 router.post(
   "/mechanics",
-  branchGuard,
   validate(createMechanicSchema),
   MechanicController.createMechanic,
 );
+
+router.get("/mechanics", MechanicController.getMechanics);
+
 router.put(
   "/mechanics/:id",
-  branchGuard,
   validate(updateMechanicSchema),
   MechanicController.updateMechanic,
 );
-// --- SYSTEM HELPERS ---
-router.get("/branches", BranchController.getBranches);
-router.get("/settings", SettingsController.getSettings);
 
-// --- SERVICES (COMBO MEALS) ---
-router.get("/services", ServiceController.getServices);
+// ==========================================
+// SUB-TAB: SERVICES (LABOR CATALOG)
+// ==========================================
 router.post(
   "/services",
   validate(createServiceSchema),
   ServiceController.createService,
 );
+
+router.get("/services", ServiceController.getServices);
+
 router.put(
   "/services/:id",
   validate(updateServiceSchema),
   ServiceController.updateService,
+);
+
+// ==========================================
+// SUB-TAB: STOCK OVERVIEW (INVENTORY)
+// ==========================================
+router.get("/inventory/settings/markup", InventoryController.getMarkup);
+router.post(
+  "/inventory",
+  validate(createItemSchema),
+  InventoryController.createItem,
+);
+router.get("/inventory", InventoryController.getOverview);
+router.put(
+  "/inventory/:id",
+  validate(updateItemSchema),
+  InventoryController.updateItem,
+);
+
+// ==========================================
+// SUB-TAB: SUPPLIER LEDGER
+// ==========================================
+router.post(
+  "/suppliers",
+  validate(createSupplierSchema),
+  SupplierController.create,
+);
+
+router.get("/suppliers/ledger", SupplierController.getLedger);
+
+router.get("/suppliers/:id/timeline", SupplierController.getTimeline);
+
+router.put(
+  "/suppliers/:id",
+  validate(updateSupplierSchema),
+  SupplierController.update,
+);
+
+// ==========================================
+// SUB-TAB: VAT LEDGER
+// ==========================================
+router.get(
+  "/vat-ledger",
+  validate(getLedgerSchema),
+  VatController.getDashboard,
+);
+
+router.post(
+  "/vat-ledger/close-period",
+  validate(closePeriodSchema),
+  VatController.closePeriod,
+);
+
+// ==========================================
+// SUB-TAB: EXPENSE APPROVALS (MAKER-CHECKER) & REJECTIONS
+// ==========================================
+router.get("/expenses/pending", ExpenseController.getPending);
+
+router.get("/expenses/rejection-logs", ExpenseController.getRejectionLogs);
+
+router.post(
+  "/expenses/:id/approve",
+  validate(approveExpenseSchema),
+  ExpenseController.approve,
+);
+
+router.post(
+  "/expenses/:id/reject",
+  validate(rejectExpenseSchema),
+  ExpenseController.reject,
 );
 
 module.exports = router;

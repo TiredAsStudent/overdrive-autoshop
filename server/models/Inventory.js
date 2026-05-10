@@ -1,168 +1,126 @@
-const { query, pool } = require("../config/db");
+const { query } = require("../config/db");
 
-class InventoryModel {
-  static async checkItemCodeExists(itemCode) {
-    const sql = `SELECT id FROM inventory WHERE item_code = $1`;
-    const result = await query(sql, [itemCode]);
+class Inventory {
+  static async getSystemMarkup() {
+    const sql = `SELECT markup_percentage FROM system_settings WHERE id = 1`;
+    const result = await query(sql);
+    return result.rows[0]?.markup_percentage || 20.0;
+  }
+
+  static async createItem(data, activeBranches) {
+    const sqlItem = `
+      INSERT INTO inventory_items (sku, item_name, category, unit_cost, selling_price) 
+      VALUES ($1, $2, $3, $4, $5) RETURNING *
+    `;
+    const itemValues = [
+      data.sku,
+      data.item_name,
+      data.category,
+      data.unit_cost,
+      data.selling_price,
+    ];
+    const itemResult = await query(sqlItem, itemValues);
+    const newItem = itemResult.rows[0];
+
+    for (const branch of activeBranches) {
+      const sqlBranch = `
+        INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point) 
+        VALUES ($1, $2, 0, $3)
+      `;
+      await query(sqlBranch, [
+        branch.id,
+        newItem.id,
+        data.initial_reorder_point,
+      ]);
+    }
+
+    return newItem;
+  }
+
+  static async findById(id) {
+    const sql = `SELECT * FROM inventory_items WHERE id = $1`;
+    const result = await query(sql, [id]);
     return result.rows[0];
   }
 
-  static async getAllInventoryItems() {
+  static async findBySku(sku) {
+    const sql = `SELECT * FROM inventory_items WHERE sku = $1`;
+    const result = await query(sql, [sku]);
+    return result.rows[0];
+  }
+
+  static async update(id, data) {
+    const sql = `
+      UPDATE inventory_items 
+      SET 
+        item_name = COALESCE($1, item_name),
+        category = COALESCE($2, category),
+        unit_cost = COALESCE($3, unit_cost),
+        selling_price = COALESCE($4, selling_price),
+        is_active = COALESCE($5, is_active),
+        updated_at = NOW()
+      WHERE id = $6 RETURNING *
+    `;
+    const values = [
+      data.item_name,
+      data.category,
+      data.unit_cost,
+      data.selling_price,
+      data.is_active,
+      id,
+    ];
+    const result = await query(sql, values);
+    const updatedItem = result.rows[0];
+
+    if (data.initial_reorder_point !== undefined) {
+      const sqlOverride = `UPDATE branch_inventory SET reorder_point = $1 WHERE item_id = $2`;
+      await query(sqlOverride, [data.initial_reorder_point, id]);
+    }
+
+    return updatedItem;
+  }
+
+  static async getConsolidatedOverview(showArchived) {
     const sql = `
       SELECT 
-        i.id, i.item_code, i.item_name, i.category, i.unit_cost, 
-        i.reorder_level, i.is_active, i.last_restocked_at,
-        
-        COALESCE(SUM(bi.stock_quantity), 0) AS total_physical_stock,
-        COALESCE(SUM(bi.reserved_quantity), 0) AS total_reserved_stock,
-        
-        (COALESCE(SUM(bi.stock_quantity), 0) * i.unit_cost) AS total_asset_value,
-
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'branch_id', b.id,
-              'branch_name', b.branch_name,
-              'stock', bi.stock_quantity,
-              'reserved', bi.reserved_quantity
-            )
-          ) FILTER (WHERE bi.branch_id IS NOT NULL AND b.is_active = TRUE), '[]'
-        ) AS branch_levels
-      FROM inventory i
-      LEFT JOIN branch_inventory bi ON i.id = bi.inventory_id
-      LEFT JOIN branches b ON bi.branch_id = b.id
+        i.id, i.sku, i.item_name, i.category, i.unit_cost, i.selling_price, i.is_active,
+        COALESCE(SUM(b.quantity), 0) AS total_quantity,
+        (COALESCE(SUM(b.quantity), 0) * i.unit_cost) AS total_asset_value,
+        MAX(b.reorder_point) as reorder_point
+      FROM inventory_items i
+      LEFT JOIN branch_inventory b ON i.id = b.item_id
+      WHERE ($1::boolean = TRUE OR i.is_active = TRUE)
       GROUP BY i.id
-      ORDER BY i.category ASC, i.item_name ASC;
+      ORDER BY i.is_active DESC, i.category ASC, i.item_name ASC
     `;
-    const result = await query(sql);
+    const result = await query(sql, [showArchived]);
     return result.rows;
   }
 
-  static async createItem(data) {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-
-      const insertSql = `
-        INSERT INTO inventory (item_code, item_name, category, unit_cost, reorder_level)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, item_code, item_name, category, unit_cost, reorder_level;
-      `;
-      const result = await client.query(insertSql, [
-        data.item_code,
-        data.item_name,
-        data.category,
-        data.unit_cost,
-        data.reorder_level,
-      ]);
-      const newItem = result.rows[0];
-
-      const branchResult = await client.query("SELECT id FROM branches");
-      if (branchResult.rows.length > 0) {
-        const branchValues = branchResult.rows
-          .map((_, index) => `($1, $${index + 2}, 0, 0)`)
-          .join(", ");
-
-        const branchParams = [
-          newItem.id,
-          ...branchResult.rows.map((b) => b.id),
-        ];
-        await client.query(
-          `INSERT INTO branch_inventory (inventory_id, branch_id, stock_quantity, reserved_quantity) VALUES ${branchValues}`,
-          branchParams,
-        );
-      }
-
-      await client.query("COMMIT");
-      return newItem;
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  static async updateItem(id, updates) {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-
-      const fields = [];
-      const params = [id];
-      let paramIndex = 2;
-
-      for (const [key, value] of Object.entries(updates)) {
-        if (value !== undefined) {
-          fields.push(`${key} = $${paramIndex}`);
-          params.push(value);
-          paramIndex++;
-        }
-      }
-
-      if (fields.length > 0) {
-        fields.push(`updated_at = NOW()`);
-        const sql = `UPDATE inventory SET ${fields.join(", ")} WHERE id = $1 RETURNING *`;
-        const result = await client.query(sql, params);
-        await client.query("COMMIT");
-        return result.rows[0];
-      }
-
-      await client.query("COMMIT");
-      return { id };
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  static async getLocalInventory(branchId, searchTerm = "") {
-    let sql = `
-      SELECT 
-        i.id AS inventory_id,
-        i.item_code,
-        i.item_name,
-        i.category,
-        i.unit_cost,
-        i.reorder_level,
-        bi.stock_quantity,
-        bi.reserved_quantity,
-        (bi.stock_quantity - bi.reserved_quantity) AS available_quantity
-      FROM branch_inventory bi
-      JOIN inventory i ON bi.inventory_id = i.id
-      WHERE bi.branch_id = $1 AND i.is_active = TRUE
-    `;
-    const params = [branchId];
-
-    if (searchTerm) {
-      sql += ` AND (i.item_name ILIKE $2 OR i.item_code ILIKE $2 OR i.category ILIKE $2)`;
-      params.push(`%${searchTerm}%`);
-    }
-
-    sql += ` ORDER BY i.category ASC, i.item_name ASC`;
-    const result = await query(sql, params);
-    return result.rows;
-  }
-
-  static async getGlobalInventory(inventoryId, currentBranchId) {
+  static async getBranchOverview(branchId, showArchived) {
     const sql = `
       SELECT 
-        b.id AS branch_id,
-        b.branch_name,
-        bi.stock_quantity,
-        bi.reserved_quantity,
-        (bi.stock_quantity - bi.reserved_quantity) AS available_quantity
-      FROM branch_inventory bi
-      JOIN branches b ON bi.branch_id = b.id
-      WHERE bi.inventory_id = $1 
-        AND bi.branch_id != $2
-      ORDER BY b.branch_name ASC
+        i.id, i.sku, i.item_name, i.category, i.unit_cost, i.selling_price, i.is_active,
+        b.quantity, b.reorder_point,
+        (b.quantity * i.unit_cost) AS branch_asset_value,
+        CASE WHEN b.quantity <= b.reorder_point THEN true ELSE false END AS is_low_stock
+      FROM inventory_items i
+      JOIN branch_inventory b ON i.id = b.item_id
+      WHERE b.branch_id = $1 AND ($2::boolean = TRUE OR i.is_active = TRUE)
+      ORDER BY i.is_active DESC, is_low_stock DESC, i.category ASC, i.item_name ASC
     `;
-    const result = await query(sql, [inventoryId, currentBranchId]);
+    const result = await query(sql, [branchId, showArchived]);
     return result.rows;
+  }
+
+  static async seedNewBranch(branchId) {
+    const sql = `
+      INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
+      SELECT $1, id, 0, 5 FROM inventory_items
+      ON CONFLICT DO NOTHING
+    `;
+    await query(sql, [branchId]);
   }
 }
 
-module.exports = InventoryModel;
+module.exports = Inventory;

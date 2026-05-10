@@ -14,7 +14,7 @@ import {
   UserCircle,
   Globe,
 } from "lucide-react";
-import authService from "../../services/auth.service";
+import authService from "../../services/auth/auth.service";
 
 const ActivateAccount = () => {
   const [searchParams] = useSearchParams();

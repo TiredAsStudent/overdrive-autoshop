@@ -1,5 +1,5 @@
 /* 1. Import Inter Font FIRST */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
 
 /* 2. Import Tailwind v4 SECOND */
 @import "tailwindcss";
@@ -10,10 +10,10 @@
 /* 4. Theme Configuration */
 @theme {
   --font-sans: "Inter", sans-serif;
-  --color-overdrive-yellow: #FFB800;
-  --color-overdrive-dark: #0F172A;
-  --color-overdrive-card: #1E293B;
-  --color-overdrive-red: #E11D48;
+  --color-overdrive-yellow: #ffb800;
+  --color-overdrive-dark: #0f172a;
+  --color-overdrive-card: #1e293b;
+  --color-overdrive-red: #e11d48;
 }
 
 /* 5. Base Styles */

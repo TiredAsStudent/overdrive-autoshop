@@ -8,11 +8,18 @@ const createBranchSchema = z.object({
       .max(100),
     branch_code: z
       .string()
-      .min(2, "Branch code must be at least 2 characters")
-      .max(10),
-    location: z.string().optional(),
-    address: z.string().optional(),
-    tin: z.string().max(50).optional(),
+      .length(
+        3,
+        "Prefix Logic requires Branch code to be exactly 3 characters (e.g., CAB, BIN)",
+      )
+      .regex(/^[a-zA-Z]+$/, "Branch code must contain only letters"),
+    address: z
+      .string()
+      .min(5, "Official Address is required for Legal Identity"),
+    tin: z
+      .string()
+      .min(5, "Tax Identification Number (TIN) is required for invoicing")
+      .max(50),
     contact_number: z.string().max(50).optional(),
     contact_email: z
       .string()
@@ -25,9 +32,12 @@ const createBranchSchema = z.object({
 const updateBranchSchema = z.object({
   body: z.object({
     branch_name: z.string().min(3).max(100).optional(),
-    branch_code: z.string().min(2).max(10).optional(),
-    location: z.string().optional(),
-    address: z.string().optional(),
+    branch_code: z
+      .string()
+      .length(3)
+      .regex(/^[a-zA-Z]+$/)
+      .optional(),
+    address: z.string().min(5).optional(),
     tin: z.string().max(50).optional(),
     contact_number: z.string().max(50).optional(),
     contact_email: z.string().email().optional().or(z.literal("")),

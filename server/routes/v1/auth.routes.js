@@ -1,13 +1,12 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
-const AuthController = require("../../controllers/auth/auth.controller"); // Path updated
+const AuthController = require("../../controllers/auth/auth.controller");
 const validate = require("../../middlewares/validateMiddleware");
 const {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   activateAccountSchema,
-  activateCustomerSchema,
 } = require("../../validations/auth/auth.schema");
 
 const router = express.Router();
@@ -69,17 +68,6 @@ router.post(
   "/activate",
   validate(activateAccountSchema),
   AuthController.activateAccount,
-);
-
-// Customer Activation routes
-router.get(
-  "/verify-customer-invite/:token",
-  AuthController.verifyCustomerInvite,
-);
-router.post(
-  "/activate-customer",
-  validate(activateCustomerSchema),
-  AuthController.activateCustomerAccount,
 );
 
 module.exports = router;

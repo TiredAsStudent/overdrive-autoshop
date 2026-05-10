@@ -1,143 +1,52 @@
 const express = require("express");
 const router = express.Router();
 
-// Import Staff-Specific Controllers
-const StaffInventoryController = require("../../controllers/staff/inventory.controller");
-const StaffOcrController = require("../../controllers/staff/ocr.controller");
-const CheckInController = require("../../controllers/staff/checkin.controller");
-const JobCardController = require("../../controllers/staff/jobcard.controller");
-const EstimateController = require("../../controllers/staff/estimate.controller");
-const BillingController = require("../../controllers/staff/billing.controller");
+// Controllers
+const StaffExpenseController = require("../../controllers/staff/expense.controller");
+const SupplierController = require("../../controllers/manager/supplier.controller");
+const StaffSettingsController = require("../../controllers/staff/settings.controller");
 
-// Import Manager Controllers for the "Shared Read-Only" dropdowns!
-const AccountController = require("../../controllers/manager/finance.controller");
-const InventoryController = require("../../controllers/manager/inventory.controller");
-const MechanicController = require("../../controllers/manager/mechanic.controller");
-const ServiceController = require("../../controllers/manager/service.controller");
-const SettingsController = require("../../controllers/sysadmin/settings.controller");
-
-// Import Security Guards
+// Middlewares
+const validate = require("../../middlewares/validateMiddleware");
 const {
   verifyToken,
   requireRole,
 } = require("../../middlewares/authMiddleware");
-const branchGuard = require("../../middlewares/branchMiddleware");
-const validate = require("../../middlewares/validateMiddleware");
 const { uploadReceipt } = require("../../middlewares/uploadMiddleware");
 const { ROLES } = require("../../constants/roles");
 
-// Import Validation Schemas
-const { checkInSchema } = require("../../validations/staff/checkin.schema");
-const { ocrSubmitSchema } = require("../../validations/staff/ocr.schema");
+// Validations
 const {
-  updateStatusSchema,
-  assignMechanicSchema,
-  updateDiagnosisSchema,
-} = require("../../validations/staff/jobcard.schema");
-const {
-  createEstimateSchema,
-  updateEstimateStatusSchema,
-} = require("../../validations/staff/estimate.schema");
-
-const handleReceiptUpload = (req, res, next) => {
-  const upload = uploadReceipt.single("receipt");
-  upload(req, res, function (err) {
-    if (err) {
-      return res.status(400).json({ success: false, message: err.message });
-    }
-    next();
-  });
-};
+  submitStaffExpenseSchema,
+} = require("../../validations/staff/expense.schema");
 
 // ==========================================
-// GLOBAL PORTAL SECURITY
+// GLOBAL SECURITY: Staff Only
 // ==========================================
-router.use(verifyToken, requireRole(ROLES.STAFF, ROLES.ADMIN), branchGuard);
+router.use(verifyToken, requireRole(ROLES.STAFF));
 
-// --- LOCAL STOCK ROOM ---
-router.get("/inventory/local", StaffInventoryController.getLocalStock);
-router.get(
-  "/inventory/:inventoryId/global",
-  StaffInventoryController.getGlobalStock,
-);
+// ==========================================
+// UTILITIES
+// ==========================================
+router.get("/suppliers/active", SupplierController.getActive);
 
-// --- SHARED READ-ONLY ROUTES ---
-router.get("/accounts/balances", AccountController.getBalances);
-router.get("/inventory/master", InventoryController.getInventory);
-router.get("/mechanics", MechanicController.getMechanics);
-router.get("/services", ServiceController.getServices);
-router.get("/settings", SettingsController.getSettings);
+router.get("/settings/vat", StaffSettingsController.getVatRate);
 
-// --- WORKSHOP: CHECK-IN & REGISTRATION ---
-router.get("/checkin/search/:plate", CheckInController.searchPlate);
+// ==========================================
+// EXPENSES: RECEIPT SCANNING FLOW
+// ==========================================
+// Step 1: Upload image and trigger Gemini OCR
 router.post(
-  "/checkin",
-  validate(checkInSchema),
-  CheckInController.submitCheckIn,
+  "/expenses/scan",
+  uploadReceipt.single("receipt_image"),
+  StaffExpenseController.scanReceipt,
 );
 
-// --- OCR INTAKE: SUB-TAB 1 ---
-// Endpoint 1: Upload and Analyze
+// Step 2: Submit verified data to the Manager's PENDING queue
 router.post(
-  "/ocr/analyze",
-  handleReceiptUpload,
-  StaffOcrController.analyzeReceipt,
+  "/expenses/submit",
+  validate(submitStaffExpenseSchema),
+  StaffExpenseController.submitExpense,
 );
-
-// Endpoint 2: Submit verified data (Human-in-the-Loop Handshake)
-router.post(
-  "/ocr/submit",
-  validate(ocrSubmitSchema), // The Security Gate
-  StaffOcrController.submitVerifiedReceipt,
-);
-
-router.post("/ocr/cancel", StaffOcrController.cancelAnalysis);
-
-// --- WORKSHOP: KANBAN JOB BOARD ---
-router.get("/jobs/board", JobCardController.getBoard);
-
-router.patch(
-  "/jobs/:id/status",
-  validate(updateStatusSchema),
-  JobCardController.updateStatus,
-);
-
-router.patch(
-  "/jobs/:id/mechanic",
-  validate(assignMechanicSchema),
-  JobCardController.assignMechanic,
-);
-
-router.patch(
-  "/jobs/:id/diagnosis",
-  validate(updateDiagnosisSchema),
-  JobCardController.updateDiagnosis,
-);
-
-// --- BILLING: ESTIMATES (SUB-TAB 1) ---
-router.get("/estimates", EstimateController.getEstimates);
-router.get("/estimates/:id", EstimateController.getEstimateDetails);
-
-router.post(
-  "/estimates",
-  validate(createEstimateSchema),
-  EstimateController.createEstimate,
-);
-
-router.patch(
-  "/estimates/:id/status",
-  validate(updateEstimateStatusSchema),
-  EstimateController.updateStatus,
-);
-
-router.post("/estimates/:id/convert", EstimateController.convertEstimate);
-
-// --- BILLING: SALES ORDERS (SUB-TAB 2) ---
-router.get("/sales-orders", BillingController.getSalesOrders);
-router.post("/sales-orders/:id/cancel", BillingController.cancelOrder);
-router.post("/sales-orders/:id/finalize", BillingController.finalizeInvoice);
-
-// --- BILLING: INVOICES (SUB-TAB 3) ---
-router.get("/invoices", BillingController.getInvoices);
 
 module.exports = router;

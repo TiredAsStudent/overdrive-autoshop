@@ -23,13 +23,14 @@ class Branch {
   }
 
   static async findAll() {
+    // Orders active branches first, then by ID
     const sql = `SELECT * FROM branches ORDER BY is_active DESC, id ASC`;
     const result = await query(sql);
     return result.rows;
   }
 
   static async findById(id) {
-    const sql = `SELECT * FROM branches WHERE id = $1 AND is_active = TRUE`;
+    const sql = `SELECT * FROM branches WHERE id = $1`;
     const result = await query(sql, [id]);
     return result.rows[0];
   }
@@ -40,13 +41,6 @@ class Branch {
     return result.rows[0];
   }
 
-  static async findByName(branchName) {
-    const sql = `SELECT * FROM branches WHERE branch_name = $1`;
-    const result = await query(sql, [branchName]);
-    return result.rows[0];
-  }
-
-  // UPDATED: Removed 'AND is_active = TRUE' so we can update/restore deleted branches
   static async update(id, data) {
     const sql = `
       UPDATE branches 
@@ -81,18 +75,19 @@ class Branch {
       UPDATE branches 
       SET is_maintenance_mode = $1, updated_at = NOW() 
       WHERE id = $2 AND is_active = TRUE 
-      RETURNING id, branch_name, is_maintenance_mode
+      RETURNING *
     `;
     const result = await query(sql, [isMaintenanceMode, id]);
     return result.rows[0];
   }
 
   static async softDelete(id) {
+    // The "Tombstone Rule": We never delete, we just deactivate
     const sql = `
       UPDATE branches 
       SET is_active = FALSE, updated_at = NOW() 
       WHERE id = $1 
-      RETURNING id
+      RETURNING *
     `;
     const result = await query(sql, [id]);
     return result.rows[0];
@@ -104,13 +99,8 @@ class Branch {
     return result.rows[0];
   }
 
-  static async getAllBranches() {
-    const sql = `
-      SELECT id, branch_name 
-      FROM branches 
-      WHERE is_active = TRUE 
-      ORDER BY id ASC
-    `;
+  static async findActive() {
+    const sql = `SELECT id, branch_name, branch_code FROM branches WHERE is_active = TRUE ORDER BY branch_name ASC`;
     const result = await query(sql);
     return result.rows;
   }

@@ -10,7 +10,7 @@ const api = axios.create({
   },
 });
 
-// Request Interceptor: Attach Token
+// Request Interceptor: Attach Token to EVERY request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -22,7 +22,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Response Interceptor: Handle Global Errors (like Expired Tokens or Locks)
+// Response Interceptor: Handle Global Security Ejections
 api.interceptors.response.use(
   (response) => response,
   (error) => {

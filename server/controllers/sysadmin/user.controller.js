@@ -1,4 +1,4 @@
-const UserService = require("../../services/user.service");
+const UserService = require("../../services/sysadmin/user.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 

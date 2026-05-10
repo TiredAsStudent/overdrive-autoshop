@@ -1,11 +1,15 @@
-const WorkshopServiceLogic = require("../../services/workshop.service");
+const ServiceService = require("../../services/manager/service.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 
 class ServiceController {
   static async createService(req, res) {
     try {
-      const data = await WorkshopServiceLogic.createService(
+      // Auto-uppercase the code before validation
+      if (req.body.service_code) {
+        req.body.service_code = req.body.service_code.toUpperCase().trim();
+      }
+      const service = await ServiceService.createService(
         req.body,
         req.user.id,
         req.ip,
@@ -13,43 +17,36 @@ class ServiceController {
       return sendSuccess(
         res,
         STATUS_CODES.CREATED,
-        data,
-        "Service package created successfully.",
+        service,
+        "Service added to master catalog.",
       );
     } catch (error) {
-      if (error.message.includes("already exists")) {
-        return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
-      }
-      return sendError(res, STATUS_CODES.INTERNAL_ERROR, error.message);
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
 
   static async getServices(req, res) {
     try {
-      const onlyActive = req.user.role === "STAFF";
-      const data =
-        await WorkshopServiceLogic.getServicesWithDynamicPricing(onlyActive);
+      const services = await ServiceService.getAllServices();
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
-        data,
-        "Services retrieved.",
+        services,
+        "Service catalog retrieved.",
       );
     } catch (error) {
       return sendError(
         res,
         STATUS_CODES.INTERNAL_ERROR,
         "Failed to retrieve services.",
-        error.message,
       );
     }
   }
 
   static async updateService(req, res) {
     try {
-      const { id } = req.params;
-      const data = await WorkshopServiceLogic.updateService(
-        id,
+      const service = await ServiceService.updateService(
+        req.params.id,
         req.body,
         req.user.id,
         req.ip,
@@ -57,8 +54,8 @@ class ServiceController {
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
-        data,
-        "Service package updated.",
+        service,
+        "Service details updated successfully.",
       );
     } catch (error) {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
