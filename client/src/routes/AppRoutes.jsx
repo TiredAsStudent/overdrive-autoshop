@@ -14,7 +14,7 @@ import DashboardLayout from "../components/layout/DashboardLayout";
 import PageWrapper from "../components/layout/PageWrapper";
 
 // --- AUTH & ERROR PAGES ---
-import LoginPage from "../pages/auth/LoginPage";
+import LoginPage from "../pages/auth/Loginpage";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import ActivateAccount from "../pages/auth/ActivateAccount";
