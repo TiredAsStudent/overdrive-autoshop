@@ -25,12 +25,7 @@ const LoginForm = () => {
 
   const handleChange = (e) => {
     const { id, value } = e.target;
-
-    setCredentials((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
-
+    setCredentials((prev) => ({ ...prev, [id]: value }));
     if (error) setError("");
   };
 
@@ -42,11 +37,7 @@ const LoginForm = () => {
       setError("Please enter your email and password.");
       return false;
     }
-
-    return {
-      email: cleanEmail,
-      password: cleanPassword,
-    };
+    return { email: cleanEmail, password: cleanPassword };
   };
 
   const handleSubmit = async (e) => {
@@ -61,12 +52,9 @@ const LoginForm = () => {
 
     try {
       const loggedInUser = await login(validated.email, validated.password);
-
       const redirectPath = ROLE_REDIRECTS[loggedInUser.role];
 
-      if (!redirectPath) {
-        throw new Error("Unauthorized portal access.");
-      }
+      if (!redirectPath) throw new Error("Unauthorized portal access.");
 
       navigate(redirectPath);
     } catch (err) {
@@ -113,7 +101,6 @@ const LoginForm = () => {
               autoComplete="current-password"
               className="text-slate-900 font-bold h-14 pr-12"
             />
-
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
@@ -134,7 +121,7 @@ const LoginForm = () => {
           </Link>
         </div>
 
-        <div className="space-y-3 pt-2">
+        <div className="space-y-4 pt-2">
           <Button
             type="submit"
             loading={loading}
@@ -144,11 +131,21 @@ const LoginForm = () => {
             {loading ? "VERIFYING..." : "SIGN IN"}
           </Button>
 
+          <div className="relative flex items-center py-1">
+            <div className="flex-grow border-t border-slate-200"></div>
+            <span className="flex-shrink-0 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Or Continue With
+            </span>
+            <div className="flex-grow border-t border-slate-200"></div>
+          </div>
+
+          {/* Google Button */}
           <button
             type="button"
-            className="w-full h-14 border-2 border-slate-200 rounded-2xl flex items-center justify-center gap-3 text-xs font-black text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest"
+            className="w-full h-14 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-center gap-3 text-xs font-black text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all uppercase tracking-widest shadow-sm"
           >
-            <Chrome size={18} /> Continue with Google
+            <Chrome size={18} className="text-slate-500" />
+            Sign in with Google
           </button>
         </div>
       </form>
