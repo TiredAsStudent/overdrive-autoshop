@@ -6,23 +6,35 @@ import BannerLogo from "../../assets/Banner_Logo.png";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Buttons";
 import authService from "../../services/auth/auth.service";
+import { useApp } from "../../context/AppContext";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState(null);
+
+  const { showToast } = useApp();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      showToast("Please enter your registered email.", "warning");
+      return;
+    }
+
     setLoading(true);
-    setError(null);
 
     try {
-      await authService.forgotPassword(email);
+      await authService.forgotPassword(cleanEmail);
       setSubmitted(true);
+      showToast("Recovery link dispatched!", "success");
     } catch (err) {
-      setError(err.message || "Something went wrong. Please try again.");
+      showToast(
+        err.message || "Something went wrong. Please try again.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
@@ -57,13 +69,6 @@ const ForgotPassword = () => {
                   recovery link.
                 </p>
               </div>
-
-              {error && (
-                <div className="flex items-center gap-3 p-3 text-[10px] sm:text-xs font-black uppercase tracking-widest text-red-600 bg-red-50 border-l-4 border-red-600 rounded-r-xl">
-                  <AlertCircle size={16} className="shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
 
               <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
                 <Input
