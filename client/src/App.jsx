@@ -1,12 +1,17 @@
-import React from 'react';
-import { AuthProvider } from './context/AuthContext';
-import { AppProvider } from './context/AppContext'; // IMPORT THIS
-import AppRoutes from './routes/AppRoutes';
+import React from "react";
+import { AuthProvider } from "./context/AuthContext";
+import { AppProvider } from "./context/AppContext";
+import AppRoutes from "./routes/AppRoutes";
+import { ToastContainer } from "./components/ui/Toast";
 
 const App = () => {
   return (
     <AuthProvider>
-      <AppProvider> {/* WRAP EVERYTHING HERE */}
+      <AppProvider>
+        {/* Global UI Overlays */}
+        <ToastContainer />
+
+        {/* Main Application Routes */}
         <AppRoutes />
       </AppProvider>
     </AuthProvider>

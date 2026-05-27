@@ -26,3 +26,18 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* Progress Bar Animation for Toasts */
+@layer utilities {
+  @keyframes shrink {
+    0% {
+      width: 100%;
+    }
+    100% {
+      width: 0%;
+    }
+  }
+  .animate-shrink {
+    animation: shrink linear forwards;
+  }
+}
