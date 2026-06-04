@@ -13,14 +13,18 @@ import {
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
+import { useApp } from "../../context/AppContext";
+import ConfirmModal from "../shared/ConfirmModal";
 
 const Navbar = ({ user, onMenuClick }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { logout } = useAuth();
+  const { showToast } = useApp();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -32,8 +36,9 @@ const Navbar = ({ user, onMenuClick }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogoutConfirm = async () => {
     logout();
+    showToast("You have been successfully logged out.", "success");
     navigate("/login");
   };
 
@@ -46,127 +51,143 @@ const Navbar = ({ user, onMenuClick }) => {
   if (user?.role?.toUpperCase() === "MANAGER") displayRole = "Manager";
 
   return (
-    <header className="h-16 shrink-0 w-full border-b border-gray-200 dark:border-white/10 bg-white dark:bg-overdrive-dark flex items-center justify-between px-4 sm:px-6 lg:px-8 z-20 transition-colors duration-300">
-      {/* Left Section: Mobile Hamburger Menu */}
-      <div className="flex items-center gap-4 flex-1 max-w-xl">
-        <button
-          onClick={onMenuClick}
-          className="p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10 transition-colors lg:hidden"
-          aria-label="Open Sidebar Menu"
-        >
-          <Menu size={24} />
-        </button>
-      </div>
-
-      {/* Right Side Actions */}
-      <div className="flex items-center gap-3 sm:gap-4 lg:gap-6 ml-4">
-        {/* THEME TOGGLE */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10 transition-colors"
-          aria-label="Toggle Dark Mode"
-        >
-          {theme === "dark" ? (
-            <Sun
-              size={20}
-              className="hover:text-overdrive-yellow transition-colors"
-            />
-          ) : (
-            <Moon size={20} className="hover:text-blue-600 transition-colors" />
-          )}
-        </button>
-
-        {/* NOTIFICATIONS */}
-        <button className="relative p-1 text-gray-500 hover:text-overdrive-dark dark:text-gray-400 dark:hover:text-white transition-colors">
-          <Bell size={20} />
-          <span className="absolute top-0 right-0 h-4 w-4 bg-overdrive-red text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-overdrive-dark transition-colors">
-            3
-          </span>
-        </button>
-
-        {/* DIVIDER */}
-        <div className="h-8 w-px bg-gray-200 dark:bg-white/10 hidden sm:block transition-colors" />
-
-        {/* USER PROFILE DROPDOWN */}
-        <div className="relative" ref={dropdownRef}>
-          <div
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2 sm:gap-3 cursor-pointer group p-1 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+    <>
+      <header className="h-16 shrink-0 w-full border-b border-gray-200 dark:border-white/10 bg-white dark:bg-overdrive-dark flex items-center justify-between px-4 sm:px-6 lg:px-8 z-20 transition-colors duration-300">
+        {/* Left Section: Mobile Hamburger Menu */}
+        <div className="flex items-center gap-4 flex-1 max-w-xl">
+          <button
+            onClick={onMenuClick}
+            className="p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10 transition-colors lg:hidden"
+            aria-label="Open Sidebar Menu"
           >
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-gray-900 dark:text-white leading-none transition-colors">
-                {displayName}
-              </p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-tighter mt-1 font-medium transition-colors">
-                {displayRole}
-              </p>
-            </div>
+            <Menu size={24} />
+          </button>
+        </div>
 
-            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/5 group-hover:border-overdrive-yellow group-hover:text-overdrive-yellow dark:group-hover:text-overdrive-yellow transition-colors shrink-0">
-              <UserCircle size={22} className="sm:w-6 sm:h-6" />
-            </div>
+        {/* Right Side Actions */}
+        <div className="flex items-center gap-3 sm:gap-4 lg:gap-6 ml-4">
+          {/* THEME TOGGLE */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10 transition-colors"
+            aria-label="Toggle Dark Mode"
+          >
+            {theme === "dark" ? (
+              <Sun
+                size={20}
+                className="hover:text-overdrive-yellow transition-colors"
+              />
+            ) : (
+              <Moon
+                size={20}
+                className="hover:text-blue-600 transition-colors"
+              />
+            )}
+          </button>
 
-            <ChevronDown
-              size={14}
-              className={`text-gray-500 dark:text-gray-400 hidden sm:block transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`}
-            />
-          </div>
+          {/* NOTIFICATIONS */}
+          <button className="relative p-1 text-gray-500 hover:text-overdrive-dark dark:text-gray-400 dark:hover:text-white transition-colors">
+            <Bell size={20} />
+            <span className="absolute top-0 right-0 h-4 w-4 bg-overdrive-red text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-overdrive-dark transition-colors">
+              3
+            </span>
+          </button>
 
-          {/* DROPDOWN MENU */}
-          {isDropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-white/10 py-2 z-50 transform opacity-100 scale-100 transition-all origin-top-right">
-              <div className="px-4 py-3 border-b border-gray-100 dark:border-white/10 sm:hidden">
-                <p className="text-sm font-bold text-gray-900 dark:text-white">
+          {/* DIVIDER */}
+          <div className="h-8 w-px bg-gray-200 dark:bg-white/10 hidden sm:block transition-colors" />
+
+          {/* USER PROFILE DROPDOWN */}
+          <div className="relative" ref={dropdownRef}>
+            <div
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-2 sm:gap-3 cursor-pointer group p-1 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+            >
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-bold text-gray-900 dark:text-white leading-none transition-colors">
                   {displayName}
                 </p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase mt-0.5">
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-tighter mt-1 font-medium transition-colors">
                   {displayRole}
                 </p>
               </div>
 
-              <div className="flex flex-col">
-                <Link
-                  to="/profile"
-                  onClick={() => setIsDropdownOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-overdrive-dark dark:hover:text-white transition-colors"
-                >
-                  <User
-                    size={16}
-                    className="text-gray-400 dark:text-gray-500"
-                  />
-                  My Profile
-                </Link>
-
-                <Link
-                  to="/settings"
-                  onClick={() => setIsDropdownOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-overdrive-dark dark:hover:text-white transition-colors"
-                >
-                  <Settings
-                    size={16}
-                    className="text-gray-400 dark:text-gray-500"
-                  />
-                  Account Settings
-                </Link>
-
-                <div className="h-px bg-gray-100 dark:bg-white/10 my-1 mx-4" />
-
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsDropdownOpen(false);
-                  }}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors w-full text-left"
-                >
-                  <LogOut size={16} />
-                  Log Out
-                </button>
+              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/5 group-hover:border-overdrive-yellow group-hover:text-overdrive-yellow dark:group-hover:text-overdrive-yellow transition-colors shrink-0">
+                <UserCircle size={22} className="sm:w-6 sm:h-6" />
               </div>
+
+              <ChevronDown
+                size={14}
+                className={`text-gray-500 dark:text-gray-400 hidden sm:block transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`}
+              />
             </div>
-          )}
+
+            {/* DROPDOWN MENU */}
+            {isDropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-white/10 py-2 z-50 transform opacity-100 scale-100 transition-all origin-top-right">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-white/10 sm:hidden">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">
+                    {displayName}
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase mt-0.5">
+                    {displayRole}
+                  </p>
+                </div>
+
+                <div className="flex flex-col">
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-overdrive-dark dark:hover:text-white transition-colors"
+                  >
+                    <User
+                      size={16}
+                      className="text-gray-400 dark:text-gray-500"
+                    />
+                    My Profile
+                  </Link>
+
+                  <Link
+                    to="/settings"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-overdrive-dark dark:hover:text-white transition-colors"
+                  >
+                    <Settings
+                      size={16}
+                      className="text-gray-400 dark:text-gray-500"
+                    />
+                    Account Settings
+                  </Link>
+
+                  <div className="h-px bg-gray-100 dark:bg-white/10 my-1 mx-4" />
+
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      setIsLogoutModalOpen(true);
+                    }}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors w-full text-left cursor-pointer"
+                  >
+                    <LogOut size={16} />
+                    Log Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      <ConfirmModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleLogoutConfirm}
+        title="Confirm Logout"
+        message="Are you sure you want to log out? You will need to sign in again to access the system."
+        confirmText="Yes, Log Out"
+        cancelText="Cancel"
+        variant="danger"
+      />
+    </>
   );
 };
 
