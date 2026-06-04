@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Search,
+  Menu,
   Bell,
   UserCircle,
   ChevronDown,
@@ -14,7 +14,7 @@ import {
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 
-const Navbar = ({ user }) => {
+const Navbar = ({ user, onMenuClick }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -37,7 +37,6 @@ const Navbar = ({ user }) => {
     navigate("/login");
   };
 
-  // 4. Dynamic Display Logic for real PostgreSQL Data
   const displayName = user?.first_name
     ? `${user.first_name} ${user.last_name}`
     : "System User";
@@ -47,13 +46,21 @@ const Navbar = ({ user }) => {
   if (user?.role?.toUpperCase() === "MANAGER") displayRole = "Manager";
 
   return (
-    <header className="h-16 shrink-0 w-full border-b border-gray-200 dark:border-white/10 bg-white dark:bg-overdrive-dark flex items-center justify-between px-6 lg:px-8 z-20 transition-colors duration-300">
-      {/* Empty Left Section*/}
-      <div className="flex-1 max-w-xl"></div>
+    <header className="h-16 shrink-0 w-full border-b border-gray-200 dark:border-white/10 bg-white dark:bg-overdrive-dark flex items-center justify-between px-4 sm:px-6 lg:px-8 z-20 transition-colors duration-300">
+      {/* Left Section: Mobile Hamburger Menu */}
+      <div className="flex items-center gap-4 flex-1 max-w-xl">
+        <button
+          onClick={onMenuClick}
+          className="p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10 transition-colors lg:hidden"
+          aria-label="Open Sidebar Menu"
+        >
+          <Menu size={24} />
+        </button>
+      </div>
 
       {/* Right Side Actions */}
-      <div className="flex items-center gap-4 lg:gap-6 ml-4">
-        {/* THEME TOGGLE BUTTON */}
+      <div className="flex items-center gap-3 sm:gap-4 lg:gap-6 ml-4">
+        {/* THEME TOGGLE */}
         <button
           onClick={toggleTheme}
           className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10 transition-colors"
@@ -69,7 +76,7 @@ const Navbar = ({ user }) => {
           )}
         </button>
 
-        {/* Notifications */}
+        {/* NOTIFICATIONS */}
         <button className="relative p-1 text-gray-500 hover:text-overdrive-dark dark:text-gray-400 dark:hover:text-white transition-colors">
           <Bell size={20} />
           <span className="absolute top-0 right-0 h-4 w-4 bg-overdrive-red text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-overdrive-dark transition-colors">
@@ -77,18 +84,16 @@ const Navbar = ({ user }) => {
           </span>
         </button>
 
-        {/* Vertical Divider */}
+        {/* DIVIDER */}
         <div className="h-8 w-px bg-gray-200 dark:bg-white/10 hidden sm:block transition-colors" />
 
-        {/* USER PROFILE DROPDOWN WRAPPER */}
+        {/* USER PROFILE DROPDOWN */}
         <div className="relative" ref={dropdownRef}>
-          {/* Clickable Profile Button */}
           <div
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-3 cursor-pointer group p-1 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer group p-1 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
           >
             <div className="text-right hidden sm:block">
-              {/* 5. Applied dynamic PostgreSQL data here */}
               <p className="text-sm font-bold text-gray-900 dark:text-white leading-none transition-colors">
                 {displayName}
               </p>
@@ -97,8 +102,8 @@ const Navbar = ({ user }) => {
               </p>
             </div>
 
-            <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/5 group-hover:border-overdrive-yellow group-hover:text-overdrive-yellow dark:group-hover:text-overdrive-yellow transition-colors">
-              <UserCircle size={24} />
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/5 group-hover:border-overdrive-yellow group-hover:text-overdrive-yellow dark:group-hover:text-overdrive-yellow transition-colors shrink-0">
+              <UserCircle size={22} className="sm:w-6 sm:h-6" />
             </div>
 
             <ChevronDown
@@ -107,11 +112,10 @@ const Navbar = ({ user }) => {
             />
           </div>
 
-          {/* THE FLOATING DROPDOWN MENU */}
+          {/* DROPDOWN MENU */}
           {isDropdownOpen && (
             <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-white/10 py-2 z-50 transform opacity-100 scale-100 transition-all origin-top-right">
               <div className="px-4 py-3 border-b border-gray-100 dark:border-white/10 sm:hidden">
-                {/* 6. Applied dynamic PostgreSQL data here (Mobile View) */}
                 <p className="text-sm font-bold text-gray-900 dark:text-white">
                   {displayName}
                 </p>
