@@ -93,7 +93,7 @@ const Sidebar = ({ user, isOpen, setIsOpen }) => {
         {/* NAVIGATION LIST */}
         <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1 custom-scrollbar">
           <h3 className="px-2 mb-2 text-[10px] font-bold uppercase text-slate-500 dark:text-gray-500">
-            Navigations
+            Main Menu
           </h3>
 
           {menuGroups.map((group) => {
