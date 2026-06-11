@@ -172,7 +172,6 @@ const Branches = () => {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
           <div className="relative w-full sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {/* Dynamic UI: Show loading spinner if debounce is processing */}
               {searchQuery !== debouncedSearchQuery ? (
                 <Loader2 size={16} className="text-amber-500 animate-spin" />
               ) : (
@@ -267,15 +266,18 @@ const Branches = () => {
                     </div>
                   </td>
 
-                  {/* Invoice Prefix */}
+                  {/* Branch Code */}
                   <td className="px-6 sm:px-8 py-5 sm:py-6">
-                    <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                      INV-
-                      <span className="text-amber-600 dark:text-amber-400 mx-0.5">
-                        {branch.branch_code}
+                    <div className="flex flex-col items-start">
+                      <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20">
+                        <span className="text-xs font-black text-amber-700 dark:text-amber-400 tracking-[0.2em] uppercase">
+                          {branch.branch_code}
+                        </span>
+                      </div>
+                      <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-1.5">
+                        Branch Reference
                       </span>
-                      -XXXX
-                    </span>
+                    </div>
                   </td>
 
                   {/* Security Status */}
