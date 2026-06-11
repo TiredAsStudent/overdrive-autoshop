@@ -16,13 +16,16 @@ import { branchService } from "../../services/sysadmin/branch.service";
 import BranchModal from "../../features/sysadmin/components/BranchModal";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 
+import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
 const Branches = () => {
+  const { showToast } = useApp();
+
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Search State & Debounce Initialization
+  // Search State & Debounce
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -49,7 +52,7 @@ const Branches = () => {
       setBranches(Array.isArray(dataArray) ? dataArray : []);
     } catch (error) {
       console.error("Failed to fetch branches:", error);
-      alert(error.message || "Failed to load branch data.");
+      showToast(error.message || "Unable to load branch information.", "error");
     } finally {
       setLoading(false);
     }
@@ -62,9 +65,13 @@ const Branches = () => {
   const handleModalSubmit = async (formData) => {
     try {
       if (selectedBranch) {
+        // Edit Action
         await branchService.updateBranch(selectedBranch.id, formData);
+        showToast(`${formData.branch_name} updated successfully.`, "success");
       } else {
+        // Register Action
         await branchService.createBranch(formData);
+        showToast(`${formData.branch_name} created successfully.`, "success");
       }
       setIsModalOpen(false);
       loadBranches();
@@ -93,9 +100,10 @@ const Branches = () => {
       onConfirm: async () => {
         try {
           await branchService.deleteBranch(id);
+          showToast(`${name} archived successfully.`, "success");
           loadBranches();
         } catch (error) {
-          alert(error.message || "Failed to archive branch.");
+          showToast(error.message || `Unable to archive ${name}.`, "error");
         }
       },
     });
@@ -111,9 +119,10 @@ const Branches = () => {
       onConfirm: async () => {
         try {
           await branchService.updateBranch(id, { is_active: true });
+          showToast(`${name} restored successfully.`, "success");
           loadBranches();
         } catch (error) {
-          alert(error.message || "Failed to restore branch.");
+          showToast(error.message || `Unable to restore ${name}.`, "error");
         }
       },
     });
@@ -132,9 +141,20 @@ const Branches = () => {
       onConfirm: async () => {
         try {
           await branchService.toggleMaintenance(id, !currentStatus);
+
+          // Dynamic toast messaging based on the new status
+          if (!currentStatus) {
+            showToast(`${name} is now in maintenance mode.`, "warning");
+          } else {
+            showToast(`${name} is now active.`, "success");
+          }
+
           loadBranches();
         } catch (error) {
-          alert(error.message || "Failed to toggle mode.");
+          showToast(
+            error.message || "Unable to update maintenance status.",
+            "error",
+          );
         }
       },
     });
