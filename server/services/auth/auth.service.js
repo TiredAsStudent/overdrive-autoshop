@@ -39,10 +39,10 @@ class AuthService {
       if (!branch) throw new Error("Your assigned branch does not exist.");
       if (branch.is_maintenance_mode)
         throw new Error(
-          "Access Denied: Your branch is currently under Maintenance Mode.",
+          "Access Denied: Your branch is currently in maintenance mode.",
         );
       if (!branch.is_active)
-        throw new Error("Access Denied: Your branch has been decommissioned.");
+        throw new Error("Access Denied: Your branch is inactive.");
     }
 
     const token = this.generateToken(user);
