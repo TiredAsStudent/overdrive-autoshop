@@ -4,20 +4,12 @@ class Branch {
   static async create(data) {
     const sql = `
       INSERT INTO branches (
-        branch_name, branch_code, address, tin, 
-        contact_number, contact_email
+        branch_name, branch_code, address
       ) 
-      VALUES ($1, $2, $3, $4, $5, $6) 
+      VALUES ($1, $2, $3) 
       RETURNING *
     `;
-    const values = [
-      data.branch_name,
-      data.branch_code,
-      data.address,
-      data.tin,
-      data.contact_number,
-      data.contact_email,
-    ];
+    const values = [data.branch_name, data.branch_code, data.address];
     const result = await query(sql, values);
     return result.rows[0];
   }
@@ -48,21 +40,15 @@ class Branch {
         branch_name = COALESCE($1, branch_name),
         branch_code = COALESCE($2, branch_code),
         address = COALESCE($3, address),
-        tin = COALESCE($4, tin),
-        contact_number = COALESCE($5, contact_number),
-        contact_email = COALESCE($6, contact_email),
-        is_active = COALESCE($7, is_active),
+        is_active = COALESCE($4, is_active),
         updated_at = NOW()
-      WHERE id = $8
+      WHERE id = $5
       RETURNING *
     `;
     const values = [
       data.branch_name,
       data.branch_code,
       data.address,
-      data.tin,
-      data.contact_number,
-      data.contact_email,
       data.is_active,
       id,
     ];

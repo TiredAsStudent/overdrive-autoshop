@@ -11,6 +11,12 @@ class BranchService {
     return await Branch.findActive();
   }
 
+  static async getBranchById(id) {
+    const branch = await Branch.findById(id);
+    if (!branch) throw new Error("Branch not found.");
+    return branch;
+  }
+
   static async createBranch(data, adminId, ipAddress) {
     const existingBranch = await Branch.findByCode(data.branch_code);
     if (existingBranch) {

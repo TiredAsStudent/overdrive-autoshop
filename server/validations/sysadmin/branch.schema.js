@@ -16,16 +16,6 @@ const createBranchSchema = z.object({
     address: z
       .string()
       .min(5, "Official Address is required for Legal Identity"),
-    tin: z
-      .string()
-      .min(5, "Tax Identification Number (TIN) is required for invoicing")
-      .max(50),
-    contact_number: z.string().max(50).optional(),
-    contact_email: z
-      .string()
-      .email("Invalid email format")
-      .optional()
-      .or(z.literal("")),
   }),
 });
 
@@ -38,9 +28,6 @@ const updateBranchSchema = z.object({
       .regex(/^[a-zA-Z]+$/)
       .optional(),
     address: z.string().min(5).optional(),
-    tin: z.string().max(50).optional(),
-    contact_number: z.string().max(50).optional(),
-    contact_email: z.string().email().optional().or(z.literal("")),
     is_active: z.boolean().optional(),
   }),
 });
