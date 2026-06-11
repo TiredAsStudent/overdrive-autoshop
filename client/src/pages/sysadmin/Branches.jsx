@@ -16,10 +16,16 @@ import { branchService } from "../../services/sysadmin/branch.service";
 import BranchModal from "../../features/sysadmin/components/BranchModal";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 
+import { useDebounce } from "../../hooks/useDebounce";
+
 const Branches = () => {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Search State & Debounce Initialization
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   const [showArchived, setShowArchived] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -136,8 +142,10 @@ const Branches = () => {
 
   const filteredBranches = branches.filter((b) => {
     const matchesSearch =
-      b.branch_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.branch_code.toLowerCase().includes(searchQuery.toLowerCase());
+      b.branch_name
+        .toLowerCase()
+        .includes(debouncedSearchQuery.toLowerCase()) ||
+      b.branch_code.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
 
     const matchesStatus = showArchived ? !b.is_active : b.is_active;
     return matchesSearch && matchesStatus;
@@ -153,10 +161,10 @@ const Branches = () => {
           </div>
           <div className="flex-1">
             <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">
-              Branch Management
+              Branch Registry
             </h1>
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-              Physical Footprint & Legal Profiles
+              Centralized branch records and operational details
             </p>
           </div>
         </div>
@@ -164,7 +172,12 @@ const Branches = () => {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
           <div className="relative w-full sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={16} className="text-slate-400" />
+              {/* Dynamic UI: Show loading spinner if debounce is processing */}
+              {searchQuery !== debouncedSearchQuery ? (
+                <Loader2 size={16} className="text-amber-500 animate-spin" />
+              ) : (
+                <Search size={16} className="text-slate-400" />
+              )}
             </div>
             <input
               type="text"
@@ -215,9 +228,9 @@ const Branches = () => {
             <thead>
               <tr className="bg-slate-50 dark:bg-black/20 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-white/5">
                 <th className="px-6 sm:px-8 py-5">Branch Details</th>
-                <th className="px-6 sm:px-8 py-5">Invoice Prefix</th>
-                <th className="px-6 sm:px-8 py-5">Security Status</th>
-                <th className="px-6 sm:px-8 py-5 text-right">Governance</th>
+                <th className="px-6 sm:px-8 py-5">Branch Code</th>
+                <th className="px-6 sm:px-8 py-5">Status</th>
+                <th className="px-6 sm:px-8 py-5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-white/5">
