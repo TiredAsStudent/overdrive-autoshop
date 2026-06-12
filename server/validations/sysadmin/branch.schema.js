@@ -11,6 +11,8 @@ const getBranchesSchema = z.object({
         .string()
         .regex(/^\d+$/, "Limit must be a valid positive number")
         .optional(),
+      search: z.string().optional(),
+      status: z.enum(["active", "archived", "all"]).optional(),
     })
     .optional(),
 });

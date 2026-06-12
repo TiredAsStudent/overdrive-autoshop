@@ -26,7 +26,15 @@ class BranchController {
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 5;
 
-      const result = await BranchService.getAllBranches(page, limit);
+      const search = req.query.search || "";
+      const status = req.query.status || "all";
+
+      const result = await BranchService.getAllBranches(
+        page,
+        limit,
+        search,
+        status,
+      );
 
       return res.status(STATUS_CODES.SUCCESS).json({
         success: true,

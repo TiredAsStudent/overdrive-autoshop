@@ -17,6 +17,8 @@ import BranchModal from "../../features/sysadmin/components/BranchModal";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
 
+import Pagination from "../../components/shared/Pagination";
+
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -32,6 +34,10 @@ const Branches = () => {
 
   const [showArchived, setShowArchived] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState(null);
 
@@ -44,13 +50,25 @@ const Branches = () => {
     onConfirm: () => {},
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchQuery, showArchived]);
+
   const loadBranches = async () => {
     try {
       setLoading(true);
-      const response = await branchService.getAllBranches();
-      const dataArray =
-        response?.data?.data || response?.data || response || [];
-      setBranches(Array.isArray(dataArray) ? dataArray : []);
+
+      const statusParam = showArchived ? "archived" : "active";
+
+      const response = await branchService.getAllBranches(
+        currentPage,
+        ITEMS_PER_PAGE,
+        debouncedSearchQuery,
+        statusParam,
+      );
+
+      setBranches(response.data || []);
+      setTotalPages(response.pagination?.totalPages || 1);
     } catch (error) {
       console.error("Failed to fetch branches:", error);
       showToast(error.message || "Unable to load branch information.", "error");
@@ -61,7 +79,7 @@ const Branches = () => {
 
   useEffect(() => {
     loadBranches();
-  }, []);
+  }, [currentPage, debouncedSearchQuery, showArchived]);
 
   const handleModalSubmit = async (formData) => {
     try {
@@ -158,17 +176,6 @@ const Branches = () => {
     });
   };
 
-  const filteredBranches = branches.filter((b) => {
-    const matchesSearch =
-      b.branch_name
-        .toLowerCase()
-        .includes(debouncedSearchQuery.toLowerCase()) ||
-      b.branch_code.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-
-    const matchesStatus = showArchived ? !b.is_active : b.is_active;
-    return matchesSearch && matchesStatus;
-  });
-
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700 relative pb-10">
       {/* ACTION BAR */}
@@ -232,7 +239,7 @@ const Branches = () => {
       {/* UNIVERSAL DATATABLE */}
       <DataTable
         headers={["Branch Details", "Branch Code", "Status", "Actions"]}
-        data={filteredBranches}
+        data={branches}
         loading={loading}
         emptyTitle={`No ${showArchived ? "archived" : "active"} locations found`}
         emptySubtitle="Try adjusting your search query or register a new branch."
@@ -356,6 +363,13 @@ const Branches = () => {
             </td>
           </tr>
         )}
+      />
+
+      {/* PAGINATION BAR */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
       />
 
       {/* MODALS */}

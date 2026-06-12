@@ -12,19 +12,62 @@ class Branch {
     return result.rows[0];
   }
 
-  static async countAll() {
-    const sql = `SELECT COUNT(*) FROM branches`;
-    const result = await query(sql);
+  static async countFiltered(search, status) {
+    let sql = `SELECT COUNT(*) FROM branches`;
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      conditions.push(
+        `(branch_name ILIKE $${paramIdx} OR branch_code ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    if (status === "active") {
+      conditions.push(`is_active = TRUE`);
+    } else if (status === "archived") {
+      conditions.push(`is_active = FALSE`);
+    }
+
+    if (conditions.length > 0) {
+      sql += ` WHERE ` + conditions.join(" AND ");
+    }
+
+    const result = await query(sql, values);
     return parseInt(result.rows[0].count, 10);
   }
 
-  static async findPaginated(limit, offset) {
-    const sql = `
-      SELECT * FROM branches 
-      ORDER BY is_active DESC, id ASC 
-      LIMIT $1 OFFSET $2
-    `;
-    const result = await query(sql, [limit, offset]);
+  static async findPaginatedFiltered(limit, offset, search, status) {
+    let sql = `SELECT * FROM branches`;
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      conditions.push(
+        `(branch_name ILIKE $${paramIdx} OR branch_code ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    if (status === "active") {
+      conditions.push(`is_active = TRUE`);
+    } else if (status === "archived") {
+      conditions.push(`is_active = FALSE`);
+    }
+
+    if (conditions.length > 0) {
+      sql += ` WHERE ` + conditions.join(" AND ");
+    }
+
+    sql += ` ORDER BY is_active DESC, id ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
     return result.rows;
   }
 

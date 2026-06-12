@@ -3,12 +3,17 @@ const Inventory = require("../../models/Inventory");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class BranchService {
-  static async getAllBranches(page = 1, limit = 5) {
+  static async getAllBranches(
+    page = 1,
+    limit = 5,
+    search = "",
+    status = "all",
+  ) {
     const offset = (page - 1) * limit;
 
     const [totalItems, branches] = await Promise.all([
-      Branch.countAll(),
-      Branch.findPaginated(limit, offset),
+      Branch.countFiltered(search, status),
+      Branch.findPaginatedFiltered(limit, offset, search, status),
     ]);
 
     const totalPages = Math.ceil(totalItems / limit);
@@ -27,7 +32,6 @@ class BranchService {
   static async getActiveBranches() {
     return await Branch.findActive();
   }
-
   static async getBranchById(id) {
     const branch = await Branch.findById(id);
     if (!branch) throw new Error("Branch not found.");
