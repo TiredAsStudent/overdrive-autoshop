@@ -1,5 +1,20 @@
 const { z } = require("zod");
 
+const getBranchesSchema = z.object({
+  query: z
+    .object({
+      page: z
+        .string()
+        .regex(/^\d+$/, "Page must be a valid positive number")
+        .optional(),
+      limit: z
+        .string()
+        .regex(/^\d+$/, "Limit must be a valid positive number")
+        .optional(),
+    })
+    .optional(),
+});
+
 const createBranchSchema = z.object({
   body: z.object({
     branch_name: z
@@ -42,6 +57,7 @@ const toggleMaintenanceSchema = z.object({
 });
 
 module.exports = {
+  getBranchesSchema,
   createBranchSchema,
   updateBranchSchema,
   toggleMaintenanceSchema,

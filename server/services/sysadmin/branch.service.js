@@ -3,8 +3,25 @@ const Inventory = require("../../models/Inventory");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class BranchService {
-  static async getAllBranches() {
-    return await Branch.findAll();
+  static async getAllBranches(page = 1, limit = 5) {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, branches] = await Promise.all([
+      Branch.countAll(),
+      Branch.findPaginated(limit, offset),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      branches,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
   }
 
   static async getActiveBranches() {

@@ -24,6 +24,7 @@ const {
   updateSettingsSchema,
 } = require("../../validations/sysadmin/settings.schema");
 const {
+  getBranchesSchema,
   createBranchSchema,
   updateBranchSchema,
   toggleMaintenanceSchema,
@@ -73,7 +74,11 @@ router.post(
   BranchController.createBranch,
 );
 
-router.get("/branches", BranchController.getAllBranches);
+router.get(
+  "/branches",
+  validate(getBranchesSchema),
+  BranchController.getAllBranches,
+);
 
 router.get("/branches/:id", BranchController.getBranch);
 

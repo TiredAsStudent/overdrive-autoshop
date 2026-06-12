@@ -3,9 +3,7 @@ const { query } = require("../config/db");
 class Branch {
   static async create(data) {
     const sql = `
-      INSERT INTO branches (
-        branch_name, branch_code, address
-      ) 
+      INSERT INTO branches (branch_name, branch_code, address) 
       VALUES ($1, $2, $3) 
       RETURNING *
     `;
@@ -14,8 +12,23 @@ class Branch {
     return result.rows[0];
   }
 
+  static async countAll() {
+    const sql = `SELECT COUNT(*) FROM branches`;
+    const result = await query(sql);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginated(limit, offset) {
+    const sql = `
+      SELECT * FROM branches 
+      ORDER BY is_active DESC, id ASC 
+      LIMIT $1 OFFSET $2
+    `;
+    const result = await query(sql, [limit, offset]);
+    return result.rows;
+  }
+
   static async findAll() {
-    // Orders active branches first, then by ID
     const sql = `SELECT * FROM branches ORDER BY is_active DESC, id ASC`;
     const result = await query(sql);
     return result.rows;

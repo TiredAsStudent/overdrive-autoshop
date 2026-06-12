@@ -23,13 +23,17 @@ class BranchController {
 
   static async getAllBranches(req, res) {
     try {
-      const branches = await BranchService.getAllBranches();
-      return sendSuccess(
-        res,
-        STATUS_CODES.SUCCESS,
-        branches,
-        "Enterprise branches retrieved.",
-      );
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 5;
+
+      const result = await BranchService.getAllBranches(page, limit);
+
+      return res.status(STATUS_CODES.SUCCESS).json({
+        success: true,
+        data: result.branches,
+        pagination: result.pagination,
+        message: "Enterprise branches retrieved.",
+      });
     } catch (error) {
       return sendError(
         res,
