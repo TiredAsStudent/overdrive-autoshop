@@ -19,9 +19,11 @@ import {
   UserCheck,
   PowerOff,
   Globe,
+  Plus,
 } from "lucide-react";
 import StatusBadge from "../../components/ui/StatusBadge";
 import ConfirmModal from "../../components/shared/ConfirmModal";
+import DataTable from "../../components/shared/DataTable";
 import { userService } from "../../services/sysadmin/user.service";
 import { branchService } from "../../services/sysadmin/branch.service";
 import { useAuth } from "../../context/AuthContext";
@@ -279,47 +281,77 @@ const UsersTab = () => {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 w-full pb-10">
-      {/* 1. Header */}
-      <div className="flex items-center gap-3 border-b border-slate-200 dark:border-white/10 pb-4">
-        <div className="p-2 bg-amber-500/10 rounded-lg">
-          <Users
-            className="text-amber-600 dark:text-overdrive-yellow"
-            size={24}
-          />
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 w-full pb-10">
+      {/* ACTION BAR */}
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
+        {/* Header Title Section */}
+        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
+          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
+            <Users className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
+              Users Accounts
+            </h1>
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
+              User Accounts & Access Control
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">
-            User RBAC Management
-          </h1>
-          <p className="text-sm font-medium text-slate-500 dark:text-gray-400">
-            Enterprise Directory & Identity Access Control
-          </p>
+
+        {/* Filter & Action Controls */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+          <div className="relative w-full sm:max-w-xs lg:w-64">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search size={16} className="text-slate-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search users by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+            />
+          </div>
+
+          <button
+            onClick={() => setIsInviting(true)}
+            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer"
+          >
+            <Plus size={16} /> Invite User
+          </button>
         </div>
       </div>
 
-      {/* 2. Top Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden border border-white/10">
-          <div className="absolute right-0 top-0 p-4 opacity-10">
+      {/* 2. Top Stats KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+        <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm relative overflow-hidden border border-slate-200 dark:border-white/10 flex flex-col justify-between">
+          <div className="absolute right-0 top-0 p-4 text-slate-900 dark:text-white opacity-[0.03] dark:opacity-10 pointer-events-none">
             <ShieldCheck size={100} />
           </div>
-          <p className="text-[10px] font-black uppercase text-amber-500 tracking-[0.2em] mb-2">
-            Gatekeeper Status
-          </p>
-          <h3 className="text-3xl font-black italic">Closed-Loop</h3>
-          <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">
-            Public Registration Disabled
-          </p>
+
+          <div className="relative z-10">
+            <p className="text-[10px] font-black uppercase text-amber-500 tracking-[0.2em] mb-2">
+              Gate Status
+            </p>
+            <h3 className="text-3xl font-black italic text-slate-900 dark:text-white">
+              Restricted
+            </h3>
+            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase">
+              Public user registration is disabled.
+            </p>
+          </div>
         </div>
+
         <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
           <p className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest mb-2">
-            Active Personnel
+            Active Users
           </p>
           <h3 className="text-4xl font-black text-slate-900 dark:text-white italic">
             {activeCount.toString().padStart(2, "0")}
           </h3>
         </div>
+
         <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
           <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-2">
             Pending Invites
@@ -335,229 +367,172 @@ const UsersTab = () => {
         </div>
       </div>
 
-      {/* 3. Controls */}
-      <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
-        <div className="relative flex-1 w-full lg:max-w-md">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Search Roster by Name or Email..."
-            className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl outline-none focus:border-amber-500 text-sm font-bold shadow-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <button
-          onClick={() => setIsInviting(true)}
-          className="px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-all uppercase text-xs tracking-widest shadow-xl w-full lg:w-auto"
-        >
-          <UserPlus size={18} /> Send Security Invite
-        </button>
-      </div>
-
       {/* 4. Directory Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 overflow-visible shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left whitespace-nowrap">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-black/20 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-white/5">
-                <th className="px-8 py-5">Employee Identity</th>
-                <th className="px-8 py-5">Role Level</th>
-                <th className="px-8 py-5">Branch Assignment</th>
-                <th className="px-8 py-5 text-right">Account Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-white/5">
-              {isLoading ? (
-                <tr>
-                  <td colSpan="4" className="text-center py-12">
-                    <div className="flex flex-col items-center gap-2">
-                      <RefreshCw
-                        size={24}
-                        className="animate-spin text-amber-500"
+      <DataTable
+        headers={["Account Details", "Role", "Branch", "Status & Actions"]}
+        data={filteredUsers}
+        loading={isLoading}
+        emptyTitle="No personnel found"
+        emptySubtitle="Try adjusting your search criteria or issue a new security invite."
+        renderRow={(user) => (
+          <tr
+            key={user.id}
+            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors relative"
+          >
+            {/* Identity Column */}
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-slate-100 dark:bg-black/20 rounded-xl sm:rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors shrink-0">
+                  <Users className="w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
+                <div className="min-w-0 max-w-[150px] sm:max-w-xs lg:max-w-none">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight truncate">
+                      {user.first_name} {user.last_name}
+                    </p>
+                    {/* Google SSO Badge */}
+                    {user.google_id && (
+                      <span
+                        title="Secured via Google SSO"
+                        className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-[4px] text-[8px] font-black uppercase tracking-wider border border-blue-200 dark:border-blue-500/20 flex items-center gap-1 shrink-0"
+                      >
+                        <Globe size={8} /> SSO
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 font-bold mt-0.5 truncate">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+            </td>
+
+            {/* Role Column */}
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <div className="flex items-center gap-2">
+                <Key
+                  size={14}
+                  className={
+                    user.role === "ADMIN" || user.role === "MANAGER"
+                      ? "text-amber-500"
+                      : "text-blue-500"
+                  }
+                />
+                <span className="text-[10px] sm:text-xs font-black dark:text-gray-300">
+                  {user.role}
+                </span>
+              </div>
+            </td>
+
+            {/* Branch Assignment Column */}
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-black text-slate-500 uppercase">
+                {user.branch_name ? (
+                  <>
+                    <MapPin size={12} className="text-slate-400" />{" "}
+                    {user.branch_name}
+                  </>
+                ) : (
+                  <>
+                    <Globe size={12} className="text-amber-500" /> Enterprise
+                    Global
+                  </>
+                )}
+              </div>
+            </td>
+
+            {/* Status & Actions Column */}
+            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+              <div className="flex items-center justify-end gap-3 sm:gap-4 relative">
+                <StatusBadge
+                  status={user.account_status}
+                  type={
+                    user.account_status === "ACTIVE"
+                      ? "success"
+                      : user.account_status === "DEACTIVATED"
+                        ? "danger"
+                        : "warning"
+                  }
+                />
+
+                {/* Self-Preservation Logic Display */}
+                {currentUser?.id === user.id ? (
+                  <span className="text-[8px] sm:text-[9px] font-black bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 px-2 py-1 rounded-lg uppercase whitespace-nowrap">
+                    Active Session
+                  </span>
+                ) : (
+                  <div ref={menuRef} className="w-8 flex justify-end">
+                    <button
+                      onClick={() =>
+                        setOpenMenuId(openMenuId === user.id ? null : user.id)
+                      }
+                      className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400 transition-colors cursor-pointer"
+                    >
+                      <MoreVertical
+                        size={16}
+                        className="sm:w-[18px] sm:h-[18px]"
                       />
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                        Syncing Directory...
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors relative"
-                  >
-                    {/* Identity Column */}
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-slate-100 dark:bg-black/20 rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors shrink-0">
-                          <Users size={24} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight flex items-center gap-2">
-                            {user.first_name} {user.last_name}
-                            {/* Google SSO Badge Visualization */}
-                            {user.google_id && (
-                              <span
-                                title="Secured via Google SSO"
-                                className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-[4px] text-[8px] font-black uppercase tracking-wider border border-blue-200 dark:border-blue-500/20 flex items-center gap-1"
-                              >
-                                <Globe size={8} /> SSO
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-[10px] text-slate-400 font-bold mt-0.5">
-                            {user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
+                    </button>
 
-                    {/* Role Column */}
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-2">
-                        <Key
-                          size={14}
-                          className={
-                            user.role === "ADMIN" || user.role === "MANAGER"
-                              ? "text-amber-500"
-                              : "text-blue-500"
+                    {/* Action Menu */}
+                    {openMenuId === user.id && (
+                      <div className="absolute right-0 top-10 mt-2 w-48 sm:w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-white/10 z-50 overflow-hidden text-left">
+                        {user.account_status === "PENDING" && (
+                          <button
+                            onMouseDown={() =>
+                              handleMenuAction(user.id, "RESEND")
+                            }
+                            className="w-full px-4 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2 cursor-pointer"
+                          >
+                            <RefreshCw size={14} /> Resend Invite
+                          </button>
+                        )}
+                        <button
+                          onMouseDown={() =>
+                            handleMenuAction(user.id, "EDIT", user)
                           }
-                        />
-                        <span className="text-xs font-black dark:text-gray-300">
-                          {user.role}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Branch Assignment Column */}
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase">
-                        {user.branch_name ? (
-                          <>
-                            <MapPin size={12} className="text-slate-400" />{" "}
-                            {user.branch_name}
-                          </>
+                          className="w-full px-4 py-3 text-xs font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 cursor-pointer"
+                        >
+                          <Edit size={14} /> Edit Account Details
+                        </button>
+                        {user.account_status === "ACTIVE" && (
+                          <button
+                            onMouseDown={() =>
+                              handleMenuAction(user.id, "KILL_SESSION")
+                            }
+                            className="w-full px-4 py-3 text-xs font-black text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 bg-red-50/50 dark:bg-red-900/10 cursor-pointer"
+                          >
+                            <PowerOff size={14} /> Kill Active Sessions
+                          </button>
+                        )}
+                        {user.account_status === "DEACTIVATED" ? (
+                          <button
+                            onMouseDown={() =>
+                              handleMenuAction(user.id, "ACTIVATE")
+                            }
+                            className="w-full px-4 py-3 text-xs font-bold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 cursor-pointer"
+                          >
+                            <UserCheck size={14} /> Reactivate User
+                          </button>
                         ) : (
-                          <>
-                            <Globe size={12} className="text-amber-500" />{" "}
-                            Enterprise Global
-                          </>
+                          <button
+                            onMouseDown={() =>
+                              handleMenuAction(user.id, "DEACTIVATE")
+                            }
+                            className="w-full px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 cursor-pointer"
+                          >
+                            <UserX size={14} /> Deactivate User
+                          </button>
                         )}
                       </div>
-                    </td>
-
-                    {/* Status & Actions Column */}
-                    <td className="px-8 py-6 text-right">
-                      <div className="flex items-center justify-end gap-4 relative">
-                        <StatusBadge
-                          status={user.account_status}
-                          type={
-                            user.account_status === "ACTIVE"
-                              ? "success"
-                              : user.account_status === "DEACTIVATED"
-                                ? "danger"
-                                : "warning"
-                          }
-                        />
-
-                        {/* Self-Preservation Logic Display */}
-                        {currentUser?.id === user.id ? (
-                          <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 px-2 py-1 rounded-lg uppercase whitespace-nowrap">
-                            Active Session
-                          </span>
-                        ) : (
-                          <div ref={menuRef} className="w-8 flex justify-end">
-                            <button
-                              onClick={() =>
-                                setOpenMenuId(
-                                  openMenuId === user.id ? null : user.id,
-                                )
-                              }
-                              className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400 transition-colors"
-                            >
-                              <MoreVertical size={18} />
-                            </button>
-
-                            {/* Action Menu */}
-                            {openMenuId === user.id && (
-                              <div className="absolute right-0 top-10 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-white/10 z-50 overflow-hidden">
-                                {user.account_status === "PENDING" && (
-                                  <button
-                                    onMouseDown={() =>
-                                      handleMenuAction(user.id, "RESEND")
-                                    }
-                                    className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2"
-                                  >
-                                    <RefreshCw size={14} /> Resend Invite
-                                  </button>
-                                )}
-                                <button
-                                  onMouseDown={() =>
-                                    handleMenuAction(user.id, "EDIT", user)
-                                  }
-                                  className="w-full text-left px-4 py-3 text-xs font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5"
-                                >
-                                  <Edit size={14} /> Edit Configuration
-                                </button>
-                                {user.account_status === "ACTIVE" && (
-                                  <button
-                                    onMouseDown={() =>
-                                      handleMenuAction(user.id, "KILL_SESSION")
-                                    }
-                                    className="w-full text-left px-4 py-3 text-xs font-black text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 bg-red-50/50 dark:bg-red-900/10"
-                                  >
-                                    <PowerOff size={14} /> Kill Active Sessions
-                                  </button>
-                                )}
-                                {user.account_status === "DEACTIVATED" ? (
-                                  <button
-                                    onMouseDown={() =>
-                                      handleMenuAction(user.id, "ACTIVATE")
-                                    }
-                                    className="w-full text-left px-4 py-3 text-xs font-bold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5"
-                                  >
-                                    <UserCheck size={14} /> Reactivate User
-                                  </button>
-                                ) : (
-                                  <button
-                                    onMouseDown={() =>
-                                      handleMenuAction(user.id, "DEACTIVATE")
-                                    }
-                                    className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5"
-                                  >
-                                    <UserX size={14} /> Deactivate User
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-              {filteredUsers.length === 0 && !isLoading && (
-                <tr>
-                  <td colSpan="4" className="text-center py-12 text-slate-400">
-                    <div className="flex flex-col items-center justify-center">
-                      <Search size={32} className="mb-2 opacity-20" />
-                      <span className="font-bold text-sm">
-                        No personnel found.
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </td>
+          </tr>
+        )}
+      />
 
       {/* 5. INVITE MODAL */}
       <AnimatePresence>
@@ -568,7 +543,7 @@ const UsersTab = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsInviting(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
             />
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
@@ -671,7 +646,7 @@ const UsersTab = () => {
                                 : "",
                         })
                       }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors"
+                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer"
                     >
                       <option value="STAFF">Staff (Branch Lock)</option>
                       <option value="MANAGER">Manager (Global)</option>
@@ -690,7 +665,7 @@ const UsersTab = () => {
                         })
                       }
                       disabled={inviteForm.role === "MANAGER"}
-                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors ${inviteForm.role === "MANAGER" ? "opacity-50 bg-slate-200 dark:bg-slate-700 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
+                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${inviteForm.role === "MANAGER" ? "opacity-50 bg-slate-200 dark:bg-slate-700 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
                     >
                       {inviteForm.role === "MANAGER" ? (
                         <option value="">Enterprise Global</option>
@@ -742,7 +717,7 @@ const UsersTab = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsEditing(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
             />
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
@@ -828,7 +803,7 @@ const UsersTab = () => {
                                   : ""),
                         })
                       }
-                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
+                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                       <option value="STAFF">Staff (Branch)</option>
                       <option value="MANAGER">Manager (Global)</option>
@@ -849,7 +824,7 @@ const UsersTab = () => {
                       disabled={
                         editForm.role === "MANAGER" || editForm.role === "ADMIN"
                       }
-                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors ${editForm.role === "MANAGER" || editForm.role === "ADMIN" ? "opacity-50 bg-slate-200 dark:bg-slate-700 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
+                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "MANAGER" || editForm.role === "ADMIN" ? "opacity-50 bg-slate-200 dark:bg-slate-700 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
                     >
                       {editForm.role === "MANAGER" ||
                       editForm.role === "ADMIN" ? (
