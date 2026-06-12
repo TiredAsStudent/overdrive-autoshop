@@ -6,7 +6,6 @@ import {
   MapPin,
   Mail,
   Clock,
-  Lock,
   MoreVertical,
   Search,
   Users,
@@ -20,6 +19,7 @@ import {
   PowerOff,
   Globe,
   Plus,
+  X,
 } from "lucide-react";
 import StatusBadge from "../../components/ui/StatusBadge";
 import ConfirmModal from "../../components/shared/ConfirmModal";
@@ -119,7 +119,8 @@ const UsersTab = () => {
     fetchData();
   }, []);
 
-  const handleInviteSubmit = async () => {
+  const handleInviteSubmit = async (e) => {
+    if (e) e.preventDefault();
     setInviteLoading(true);
     setInviteError(null);
     try {
@@ -148,7 +149,8 @@ const UsersTab = () => {
     }
   };
 
-  const handleEditSubmit = async () => {
+  const handleEditSubmit = async (e) => {
+    if (e) e.preventDefault();
     setEditLoading(true);
     setEditError(null);
     try {
@@ -223,8 +225,8 @@ const UsersTab = () => {
         isOpen: true,
         title: "Deactivate User",
         message:
-          "Are you sure you want to deactivate this user? They will be locked out immediately and all active sessions will be killed.",
-        confirmText: "Deactivate Account",
+          "Are you sure you want to deactivate this user? They will lose access to the system and will be signed out of all active sessions.",
+        confirmText: "Deactivate User",
         variant: "danger",
         onConfirm: () =>
           executeAction(() =>
@@ -239,8 +241,8 @@ const UsersTab = () => {
         isOpen: true,
         title: "Reactivate User",
         message:
-          "This will restore system access for this employee based on their current role configuration.",
-        confirmText: "Reactivate Account",
+          "Are you sure you want to reactivate this user? They will regain access to the system.",
+        confirmText: "Reactivate User",
         variant: "info",
         onConfirm: () =>
           executeAction(() =>
@@ -253,15 +255,15 @@ const UsersTab = () => {
     if (action === "KILL_SESSION") {
       setConfirmConfig({
         isOpen: true,
-        title: "Kill Active Sessions",
+        title: "Terminate Active Sessions",
         message:
-          "EMERGENCY ACTION: Instantly invalidate all browser tokens for this user. They will be logged out mid-action. Proceed?",
-        confirmText: "Kill Session",
+          "This will sign the user out of all active sessions. They will need to sign in again to continue using the system.",
+        confirmText: "Terminate Sessions",
         variant: "danger",
         onConfirm: () =>
           executeAction(
             () => userService.killSession(userId),
-            "Session Kill-Switch activated.",
+            "All active sessions have been terminated.",
           ),
       });
       return;
@@ -537,172 +539,198 @@ const UsersTab = () => {
       {/* 5. INVITE MODAL */}
       <AnimatePresence>
         {isInviting && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsInviting(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
-            />
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-slate-800 w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden z-10 p-8 md:p-10 space-y-8"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">
-                    Issue Invite
-                  </h3>
-                  <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-widest uppercase">
-                    Enforcing Closed-Loop Security
-                  </p>
-                </div>
-                <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500">
-                  <Lock size={24} />
-                </div>
+              {/* Header */}
+              <div className="flex justify-between items-center p-6 sm:p-8 pb-4">
+                <h2 className="text-xl sm:text-2xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
+                  Invite User
+                </h2>
+                <button
+                  onClick={() => setIsInviting(false)}
+                  disabled={inviteLoading}
+                  className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <X size={24} />
+                </button>
               </div>
 
-              {inviteError && (
-                <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl flex items-center gap-2">
-                  <AlertCircle size={16} className="shrink-0" /> {inviteError}
-                </div>
-              )}
-
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      value={inviteForm.firstName}
-                      onChange={(e) =>
-                        setInviteForm({
-                          ...inviteForm,
-                          firstName: e.target.value,
-                        })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                    />
+              {/* Scrollable Form Body */}
+              <div className="px-6 sm:px-8 pb-6 sm:pb-8 overflow-y-auto custom-scrollbar">
+                {inviteError && (
+                  <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
+                    <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                    <span>{inviteError}</span>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      value={inviteForm.lastName}
-                      onChange={(e) =>
-                        setInviteForm({
-                          ...inviteForm,
-                          lastName: e.target.value,
-                        })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                    Official Email
-                  </label>
-                  <div className="relative">
-                    <Mail
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={16}
-                    />
-                    <input
-                      type="email"
-                      value={inviteForm.email}
-                      onChange={(e) =>
-                        setInviteForm({ ...inviteForm, email: e.target.value })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      Role Level
-                    </label>
-                    <select
-                      value={inviteForm.role}
-                      onChange={(e) =>
-                        setInviteForm({
-                          ...inviteForm,
-                          role: e.target.value,
-                          branchId:
-                            e.target.value === "MANAGER"
-                              ? ""
-                              : branches.length > 0
-                                ? branches[0].id.toString()
-                                : "",
-                        })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer"
-                    >
-                      <option value="STAFF">Staff (Branch Lock)</option>
-                      <option value="MANAGER">Manager (Global)</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      Branch Assignment
-                    </label>
-                    <select
-                      value={inviteForm.branchId}
-                      onChange={(e) =>
-                        setInviteForm({
-                          ...inviteForm,
-                          branchId: e.target.value,
-                        })
-                      }
-                      disabled={inviteForm.role === "MANAGER"}
-                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${inviteForm.role === "MANAGER" ? "opacity-50 bg-slate-200 dark:bg-slate-700 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
-                    >
-                      {inviteForm.role === "MANAGER" ? (
-                        <option value="">Enterprise Global</option>
-                      ) : (
-                        branches.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.branch_name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl flex items-start gap-3 mt-4">
-                  <Clock size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold leading-relaxed italic uppercase tracking-wider">
-                    Security Notice: This generates a unique activation link
-                    valid for only 2 hours.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={handleInviteSubmit}
-                disabled={inviteLoading}
-                className="w-full py-4 bg-amber-500 text-slate-900 font-black rounded-xl uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {inviteLoading ? (
-                  <RefreshCw size={16} className="animate-spin" />
-                ) : (
-                  <Send size={16} />
                 )}
-                {inviteLoading
-                  ? "PROCESSING SECURE LINK..."
-                  : "ISSUE INVITATION"}
-              </button>
+
+                <form
+                  id="inviteForm"
+                  onSubmit={handleInviteSubmit}
+                  className="space-y-6 sm:space-y-8"
+                >
+                  {/* Basic Details Section */}
+                  <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
+                    <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
+                      <Users size={16} /> Basic Details
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          First Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={inviteForm.firstName}
+                          onChange={(e) =>
+                            setInviteForm({
+                              ...inviteForm,
+                              firstName: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Juan"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          Last Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={inviteForm.lastName}
+                          onChange={(e) =>
+                            setInviteForm({
+                              ...inviteForm,
+                              lastName: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Dela Cruz"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                        Official Email <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Mail
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                          size={16}
+                        />
+                        <input
+                          required
+                          type="email"
+                          value={inviteForm.email}
+                          onChange={(e) =>
+                            setInviteForm({
+                              ...inviteForm,
+                              email: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., juan@overdrive.com"
+                          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Access Configuration Section */}
+                  <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
+                    <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
+                      <ShieldCheck size={16} /> Access Configuration
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          Role Level <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={inviteForm.role}
+                          onChange={(e) =>
+                            setInviteForm({
+                              ...inviteForm,
+                              role: e.target.value,
+                              branchId:
+                                e.target.value === "MANAGER"
+                                  ? ""
+                                  : branches.length > 0
+                                    ? branches[0].id.toString()
+                                    : "",
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer"
+                        >
+                          <option value="STAFF">Staff (Branch Lock)</option>
+                          <option value="MANAGER">Manager (Global)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          Branch Assignment{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={inviteForm.branchId}
+                          onChange={(e) =>
+                            setInviteForm({
+                              ...inviteForm,
+                              branchId: e.target.value,
+                            })
+                          }
+                          disabled={inviteForm.role === "MANAGER"}
+                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${inviteForm.role === "MANAGER" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
+                        >
+                          {inviteForm.role === "MANAGER" ? (
+                            <option value="">Enterprise Global</option>
+                          ) : (
+                            branches.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.branch_name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl flex items-start gap-3 mt-2">
+                      <Clock
+                        size={16}
+                        className="text-amber-600 shrink-0 mt-0.5"
+                      />
+                      <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold leading-relaxed italic uppercase tracking-wider">
+                        Security Notice: This generates a unique activation link
+                        valid for only 2 hours.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={inviteLoading}
+                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-xs sm:text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                  >
+                    {inviteLoading && (
+                      <RefreshCw size={18} className="animate-spin" />
+                    )}
+                    {inviteLoading
+                      ? "SENDING INVITATION..."
+                      : "SEND INVITATION"}
+                  </button>
+                </form>
+              </div>
             </motion.div>
           </div>
         )}
@@ -711,145 +739,191 @@ const UsersTab = () => {
       {/* 6. EDIT MODAL */}
       <AnimatePresence>
         {isEditing && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsEditing(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
-            />
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-slate-800 w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden z-10 p-8 md:p-10 space-y-6"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
             >
-              <div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">
-                  Edit Personnel Config
-                </h3>
-                <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-widest uppercase">
-                  Update Identity & Access Rules
-                </p>
+              {/* Header */}
+              <div className="flex justify-between items-center p-6 sm:p-8 pb-4">
+                <h2 className="text-xl sm:text-2xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
+                  Edit Account Details
+                </h2>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  disabled={editLoading}
+                  className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <X size={24} />
+                </button>
               </div>
 
-              {editError && (
-                <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl flex items-center gap-2">
-                  <AlertCircle size={16} className="shrink-0" /> {editError}
-                </div>
-              )}
+              {/* Scrollable Form Body */}
+              <div className="px-6 sm:px-8 pb-6 sm:pb-8 overflow-y-auto custom-scrollbar">
+                {editError && (
+                  <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
+                    <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                    <span>{editError}</span>
+                  </div>
+                )}
 
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.firstName}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, firstName: e.target.value })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                    />
+                <form
+                  id="editForm"
+                  onSubmit={handleEditSubmit}
+                  className="space-y-6 sm:space-y-8"
+                >
+                  {/* Basic Details Section */}
+                  <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
+                    <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
+                      <Users size={16} /> Basic Details
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          First Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={editForm.firstName}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              firstName: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Juan"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          Last Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={editForm.lastName}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              lastName: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Dela Cruz"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                        Official Email <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Mail
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                          size={16}
+                        />
+                        <input
+                          required
+                          type="email"
+                          value={editForm.email}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, email: e.target.value })
+                          }
+                          placeholder="e.g., juan@overdrive.com"
+                          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.lastName}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, lastName: e.target.value })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                    />
+
+                  {/* Access Configuration Section */}
+                  <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
+                    <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
+                      <ShieldCheck size={16} /> Access Configuration
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          System Role <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          disabled={editForm.role === "ADMIN"}
+                          value={editForm.role}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              role: e.target.value,
+                              branchId:
+                                e.target.value === "MANAGER"
+                                  ? ""
+                                  : editForm.branchId ||
+                                    (branches.length > 0
+                                      ? branches[0].id.toString()
+                                      : ""),
+                            })
+                          }
+                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                          <option value="STAFF">Staff (Branch Lock)</option>
+                          <option value="MANAGER">Manager (Global)</option>
+                          {editForm.role === "ADMIN" && (
+                            <option value="ADMIN">Admin (Global)</option>
+                          )}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          Branch Assignment{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={editForm.branchId}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              branchId: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editForm.role === "MANAGER" ||
+                            editForm.role === "ADMIN"
+                          }
+                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "MANAGER" || editForm.role === "ADMIN" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
+                        >
+                          {editForm.role === "MANAGER" ||
+                          editForm.role === "ADMIN" ? (
+                            <option value="">Enterprise Global</option>
+                          ) : (
+                            branches.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.branch_name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                    Official Email
-                  </label>
-                  <input
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, email: e.target.value })
-                    }
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      System Role
-                    </label>
-                    <select
-                      disabled={editForm.role === "ADMIN"}
-                      value={editForm.role}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          role: e.target.value,
-                          branchId:
-                            e.target.value === "MANAGER"
-                              ? ""
-                              : editForm.branchId ||
-                                (branches.length > 0
-                                  ? branches[0].id.toString()
-                                  : ""),
-                        })
-                      }
-                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
-                    >
-                      <option value="STAFF">Staff (Branch)</option>
-                      <option value="MANAGER">Manager (Global)</option>
-                      {editForm.role === "ADMIN" && (
-                        <option value="ADMIN">Admin (Global)</option>
-                      )}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      Branch Assignment
-                    </label>
-                    <select
-                      value={editForm.branchId}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, branchId: e.target.value })
-                      }
-                      disabled={
-                        editForm.role === "MANAGER" || editForm.role === "ADMIN"
-                      }
-                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "MANAGER" || editForm.role === "ADMIN" ? "opacity-50 bg-slate-200 dark:bg-slate-700 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
-                    >
-                      {editForm.role === "MANAGER" ||
-                      editForm.role === "ADMIN" ? (
-                        <option value="">Enterprise Global</option>
-                      ) : (
-                        branches.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.branch_name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-                </div>
+
+                  <button
+                    type="submit"
+                    disabled={editLoading}
+                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-xs sm:text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                  >
+                    {editLoading ? (
+                      <RefreshCw size={18} className="animate-spin mr-2" />
+                    ) : null}
+                    {editLoading ? "UPDATING..." : "UPDATE ACCOUNT DETAILS"}
+                  </button>
+                </form>
               </div>
-              <button
-                onClick={handleEditSubmit}
-                disabled={editLoading}
-                className="w-full py-4 bg-amber-500 text-slate-900 font-black rounded-xl uppercase text-xs tracking-widest shadow-xl flex items-center justify-center hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {editLoading ? (
-                  <RefreshCw size={16} className="animate-spin mr-2" />
-                ) : null}
-                {editLoading ? "SAVING..." : "COMMIT CHANGES"}
-              </button>
             </motion.div>
           </div>
         )}
