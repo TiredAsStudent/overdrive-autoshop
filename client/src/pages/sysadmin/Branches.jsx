@@ -15,6 +15,7 @@ import {
 import { branchService } from "../../services/sysadmin/branch.service";
 import BranchModal from "../../features/sysadmin/components/BranchModal";
 import ConfirmModal from "../../components/shared/ConfirmModal";
+import DataTable from "../../components/shared/DataTable";
 
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -65,11 +66,9 @@ const Branches = () => {
   const handleModalSubmit = async (formData) => {
     try {
       if (selectedBranch) {
-        // Edit Action
         await branchService.updateBranch(selectedBranch.id, formData);
         showToast(`${formData.branch_name} updated successfully.`, "success");
       } else {
-        // Register Action
         await branchService.createBranch(formData);
         showToast(`${formData.branch_name} created successfully.`, "success");
       }
@@ -142,7 +141,6 @@ const Branches = () => {
         try {
           await branchService.toggleMaintenance(id, !currentStatus);
 
-          // Dynamic toast messaging based on the new status
           if (!currentStatus) {
             showToast(`${name} is now in maintenance mode.`, "warning");
           } else {
@@ -231,174 +229,134 @@ const Branches = () => {
         </div>
       </div>
 
-      {/* MASTER REGISTRY TABLE */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[32px] border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm relative min-h-[300px]">
-        {loading && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
-            <Loader2 className="h-8 w-8 text-amber-500 animate-spin mb-3" />
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-              Syncing Locations...
-            </span>
-          </div>
-        )}
-
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left whitespace-nowrap min-w-[800px]">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-black/20 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-white/5">
-                <th className="px-6 sm:px-8 py-5">Branch Details</th>
-                <th className="px-6 sm:px-8 py-5">Branch Code</th>
-                <th className="px-6 sm:px-8 py-5">Status</th>
-                <th className="px-6 sm:px-8 py-5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-white/5">
-              {filteredBranches.map((branch) => (
-                <tr
-                  key={branch.id}
-                  className={`group transition-colors ${
-                    !branch.is_active
-                      ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale"
-                      : branch.is_maintenance_mode
-                        ? "bg-red-50/30 dark:bg-red-900/10 hover:bg-red-50/50"
-                        : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
-                  }`}
+      {/* UNIVERSAL DATATABLE */}
+      <DataTable
+        headers={["Branch Details", "Branch Code", "Status", "Actions"]}
+        data={filteredBranches}
+        loading={loading}
+        emptyTitle={`No ${showArchived ? "archived" : "active"} locations found`}
+        emptySubtitle="Try adjusting your search query or register a new branch."
+        renderRow={(branch) => (
+          <tr
+            key={branch.id}
+            className={`group transition-colors ${
+              !branch.is_active
+                ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale"
+                : branch.is_maintenance_mode
+                  ? "bg-red-50/30 dark:bg-red-900/10 hover:bg-red-50/50"
+                  : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
+            }`}
+          >
+            {/* Branch Details */}
+            <td className="px-6 sm:px-8 py-5 sm:py-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div
+                  className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shrink-0 ${branch.is_active ? "bg-amber-500/10 text-amber-600 dark:text-amber-500" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}
                 >
-                  {/* Branch Details */}
-                  <td className="px-6 sm:px-8 py-5 sm:py-6">
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      <div
-                        className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shrink-0 ${branch.is_active ? "bg-amber-500/10 text-amber-600 dark:text-amber-500" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}
-                      >
-                        <Building2 size={18} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-black text-slate-900 dark:text-white italic tracking-tight uppercase truncate">
-                          {branch.branch_name}
-                        </p>
-                        <p
-                          className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 truncate max-w-[200px] sm:max-w-[300px] mt-0.5"
-                          title={branch.address}
-                        >
-                          {branch.address || "Missing official address"}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
+                  <Building2 size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-slate-900 dark:text-white italic tracking-tight uppercase truncate">
+                    {branch.branch_name}
+                  </p>
+                  <p
+                    className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 truncate max-w-[200px] sm:max-w-[300px] mt-0.5"
+                    title={branch.address}
+                  >
+                    {branch.address || "Missing official address"}
+                  </p>
+                </div>
+              </div>
+            </td>
 
-                  {/* Branch Code */}
-                  <td className="px-6 sm:px-8 py-5 sm:py-6">
-                    <div className="flex flex-col items-start">
-                      <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20">
-                        <span className="text-xs font-black text-amber-700 dark:text-amber-400 tracking-[0.2em] uppercase">
-                          {branch.branch_code}
-                        </span>
-                      </div>
-                      <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-1.5">
-                        Branch Reference
-                      </span>
-                    </div>
-                  </td>
+            {/* Branch Code / System Identifier Badge */}
+            <td className="px-6 sm:px-8 py-5 sm:py-6">
+              <div className="flex flex-col items-start">
+                <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20">
+                  <span className="text-xs font-black text-amber-700 dark:text-amber-400 tracking-[0.2em] uppercase">
+                    {branch.branch_code}
+                  </span>
+                </div>
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-1.5">
+                  Branch Reference
+                </span>
+              </div>
+            </td>
 
-                  {/* Security Status */}
-                  <td className="px-6 sm:px-8 py-5 sm:py-6">
-                    {!branch.is_active ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                        <Archive size={14} /> Archived
-                      </span>
-                    ) : branch.is_maintenance_mode ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20">
-                        <ShieldAlert size={14} /> Locked
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-                        <ShieldCheck size={14} /> Operational
-                      </span>
-                    )}
-                  </td>
-
-                  {/* Governance Actions */}
-                  <td className="px-6 sm:px-8 py-5 sm:py-6 text-right">
-                    <div className="flex items-center justify-end gap-1 sm:gap-2">
-                      {!branch.is_active ? (
-                        <button
-                          onClick={() =>
-                            handleRestore(branch.id, branch.branch_name)
-                          }
-                          title="Restore Registry"
-                          className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2 cursor-pointer"
-                        >
-                          <RotateCcw size={14} /> Restore
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() =>
-                              handleToggleMaintenance(
-                                branch.id,
-                                branch.branch_name,
-                                branch.is_maintenance_mode,
-                              )
-                            }
-                            title={
-                              branch.is_maintenance_mode
-                                ? "Unlock Branch"
-                                : "Lock for Maintenance"
-                            }
-                            className={`p-2 sm:p-2.5 rounded-xl transition-colors cursor-pointer ${branch.is_maintenance_mode ? "text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-300 dark:hover:bg-white/10"}`}
-                          >
-                            {branch.is_maintenance_mode ? (
-                              <ShieldCheck size={16} />
-                            ) : (
-                              <ShieldAlert size={16} />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleEdit(branch)}
-                            title="Edit Location Profile"
-                            className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDelete(branch.id, branch.branch_name)
-                            }
-                            title="Archive Registry"
-                            className="p-2 sm:p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {filteredBranches.length === 0 && !loading && (
-                <tr>
-                  <td colSpan="4" className="px-8 py-16 text-center">
-                    <div className="inline-flex flex-col items-center justify-center text-slate-400">
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-full mb-3">
-                        <Search size={32} className="opacity-40" />
-                      </div>
-                      <p className="text-sm font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                        No {showArchived ? "archived" : "active"} locations
-                        found
-                      </p>
-                      <p className="text-xs font-medium mt-1.5 opacity-70">
-                        Try adjusting your search query or register a new
-                        branch.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
+            {/* Security Status */}
+            <td className="px-6 sm:px-8 py-5 sm:py-6">
+              {!branch.is_active ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                  <Archive size={14} /> Archived
+                </span>
+              ) : branch.is_maintenance_mode ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20">
+                  <ShieldAlert size={14} /> Locked
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                  <ShieldCheck size={14} /> Operational
+                </span>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </td>
+
+            {/* Governance Actions */}
+            <td className="px-6 sm:px-8 py-5 sm:py-6 text-right">
+              <div className="flex items-center justify-end gap-1 sm:gap-2">
+                {!branch.is_active ? (
+                  <button
+                    onClick={() => handleRestore(branch.id, branch.branch_name)}
+                    title="Restore Registry"
+                    className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <RotateCcw size={14} /> Restore
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() =>
+                        handleToggleMaintenance(
+                          branch.id,
+                          branch.branch_name,
+                          branch.is_maintenance_mode,
+                        )
+                      }
+                      title={
+                        branch.is_maintenance_mode
+                          ? "Unlock Branch"
+                          : "Lock for Maintenance"
+                      }
+                      className={`p-2 sm:p-2.5 rounded-xl transition-colors cursor-pointer ${branch.is_maintenance_mode ? "text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20" : "text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-white/10"}`}
+                    >
+                      {branch.is_maintenance_mode ? (
+                        <ShieldCheck size={16} />
+                      ) : (
+                        <ShieldAlert size={16} />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleEdit(branch)}
+                      title="Edit Location Profile"
+                      className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleDelete(branch.id, branch.branch_name)
+                      }
+                      title="Archive Registry"
+                      className="p-2 sm:p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </>
+                )}
+              </div>
+            </td>
+          </tr>
+        )}
+      />
 
       {/* MODALS */}
       <BranchModal
