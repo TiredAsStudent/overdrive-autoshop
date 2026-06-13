@@ -54,8 +54,25 @@ class UserService {
     };
   }
 
-  static async getLiveRoster() {
-    return await User.getAllUsers();
+  static async getLiveRoster(page = 1, limit = 5, search = "") {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, users] = await Promise.all([
+      User.countFilteredRoster(search),
+      User.findPaginatedRoster(limit, offset, search),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      users,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
   }
 
   static async updateEmployeeProfile(

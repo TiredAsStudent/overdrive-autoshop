@@ -18,23 +18,36 @@ import {
   Globe,
   Plus,
   X,
+  Loader2,
+  Send,
 } from "lucide-react";
 import StatusBadge from "../../components/ui/StatusBadge";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
+import Pagination from "../../components/shared/Pagination";
 import { userService } from "../../services/sysadmin/user.service";
 import { branchService } from "../../services/sysadmin/branch.service";
 import { useAuth } from "../../context/AuthContext";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const UsersTab = () => {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
+  const [activeCount, setActiveCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+
   const [openMenuId, setOpenMenuId] = useState(null);
 
-  // Global Confirmation Modal State
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
     title: "",
@@ -44,7 +57,6 @@ const UsersTab = () => {
     onConfirm: () => {},
   });
 
-  // Invite Modal State
   const [isInviting, setIsInviting] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState(null);
@@ -56,7 +68,6 @@ const UsersTab = () => {
     branchId: "",
   });
 
-  // Edit Modal State
   const [isEditing, setIsEditing] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState(null);
@@ -71,7 +82,6 @@ const UsersTab = () => {
 
   const menuRef = useRef();
 
-  // Close dropdown menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target))
@@ -81,26 +91,44 @@ const UsersTab = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Parallel Fetch: Loads Users and Branches simultaneously
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [userRoster, branchDataResponse] = await Promise.all([
-        userService.getRoster(),
-        branchService.getAllBranches(),
-      ]);
+      const [userRosterResponse, branchDataResponse, globalStatsResponse] =
+        await Promise.all([
+          userService.getRoster(
+            currentPage,
+            ITEMS_PER_PAGE,
+            debouncedSearchTerm,
+          ),
 
-      setUsers(userRoster || []);
+          branchService.getAllBranches(1, 100, "", "active"),
 
-      // Extract active branches safely
+          userService.getRoster(1, 1000, ""),
+        ]);
+
+      setUsers(userRosterResponse.data || []);
+      setTotalPages(userRosterResponse.pagination?.totalPages || 1);
+
+      const allUsers = globalStatsResponse.data || [];
+      setActiveCount(
+        allUsers.filter((u) => u.account_status === "ACTIVE").length,
+      );
+      setPendingCount(
+        allUsers.filter((u) => u.account_status === "PENDING").length,
+      );
+
       const rawBranches = branchDataResponse?.data || branchDataResponse || [];
       const activeBranches = Array.isArray(rawBranches)
         ? rawBranches.filter((b) => b.is_active)
         : [];
       setBranches(activeBranches);
 
-      // Pre-select the first active branch for invites
-      if (activeBranches.length > 0) {
+      if (activeBranches.length > 0 && !inviteForm.branchId) {
         setInviteForm((prev) => ({
           ...prev,
           branchId: activeBranches[0].id.toString(),
@@ -115,7 +143,7 @@ const UsersTab = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [currentPage, debouncedSearchTerm]);
 
   const handleInviteSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -124,7 +152,6 @@ const UsersTab = () => {
     try {
       const payload = {
         ...inviteForm,
-        // Strict Branch Lock Enforcement before sending to backend
         branchId:
           inviteForm.role === "MANAGER"
             ? null
@@ -175,7 +202,7 @@ const UsersTab = () => {
   const executeAction = async (actionFn, successMessage) => {
     try {
       await actionFn();
-      if (successMessage) alert(successMessage); // Optional generic toast fallback
+      if (successMessage) alert(successMessage);
       fetchData();
     } catch (error) {
       alert(error.message || "An error occurred.");
@@ -268,23 +295,10 @@ const UsersTab = () => {
     }
   };
 
-  const activeCount = users.filter((u) => u.account_status === "ACTIVE").length;
-  const pendingCount = users.filter(
-    (u) => u.account_status === "PENDING",
-  ).length;
-  const filteredUsers = users.filter(
-    (user) =>
-      `${user.first_name} ${user.last_name}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 w-full pb-10">
-      {/* ACTION BAR */}
+      {/* Action Bar */}
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        {/* Header Title Section */}
         <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
           <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
             <Users className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
@@ -299,11 +313,14 @@ const UsersTab = () => {
           </div>
         </div>
 
-        {/* Filter & Action Controls */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
           <div className="relative w-full sm:max-w-xs lg:w-64">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search size={16} className="text-slate-400" />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              {searchTerm !== debouncedSearchTerm ? (
+                <Loader2 size={16} className="text-amber-500 animate-spin" />
+              ) : (
+                <Search size={16} className="text-slate-400" />
+              )}
             </div>
             <input
               type="text"
@@ -329,7 +346,6 @@ const UsersTab = () => {
           <div className="absolute right-0 top-0 p-4 text-slate-900 dark:text-white opacity-[0.03] dark:opacity-10 pointer-events-none">
             <ShieldCheck size={100} />
           </div>
-
           <div className="relative z-10">
             <p className="text-[10px] font-black uppercase text-amber-500 tracking-[0.2em] mb-2">
               Gate Status
@@ -370,7 +386,7 @@ const UsersTab = () => {
       {/* 4. Directory Table */}
       <DataTable
         headers={["Account Details", "Role", "Branch", "Status & Actions"]}
-        data={filteredUsers}
+        data={users}
         loading={isLoading}
         emptyTitle="No personnel found"
         emptySubtitle="Try adjusting your search criteria or issue a new security invite."
@@ -532,6 +548,13 @@ const UsersTab = () => {
             </td>
           </tr>
         )}
+      />
+
+      {/* PAGINATION BAR */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
       />
 
       {/* 5. INVITE MODAL */}
@@ -720,8 +743,10 @@ const UsersTab = () => {
                     disabled={inviteLoading}
                     className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-xs sm:text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
                   >
-                    {inviteLoading && (
+                    {inviteLoading ? (
                       <RefreshCw size={18} className="animate-spin" />
+                    ) : (
+                      <Send size={18} />
                     )}
                     {inviteLoading
                       ? "SENDING INVITATION..."
@@ -869,7 +894,7 @@ const UsersTab = () => {
                           }
                           className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
-                          <option value="STAFF">Staff (Branch Lock)</option>
+                          <option value="STAFF">Staff (Branch)</option>
                           <option value="MANAGER">Manager (Global)</option>
                           {editForm.role === "ADMIN" && (
                             <option value="ADMIN">Admin (Global)</option>

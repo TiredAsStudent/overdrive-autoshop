@@ -30,6 +30,7 @@ const {
   toggleMaintenanceSchema,
 } = require("../../validations/sysadmin/branch.schema");
 const {
+  getRosterSchema,
   inviteUserSchema,
   updateUserSchema,
 } = require("../../validations/sysadmin/user.schema");
@@ -112,7 +113,7 @@ router.put(
 // ==========================================
 // SUB-TAB 2.2: USER MANAGEMENT & SECURITY
 // ==========================================
-router.get("/users", UserController.getRoster);
+router.get("/users", validate(getRosterSchema), UserController.getRoster);
 
 router.post(
   "/users/invite",

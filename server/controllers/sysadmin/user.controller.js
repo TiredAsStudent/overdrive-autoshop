@@ -23,13 +23,18 @@ class UserController {
 
   static async getRoster(req, res) {
     try {
-      const roster = await UserService.getLiveRoster();
-      return sendSuccess(
-        res,
-        STATUS_CODES.SUCCESS,
-        roster,
-        "Live enterprise roster retrieved.",
-      );
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 5;
+      const search = req.query.search || "";
+
+      const result = await UserService.getLiveRoster(page, limit, search);
+
+      return res.status(STATUS_CODES.SUCCESS).json({
+        success: true,
+        data: result.users,
+        pagination: result.pagination,
+        message: "Live enterprise roster retrieved.",
+      });
     } catch (error) {
       return sendError(
         res,

@@ -64,8 +64,21 @@ class User {
     return userResult.rows[0];
   }
 
-  static async getAllUsers() {
-    const sql = `
+  static async countFilteredRoster(search) {
+    let sql = `SELECT COUNT(*) FROM users WHERE role IN ('ADMIN', 'MANAGER', 'STAFF')`;
+    const values = [];
+
+    if (search) {
+      sql += ` AND (first_name ILIKE $1 OR last_name ILIKE $1 OR email ILIKE $1)`;
+      values.push(`%${search}%`);
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedRoster(limit, offset, search) {
+    let sql = `
       SELECT 
         u.id, u.first_name, u.last_name, u.email, u.role, u.is_active, u.created_at, u.google_id,
         b.branch_name, b.id as branch_id,
@@ -76,10 +89,22 @@ class User {
         END as account_status
       FROM users u 
       LEFT JOIN branches b ON u.branch_id = b.id 
-      WHERE u.role IN ('ADMIN', 'MANAGER', 'STAFF') 
-      ORDER BY u.created_at DESC;
+      WHERE u.role IN ('ADMIN', 'MANAGER', 'STAFF')
     `;
-    const result = await query(sql);
+
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      sql += ` AND (u.first_name ILIKE $${paramIdx} OR u.last_name ILIKE $${paramIdx} OR u.email ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    sql += ` ORDER BY u.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
     return result.rows;
   }
 
