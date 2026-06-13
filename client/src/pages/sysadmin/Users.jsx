@@ -9,7 +9,6 @@ import {
   Search,
   Users,
   Key,
-  AlertCircle,
   RefreshCw,
   UserX,
   Edit,
@@ -28,10 +27,13 @@ import Pagination from "../../components/shared/Pagination";
 import { userService } from "../../services/sysadmin/user.service";
 import { branchService } from "../../services/sysadmin/branch.service";
 import { useAuth } from "../../context/AuthContext";
+import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
 const UsersTab = () => {
   const { user: currentUser } = useAuth();
+  const { showToast } = useApp();
+
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,7 +61,6 @@ const UsersTab = () => {
 
   const [isInviting, setIsInviting] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteError, setInviteError] = useState(null);
   const [inviteForm, setInviteForm] = useState({
     email: "",
     firstName: "",
@@ -70,7 +71,6 @@ const UsersTab = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState(null);
   const [editForm, setEditForm] = useState({
     id: null,
     firstName: "",
@@ -105,9 +105,7 @@ const UsersTab = () => {
             ITEMS_PER_PAGE,
             debouncedSearchTerm,
           ),
-
           branchService.getAllBranches(1, 100, "", "active"),
-
           userService.getRoster(1, 1000, ""),
         ]);
 
@@ -135,7 +133,7 @@ const UsersTab = () => {
         }));
       }
     } catch (error) {
-      console.error("Failed to load dashboard data:", error);
+      showToast("Unable to load personnel accounts.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -148,7 +146,6 @@ const UsersTab = () => {
   const handleInviteSubmit = async (e) => {
     if (e) e.preventDefault();
     setInviteLoading(true);
-    setInviteError(null);
     try {
       const payload = {
         ...inviteForm,
@@ -158,6 +155,9 @@ const UsersTab = () => {
             : parseInt(inviteForm.branchId, 10),
       };
       await userService.inviteUser(payload);
+
+      showToast(`Secure invitation issued to ${payload.email}`, "success");
+
       setIsInviting(false);
       setInviteForm({
         email: "",
@@ -168,7 +168,7 @@ const UsersTab = () => {
       });
       fetchData();
     } catch (error) {
-      setInviteError(error.message);
+      showToast(error.message, "error");
     } finally {
       setInviteLoading(false);
     }
@@ -177,7 +177,6 @@ const UsersTab = () => {
   const handleEditSubmit = async (e) => {
     if (e) e.preventDefault();
     setEditLoading(true);
-    setEditError(null);
     try {
       const payload = {
         firstName: editForm.firstName,
@@ -190,10 +189,13 @@ const UsersTab = () => {
             : parseInt(editForm.branchId, 10),
       };
       await userService.updateUser(editForm.id, payload);
+
+      showToast(`Account details updated successfully.`, "success");
+
       setIsEditing(false);
       fetchData();
     } catch (error) {
-      setEditError(error.message);
+      showToast(error.message, "error");
     } finally {
       setEditLoading(false);
     }
@@ -202,10 +204,10 @@ const UsersTab = () => {
   const executeAction = async (actionFn, successMessage) => {
     try {
       await actionFn();
-      if (successMessage) alert(successMessage);
+      if (successMessage) showToast(successMessage, "success");
       fetchData();
     } catch (error) {
-      alert(error.message || "An error occurred.");
+      showToast(error.message || "An error occurred.", "error");
     }
   };
 
@@ -213,7 +215,6 @@ const UsersTab = () => {
     setOpenMenuId(null);
 
     if (action === "EDIT") {
-      setEditError(null);
       setEditForm({
         id: userObj.id,
         firstName: userObj.first_name,
@@ -239,7 +240,7 @@ const UsersTab = () => {
         onConfirm: () =>
           executeAction(
             () => userService.resendInvite(userId),
-            "New invite sent securely.",
+            "New secure invite has been issued.",
           ),
       });
       return;
@@ -254,8 +255,9 @@ const UsersTab = () => {
         confirmText: "Deactivate User",
         variant: "danger",
         onConfirm: () =>
-          executeAction(() =>
-            userService.updateUser(userId, { isActive: false }),
+          executeAction(
+            () => userService.updateUser(userId, { isActive: false }),
+            "User account has been deactivated.",
           ),
       });
       return;
@@ -270,8 +272,9 @@ const UsersTab = () => {
         confirmText: "Reactivate User",
         variant: "info",
         onConfirm: () =>
-          executeAction(() =>
-            userService.updateUser(userId, { isActive: true }),
+          executeAction(
+            () => userService.updateUser(userId, { isActive: true }),
+            "User account has been reactivated.",
           ),
       });
       return;
@@ -288,7 +291,7 @@ const UsersTab = () => {
         onConfirm: () =>
           executeAction(
             () => userService.killSession(userId),
-            "All active sessions have been terminated.",
+            "All active browser sessions terminated.",
           ),
       });
       return;
@@ -583,13 +586,6 @@ const UsersTab = () => {
 
               {/* Scrollable Form Body */}
               <div className="px-6 sm:px-8 pb-6 sm:pb-8 overflow-y-auto custom-scrollbar">
-                {inviteError && (
-                  <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
-                    <AlertCircle size={18} className="shrink-0 mt-0.5" />
-                    <span>{inviteError}</span>
-                  </div>
-                )}
-
                 <form
                   id="inviteForm"
                   onSubmit={handleInviteSubmit}
@@ -749,8 +745,8 @@ const UsersTab = () => {
                       <Send size={18} />
                     )}
                     {inviteLoading
-                      ? "SENDING INVITATION..."
-                      : "SEND INVITATION"}
+                      ? "PROCESSING SECURE LINK..."
+                      : "ISSUE INVITATION"}
                   </button>
                 </form>
               </div>
@@ -785,13 +781,6 @@ const UsersTab = () => {
 
               {/* Scrollable Form Body */}
               <div className="px-6 sm:px-8 pb-6 sm:pb-8 overflow-y-auto custom-scrollbar">
-                {editError && (
-                  <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
-                    <AlertCircle size={18} className="shrink-0 mt-0.5" />
-                    <span>{editError}</span>
-                  </div>
-                )}
-
                 <form
                   id="editForm"
                   onSubmit={handleEditSubmit}
