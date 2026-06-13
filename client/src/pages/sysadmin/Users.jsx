@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  UserPlus,
   ShieldCheck,
   MapPin,
   Mail,
@@ -10,7 +9,6 @@ import {
   Search,
   Users,
   Key,
-  Send,
   AlertCircle,
   RefreshCw,
   UserX,
@@ -385,7 +383,7 @@ const UsersTab = () => {
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 bg-slate-100 dark:bg-black/20 rounded-xl sm:rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors shrink-0">
-                  <Users className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <Users className="text-amber-600 dark:text-overdrive-yellow w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="min-w-0 max-w-[150px] sm:max-w-xs lg:max-w-none">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -431,7 +429,7 @@ const UsersTab = () => {
               <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-black text-slate-500 uppercase">
                 {user.branch_name ? (
                   <>
-                    <MapPin size={12} className="text-slate-400" />{" "}
+                    <MapPin size={12} className="text-blue-500" />{" "}
                     {user.branch_name}
                   </>
                 ) : (
