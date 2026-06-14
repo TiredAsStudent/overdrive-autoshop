@@ -310,14 +310,14 @@ const UsersTab = () => {
             <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
               Users Accounts
             </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5 truncate">
               User Accounts & Access Control
             </p>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="relative w-full sm:max-w-xs lg:w-64">
+          <div className="relative w-full sm:max-w-xs lg:w-64 shrink-0">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               {searchTerm !== debouncedSearchTerm ? (
                 <Loader2 size={16} className="text-amber-500 animate-spin" />
@@ -327,25 +327,25 @@ const UsersTab = () => {
             </div>
             <input
               type="text"
-              placeholder="Search users by name or email..."
+              placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+              className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
             />
           </div>
 
           <button
             onClick={() => setIsInviting(true)}
-            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer"
+            className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer shrink-0"
           >
             <Plus size={16} /> Invite User
           </button>
         </div>
       </div>
 
-      {/* 2. Top Stats KPIs */}
+      {/* Top Stats KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-        <div className="bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-sm relative overflow-hidden border border-slate-200 dark:border-white/10 flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[32px] p-6 sm:p-8 shadow-sm relative overflow-hidden border border-slate-200 dark:border-white/10 flex flex-col justify-between">
           <div className="absolute right-0 top-0 p-4 text-slate-900 dark:text-white opacity-[0.03] dark:opacity-10 pointer-events-none">
             <ShieldCheck size={100} />
           </div>
@@ -353,40 +353,40 @@ const UsersTab = () => {
             <p className="text-[10px] font-black uppercase text-amber-500 tracking-[0.2em] mb-2">
               Gate Status
             </p>
-            <h3 className="text-3xl font-black italic text-slate-900 dark:text-white">
+            <h3 className="text-2xl sm:text-3xl font-black italic text-slate-900 dark:text-white">
               Restricted
             </h3>
-            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase leading-snug">
               Public user registration is disabled.
             </p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl sm:rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
           <p className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest mb-2">
             Active Users
           </p>
-          <h3 className="text-4xl font-black text-slate-900 dark:text-white italic">
+          <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white italic">
             {activeCount.toString().padStart(2, "0")}
           </h3>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl sm:rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
           <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-2">
             Pending Invites
           </p>
           <div className="flex items-center justify-between">
-            <h3 className="text-4xl font-black text-slate-900 dark:text-white italic">
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white italic">
               {pendingCount.toString().padStart(2, "0")}
             </h3>
-            <span className="text-[10px] font-black text-slate-400 uppercase italic">
+            <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase italic">
               Awaiting Setup
             </span>
           </div>
         </div>
       </div>
 
-      {/* 4. Directory Table */}
+      {/* Directory Table */}
       <DataTable
         headers={["Account Details", "Role", "Branch", "Status & Actions"]}
         data={users}
@@ -399,17 +399,16 @@ const UsersTab = () => {
             className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors relative"
           >
             {/* Identity Column */}
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 bg-slate-100 dark:bg-black/20 rounded-xl sm:rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors shrink-0">
                   <Users className="text-amber-600 dark:text-overdrive-yellow w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <div className="min-w-0 max-w-[150px] sm:max-w-xs lg:max-w-none">
+                <div className="min-w-0 flex-1 max-w-[140px] sm:max-w-[200px] lg:max-w-none">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight truncate">
+                    <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight truncate w-full sm:w-auto">
                       {user.first_name} {user.last_name}
                     </p>
-                    {/* Google SSO Badge */}
                     {user.google_id && (
                       <span
                         title="Secured via Google SSO"
@@ -419,7 +418,7 @@ const UsersTab = () => {
                       </span>
                     )}
                   </div>
-                  <p className="text-[9px] sm:text-[10px] text-slate-500 font-bold mt-0.5 truncate">
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 font-bold mt-0.5 truncate w-full">
                     {user.email}
                   </p>
                 </div>
@@ -427,7 +426,7 @@ const UsersTab = () => {
             </td>
 
             {/* Role Column */}
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex items-center gap-2">
                 <Key
                   size={14}
@@ -443,17 +442,19 @@ const UsersTab = () => {
               </div>
             </td>
 
-            {/* Branch Assignment Column */}
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+            {/* Branch Column */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-black text-slate-500 uppercase">
                 {user.branch_name ? (
                   <>
-                    <MapPin size={12} className="text-blue-500" />{" "}
-                    {user.branch_name}
+                    <MapPin size={12} className="text-blue-500 shrink-0" />{" "}
+                    <span className="truncate max-w-[100px] sm:max-w-none">
+                      {user.branch_name}
+                    </span>
                   </>
                 ) : (
                   <>
-                    <Globe size={12} className="text-amber-500" /> Enterprise
+                    <Globe size={12} className="text-amber-500 shrink-0" />{" "}
                     Global
                   </>
                 )}
@@ -461,8 +462,8 @@ const UsersTab = () => {
             </td>
 
             {/* Status & Actions Column */}
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-3 sm:gap-4 relative">
+            <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
+              <div className="flex items-center justify-end gap-2 sm:gap-4 relative">
                 <StatusBadge
                   status={user.account_status}
                   type={
@@ -474,13 +475,12 @@ const UsersTab = () => {
                   }
                 />
 
-                {/* Self-Preservation Logic Display */}
                 {currentUser?.id === user.id ? (
-                  <span className="text-[8px] sm:text-[9px] font-black bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 px-2 py-1 rounded-lg uppercase whitespace-nowrap">
-                    Active Session
+                  <span className="text-[8px] sm:text-[9px] font-black bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 px-2 py-1 rounded-lg uppercase whitespace-nowrap ml-2">
+                    Active
                   </span>
                 ) : (
-                  <div ref={menuRef} className="w-8 flex justify-end">
+                  <div ref={menuRef} className="w-8 flex justify-end shrink-0">
                     <button
                       onClick={() =>
                         setOpenMenuId(openMenuId === user.id ? null : user.id)
@@ -489,13 +489,13 @@ const UsersTab = () => {
                     >
                       <MoreVertical
                         size={16}
-                        className="sm:w-[18px] sm:h-[18px]"
+                        className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px]"
                       />
                     </button>
 
                     {/* Action Menu */}
                     {openMenuId === user.id && (
-                      <div className="absolute right-0 top-10 mt-2 w-48 sm:w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-white/10 z-50 overflow-hidden text-left">
+                      <div className="absolute right-4 sm:right-8 top-12 mt-1 w-48 sm:w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-white/10 z-[60] overflow-hidden text-left">
                         {user.account_status === "PENDING" && (
                           <button
                             onMouseDown={() =>
@@ -553,14 +553,13 @@ const UsersTab = () => {
         )}
       />
 
-      {/* PAGINATION BAR */}
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
 
-      {/* 5. INVITE MODAL */}
+      {/* INVITE MODAL */}
       <AnimatePresence>
         {isInviting && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
@@ -568,10 +567,9 @@ const UsersTab = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+              className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
             >
-              {/* Header */}
-              <div className="flex justify-between items-center p-6 sm:p-8 pb-4">
+              <div className="flex justify-between items-center p-5 sm:p-8 pb-4">
                 <h2 className="text-xl sm:text-2xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
                   Invite User
                 </h2>
@@ -584,8 +582,7 @@ const UsersTab = () => {
                 </button>
               </div>
 
-              {/* Scrollable Form Body */}
-              <div className="px-6 sm:px-8 pb-6 sm:pb-8 overflow-y-auto custom-scrollbar">
+              <div className="px-5 sm:px-8 pb-5 sm:pb-8 overflow-y-auto custom-scrollbar">
                 <form
                   id="inviteForm"
                   onSubmit={handleInviteSubmit}
@@ -597,7 +594,7 @@ const UsersTab = () => {
                       <Users size={16} /> Basic Details
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
                       <div>
                         <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
                           First Name <span className="text-red-500">*</span>
@@ -613,7 +610,7 @@ const UsersTab = () => {
                             })
                           }
                           placeholder="e.g., Juan"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                          className="w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
                         />
                       </div>
                       <div>
@@ -631,7 +628,7 @@ const UsersTab = () => {
                             })
                           }
                           placeholder="e.g., Dela Cruz"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                          className="w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
                         />
                       </div>
                     </div>
@@ -656,7 +653,7 @@ const UsersTab = () => {
                             })
                           }
                           placeholder="e.g., juan@overdrive.com"
-                          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                          className="w-full pl-10 pr-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
                         />
                       </div>
                     </div>
@@ -668,7 +665,7 @@ const UsersTab = () => {
                       <ShieldCheck size={16} /> Access Configuration
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
                       <div>
                         <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
                           Role Level <span className="text-red-500">*</span>
@@ -687,7 +684,7 @@ const UsersTab = () => {
                                     : "",
                             })
                           }
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer"
+                          className="w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer"
                         >
                           <option value="STAFF">Staff (Branch Lock)</option>
                           <option value="MANAGER">Manager (Global)</option>
@@ -707,7 +704,7 @@ const UsersTab = () => {
                             })
                           }
                           disabled={inviteForm.role === "MANAGER"}
-                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${inviteForm.role === "MANAGER" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
+                          className={`w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${inviteForm.role === "MANAGER" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
                         >
                           {inviteForm.role === "MANAGER" ? (
                             <option value="">Enterprise Global</option>
@@ -737,7 +734,7 @@ const UsersTab = () => {
                   <button
                     type="submit"
                     disabled={inviteLoading}
-                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-xs sm:text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-[11px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
                   >
                     {inviteLoading ? (
                       <RefreshCw size={18} className="animate-spin" />
@@ -755,7 +752,7 @@ const UsersTab = () => {
         )}
       </AnimatePresence>
 
-      {/* 6. EDIT MODAL */}
+      {/* EDIT MODAL */}
       <AnimatePresence>
         {isEditing && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
@@ -763,10 +760,9 @@ const UsersTab = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+              className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
             >
-              {/* Header */}
-              <div className="flex justify-between items-center p-6 sm:p-8 pb-4">
+              <div className="flex justify-between items-center p-5 sm:p-8 pb-4">
                 <h2 className="text-xl sm:text-2xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
                   Edit Account Details
                 </h2>
@@ -779,20 +775,18 @@ const UsersTab = () => {
                 </button>
               </div>
 
-              {/* Scrollable Form Body */}
-              <div className="px-6 sm:px-8 pb-6 sm:pb-8 overflow-y-auto custom-scrollbar">
+              <div className="px-5 sm:px-8 pb-5 sm:pb-8 overflow-y-auto custom-scrollbar">
                 <form
                   id="editForm"
                   onSubmit={handleEditSubmit}
                   className="space-y-6 sm:space-y-8"
                 >
-                  {/* Basic Details Section */}
                   <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
                     <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
                       <Users size={16} /> Basic Details
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
                       <div>
                         <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
                           First Name <span className="text-red-500">*</span>
@@ -808,7 +802,7 @@ const UsersTab = () => {
                             })
                           }
                           placeholder="e.g., Juan"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                          className="w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
                         />
                       </div>
                       <div>
@@ -826,7 +820,7 @@ const UsersTab = () => {
                             })
                           }
                           placeholder="e.g., Dela Cruz"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                          className="w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
                         />
                       </div>
                     </div>
@@ -848,19 +842,18 @@ const UsersTab = () => {
                             setEditForm({ ...editForm, email: e.target.value })
                           }
                           placeholder="e.g., juan@overdrive.com"
-                          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                          className="w-full pl-10 pr-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Access Configuration Section */}
                   <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
                     <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
                       <ShieldCheck size={16} /> Access Configuration
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
                       <div>
                         <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
                           System Role <span className="text-red-500">*</span>
@@ -881,7 +874,7 @@ const UsersTab = () => {
                                       : ""),
                             })
                           }
-                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
+                          className={`w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <option value="STAFF">Staff (Branch)</option>
                           <option value="MANAGER">Manager (Global)</option>
@@ -907,7 +900,7 @@ const UsersTab = () => {
                             editForm.role === "MANAGER" ||
                             editForm.role === "ADMIN"
                           }
-                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "MANAGER" || editForm.role === "ADMIN" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
+                          className={`w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "MANAGER" || editForm.role === "ADMIN" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
                         >
                           {editForm.role === "MANAGER" ||
                           editForm.role === "ADMIN" ? (
@@ -927,7 +920,7 @@ const UsersTab = () => {
                   <button
                     type="submit"
                     disabled={editLoading}
-                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-xs sm:text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-[11px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
                   >
                     {editLoading ? (
                       <RefreshCw size={18} className="animate-spin mr-2" />
@@ -941,7 +934,6 @@ const UsersTab = () => {
         )}
       </AnimatePresence>
 
-      {/* 7. REUSABLE CONFIRM MODAL */}
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}

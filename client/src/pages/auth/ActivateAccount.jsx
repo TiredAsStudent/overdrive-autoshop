@@ -128,7 +128,7 @@ const ActivateAccount = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center p-4 sm:p-6 py-12">
+    <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center p-4 sm:p-6 py-12 transition-colors">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -139,7 +139,7 @@ const ActivateAccount = () => {
           <img
             src={BannerLogo}
             alt="Overdrive Banner"
-            className="h-16 sm:h-20 w-auto object-contain"
+            className="h-16 sm:h-20 w-auto object-contain drop-shadow-sm"
           />
         </div>
 
@@ -147,7 +147,7 @@ const ActivateAccount = () => {
           {/* STATE 1: INITIAL LOADING */}
           {verifying ? (
             <div className="py-12 flex flex-col items-center justify-center">
-              <div className="animate-pulse text-slate-400 font-black uppercase text-xs tracking-widest flex items-center gap-3">
+              <div className="animate-pulse text-slate-400 font-black uppercase text-[10px] sm:text-xs tracking-widest flex items-center gap-3">
                 <ShieldCheck size={24} className="text-amber-500" />
                 Verifying Secure Invitation...
               </div>
@@ -162,7 +162,7 @@ const ActivateAccount = () => {
               <div className="mx-auto flex items-center justify-center h-16 w-16 sm:h-20 sm:w-20 rounded-3xl bg-rose-50 text-rose-500 shadow-inner">
                 <AlertCircle className="w-8 h-8 sm:w-10 sm:h-10" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 px-2">
                 <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-slate-900">
                   Link Expired or Invalid
                 </h2>
@@ -173,7 +173,7 @@ const ActivateAccount = () => {
               </div>
               <Link
                 to="/login"
-                className="inline-flex items-center gap-2 mt-4 text-xs font-black text-amber-600 uppercase tracking-widest hover:text-amber-700 transition-colors bg-amber-50 px-6 py-3 rounded-xl"
+                className="inline-flex items-center justify-center gap-2 mt-4 text-xs font-black text-amber-600 uppercase tracking-widest hover:text-amber-700 transition-colors bg-amber-50 px-6 py-3 rounded-xl w-full sm:w-auto"
               >
                 Return to Login
               </Link>
@@ -192,18 +192,18 @@ const ActivateAccount = () => {
                   <div className="h-20 w-20 sm:h-24 sm:w-24 bg-emerald-50 rounded-full flex items-center justify-center shadow-inner">
                     <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12 text-emerald-500" />
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-3 px-2 w-full">
                     <h3 className="text-xl sm:text-2xl font-black italic text-slate-900 uppercase">
                       Account Activated!
                     </h3>
-                    <p className="text-xs sm:text-sm font-medium text-slate-500 max-w-sm bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <p className="text-xs sm:text-sm font-medium text-slate-500 max-w-sm mx-auto bg-slate-50 p-4 rounded-2xl border border-slate-100">
                       Your immutable audit profile is fully set up. You are now
                       being redirected to the secure login gate.
                     </p>
                   </div>
                   <Link
                     to="/login"
-                    className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all"
+                    className="mt-4 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all w-full sm:w-auto"
                   >
                     <ArrowLeft size={14} /> Go to Login Now
                   </Link>
@@ -212,9 +212,10 @@ const ActivateAccount = () => {
                 /* FORM VIEW */
                 <motion.div key="form" className="space-y-6 sm:space-y-8">
                   {/* Identity Header */}
-                  <div className="text-center space-y-2 sm:space-y-3">
+                  <div className="text-center space-y-2 sm:space-y-3 px-2">
                     <h2 className="text-2xl sm:text-3xl font-black italic tracking-tighter text-slate-900">
-                      Welcome to the team, {userData?.firstName}!
+                      Welcome to the team, <br className="sm:hidden" />
+                      {userData?.firstName}!
                     </h2>
                     <p className="text-slate-500 font-medium text-[11px] sm:text-sm max-w-md mx-auto">
                       Please finalize your account setup by creating a secure
@@ -223,30 +224,33 @@ const ActivateAccount = () => {
                   </div>
 
                   {/* Profile Blueprint Badges */}
-                  <div className="flex flex-wrap justify-center gap-3">
-                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl">
-                      <UserCircle size={18} className="text-amber-500" />
-                      <div className="text-left">
+                  <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3">
+                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-3 sm:py-2.5 rounded-xl w-full sm:w-auto">
+                      <UserCircle
+                        size={20}
+                        className="text-amber-500 shrink-0"
+                      />
+                      <div className="text-left min-w-0">
                         <p className="text-[9px] uppercase tracking-widest text-slate-400 font-bold leading-none mb-1">
                           Assigned Role
                         </p>
-                        <p className="text-xs font-black text-slate-900 leading-none">
+                        <p className="text-xs sm:text-sm font-black text-slate-900 leading-none truncate">
                           {userData?.role}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl">
+                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-3 sm:py-2.5 rounded-xl w-full sm:w-auto">
                       {userData?.role === "MANAGER" ||
                       userData?.role === "ADMIN" ? (
-                        <Globe size={18} className="text-blue-500" />
+                        <Globe size={20} className="text-blue-500 shrink-0" />
                       ) : (
-                        <MapPin size={18} className="text-blue-500" />
+                        <MapPin size={20} className="text-blue-500 shrink-0" />
                       )}
-                      <div className="text-left">
+                      <div className="text-left min-w-0">
                         <p className="text-[9px] uppercase tracking-widest text-slate-400 font-bold leading-none mb-1">
                           Branch Access
                         </p>
-                        <p className="text-xs font-black text-slate-900 leading-none">
+                        <p className="text-xs sm:text-sm font-black text-slate-900 leading-none truncate">
                           {userData?.branchName || "Global Enterprise"}
                         </p>
                       </div>
@@ -255,13 +259,13 @@ const ActivateAccount = () => {
 
                   {/* Countdown Timer */}
                   <div className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <Clock size={18} className="text-amber-600" />
-                      <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest">
-                        Security Window Closes In:
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Clock size={18} className="text-amber-600 shrink-0" />
+                      <p className="text-[9px] sm:text-[10px] font-black text-amber-800 uppercase tracking-widest truncate">
+                        Security Window Closes:
                       </p>
                     </div>
-                    <p className="text-sm font-black text-amber-600 font-mono tracking-tight">
+                    <p className="text-sm font-black text-amber-600 font-mono tracking-tight shrink-0 pl-2">
                       {formatTime(timeLeft)}
                     </p>
                   </div>
@@ -282,7 +286,7 @@ const ActivateAccount = () => {
                           value={userData?.email || ""}
                           readOnly
                           disabled
-                          className="w-full bg-slate-100 border border-transparent rounded-2xl pl-12 pr-4 py-3.5 sm:py-4 text-sm font-bold text-slate-500 cursor-not-allowed"
+                          className="w-full bg-slate-100 border border-transparent rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-slate-500 cursor-not-allowed truncate"
                         />
                       </div>
                     </div>
@@ -302,13 +306,13 @@ const ActivateAccount = () => {
                             type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-12 py-3.5 sm:py-4 text-sm font-bold text-slate-900 outline-none focus:border-amber-500 focus:bg-white transition-colors"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 sm:pl-12 pr-12 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-slate-900 outline-none focus:border-amber-500 focus:bg-white transition-colors"
                             placeholder="••••••••"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none p-1"
                             tabIndex={-1}
                           >
                             {showPassword ? (
@@ -334,7 +338,7 @@ const ActivateAccount = () => {
                             type={showConfirmPassword ? "text" : "password"}
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-3.5 sm:py-4 text-sm font-bold text-slate-900 outline-none focus:bg-white transition-colors ${
+                            className={`w-full bg-slate-50 border rounded-2xl pl-11 sm:pl-12 pr-12 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-slate-900 outline-none focus:bg-white transition-colors ${
                               confirmPassword.length > 0 && !validations.match
                                 ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                                 : "border-slate-200 focus:border-amber-500"
@@ -346,7 +350,7 @@ const ActivateAccount = () => {
                             onClick={() =>
                               setShowConfirmPassword(!showConfirmPassword)
                             }
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none p-1"
                             tabIndex={-1}
                           >
                             {showConfirmPassword ? (
@@ -366,29 +370,29 @@ const ActivateAccount = () => {
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div
-                          className={`flex items-center gap-2 text-[11px] sm:text-xs font-bold transition-colors ${validations.length ? "text-emerald-600" : "text-slate-400"}`}
+                          className={`flex items-center gap-2 text-[10px] sm:text-[11px] md:text-xs font-bold transition-colors ${validations.length ? "text-emerald-600" : "text-slate-400"}`}
                         >
                           <CheckCircle2 size={16} className="shrink-0" /> 8+
                           Characters
                         </div>
                         <div
-                          className={`flex items-center gap-2 text-[11px] sm:text-xs font-bold transition-colors ${validations.uppercase ? "text-emerald-600" : "text-slate-400"}`}
+                          className={`flex items-center gap-2 text-[10px] sm:text-[11px] md:text-xs font-bold transition-colors ${validations.uppercase ? "text-emerald-600" : "text-slate-400"}`}
                         >
                           <CheckCircle2 size={16} className="shrink-0" /> 1
                           Uppercase
                         </div>
                         <div
-                          className={`flex items-center gap-2 text-[11px] sm:text-xs font-bold transition-colors ${validations.specialOrNumber ? "text-emerald-600" : "text-slate-400"}`}
+                          className={`flex items-center gap-2 text-[10px] sm:text-[11px] md:text-xs font-bold transition-colors ${validations.specialOrNumber ? "text-emerald-600" : "text-slate-400"}`}
                         >
                           <CheckCircle2 size={16} className="shrink-0" /> 1
-                          Number / Special
+                          Special/Num
                         </div>
                       </div>
                     </div>
 
                     {/* Immutable Audit Policy Agreement */}
-                    <label className="flex items-start gap-4 p-4 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors group">
-                      <div className="relative flex items-center justify-center mt-0.5">
+                    <label className="flex items-start gap-3 sm:gap-4 p-4 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors group">
+                      <div className="relative flex items-center justify-center mt-1 shrink-0">
                         <input
                           type="checkbox"
                           checked={policyAgreed}
@@ -401,11 +405,11 @@ const ActivateAccount = () => {
                           strokeWidth={3}
                         />
                       </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900">
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
                           I agree to the Overdrive Data Integrity Policy.
                         </p>
-                        <p className="text-[10px] font-bold text-slate-500 mt-1 leading-relaxed">
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-1.5 sm:mt-1 leading-relaxed">
                           By checking this, I acknowledge that my account is
                           tied to a strict, immutable audit log. Actions taken
                           are permanently recorded under my identity.
@@ -416,7 +420,7 @@ const ActivateAccount = () => {
                     <button
                       type="submit"
                       disabled={!isFormValid || loading}
-                      className="w-full py-4 sm:py-5 bg-overdrive-yellow text-black font-black rounded-2xl flex items-center justify-center gap-2 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase text-[11px] sm:text-xs tracking-[0.2em] shadow-xl shadow-amber-500/10"
+                      className="w-full py-4 sm:py-5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-2xl flex items-center justify-center gap-2 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase text-[10px] sm:text-xs tracking-[0.2em] shadow-xl shadow-amber-500/10"
                     >
                       {loading ? "ACTIVATING..." : "ACTIVATE PERMANENT ACCOUNT"}{" "}
                       <ChevronRight size={16} />
