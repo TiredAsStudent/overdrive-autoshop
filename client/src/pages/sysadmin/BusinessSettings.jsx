@@ -150,7 +150,6 @@ const BusinessSettings = () => {
     <div className="w-full space-y-8 animate-in fade-in duration-500 pb-10">
       {/* ACTION BAR */}
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        {/* Header Title Section */}
         <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
           <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
             <Settings2 className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
@@ -165,7 +164,6 @@ const BusinessSettings = () => {
           </div>
         </div>
 
-        {/* Action Controls */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
           <button
             onClick={handleSubmit}
@@ -215,8 +213,6 @@ const BusinessSettings = () => {
                 </label>
                 <div
                   className={`w-full aspect-square max-h-64 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group transition-all cursor-pointer ${logoPreview ? "border-amber-500/50 bg-white dark:bg-slate-900" : "border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-black/20 hover:border-amber-500"}`}
-                  Registered
-                  Enterprise
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {logoPreview ? (
@@ -281,22 +277,23 @@ const BusinessSettings = () => {
         {/* RIGHT COLUMN: FINANCIAL MATH & COMMUNICATIONS */}
         <div className="xl:col-span-2 space-y-8">
           {/* FINANCIAL LOGIC ENGINE */}
-          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-8">
+          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-6 sm:p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
               <Percent size={14} /> Financial Settings
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
               {/* VAT Rule */}
-              <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5">
-                <label className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1">
-                  Value Added Tax (VAT)
-                </label>
-                <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
-                  Controls the automated tax calculations on all generated
-                  invoices.
-                </p>
-                <div className="relative">
+              <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5 flex flex-col justify-between">
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1">
+                    Value Added Tax
+                  </label>
+                  <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
+                    Automated tax applied to generated invoices.
+                  </p>
+                </div>
+                <div className="relative mt-auto">
                   <input
                     type="number"
                     step="0.01"
@@ -314,15 +311,16 @@ const BusinessSettings = () => {
               </div>
 
               {/* Markup Rule */}
-              <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5">
-                <label className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1">
-                  Default Profit Markup
-                </label>
-                <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
-                  Standardized profit margin multiplier applied to supplier unit
-                  costs.
-                </p>
-                <div className="relative">
+              <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5 flex flex-col justify-between">
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1">
+                    Profit Markup
+                  </label>
+                  <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
+                    Standard multiplier for supplier unit costs.
+                  </p>
+                </div>
+                <div className="relative mt-auto">
                   <input
                     type="number"
                     step="0.01"
@@ -342,7 +340,7 @@ const BusinessSettings = () => {
           </div>
 
           {/* HEADQUARTERS CONTACT */}
-          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-8">
+          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-6 sm:p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
               <Phone size={14} /> Business Contact Information
             </h3>
