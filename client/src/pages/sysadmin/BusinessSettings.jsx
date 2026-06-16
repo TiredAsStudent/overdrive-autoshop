@@ -148,39 +148,38 @@ const BusinessSettings = () => {
 
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-500 pb-10">
-      {/* 1. HEADER */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-500/10 rounded-xl">
-            <Settings2
-              className="text-amber-600 dark:text-overdrive-yellow"
-              size={24}
-            />
+      {/* ACTION BAR */}
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
+        {/* Header Title Section */}
+        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
+          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
+            <Settings2 className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
           </div>
-          <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
               Business Logic
             </h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-              Global Financial Rules & Corporate Identity
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
+              Manage company information, pricing, and tax settings.
             </p>
           </div>
         </div>
 
-        <button
-          onClick={handleSubmit}
-          disabled={isSaving}
-          className="w-full xl:w-auto px-8 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer"
-        >
-          {isSaving ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <Save size={16} />
-          )}
-          {isSaving
-            ? "SYNCING TO ALL BRANCHES..."
-            : "SAVE GLOBAL CONFIGURATION"}
-        </button>
+        {/* Action Controls */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+          <button
+            onClick={handleSubmit}
+            disabled={isSaving}
+            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer"
+          >
+            {isSaving ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Save size={16} />
+            )}
+            {isSaving ? "SAVING CHANGES..." : "SAVE SETTINGS"}
+          </button>
+        </div>
       </div>
 
       {/* 2. NOTIFICATIONS */}
@@ -205,24 +204,26 @@ const BusinessSettings = () => {
         <div className="xl:col-span-1 space-y-6">
           <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
-              <ImageIcon size={14} /> Official Brand Identity
+              <ImageIcon size={14} /> Company Profile
             </h3>
 
             <div className="space-y-6">
               {/* Logo Upload */}
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
-                  Corporate Logo (Invoices & Reports)
+                  Company Logo
                 </label>
                 <div
                   className={`w-full aspect-square max-h-64 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group transition-all cursor-pointer ${logoPreview ? "border-amber-500/50 bg-white dark:bg-slate-900" : "border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-black/20 hover:border-amber-500"}`}
+                  Registered
+                  Enterprise
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {logoPreview ? (
                     <>
                       <img
                         src={logoPreview}
-                        alt="Corporate Logo"
+                        alt="Company Logo"
                         className="w-full h-full object-contain p-4"
                       />
                       <div className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white backdrop-blur-sm">
@@ -256,7 +257,7 @@ const BusinessSettings = () => {
               {/* Corporate Name */}
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
-                  Registered Enterprise Name
+                  Business Name
                 </label>
                 <div className="relative">
                   <Building2
@@ -282,7 +283,7 @@ const BusinessSettings = () => {
           {/* FINANCIAL LOGIC ENGINE */}
           <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
-              <Percent size={14} /> Master Financial Logic Engine
+              <Percent size={14} /> Financial Settings
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -343,13 +344,13 @@ const BusinessSettings = () => {
           {/* HEADQUARTERS CONTACT */}
           <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
-              <Phone size={14} /> Corporate Headquarters Contact
+              <Phone size={14} /> Business Contact Information
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
-                  Main Corporate Email
+                  Business Email
                 </label>
                 <div className="relative">
                   <Mail
@@ -369,7 +370,7 @@ const BusinessSettings = () => {
 
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
-                  Main Corporate Phone
+                  Business Phone
                 </label>
                 <div className="relative">
                   <Phone
