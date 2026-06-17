@@ -9,20 +9,19 @@ import {
   Mail,
   Phone,
   Loader2,
-  AlertCircle,
-  Globe,
 } from "lucide-react";
 import { settingsService } from "../../services/sysadmin/settings.service";
+import { useApp } from "../../context/AppContext";
+import ConfirmModal from "../../components/shared/ConfirmModal";
 
 const BusinessSettings = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-
+  const { showToast } = useApp();
   const fileInputRef = useRef(null);
 
-  // Form State initialized to safe default values (aligns with backend fallback)
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
   const [formData, setFormData] = useState({
     company_name: "Overdrive Auto Shop",
     vat_percentage: 12.0,
@@ -31,17 +30,13 @@ const BusinessSettings = () => {
     contact_number: "",
   });
 
-  // Image State
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
 
   const loadSettings = async () => {
     try {
       setIsLoading(true);
-      setError("");
       const response = await settingsService.getSettings();
-
-      // Robust extraction for different response structures
       const settingsData = response?.data?.data || response?.data || response;
 
       if (settingsData) {
@@ -61,10 +56,8 @@ const BusinessSettings = () => {
         }
       }
     } catch (err) {
-      console.error("Failed to load settings:", err);
-      setError(
-        err.message || "Failed to load business settings from the server.",
-      );
+      console.error("Failed to sync settings:", err);
+      showToast(err.message || "Failed to load business settings.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +69,6 @@ const BusinessSettings = () => {
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
-    // Ensure numerical inputs don't store as strings in React state
     const parsedValue =
       type === "number" ? (value === "" ? "" : Number(value)) : value;
     setFormData((prev) => ({ ...prev, [name]: parsedValue }));
@@ -86,52 +78,62 @@ const BusinessSettings = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Strict Client-side validation
     const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      setError("Please upload a valid image file (JPEG, PNG, WEBP).");
+      showToast(
+        "File rejected. Upload must be a valid JPEG, PNG, or WEBP.",
+        "error",
+      );
+      setLogoFile(null);
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      // 2MB Limit
-      setError("Image file is too large. Maximum allowed size is 2MB.");
+      showToast("Image is too heavy. Maximum allowed size is 2MB.", "error");
+      setLogoFile(null);
       return;
     }
 
-    setError(""); // Clear errors on valid selection
     setLogoFile(file);
-    setLogoPreview(URL.createObjectURL(file)); // Fast local preview
+    setLogoPreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e) => {
+  const handleFormSubmit = (e) => {
     e.preventDefault();
+
+    setIsConfirmModalOpen(true);
+  };
+
+  const executeSaveSettings = async () => {
+    if (isSaving) return;
     setIsSaving(true);
-    setError("");
-    setSuccessMsg("");
 
     try {
       const submitData = new FormData();
-      submitData.append("company_name", formData.company_name);
+
+      submitData.append("company_name", formData.company_name.trim());
       submitData.append("vat_percentage", formData.vat_percentage);
       submitData.append("markup_percentage", formData.markup_percentage);
-      submitData.append("contact_email", formData.contact_email);
-      submitData.append("contact_number", formData.contact_number);
+      submitData.append(
+        "contact_email",
+        formData.contact_email.trim().toLowerCase(),
+      );
+      submitData.append("contact_number", formData.contact_number.trim());
 
       if (logoFile) {
         submitData.append("logo", logoFile);
       }
 
       await settingsService.updateSettings(submitData);
-      setSuccessMsg("Enterprise configuration successfully updated.");
 
-      setTimeout(() => setSuccessMsg(""), 4000);
-      await loadSettings(); // Re-sync to ensure preview URL is actual server path
-      setLogoFile(null); // Clear pending file state
+      showToast("Global business logic updated successfully.", "success");
+      setLogoFile(null);
+      await loadSettings();
     } catch (err) {
-      setError(err.message || "Failed to update system rules.");
+      showToast(err.message || "Failed to save configuration.", "error");
     } finally {
       setIsSaving(false);
+      setIsConfirmModalOpen(false); // Close modal automatically
     }
   };
 
@@ -139,7 +141,7 @@ const BusinessSettings = () => {
     return (
       <div className="w-full h-64 flex flex-col items-center justify-center space-y-4">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest animate-pulse">
           Syncing Enterprise Rules...
         </p>
       </div>
@@ -166,39 +168,28 @@ const BusinessSettings = () => {
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
           <button
-            onClick={handleSubmit}
+            type="submit"
+            form="settingsForm"
             disabled={isSaving}
-            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer"
+            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? (
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <Save size={16} />
             )}
-            {isSaving ? "SAVING CHANGES..." : "SAVE SETTINGS"}
+            {isSaving ? "SAVING..." : "SAVE SETTINGS"}
           </button>
         </div>
       </div>
 
-      {/* 2. NOTIFICATIONS */}
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl flex items-center gap-3 text-red-600 dark:text-red-400 text-sm font-bold shadow-sm">
-          <AlertCircle size={18} className="shrink-0" /> {error}
-        </div>
-      )}
-      {successMsg && (
-        <div className="p-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl flex items-center gap-3 text-emerald-600 dark:text-emerald-400 text-sm font-bold shadow-sm">
-          <Globe size={18} className="shrink-0" /> {successMsg}
-        </div>
-      )}
-
-      {/* 3. MAIN CONFIGURATION GRID */}
+      {/* MAIN CONFIGURATION FORM */}
       <form
         id="settingsForm"
-        onSubmit={handleSubmit}
+        onSubmit={handleFormSubmit}
         className="grid grid-cols-1 xl:grid-cols-3 gap-8"
       >
-        {/* LEFT COLUMN: BRAND IDENTITY */}
+        {/* LEFT COLUMN: BRANDING */}
         <div className="xl:col-span-1 space-y-6">
           <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
@@ -213,7 +204,7 @@ const BusinessSettings = () => {
                 </label>
                 <div
                   className={`w-full aspect-square max-h-64 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group transition-all cursor-pointer ${logoPreview ? "border-amber-500/50 bg-white dark:bg-slate-900" : "border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-black/20 hover:border-amber-500"}`}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => !isSaving && fileInputRef.current?.click()}
                 >
                   {logoPreview ? (
                     <>
@@ -246,13 +237,17 @@ const BusinessSettings = () => {
                     className="hidden"
                     accept="image/jpeg, image/png, image/webp"
                     onChange={handleFileChange}
+                    disabled={isSaving}
                   />
                 </div>
               </div>
 
-              {/* Corporate Name */}
+              {/* Business Name */}
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                <label
+                  htmlFor="company_name"
+                  className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest"
+                >
                   Business Name
                 </label>
                 <div className="relative">
@@ -262,11 +257,15 @@ const BusinessSettings = () => {
                   />
                   <input
                     type="text"
+                    id="company_name"
                     name="company_name"
                     value={formData.company_name}
                     onChange={handleChange}
                     required
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors"
+                    maxLength={255}
+                    disabled={isSaving}
+                    placeholder="Enter business entity title"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors uppercase disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -274,9 +273,9 @@ const BusinessSettings = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: FINANCIAL MATH & COMMUNICATIONS */}
+        {/* RIGHT COLUMN: MATH & CONTACTS */}
         <div className="xl:col-span-2 space-y-8">
-          {/* FINANCIAL LOGIC ENGINE */}
+          {/* FINANCIAL MATH ENGINE */}
           <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-6 sm:p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
               <Percent size={14} /> Financial Settings
@@ -286,25 +285,31 @@ const BusinessSettings = () => {
               {/* VAT Rule */}
               <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5 flex flex-col justify-between">
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1">
+                  <label
+                    htmlFor="vat_percentage"
+                    className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1"
+                  >
                     Value Added Tax
                   </label>
                   <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
-                    Automated tax applied to generated invoices.
+                    Automated tax matrix calculated across ledger orders.
                   </p>
                 </div>
                 <div className="relative mt-auto">
                   <input
                     type="number"
+                    id="vat_percentage"
+                    name="vat_percentage"
                     step="0.01"
                     min="0"
                     max="100"
-                    name="vat_percentage"
                     value={formData.vat_percentage}
                     onChange={handleChange}
-                    className="w-full px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-lg font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors pr-12"
+                    required
+                    disabled={isSaving}
+                    className="w-full px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-lg font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors pr-12 font-mono disabled:opacity-60"
                   />
-                  <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-lg">
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-lg font-mono">
                     %
                   </span>
                 </div>
@@ -313,25 +318,30 @@ const BusinessSettings = () => {
               {/* Markup Rule */}
               <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5 flex flex-col justify-between">
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1">
+                  <label
+                    htmlFor="markup_percentage"
+                    className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1"
+                  >
                     Profit Markup
                   </label>
                   <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
-                    Standard multiplier for supplier unit costs.
+                    Standard multiplier baseline applied to supplier unit costs.
                   </p>
                 </div>
                 <div className="relative mt-auto">
                   <input
                     type="number"
+                    id="markup_percentage"
+                    name="markup_percentage"
                     step="0.01"
                     min="0"
-                    max="500"
-                    name="markup_percentage"
                     value={formData.markup_percentage}
                     onChange={handleChange}
-                    className="w-full px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-lg font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors pr-12"
+                    required
+                    disabled={isSaving}
+                    className="w-full px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-lg font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors pr-12 font-mono disabled:opacity-60"
                   />
-                  <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-lg">
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-lg font-mono">
                     %
                   </span>
                 </div>
@@ -339,15 +349,19 @@ const BusinessSettings = () => {
             </div>
           </div>
 
-          {/* HEADQUARTERS CONTACT */}
+          {/* HEADQUARTERS CONTACTS */}
           <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-6 sm:p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
               <Phone size={14} /> Business Contact Information
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Email */}
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                <label
+                  htmlFor="contact_email"
+                  className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest"
+                >
                   Business Email
                 </label>
                 <div className="relative">
@@ -357,17 +371,24 @@ const BusinessSettings = () => {
                   />
                   <input
                     type="email"
+                    id="contact_email"
                     name="contact_email"
                     value={formData.contact_email}
                     onChange={handleChange}
-                    placeholder="hq@overdrive.com"
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors"
+                    required
+                    disabled={isSaving}
+                    placeholder="corporate@overdrive.com"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors disabled:opacity-60"
                   />
                 </div>
               </div>
 
+              {/* Phone */}
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                <label
+                  htmlFor="contact_number"
+                  className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest"
+                >
                   Business Phone
                 </label>
                 <div className="relative">
@@ -377,11 +398,15 @@ const BusinessSettings = () => {
                   />
                   <input
                     type="text"
+                    id="contact_number"
                     name="contact_number"
                     value={formData.contact_number}
                     onChange={handleChange}
-                    placeholder="+63 9XX XXX XXXX"
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors"
+                    required
+                    maxLength={50}
+                    disabled={isSaving}
+                    placeholder="e.g., +63 909 090 9091"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors font-mono disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -389,6 +414,18 @@ const BusinessSettings = () => {
           </div>
         </div>
       </form>
+
+      {/* CONFIRMATION MODAL */}
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={executeSaveSettings}
+        title="Confirm Settings Changes"
+        message="The changes made to your company information, pricing, and tax settings will be applied across the system. Do you want to continue?"
+        confirmText="Save Changes"
+        cancelText="Cancel"
+        variant="warning"
+      />
     </div>
   );
 };

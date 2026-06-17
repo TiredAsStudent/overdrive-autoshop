@@ -11,10 +11,10 @@ class SettingsController {
         res,
         200,
         settings,
-        "Settings retrieved successfully.",
+        "Enterprise settings retrieved securely.",
       );
     } catch (error) {
-      return sendError(res, 500, error.message);
+      return sendError(res, 500, "Internal Server Error", error.message);
     }
   }
 
@@ -22,7 +22,6 @@ class SettingsController {
     try {
       const updateData = { ...req.body };
 
-      // File Replacement Logic: If a new logo is uploaded, delete the old one
       if (req.file) {
         const currentSettings = await SettingsService.getBusinessSettings();
 
@@ -33,7 +32,7 @@ class SettingsController {
           if (fs.existsSync(oldFilePath)) {
             fs.unlinkSync(oldFilePath);
             console.log(
-              "Cleanup: Deleted old corporate logo to save server storage.",
+              "Storage Optimization: Old corporate logo purged from server.",
             );
           }
         }
@@ -50,20 +49,24 @@ class SettingsController {
         res,
         200,
         settings,
-        "Business logic updated successfully.",
+        "Master business logic updated successfully.",
       );
     } catch (error) {
-      // Rollback: If DB update fails, delete the newly uploaded file to prevent orphan files
       if (req.file && req.file.path) {
         if (fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
           console.log(
-            "Cleanup: Deleted orphaned file due to validation or database failure.",
+            "Rollback Executed: Deleted orphaned upload due to DB failure.",
           );
         }
       }
 
-      return sendError(res, 400, error.message);
+      return sendError(
+        res,
+        400,
+        "Failed to update configuration",
+        error.message,
+      );
     }
   }
 }
