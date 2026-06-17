@@ -133,14 +133,14 @@ const BusinessSettings = () => {
 
       await settingsService.updateSettings(submitData);
 
-      showToast("Global business logic updated successfully.", "success");
+      showToast("Business logic configuration saved successfully.", "success");
       setLogoFile(null);
       await loadSettings();
     } catch (err) {
       showToast(err.message || "Failed to save configuration.", "error");
     } finally {
       setIsSaving(false);
-      setIsConfirmModalOpen(false); // Close modal automatically
+      setIsConfirmModalOpen(false);
     }
   };
 
@@ -156,7 +156,7 @@ const BusinessSettings = () => {
   }
 
   return (
-    <div className="w-full space-y-8 animate-in fade-in duration-500 pb-10">
+    <div className="w-full space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-10">
       {/* ACTION BAR */}
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
         <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
@@ -178,7 +178,7 @@ const BusinessSettings = () => {
             type="submit"
             form="settingsForm"
             disabled={isSaving}
-            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? (
               <Loader2 size={16} className="animate-spin" />
@@ -194,11 +194,11 @@ const BusinessSettings = () => {
       <form
         id="settingsForm"
         onSubmit={handleFormSubmit}
-        className="grid grid-cols-1 xl:grid-cols-3 gap-8"
+        className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8"
       >
         {/* LEFT COLUMN: BRANDING */}
         <div className="xl:col-span-1 space-y-6">
-          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm p-8">
+          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm p-6 sm:p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
               <ImageIcon size={14} /> Company Profile
             </h3>
@@ -281,7 +281,7 @@ const BusinessSettings = () => {
         </div>
 
         {/* RIGHT COLUMN: MATH & CONTACTS */}
-        <div className="xl:col-span-2 space-y-8">
+        <div className="xl:col-span-2 space-y-6 sm:space-y-8">
           {/* FINANCIAL MATH ENGINE */}
           <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-6 sm:p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
@@ -362,7 +362,7 @@ const BusinessSettings = () => {
               <Phone size={14} /> Business Contact Information
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
               {/* Email */}
               <div>
                 <label
@@ -413,8 +413,6 @@ const BusinessSettings = () => {
                     maxLength={50}
                     disabled={isSaving}
                     placeholder="e.g., +63 909 090 9091"
-                    pattern="^[0-9+\-\s()]+$"
-                    title="Please enter a valid phone number containing only digits, spaces, -, +, or ()"
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors font-mono disabled:opacity-60"
                   />
                 </div>
