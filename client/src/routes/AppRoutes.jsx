@@ -57,7 +57,6 @@ const AdminUsers = lazy(() => import("../pages/sysadmin/Users"));
 const AdminBusinessSettings = lazy(
   () => import("../pages/sysadmin/BusinessSettings"),
 );
-const AdminAiAssistant = lazy(() => import("../pages/sysadmin/AiAssistant"));
 const AdminAuditLogs = lazy(() => import("../pages/sysadmin/AuditLogs"));
 const AdminSystemHealth = lazy(() => import("../pages/sysadmin/SystemHealth"));
 
@@ -173,7 +172,7 @@ const LocationBasedRoutes = ({ user }) => {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* =========================================================
-             THE SECURE PORTAL NETWORKS
+              THE SECURE PORTAL NETWORKS
         ========================================================= */}
         <Route
           element={
@@ -246,14 +245,6 @@ const LocationBasedRoutes = ({ user }) => {
               element={
                 <PageWrapper>
                   <AdminBusinessSettings />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="settings/ai-assistant"
-              element={
-                <PageWrapper>
-                  <AdminAiAssistant />
                 </PageWrapper>
               }
             />

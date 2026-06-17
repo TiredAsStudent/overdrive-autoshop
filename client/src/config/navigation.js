@@ -3,9 +3,6 @@ import {
   Database,
   Settings2,
   ShieldAlert,
-  GitBranch,
-  Users2,
-  Building2,
   ClipboardCheck,
   Wrench,
   Package,
@@ -14,14 +11,6 @@ import {
   WalletCards,
   ShoppingCart,
   Receipt,
-  FileText,
-  FilePlus,
-  FileCheck2,
-  History,
-  ScanLine,
-  Hourglass,
-  Boxes,
-  ArrowLeftRight,
 } from "lucide-react";
 
 // === SYSTEM ADMIN MENU ===
@@ -47,7 +36,6 @@ export const sysAdminMenu = [
     icon: Settings2,
     items: [
       { name: "Business Logic", path: "/sysadmin/settings/business-logic" },
-      { name: "AI Assistant", path: "/sysadmin/settings/ai-assistant" },
     ],
   },
   {
@@ -67,7 +55,6 @@ export const managerMenu = [
     icon: Activity,
     items: [{ name: "Overview", path: "/manager/dashboard/overview" }],
   },
-
   {
     label: "Approvals",
     icon: ClipboardCheck,
@@ -80,7 +67,6 @@ export const managerMenu = [
       { name: "Rejection Logs", path: "/manager/approvals/rejection-logs" },
     ],
   },
-
   {
     label: "Workshop",
     icon: Wrench,
@@ -89,7 +75,6 @@ export const managerMenu = [
       { name: "Mechanics", path: "/manager/workshop/mechanics" },
     ],
   },
-
   {
     label: "Inventory",
     icon: Package,
@@ -100,7 +85,6 @@ export const managerMenu = [
       { name: "Stock Transfers", path: "/manager/inventory/stock-transfers" },
     ],
   },
-
   {
     label: "Accounting",
     icon: Calculator,
@@ -115,7 +99,6 @@ export const managerMenu = [
       { name: "VAT Ledger", path: "/manager/accounting/vat-ledger" },
     ],
   },
-
   {
     label: "Reports",
     icon: FileBarChart2,
@@ -130,7 +113,6 @@ export const managerMenu = [
       { name: "Expense Reports", path: "/manager/reports/expense-reports" },
     ],
   },
-
   {
     label: "Balances",
     icon: WalletCards,
@@ -145,13 +127,13 @@ export const managerMenu = [
   },
 ];
 
+// === STAFF MENU ===
 export const staffMenu = [
   {
     label: "Dashboard",
     icon: Activity,
     items: [{ name: "Overview", path: "/staff/dashboard/overview" }],
   },
-
   {
     label: "Sales",
     icon: ShoppingCart,
@@ -163,7 +145,6 @@ export const staffMenu = [
       { name: "Sales History", path: "/staff/sales/sales-history" },
     ],
   },
-
   {
     label: "Expenses",
     icon: Receipt,
@@ -173,7 +154,6 @@ export const staffMenu = [
       { name: "Expense History", path: "/staff/expenses/expense-history" },
     ],
   },
-
   {
     label: "Inventory",
     icon: Package,
