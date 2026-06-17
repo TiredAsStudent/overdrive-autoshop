@@ -69,6 +69,13 @@ const BusinessSettings = () => {
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
+
+    if (name === "contact_number") {
+      const sanitizedPhone = value.replace(/[^0-9+\-\s()]/g, "");
+      setFormData((prev) => ({ ...prev, [name]: sanitizedPhone }));
+      return;
+    }
+
     const parsedValue =
       type === "number" ? (value === "" ? "" : Number(value)) : value;
     setFormData((prev) => ({ ...prev, [name]: parsedValue }));
@@ -406,6 +413,8 @@ const BusinessSettings = () => {
                     maxLength={50}
                     disabled={isSaving}
                     placeholder="e.g., +63 909 090 9091"
+                    pattern="^[0-9+\-\s()]+$"
+                    title="Please enter a valid phone number containing only digits, spaces, -, +, or ()"
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors font-mono disabled:opacity-60"
                   />
                 </div>
