@@ -1,7 +1,10 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require("fs");
-const AiSetting = require("../../models/AiSetting");
 const ImageProcessor = require("../../utils/imageProcessor");
+
+const AI_MODEL = "gemini-1.5-flash";
+const SYSTEM_INSTRUCTION =
+  "You are an expert automotive accounting AI. Accurately extract the TIN, Date, and Total Amount from Philippine receipts.";
 
 class OcrService {
   // Helper to convert local file to Gemini's required format
@@ -16,11 +19,12 @@ class OcrService {
 
   static async extractReceiptData(originalFilePath, mimeType) {
     try {
-      // 1. Fetch Admin AI Settings
-      const settings = await AiSetting.getSettings();
-      if (!settings || !settings.gemini_api_key) {
+      // 1. Fetch Key securely from Environment Variables
+      const apiKey = process.env.GEMINI_API_KEY;
+
+      if (!apiKey) {
         throw new Error(
-          "AI is currently disabled or not configured by the Administrator.",
+          "AI extraction is currently disabled. Server is missing the API Key configuration.",
         );
       }
 
@@ -28,17 +32,17 @@ class OcrService {
       const processedFilePath =
         await ImageProcessor.greaseProofReceipt(originalFilePath);
 
-      // 3. Initialize Gemini
-      const genAI = new GoogleGenerativeAI(settings.gemini_api_key);
+      // 3. Initialize Gemini with developer constants
+      const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({
-        model: settings.ai_model || "gemini-1.5-flash",
+        model: AI_MODEL,
         // Force Gemini to output pure JSON
         generationConfig: { responseMimeType: "application/json" },
       });
 
       // 4. Construct the prompt with strict JSON requirements
       const prompt = `
-        ${settings.ai_system_instruction}
+        ${SYSTEM_INSTRUCTION}
         Extract the following details from this receipt and return ONLY a JSON object with these exact keys:
         - "vendor_name": (string, the name of the store/supplier)
         - "transaction_date": (string, YYYY-MM-DD format)

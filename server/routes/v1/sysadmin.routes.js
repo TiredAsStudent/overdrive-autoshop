@@ -7,7 +7,6 @@ const UserController = require("../../controllers/sysadmin/user.controller");
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 const SettingsController = require("../../controllers/sysadmin/settings.controller");
 const AuditLogController = require("../../controllers/sysadmin/audit.controller");
-const AiController = require("../../controllers/sysadmin/ai.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
@@ -37,10 +36,6 @@ const {
 const {
   getAuditLogsSchema,
 } = require("../../validations/sysadmin/auditLog.schema");
-const {
-  updateAiSettingsSchema,
-  testConnectionSchema,
-} = require("../../validations/sysadmin/ai.schema");
 
 // ==========================================
 // UTILITY: Catch Multer File Errors cleanly (Turns 500s into 400s)
@@ -140,22 +135,5 @@ router.get(
 
 // The Read-Only Paginated Data Route
 router.get("/audit", validate(getAuditLogsSchema), AuditLogController.getLogs);
-
-// ==========================================
-// SUB-TAB 3.2: AI ASSISTANT CONFIGURATION
-// ==========================================
-router.get("/ai-settings", AiController.getSettings);
-
-router.put(
-  "/ai-settings",
-  validate(updateAiSettingsSchema),
-  AiController.updateSettings,
-);
-
-router.post(
-  "/ai-settings/test-connection",
-  validate(testConnectionSchema),
-  AiController.testConnection,
-);
 
 module.exports = router;
