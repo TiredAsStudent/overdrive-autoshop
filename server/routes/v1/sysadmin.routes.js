@@ -38,20 +38,17 @@ const {
 } = require("../../validations/sysadmin/auditLog.schema");
 
 // ==========================================
-// UTILITY: Catch Multer File Errors cleanly (Turns 500s into 400s)
+// UTILITY: Catch Multer File Errors cleanly
 // ==========================================
 const handleLogoUpload = (req, res, next) => {
   const upload = uploadLogo.single("logo");
 
   upload(req, res, function (err) {
     if (err instanceof multer.MulterError) {
-      // A Multer error occurred (e.g., File too large)
       return sendError(res, 400, "File Upload Error", err.message);
     } else if (err) {
-      // An unknown error occurred (e.g., PDF uploaded instead of image)
       return sendError(res, 400, "Invalid File Type", err.message);
     }
-    // Everything went fine, proceed to validation!
     next();
   });
 };
@@ -133,7 +130,6 @@ router.get(
   AuditLogController.exportLogs,
 );
 
-// The Read-Only Paginated Data Route
 router.get("/audit", validate(getAuditLogsSchema), AuditLogController.getLogs);
 
 module.exports = router;
