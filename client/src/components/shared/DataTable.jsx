@@ -6,6 +6,7 @@ const DataTable = ({
   data = [],
   loading = false,
   renderRow,
+  minWidth = "min-w-[800px]",
   emptyTitle = "No matching records found",
   emptySubtitle = "Try adjusting your search criteria or register a new record.",
 }) => {
@@ -23,7 +24,9 @@ const DataTable = ({
 
       {/* RESPONSIVE HORIZONTAL OVERFLOW SCROLL */}
       <div className="overflow-x-auto custom-scrollbar w-full flex-1 touch-pan-x">
-        <table className="w-full text-left whitespace-nowrap min-w-[700px] sm:min-w-[800px]">
+        <table
+          className={`w-full text-left whitespace-nowrap min-w-[700px] sm:${minWidth}`}
+        >
           <thead>
             <tr className="bg-slate-50 dark:bg-black/20 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-white/5">
               {headers.map((header, index) => (

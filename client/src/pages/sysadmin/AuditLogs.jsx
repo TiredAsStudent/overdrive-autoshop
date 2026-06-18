@@ -244,6 +244,7 @@ const AuditLogs = () => {
 
       {/* UNIVERSAL DATATABLE COMPONENT */}
       <DataTable
+        minWidth="min-w-[1100px]"
         headers={[
           "Timestamp",
           "User Identity",

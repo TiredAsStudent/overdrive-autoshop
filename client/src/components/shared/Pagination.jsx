@@ -33,7 +33,7 @@ const Pagination = ({ currentPage = 1, totalPages = 1, onPageChange }) => {
         </button>
 
         {/* DYNAMIC INDIVIDUAL NUMBER CAPSULES (Mobile Scrollable) */}
-        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar px-1 max-w-[200px] sm:max-w-[300px] md:max-w-none scroll-smooth">
+        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar px-1 max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[500px] scroll-smooth">
           {pageNumbers.map((page) => {
             const isActive = page === currentPage;
             return (
