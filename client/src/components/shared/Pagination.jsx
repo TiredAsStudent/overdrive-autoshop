@@ -1,13 +1,45 @@
 import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 
 const Pagination = ({ currentPage = 1, totalPages = 1, onPageChange }) => {
   if (totalPages <= 1) return null;
 
-  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, "...", totalPages];
+    }
+
+    if (currentPage >= totalPages - 3) {
+      return [
+        1,
+        "...",
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages,
+      ];
+    }
+
+    return [
+      1,
+      "...",
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      "...",
+      totalPages,
+    ];
+  };
+
+  const pageNumbers = getPageNumbers();
 
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-[24px] border border-slate-200 dark:border-white/10 shadow-sm mt-4 animate-in fade-in duration-300">
+    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-[24px] border border-slate-200 dark:border-white/10 shadow-sm mt-4 animate-in fade-in duration-300 w-full">
       {/* PAGE RANGE COUNTER SNAPSHOT */}
       <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 shrink-0">
         Page{" "}
@@ -32,13 +64,24 @@ const Pagination = ({ currentPage = 1, totalPages = 1, onPageChange }) => {
           <ChevronLeft size={16} />
         </button>
 
-        {/* DYNAMIC INDIVIDUAL NUMBER CAPSULES (Mobile Scrollable) */}
-        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar px-1 max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[500px] scroll-smooth">
-          {pageNumbers.map((page) => {
+        {/* DYNAMIC INDIVIDUAL NUMBER CAPSULES */}
+        <div className="flex items-center gap-1 px-1">
+          {pageNumbers.map((page, index) => {
+            if (page === "...") {
+              return (
+                <span
+                  key={`ellipsis-${index}`}
+                  className="px-2 text-slate-400 dark:text-slate-500 flex items-center justify-center pointer-events-none"
+                >
+                  <MoreHorizontal size={14} />
+                </span>
+              );
+            }
+
             const isActive = page === currentPage;
             return (
               <button
-                key={page}
+                key={`page-${page}`}
                 type="button"
                 onClick={() => onPageChange(page)}
                 className={`px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer shrink-0 ${
