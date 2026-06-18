@@ -3,27 +3,52 @@ const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 
 class AuditLogController {
-  // GET: /api/v1/sysadmin/audit
-  static async getLogs(req, res) {
+  static async getSeverities(req, res) {
     try {
-      const filters = {
-        page: req.query.page,
-        limit: req.query.limit,
-        search: req.query.search,
-        branchId: req.query.branchId,
-        severity: req.query.severity,
-        startDate: req.query.startDate,
-        endDate: req.query.endDate,
-      };
-
-      const data = await AuditLogService.fetchPaginatedLogs(filters);
-
+      const severities = await AuditLogService.getSeverities();
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
-        data,
-        "Activity logs securely retrieved.",
+        severities,
+        "Dynamic severities retrieved.",
       );
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to retrieve severities.",
+        error.message,
+      );
+    }
+  }
+
+  // GET: /api/v1/sysadmin/audit
+  static async getLogs(req, res) {
+    try {
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 15;
+      const search = req.query.search || "";
+      const branchId = req.query.branchId || "";
+      const severity = req.query.severity || "";
+      const startDate = req.query.startDate || "";
+      const endDate = req.query.endDate || "";
+
+      const result = await AuditLogService.fetchPaginatedLogs(
+        page,
+        limit,
+        search,
+        branchId,
+        severity,
+        startDate,
+        endDate,
+      );
+
+      return res.status(STATUS_CODES.SUCCESS).json({
+        success: true,
+        data: result.logs,
+        pagination: result.pagination,
+        message: "Activity logs securely retrieved.",
+      });
     } catch (error) {
       return sendError(
         res,
@@ -47,7 +72,6 @@ class AuditLogController {
 
       const csvData = await AuditLogService.generateCSVExport(filters);
 
-      // Force browser to download as CSV file securely
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(
         "Content-Disposition",

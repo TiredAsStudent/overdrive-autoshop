@@ -1,29 +1,45 @@
 const AuditLogModel = require("../../models/AuditLog");
 
 class AuditLogService {
-  static async fetchPaginatedLogs(filters) {
-    const limit = parseInt(filters.limit, 10) || 20;
-    const page = parseInt(filters.page, 10) || 1;
-    const offset = (page - 1) * limit;
+  static async getSeverities() {
+    return await AuditLogModel.getSeverities();
+  }
 
-    const dbFilters = { ...filters, limit, offset };
+  static async fetchPaginatedLogs(
+    page,
+    limit,
+    search,
+    branchId,
+    severity,
+    startDate,
+    endDate,
+  ) {
+    const offset = (page - 1) * limit;
+    const dbFilters = {
+      search,
+      branchId,
+      severity,
+      startDate,
+      endDate,
+      limit,
+      offset,
+    };
 
     // Parallel processing for maximum speed
-    const [logs, totalRecords] = await Promise.all([
+    const [logs, totalItems] = await Promise.all([
       AuditLogModel.getLogs(dbFilters),
       AuditLogModel.getTotalCount(dbFilters),
     ]);
 
-    const totalPages = Math.ceil(totalRecords / limit);
+    const totalPages = Math.ceil(totalItems / limit);
 
     return {
       logs,
       pagination: {
-        totalRecords,
+        totalItems,
         totalPages,
         currentPage: page,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
+        itemsPerPage: limit,
       },
     };
   }
@@ -55,7 +71,6 @@ class AuditLogService {
     ];
 
     const csvRows = logs.map((log) => {
-      // Stringify JSON fields and escape double quotes to prevent CSV breaking
       const oldDataStr = log.old_values
         ? JSON.stringify(log.old_values).replace(/"/g, '""')
         : "";
@@ -76,7 +91,7 @@ class AuditLogService {
         oldDataStr,
         newDataStr,
       ]
-        .map((value) => `"${value}"`) // Wrap every field in quotes to handle commas within JSON
+        .map((value) => `"${value}"`)
         .join(",");
     });
 

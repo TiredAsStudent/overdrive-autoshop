@@ -1,11 +1,24 @@
 import api from "../api";
 
 export const auditService = {
+  getSeverities: async () => {
+    try {
+      const response = await api.get("/sysadmin/audit/severities");
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to load system severities.";
+      throw new Error(message);
+    }
+  },
+
   // Fetch paginated logs with filters
   getLogs: async (params) => {
     try {
       const response = await api.get("/sysadmin/audit", { params });
-      return response.data; // Returns { success, message, data: { logs: [], pagination: {} } }
+      return response.data; // Returns { success, data: [], pagination: {} }
     } catch (error) {
       const message =
         error.response?.data?.error?.details ||

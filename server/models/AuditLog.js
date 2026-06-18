@@ -1,6 +1,12 @@
 const { query } = require("../config/db");
 
 class AuditLog {
+  static async getSeverities() {
+    const sql = `SELECT DISTINCT severity FROM audit_logs WHERE severity IS NOT NULL ORDER BY severity ASC`;
+    const result = await query(sql);
+    return result.rows.map((row) => row.severity);
+  }
+
   // ==========================================
   // PAGINATED FETCH (FOR DASHBOARD VIEW)
   // ==========================================
@@ -37,7 +43,7 @@ class AuditLog {
     let paramIndex = 1;
 
     if (search) {
-      sql += ` AND (al.action ILIKE $${paramIndex} OR u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex})`;
+      sql += ` AND (al.action ILIKE $${paramIndex} OR u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex} OR al.ip_address ILIKE $${paramIndex})`;
       values.push(`%${search}%`);
       paramIndex++;
     }
@@ -84,7 +90,7 @@ class AuditLog {
     let paramIndex = 1;
 
     if (search) {
-      sql += ` AND (al.action ILIKE $${paramIndex} OR u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex})`;
+      sql += ` AND (al.action ILIKE $${paramIndex} OR u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex} OR al.ip_address ILIKE $${paramIndex})`;
       values.push(`%${search}%`);
       paramIndex++;
     }
@@ -141,7 +147,7 @@ class AuditLog {
 
     // Apply exact same filters as the paginated fetch
     if (search) {
-      sql += ` AND (al.action ILIKE $${paramIndex} OR u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex})`;
+      sql += ` AND (al.action ILIKE $${paramIndex} OR u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex} OR al.ip_address ILIKE $${paramIndex})`;
       values.push(`%${search}%`);
       paramIndex++;
     }

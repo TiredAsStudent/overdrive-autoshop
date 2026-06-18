@@ -124,6 +124,9 @@ router.post("/users/:id/resend-invite", UserController.resendInvite);
 // ==========================================
 // SUB-TAB 4.1: AUDIT LOGS & COMPLIANCE
 // ==========================================
+
+router.get("/audit/severities", AuditLogController.getSeverities);
+
 router.get(
   "/audit/export",
   validate(getAuditLogsSchema),
