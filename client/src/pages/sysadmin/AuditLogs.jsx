@@ -402,7 +402,7 @@ const AuditLogs = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedDelta(null)}
-                  className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-400 transition-colors cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   <X size={20} />
                 </button>
