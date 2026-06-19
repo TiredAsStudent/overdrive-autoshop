@@ -9,7 +9,6 @@ import {
   MapPin,
   Clock,
   Download,
-  AlertCircle,
   Eye,
   RefreshCw,
   X,
@@ -19,11 +18,14 @@ import {
 
 import { auditService } from "../../services/sysadmin/audit.service";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useApp } from "../../context/AppContext";
 
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 
 const AuditLogs = () => {
+  const { showToast } = useApp();
+
   // State: Data
   const [logs, setLogs] = useState([]);
   const [severities, setSeverities] = useState([]); // Dynamic severities
@@ -42,7 +44,6 @@ const AuditLogs = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [error, setError] = useState(null);
 
   // State: Data Delta Modal
   const [selectedDelta, setSelectedDelta] = useState(null);
@@ -54,11 +55,11 @@ const AuditLogs = () => {
         const severitiesRes = await auditService.getSeverities();
         setSeverities(severitiesRes.data || []);
       } catch (err) {
-        console.error("Failed to load severities", err);
+        showToast("Failed to load severity filters", "error");
       }
     };
     loadFilters();
-  }, []);
+  }, [showToast]);
 
   // Reset to page 1 whenever a filter changes
   useEffect(() => {
@@ -68,14 +69,12 @@ const AuditLogs = () => {
   // Fetch Logs based on filters and pagination
   const fetchLogs = async () => {
     setIsLoading(true);
-    setError(null);
     try {
       const params = {
         page: pagination.currentPage,
         limit: 15,
         search: debouncedSearch || undefined,
         severity: severityFilter || undefined,
-        // Branch filter is completely removed
       };
 
       const response = await auditService.getLogs(params);
@@ -90,7 +89,7 @@ const AuditLogs = () => {
         }));
       }
     } catch (err) {
-      setError(err.message);
+      showToast(err.message || "Failed to load audit logs", "error");
     } finally {
       setIsLoading(false);
     }
@@ -104,14 +103,14 @@ const AuditLogs = () => {
   // Handle CSV Export
   const handleExport = async () => {
     setIsExporting(true);
-    setError(null);
     try {
       await auditService.exportLogs({
         search: debouncedSearch || undefined,
         severity: severityFilter || undefined,
       });
+      showToast("Audit logs exported successfully", "success");
     } catch (err) {
-      setError(err.message);
+      showToast(err.message || "Failed to export logs", "error");
     } finally {
       setIsExporting(false);
     }
@@ -233,14 +232,6 @@ const AuditLogs = () => {
           </button>
         </div>
       </div>
-
-      {/* ERROR BANNER */}
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl flex items-center gap-3 shadow-sm text-sm text-red-600 font-bold">
-          <AlertCircle size={18} className="shrink-0" />
-          <p className="truncate">{error}</p>
-        </div>
-      )}
 
       {/* UNIVERSAL DATATABLE COMPONENT */}
       <DataTable
