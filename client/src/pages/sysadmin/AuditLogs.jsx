@@ -28,7 +28,7 @@ const AuditLogs = () => {
 
   // State: Data
   const [logs, setLogs] = useState([]);
-  const [severities, setSeverities] = useState([]); // Dynamic severities
+  const [severities, setSeverities] = useState([]);
 
   // State: Pagination Object
   const [pagination, setPagination] = useState({
@@ -39,7 +39,7 @@ const AuditLogs = () => {
 
   // State: UI & Controls
   const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebounce(searchTerm, 500); // 500ms delay to prevent API spam
+  const debouncedSearch = useDebounce(searchTerm, 500);
   const [severityFilter, setSeverityFilter] = useState("");
 
   const [isLoading, setIsLoading] = useState(true);
@@ -80,7 +80,6 @@ const AuditLogs = () => {
       const response = await auditService.getLogs(params);
       setLogs(response.data || []);
 
-      // Update pagination state matching the universal response format
       if (response.pagination) {
         setPagination((prev) => ({
           ...prev,
@@ -144,9 +143,9 @@ const AuditLogs = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-700 w-full pb-10">
       {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
+      <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
         {/* Header Title Section */}
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
+        <div className="flex items-center gap-3 sm:gap-4 w-full xl:w-auto min-w-0">
           <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
             <ShieldAlert className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
           </div>
@@ -161,9 +160,9 @@ const AuditLogs = () => {
         </div>
 
         {/* Action Controls */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full xl:w-auto">
           {/* Universal Search Bar */}
-          <div className="relative w-full sm:max-w-xs lg:w-64">
+          <div className="relative w-full sm:flex-1 xl:w-64 xl:flex-none min-w-[200px]">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               {searchTerm !== debouncedSearch ? (
                 <Loader2 size={16} className="text-amber-500 animate-spin" />
@@ -181,7 +180,7 @@ const AuditLogs = () => {
           </div>
 
           {/* Dynamic Server-Side Severities Dropdown */}
-          <div className="relative w-full sm:w-auto min-w-[160px]">
+          <div className="relative w-full sm:flex-1 xl:w-auto xl:flex-none min-w-[160px]">
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
@@ -254,7 +253,7 @@ const AuditLogs = () => {
             className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
           >
             {/* Timestamp */}
-            <td className="px-4 sm:px-6 py-4 sm:py-6">
+            <td className="px-4 sm:px-6 py-4 sm:py-6 whitespace-nowrap">
               <div className="flex items-center gap-3">
                 <Clock size={14} className="text-slate-400 shrink-0" />
                 <div>
@@ -269,7 +268,7 @@ const AuditLogs = () => {
             </td>
 
             {/* User Identity */}
-            <td className="px-4 sm:px-6 py-4 sm:py-6">
+            <td className="px-4 sm:px-6 py-4 sm:py-6 whitespace-nowrap">
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 bg-slate-100 dark:bg-white/5 rounded-lg flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors shrink-0">
                   <User size={16} />
@@ -300,13 +299,13 @@ const AuditLogs = () => {
                 >
                   {log.severity}
                 </span>
-                <div className="flex items-start gap-2 mt-1">
+                <div className="flex items-start gap-2 mt-1 w-full">
                   <Terminal
                     size={14}
                     className="text-slate-400 shrink-0 mt-0.5"
                   />
                   <p
-                    className="text-xs font-bold text-slate-700 dark:text-gray-300 leading-tight max-w-[250px] truncate"
+                    className="text-xs font-bold text-slate-700 dark:text-gray-300 leading-tight max-w-[200px] sm:max-w-[250px] truncate"
                     title={log.action}
                   >
                     {log.action}
@@ -318,25 +317,31 @@ const AuditLogs = () => {
             {/* Transaction Link */}
             <td className="px-4 sm:px-6 py-4 sm:py-6">
               {log.target_resource ? (
-                <div className="flex flex-col gap-1 bg-slate-50 dark:bg-black/20 px-3 py-2 rounded-lg border border-slate-100 dark:border-white/5 w-fit">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                    <Database size={10} /> {log.target_resource}
+                <div className="flex flex-col gap-1 bg-slate-50 dark:bg-black/20 px-3 py-2 rounded-lg border border-slate-100 dark:border-white/5 w-fit max-w-[150px] sm:max-w-[200px]">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1 truncate w-full">
+                    <Database size={10} className="shrink-0" />
+                    <span className="truncate" title={log.target_resource}>
+                      {log.target_resource}
+                    </span>
                   </span>
                   {log.target_id && (
-                    <span className="text-xs font-black text-slate-700 dark:text-slate-300 font-mono">
+                    <span
+                      className="text-xs font-black text-slate-700 dark:text-slate-300 font-mono truncate w-full"
+                      title={log.target_id}
+                    >
                       REF ID: {log.target_id}
                     </span>
                   )}
                 </div>
               ) : (
-                <span className="text-[10px] text-slate-400 font-medium italic pl-2">
+                <span className="text-[10px] text-slate-400 font-medium italic pl-2 whitespace-nowrap">
                   Unlinked
                 </span>
               )}
             </td>
 
             {/* Data Delta View Button */}
-            <td className="px-4 sm:px-6 py-4 sm:py-6">
+            <td className="px-4 sm:px-6 py-4 sm:py-6 whitespace-nowrap">
               {log.old_values || log.new_values ? (
                 <button
                   type="button"
@@ -353,7 +358,7 @@ const AuditLogs = () => {
             </td>
 
             {/* Network IP */}
-            <td className="px-4 sm:px-6 py-4 sm:py-6 text-right">
+            <td className="px-4 sm:px-6 py-4 sm:py-6 text-right whitespace-nowrap">
               <div className="flex items-center justify-end gap-2 font-mono text-[10px] font-black text-slate-400 group-hover:text-emerald-500 transition-colors">
                 <Globe size={12} /> {log.ip_address}
               </div>
@@ -374,54 +379,82 @@ const AuditLogs = () => {
       {/* JSON STATE ANALYSIS MODAL */}
       <AnimatePresence>
         {selectedDelta && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedDelta(null)}
+              className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm cursor-pointer"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
             >
-              <div className="p-6 border-b border-slate-100 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0">
-                <div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tight">
-                    State Change Analysis
-                  </h3>
-                  <p className="text-[10px] font-bold text-slate-500 font-mono mt-1 uppercase tracking-widest">
-                    LOG-{selectedDelta.id} | {selectedDelta.action}
-                  </p>
+              <div className="px-4 sm:px-8 py-5 sm:py-6 border-b border-slate-100 dark:border-white/10 flex justify-between items-start bg-white dark:bg-slate-900 shrink-0">
+                <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0 pr-4">
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 bg-amber-500/10 rounded-xl sm:rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-500 shrink-0">
+                    <Database size={20} className="sm:w-6 sm:h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base sm:text-lg lg:text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                      State Change Analysis
+                    </h3>
+                    <p className="text-[9px] sm:text-[10px] lg:text-xs font-bold text-slate-500 font-mono mt-1 uppercase tracking-widest flex items-center gap-1.5 sm:gap-2 truncate w-full">
+                      <span className="shrink-0">LOG-{selectedDelta.id}</span>
+                      <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0"></span>
+                      <span className="truncate" title={selectedDelta.action}>
+                        {selectedDelta.action}
+                      </span>
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedDelta(null)}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                  className="p-2 sm:p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer shrink-0 mt-1 sm:mt-0"
                 >
-                  <X size={20} />
+                  <X size={18} className="sm:w-5 sm:h-5" />
                 </button>
               </div>
 
-              <div className="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-100 dark:bg-slate-800/50 custom-scrollbar">
-                <div className="space-y-2 flex flex-col">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                    Previous State (old_values)
-                  </p>
-                  <div className="bg-white dark:bg-black p-4 rounded-2xl text-[10px] sm:text-xs font-mono text-slate-700 dark:text-emerald-400 shadow-inner border border-slate-200 dark:border-white/5 flex-1 min-h-[150px] max-h-[400px] overflow-x-auto custom-scrollbar">
-                    <pre>
-                      {selectedDelta.old_values
-                        ? JSON.stringify(selectedDelta.old_values, null, 2)
-                        : "/* No previous state */"}
-                    </pre>
+              <div className="p-4 sm:p-6 lg:p-8 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-800/50 custom-scrollbar">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+                  {/* Old Values Block */}
+                  <div className="space-y-2 sm:space-y-3 flex flex-col min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0"></div>
+                      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 truncate">
+                        Previous State (old_values)
+                      </p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl text-[10px] sm:text-xs font-mono text-slate-700 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-white/5 flex-1 min-h-[150px] lg:min-h-[200px] max-h-[300px] lg:max-h-[500px] overflow-x-auto custom-scrollbar">
+                      <pre>
+                        {selectedDelta.old_values
+                          ? JSON.stringify(selectedDelta.old_values, null, 2)
+                          : "/* No previous state */"}
+                      </pre>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2 flex flex-col">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                    New State (new_values)
-                  </p>
-                  <div className="bg-white dark:bg-black p-4 rounded-2xl text-[10px] sm:text-xs font-mono text-slate-700 dark:text-blue-400 shadow-inner border border-slate-200 dark:border-white/5 flex-1 min-h-[150px] max-h-[400px] overflow-x-auto custom-scrollbar">
-                    <pre>
-                      {selectedDelta.new_values
-                        ? JSON.stringify(selectedDelta.new_values, null, 2)
-                        : "/* No new state */"}
-                    </pre>
+
+                  {/* New Values Block */}
+                  <div className="space-y-2 sm:space-y-3 flex flex-col min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0"></div>
+                      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 truncate">
+                        New State (new_values)
+                      </p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl text-[10px] sm:text-xs font-mono text-slate-700 dark:text-blue-400 shadow-sm border border-slate-200 dark:border-white/5 flex-1 min-h-[150px] lg:min-h-[200px] max-h-[300px] lg:max-h-[500px] overflow-x-auto custom-scrollbar">
+                      <pre>
+                        {selectedDelta.new_values
+                          ? JSON.stringify(selectedDelta.new_values, null, 2)
+                          : "/* No new state */"}
+                      </pre>
+                    </div>
                   </div>
                 </div>
               </div>
