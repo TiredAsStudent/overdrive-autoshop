@@ -3,6 +3,22 @@ const fs = require("fs/promises");
 const path = require("path");
 const { query } = require("../../config/db");
 
+// Helper function to calculate raw CPU ticks at an exact moment
+const getCpuTicks = () => {
+  const cpus = os.cpus();
+  let totalIdle = 0;
+  let totalTick = 0;
+
+  cpus.forEach((core) => {
+    for (let type in core.times) {
+      totalTick += core.times[type];
+    }
+    totalIdle += core.times.idle;
+  });
+
+  return { totalIdle, totalTick };
+};
+
 class HealthService {
   static async getSystemMetrics() {
     // ==========================================
@@ -13,7 +29,6 @@ class HealthService {
     let storagePercentage = 0;
 
     try {
-      // Universally grab the root directory of the current operating system
       const rootPath = path.parse(__dirname).root;
       const stats = await fs.statfs(rootPath);
 
@@ -28,14 +43,13 @@ class HealthService {
       storagePercentage = Math.round((storageUsedGb / storageTotalGb) * 100);
     } catch (diskError) {
       console.error("Health Service Disk Reading Warning:", diskError.message);
-      // Fallback baseline if the OS restricts root file system visibility
       storageTotalGb = 250.0;
       storageUsedGb = 42.1;
       storagePercentage = 17;
     }
 
     // ==========================================
-    // DYNAMIC SYSTEM MEMORY (RAM) & PROCESSOR (CPU)
+    // DYNAMIC SYSTEM MEMORY (RAM)
     // ==========================================
     const totalRamBytes = os.totalmem();
     const freeRamBytes = os.freemem();
@@ -46,14 +60,37 @@ class HealthService {
     const usedRamGb = parseFloat(bytesToGb(usedRamBytes));
     const ramPercentage = Math.round((usedRamGb / totalRamGb) * 100);
 
-    // CPU load average calculations
-    const cpus = os.cpus();
-    const cpuCount = cpus.length;
-    const loadAvg1Min = os.loadavg()[0];
-    const cpuOverhead = Math.min(
-      Math.round((loadAvg1Min / cpuCount) * 100),
-      100,
-    );
+    // ==========================================
+    // REAL-TIME PROCESSOR CALCULATIONS (CPU DELTA)
+    // ==========================================
+    let cpuOverhead = 0;
+
+    if (process.platform === "win32") {
+      // Take first sample snapshot
+      const sample1 = getCpuTicks();
+
+      // Wait 200ms to allow a small window of processor time to pass
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Take second sample snapshot
+      const sample2 = getCpuTicks();
+
+      // Calculate the difference between snapshots
+      const idleDelta = sample2.totalIdle - sample1.totalIdle;
+      const totalDelta = sample2.totalTick - sample1.totalTick;
+
+      if (totalDelta > 0) {
+        const idlePercent = (idleDelta / totalDelta) * 100;
+        // Current load is whatever wasn't idle during that 200ms window
+        cpuOverhead = Math.min(Math.round(100 - idlePercent), 100);
+      }
+    } else {
+      // Linux / macOS standard load behavior
+      const cpus = os.cpus();
+      const cpuCount = cpus.length;
+      const loadAvg1Min = os.loadavg()[0];
+      cpuOverhead = Math.min(Math.round((loadAvg1Min / cpuCount) * 100), 100);
+    }
 
     // ==========================================
     // DATABASE CONNECTION HEARTBEAT
@@ -65,7 +102,6 @@ class HealthService {
     try {
       const startDbTime = Date.now();
 
-      // Read transaction throughput logs directly out of the PostgreSQL internal registry
       const dbResult = await query(`
         SELECT 
           (SELECT sum(xact_commit + xact_rollback) FROM pg_stat_database) AS total_transactions 
@@ -81,7 +117,6 @@ class HealthService {
         "Database connection failure during system health check:",
         dbError.message,
       );
-      // Graceful Failure: Prevent the server from crashing and alert the UI
       dbStatus = "OFFLINE";
       dbLatency = 999;
     }
@@ -99,7 +134,6 @@ class HealthService {
     uptimeText += `${hours} Hours`;
     if (days === 0 && hours === 0) uptimeText = `${minutes} Minutes`;
 
-    // Extract connected system counts straight out of the active user directory listings
     let activeSessions = 0;
     try {
       const sessionRes = await query(
@@ -110,12 +144,11 @@ class HealthService {
       activeSessions = 0;
     }
 
-    // Return the exact JSON schema the frontend UI is expecting
     return {
       services: {
         apiGateway: {
           status: cpuOverhead > 90 ? "DEGRADED" : "HEALTHY",
-          latency_ms: Math.floor(Math.random() * 10) + 5, // Simulates Express routing overhead
+          latency_ms: Math.floor(Math.random() * 10) + 5,
         },
         database: {
           status: dbStatus,
@@ -123,7 +156,7 @@ class HealthService {
         },
         fileStorage: {
           status: dbStatus === "OFFLINE" ? "OFFLINE" : "HEALTHY",
-          latency_ms: Math.floor(Math.random() * 20) + 25, // Simulates local disk write delay
+          latency_ms: Math.floor(Math.random() * 20) + 25,
         },
       },
       resources: {

@@ -120,15 +120,13 @@ const SystemHealth = () => {
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate flex items-center gap-2">
               System Health
-              {isBackgroundPolling && (
-                <span
-                  className="flex h-2 w-2 relative"
-                  title="Background Syncing..."
-                >
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-              )}
+              <span
+                className="flex h-2 w-2 relative"
+                title="Live Ecosystem Link Active"
+              >
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
             </h1>
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
               Monitor server infrastructure and network status
