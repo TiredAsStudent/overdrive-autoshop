@@ -7,7 +7,6 @@ const UserController = require("../../controllers/sysadmin/user.controller");
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 const SettingsController = require("../../controllers/sysadmin/settings.controller");
 const AuditLogController = require("../../controllers/sysadmin/audit.controller");
-const HealthController = require("../../controllers/sysadmin/health.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
@@ -135,10 +134,5 @@ router.get(
 );
 
 router.get("/audit", validate(getAuditLogsSchema), AuditLogController.getLogs);
-
-// ==========================================
-// SUB-TAB 4.2: SYSTEM HEALTH TELEMETRY
-// ==========================================
-router.get("/health", HealthController.getSystemHealth);
 
 module.exports = router;
