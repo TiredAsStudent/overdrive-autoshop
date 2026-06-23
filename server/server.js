@@ -84,6 +84,21 @@ app.use((err, req, res, next) => {
   );
 });
 
+// --- AUTOMATED BACKGROUND JOBS ---
+const cron = require("node-cron");
+const BackupService = require("./services/sysadmin/backup.service");
+
+// Runs exactly at Midnight (00:00) server time, every single day
+cron.schedule("0 0 * * *", async () => {
+  console.log("[CRON] Initiating scheduled automated database backup...");
+  try {
+    await BackupService.generateBackup(null, "127.0.0.1", false);
+    console.log("[CRON] Automated database snapshot completed successfully.");
+  } catch (err) {
+    console.error("[CRON] Automated backup failed:", err.message);
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
