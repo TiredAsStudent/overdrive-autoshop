@@ -7,6 +7,7 @@ const UserController = require("../../controllers/sysadmin/user.controller");
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 const SettingsController = require("../../controllers/sysadmin/settings.controller");
 const AuditLogController = require("../../controllers/sysadmin/audit.controller");
+const BackupController = require("../../controllers/sysadmin/backup.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
@@ -36,6 +37,9 @@ const {
 const {
   getAuditLogsSchema,
 } = require("../../validations/sysadmin/auditLog.schema");
+const {
+  getBackupsSchema,
+} = require("../../validations/sysadmin/backup.schema");
 
 // ==========================================
 // UTILITY: Catch Multer File Errors cleanly
@@ -134,5 +138,12 @@ router.get(
 );
 
 router.get("/audit", validate(getAuditLogsSchema), AuditLogController.getLogs);
+
+// ==========================================
+// SUB-TAB 4.2: DATABASE BACKUPS
+// ==========================================
+router.get("/backups", validate(getBackupsSchema), BackupController.getBackups);
+
+router.post("/backups/trigger", BackupController.triggerBackup);
 
 module.exports = router;

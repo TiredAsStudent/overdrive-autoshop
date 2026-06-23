@@ -94,6 +94,11 @@ cron.schedule("0 0 * * *", async () => {
   try {
     await BackupService.generateBackup(null, "127.0.0.1", false);
     console.log("[CRON] Automated database snapshot completed successfully.");
+
+    const deletedCount = await BackupService.cleanOldBackups(7);
+    console.log(
+      `[CRON] Cleanup routine finished. Safely purged ${deletedCount} old backup archives.`,
+    );
   } catch (err) {
     console.error("[CRON] Automated backup failed:", err.message);
   }
