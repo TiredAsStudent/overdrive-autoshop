@@ -20,6 +20,10 @@ coverage/
 # Uploaded Files
 server/uploads/
 
+# Ignore database backups
+backups/
+*.sql
+
 # Environment Variables
 .env
 .env.*
