@@ -20,7 +20,7 @@ coverage/
 # Uploaded Files
 server/uploads/
 
-# Ignore database backups
+# Security: Ignore database backups
 backups/
 *.sql
 
@@ -29,11 +29,16 @@ backups/
 .env.*
 !.env.example
 
-# IDE Files
+# Linter & Framework Caches
+.eslintcache
+.vite/
+
+# IDE & OS Files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
