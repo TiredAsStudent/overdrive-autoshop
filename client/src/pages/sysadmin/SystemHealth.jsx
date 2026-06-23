@@ -1,11 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Activity,
   Server,
   Database,
   Cpu,
   HardDrive,
-  Cpu as RamIcon,
   CheckCircle2,
   AlertTriangle,
   XCircle,
@@ -15,41 +14,55 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-// ==========================================
-// 🛑 MOCK DATA: FRONTEND-FIRST PROTOTYPING
-// Simulates the JSON schema from the backend.
-// ==========================================
-const mockHealthData = {
-  services: {
-    apiGateway: { status: "HEALTHY", latency_ms: 15 },
-    database: { status: "HEALTHY", latency_ms: 4 },
-    fileStorage: { status: "HEALTHY", latency_ms: 45 },
-  },
-  resources: {
-    cpuOverhead: 14,
-    ramBuffer: { used_gb: 1.8, total_gb: 4.0, percentage: 45 },
-    diskSpace: { used_gb: 42.1, total_gb: 250.0, percentage: 17 },
-  },
-  metrics: {
-    activeSessionsCount: 8,
-    databaseQueriesPerSec: 22,
-    systemUptimeText: "12 Days, 6 Hours",
-    failureRateOverhead: 0.0,
-  },
-};
+import { healthService } from "../../services/sysadmin/health.service";
+import { useApp } from "../../context/AppContext";
 
 const SystemHealth = () => {
-  // State: Data & UI Controls
-  const [healthData, setHealthData] = useState(mockHealthData);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { showToast } = useApp();
 
-  // Fake Refresh Handler (Simulates an API call)
+  // State: Data & UI Controls
+  const [healthData, setHealthData] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(true); // True on initial load
+  const [isBackgroundPolling, setIsBackgroundPolling] = useState(false);
+
+  // Core Data Fetcher Engine
+  const fetchHealthMetrics = useCallback(
+    async (isSilentPoll = false) => {
+      if (isSilentPoll) {
+        setIsBackgroundPolling(true);
+      } else {
+        setIsRefreshing(true);
+      }
+
+      try {
+        const data = await healthService.getHealthMetrics();
+        setHealthData(data);
+      } catch (err) {
+        if (!isSilentPoll) {
+          showToast(err.message || "Diagnostic failure.", "error");
+        }
+      } finally {
+        setIsRefreshing(false);
+        setIsBackgroundPolling(false);
+      }
+    },
+    [showToast],
+  );
+
+  // Initial Mount & 30-Second Polling Loop
+  useEffect(() => {
+    fetchHealthMetrics(false);
+
+    const intervalId = setInterval(() => {
+      fetchHealthMetrics(true);
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [fetchHealthMetrics]);
+
+  // Manual Refresh Handler
   const handleRefresh = () => {
-    setIsRefreshing(true);
-    // Simulate a 1.5-second network delay
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1500);
+    fetchHealthMetrics(false);
   };
 
   // Helper: Status Indicator Badge Styles
@@ -84,6 +97,17 @@ const SystemHealth = () => {
     return "bg-emerald-500 shadow-sm shadow-emerald-500/30"; // Healthy/Optimal
   };
 
+  if (!healthData) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] w-full animate-in fade-in duration-700">
+        <Activity className="h-10 w-10 text-amber-500 animate-pulse mb-4" />
+        <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+          Initializing System Diagnostics...
+        </h3>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-700 w-full pb-10">
       {/* 1. ACTION BAR */}
@@ -94,8 +118,17 @@ const SystemHealth = () => {
             <Activity className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate flex items-center gap-2">
               System Health
+              {isBackgroundPolling && (
+                <span
+                  className="flex h-2 w-2 relative"
+                  title="Background Syncing..."
+                >
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              )}
             </h1>
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
               Monitor server infrastructure and network status
@@ -108,7 +141,7 @@ const SystemHealth = () => {
           <button
             type="button"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isRefreshing || isBackgroundPolling}
             className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm shadow-amber-500/20 disabled:opacity-50 cursor-pointer whitespace-nowrap"
           >
             <RefreshCw
@@ -120,7 +153,7 @@ const SystemHealth = () => {
         </div>
       </div>
 
-      {/* 2. KPI PERFORMANCE COUNTERS GRID (Enlarged) */}
+      {/* KPI PERFORMANCE COUNTERS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
         {/* KPI: System Uptime */}
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl sm:rounded-[24px] border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-5 transition-all hover:shadow-md">
@@ -183,8 +216,7 @@ const SystemHealth = () => {
         </div>
       </div>
 
-      {/* 3. HARDWARE & BACKBONE DIAGNOSTICS SPLIT */}
-      {/* Removed items-start so children automatically stretch to equal heights */}
+      {/* HARDWARE & BACKBONE DIAGNOSTICS SPLIT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
         {/* LEFT COLUMN: HARDWARE RESOURCES */}
         <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-white/10 shadow-sm lg:col-span-7 flex flex-col h-full w-full">
