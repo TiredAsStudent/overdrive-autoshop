@@ -43,7 +43,7 @@ export const sysAdminMenu = [
     icon: ShieldAlert,
     items: [
       { name: "Audit Trail", path: "/sysadmin/records/audit-trail" },
-      { name: "System Health", path: "/sysadmin/records/system-health" },
+      { name: "Database Backups", path: "/sysadmin/records/database-backups" },
     ],
   },
 ];

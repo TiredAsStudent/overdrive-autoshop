@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Database,
   Plus,
   Edit2,
   Trash2,
@@ -181,7 +180,7 @@ const Branches = () => {
         {/* Header Title Section */}
         <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
           <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Database className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
+            <Building2 className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">

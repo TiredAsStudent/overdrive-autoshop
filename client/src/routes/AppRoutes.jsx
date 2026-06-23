@@ -58,7 +58,9 @@ const AdminBusinessSettings = lazy(
   () => import("../pages/sysadmin/BusinessSettings"),
 );
 const AdminAuditLogs = lazy(() => import("../pages/sysadmin/AuditLogs"));
-const AdminSystemHealth = lazy(() => import("../pages/sysadmin/SystemHealth"));
+const AdminDatabaseBackups = lazy(
+  () => import("../pages/sysadmin/DatabaseBackups"),
+);
 
 // --- MANAGER PAGES ---
 const ManagerOverview = lazy(() => import("../pages/manager/Overview"));
@@ -257,10 +259,10 @@ const LocationBasedRoutes = ({ user }) => {
               }
             />
             <Route
-              path="records/system-health"
+              path="records/database-backups"
               element={
                 <PageWrapper>
-                  <AdminSystemHealth />
+                  <AdminDatabaseBackups />
                 </PageWrapper>
               }
             />
