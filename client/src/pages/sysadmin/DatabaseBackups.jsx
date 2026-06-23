@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Database,
   DownloadCloud,
@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
+import { backupService } from "../../services/sysadmin/backup.service";
 
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
@@ -18,13 +19,16 @@ const DatabaseBackups = () => {
   const { showToast } = useApp();
 
   // --- STATE MANAGEMENT ---
-  const [loading, setLoading] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isTriggering, setIsTriggering] = useState(false);
 
   // Search & Pagination State
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const debouncedSearchQuery = useDebounce(searchQuery, 400);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalArchives, setTotalArchives] = useState(0);
   const ITEMS_PER_PAGE = 5;
 
   const [confirmConfig, setConfirmConfig] = useState({
@@ -36,135 +40,79 @@ const DatabaseBackups = () => {
     onConfirm: () => {},
   });
 
-  // --- EXTENDED MOCK DATA ---
-  const [logs, setLogs] = useState([
-    {
-      id: 1,
-      file_name: "overdrive_backup_2026-06-23-00-00-00.sql",
-      backup_type: "AUTOMATED",
-      file_size_mb: 142.5,
-      status: "SUCCESS",
-      executed_by: "SYSTEM AUTOMATION",
-      timestamp: "6/23/2026, 12:00:00 AM",
-    },
-    {
-      id: 2,
-      file_name: "overdrive_backup_2026-06-22-14-35-12.sql",
-      backup_type: "MANUAL",
-      file_size_mb: 141.2,
-      status: "SUCCESS",
-      executed_by: "System Admin",
-      timestamp: "6/22/2026, 2:35:12 PM",
-    },
-    {
-      id: 3,
-      file_name: "overdrive_backup_2026-06-22-00-00-00.sql",
-      backup_type: "AUTOMATED",
-      file_size_mb: 141.15,
-      status: "SUCCESS",
-      executed_by: "SYSTEM AUTOMATION",
-      timestamp: "6/22/2026, 12:00:00 AM",
-    },
-    {
-      id: 4,
-      file_name: "overdrive_backup_2026-06-21-00-00-00.sql",
-      backup_type: "AUTOMATED",
-      file_size_mb: 0.0,
-      status: "FAILED",
-      executed_by: "SYSTEM AUTOMATION",
-      timestamp: "6/21/2026, 12:00:00 AM",
-    },
-    {
-      id: 5,
-      file_name: "overdrive_backup_2026-06-20-00-00-00.sql",
-      backup_type: "AUTOMATED",
-      file_size_mb: 139.8,
-      status: "SUCCESS",
-      executed_by: "SYSTEM AUTOMATION",
-      timestamp: "6/20/2026, 12:00:00 AM",
-    },
-    {
-      id: 6,
-      file_name: "overdrive_backup_2026-06-19-09-15-22.sql",
-      backup_type: "MANUAL",
-      file_size_mb: 139.5,
-      status: "SUCCESS",
-      executed_by: "System Admin",
-      timestamp: "6/19/2026, 9:15:22 AM",
-    },
-  ]);
-
-  // --- DYNAMIC FILTERING & PAGINATION LOGIC ---
-  const filteredLogs = useMemo(() => {
-    return logs.filter(
-      (log) =>
-        log.file_name
-          .toLowerCase()
-          .includes(debouncedSearchQuery.toLowerCase()) ||
-        log.backup_type
-          .toLowerCase()
-          .includes(debouncedSearchQuery.toLowerCase()),
-    );
-  }, [logs, debouncedSearchQuery]);
-
-  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE) || 1;
-  const paginatedLogs = filteredLogs.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  );
-
-  // Reset to page 1 if the search query changes
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchQuery]);
 
-  // --- DERIVED METRICS FOR CARDS ---
+  const loadBackupLogs = async () => {
+    try {
+      setLoading(true);
+      const response = await backupService.getBackupLogs(
+        currentPage,
+        ITEMS_PER_PAGE,
+        debouncedSearchQuery,
+      );
+
+      setLogs(response.data || []);
+      setTotalPages(response.pagination?.totalPages || 1);
+      setTotalArchives(response.pagination?.totalItems || 0);
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBackupLogs();
+  }, [currentPage, debouncedSearchQuery]);
+
   const totalVolume = logs
-    .reduce((acc, log) => acc + log.file_size_mb, 0)
+    .reduce((acc, log) => acc + parseFloat(log.file_size_mb || 0), 0)
     .toFixed(2);
-  const successCount = logs.filter((log) => log.status === "SUCCESS").length;
-  const lastExecution = logs[0]?.status === "SUCCESS" ? "HEALTHY" : "CRITICAL";
+  const lastExecution =
+    logs.length > 0
+      ? logs[0].status === "SUCCESS"
+        ? "HEALTHY"
+        : "CRITICAL"
+      : "STANDBY";
 
   // --- HANDLERS ---
   const handleTriggerBackupClick = () => {
     setConfirmConfig({
       isOpen: true,
-      title: "Trigger Secure Backup",
+      title: "Create Backup",
       message:
         "This will compile a complete point-in-time snapshot of the database architecture. The system may experience a slight drop in query speeds while compiling. Do you wish to proceed?",
-      confirmText: "Compile Backup",
+      confirmText: "Create Backup",
+      cancelText: "Cancel",
       variant: "warning",
-      onConfirm: executeSimulatedBackup,
+      onConfirm: executeLiveBackup,
     });
   };
 
-  const executeSimulatedBackup = async () => {
-    setIsSimulating(true);
-    await new Promise((resolve) => setTimeout(resolve, 2500)); // Simulate API delay
+  const executeLiveBackup = async () => {
+    setIsTriggering(true);
+    try {
+      await backupService.triggerBackup();
+      showToast(
+        "System database backup successfully compiled and securely stored.",
+        "success",
+      );
 
-    const newBackup = {
-      id: Date.now(),
-      file_name: `overdrive_backup_${new Date().toISOString().replace(/[:.]/g, "-")}.sql`,
-      backup_type: "MANUAL",
-      file_size_mb: parseFloat(
-        (Math.random() * (145.0 - 140.0) + 140.0).toFixed(2),
-      ),
-      status: "SUCCESS",
-      executed_by: "System Admin",
-      timestamp: new Date().toLocaleString(),
-    };
+      await loadBackupLogs();
+    } catch (error) {
+      showToast(error.message, "error");
 
-    setLogs([newBackup, ...logs]);
-    setIsSimulating(false);
-    showToast(
-      "System database backup successfully compiled and stored.",
-      "success",
-    );
+      await loadBackupLogs();
+    } finally {
+      setIsTriggering(false);
+    }
   };
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* 1. ACTION BAR / HEADER */}
+      {/* ACTION BAR / HEADER */}
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
         <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
           <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
@@ -201,10 +149,10 @@ const DatabaseBackups = () => {
 
           <button
             onClick={handleTriggerBackupClick}
-            disabled={isSimulating}
+            disabled={isTriggering || loading}
             className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSimulating ? (
+            {isTriggering ? (
               <>
                 <Loader2 size={16} className="animate-spin" /> Compiling Dump...
               </>
@@ -217,14 +165,14 @@ const DatabaseBackups = () => {
         </div>
       </div>
 
-      {/* 2. MODULAR METRICS CARDS */}
+      {/* METRICS CARDS */}
       <BackupMetricsCards
         totalVolume={totalVolume}
-        successCount={successCount}
+        successCount={totalArchives}
         lastExecution={lastExecution}
       />
 
-      {/* 3. DATATABLE LEDGER */}
+      {/* DATATABLE LEDGER */}
       <DataTable
         headers={[
           "Backup Identity",
@@ -234,7 +182,7 @@ const DatabaseBackups = () => {
           "Operator",
           "Timestamp",
         ]}
-        data={paginatedLogs}
+        data={logs}
         loading={loading}
         emptyTitle={
           searchQuery ? "No matching backups found" : "No backup records found"
@@ -298,28 +246,28 @@ const DatabaseBackups = () => {
             </td>
 
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
-                {log.executed_by}
+              <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase">
+                {log.operator_name || "System Admin"}
               </p>
             </td>
 
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <p className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">
-                {log.timestamp}
+              <p className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                {new Date(log.created_at).toLocaleString()}
               </p>
             </td>
           </tr>
         )}
       />
 
-      {/* 4. PAGINATION */}
+      {/* PAGINATION */}
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
 
-      {/* 5. SECURE CONFIRM MODAL */}
+      {/* CONFIRM MODAL */}
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
