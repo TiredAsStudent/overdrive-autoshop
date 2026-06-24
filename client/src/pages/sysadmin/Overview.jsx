@@ -7,6 +7,9 @@ import {
   Clock,
 } from "lucide-react";
 
+import { useApp } from "../../context/AppContext";
+import { dashboardService } from "../../services/sysadmin/dashboard.service";
+
 // Components
 import DataTable from "../../components/shared/DataTable";
 import OverviewMetricsCards from "../../features/sysadmin/components/OverviewMetricsCards";
@@ -14,75 +17,51 @@ import BusinessSettingsWidget from "../../features/sysadmin/components/BusinessS
 import RecentAuditLogs from "../../features/sysadmin/components/RecentAuditLogs";
 
 const Overview = () => {
-  // Simple User-Friendly Clock State
-  const [time, setTime] = useState(new Date());
+  const { showToast } = useApp();
 
+  // --- COMPONENT STATES ---
+  const [time, setTime] = useState(new Date());
+  const [loading, setLoading] = useState(true);
+
+  const [dashboardData, setDashboardData] = useState({
+    dashboardMetrics: {
+      activeBranches: "0 / 0",
+      totalUsers: "0",
+      databaseStorage: "0.00 MB",
+      backupStatus: "SYNCING",
+    },
+    businessSettings: {
+      companyName: "Syncing...",
+      vatRate: "0.00%",
+      partsMarkup: "0.00%",
+    },
+    branchRegistryList: [],
+    recentAuditLogs: [],
+  });
+
+  // --- CLOCK INTERVAL ---
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // --- STANDARD MOCK DATA ---
-  const dashboardMetrics = {
-    activeBranches: "2 / 2",
-    totalUsers: "14",
-    databaseStorage: "42.8 MB",
-    backupStatus: "SECURE",
-  };
+  // --- API DATA FETCHING ---
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        const data = await dashboardService.getOverview();
+        setDashboardData(data);
+      } catch (error) {
+        console.error("Dashboard fetch error:", error);
+        showToast(error.message || "Unable to load dashboard data.", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const businessSettings = {
-    companyName: "Overdrive Auto Shop",
-    vatRate: "12.00%",
-    partsMarkup: "20.00%",
-  };
-
-  // Content mapped EXACTLY to Branches.jsx details
-  const branchRegistryList = [
-    {
-      id: 1,
-      branch_name: "Biñan Main Branch",
-      branch_code: "BIN",
-      address: "Magsaysay Rd, Biñan, Laguna",
-      is_active: true,
-      is_maintenance_mode: false,
-    },
-    {
-      id: 2,
-      branch_name: "Cabuyao Hub",
-      branch_code: "CAB",
-      address: "Pulo-Diezmo Rd, Cabuyao, Laguna",
-      is_active: true,
-      is_maintenance_mode: true,
-    },
-  ];
-
-  // Content mapped to standard Audit Trail structure
-  const recentAuditLogs = [
-    {
-      id: 1042,
-      timestamp: "06/24/2026, 3:32:11 PM",
-      operator: "System Admin",
-      action: "UPDATED_BRANCH_STATUS",
-      target: "CABUYAO HUB (ID: 2)",
-      severity: "CRITICAL",
-    },
-    {
-      id: 1041,
-      timestamp: "06/24/2026, 2:15:02 PM",
-      operator: "System Admin",
-      action: "REVOKED_USER_SESSION",
-      target: "STAFF_ACCOUNT (ID: 14)",
-      severity: "WARNING",
-    },
-    {
-      id: 1039,
-      timestamp: "06/24/2026, 12:00:04 AM",
-      operator: "System Automation",
-      action: "GENERATED_DATABASE_BACKUP",
-      target: "BACKUP_FILE (ID: 88)",
-      severity: "INFO",
-    },
-  ];
+    loadDashboardData();
+  }, [showToast]);
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full max-w-[100vw] overflow-hidden px-2 sm:px-0">
@@ -98,7 +77,7 @@ const Overview = () => {
               Overview
             </h1>
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Monitor system activity, users, and operations.
+              Monitor system activity, users, and operations
             </p>
           </div>
         </div>
@@ -117,8 +96,8 @@ const Overview = () => {
         </div>
       </div>
 
-      {/* 2. FRIENDLY SUMMARY CARDS */}
-      <OverviewMetricsCards metrics={dashboardMetrics} />
+      {/* 2. DYNAMIC SUMMARY CARDS */}
+      <OverviewMetricsCards metrics={dashboardData.dashboardMetrics} />
 
       {/* 3. SPLIT WORKSPACE PANELS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 w-full items-start">
@@ -130,16 +109,18 @@ const Overview = () => {
               className="text-amber-600 dark:text-overdrive-yellow shrink-0"
             />
             <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-700 dark:text-slate-400 truncate">
-              Branch Registry Status
+              Active Branch Registry (Top 5)
             </h2>
           </div>
 
           <div className="w-full flex-1">
             <DataTable
               headers={["Branch Details", "Branch Code", "Status"]}
-              data={branchRegistryList}
-              loading={false}
+              data={dashboardData.branchRegistryList}
+              loading={loading}
               minWidth="min-w-[500px]"
+              emptyTitle="No operational branches"
+              emptySubtitle="Active branches will be listed here once registered."
               renderRow={(branch) => (
                 <tr
                   key={branch.id}
@@ -198,13 +179,16 @@ const Overview = () => {
         </div>
 
         {/* Right Component: Business Settings Widget */}
-        <div className="lg:col-span-1 w-full pt-0 lg:pt-[32px] h-full overflow-hidden">
-          <BusinessSettingsWidget settings={businessSettings} />
+        <div className="lg:col-span-1 w-full pt-0 lg:pt-[32px] h-full overflow-hidden relative">
+          {loading && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm z-10 rounded-[32px] flex items-center justify-center"></div>
+          )}
+          <BusinessSettingsWidget settings={dashboardData.businessSettings} />
         </div>
       </div>
 
-      {/* 4. ALIGNED AUDIT LOGS SUMMARY */}
-      <RecentAuditLogs logs={recentAuditLogs} />
+      {/* 4. DYNAMIC AUDIT LOGS SUMMARY */}
+      <RecentAuditLogs logs={dashboardData.recentAuditLogs} loading={loading} />
     </div>
   );
 };

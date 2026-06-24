@@ -8,6 +8,7 @@ const BranchController = require("../../controllers/sysadmin/branch.controller")
 const SettingsController = require("../../controllers/sysadmin/settings.controller");
 const AuditLogController = require("../../controllers/sysadmin/audit.controller");
 const BackupController = require("../../controllers/sysadmin/backup.controller");
+const DashboardController = require("../../controllers/sysadmin/dashboard.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
@@ -61,6 +62,11 @@ const handleLogoUpload = (req, res, next) => {
 // GLOBAL SECURITY: SysAdmin Only
 // ==========================================
 router.use(verifyToken, requireRole(ROLES.ADMIN));
+
+// ==========================================
+// SUB-TAB 1.1: SYSTEM DASHBOARD OVERVIEW
+// ==========================================
+router.get("/dashboard/overview", DashboardController.getOverview);
 
 // ==========================================
 // SUB-TAB 2.1: BRANCH MANAGEMENT

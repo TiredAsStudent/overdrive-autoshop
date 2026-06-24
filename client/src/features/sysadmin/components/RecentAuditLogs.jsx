@@ -2,7 +2,7 @@ import React from "react";
 import { History, ShieldAlert, Activity } from "lucide-react";
 import DataTable from "../../../components/shared/DataTable";
 
-const RecentAuditLogs = ({ logs }) => {
+const RecentAuditLogs = ({ logs, loading }) => {
   return (
     <div className="flex flex-col w-full h-full overflow-hidden">
       <div className="mb-3 flex items-center justify-between pl-2">
@@ -24,7 +24,7 @@ const RecentAuditLogs = ({ logs }) => {
             "Transaction Link",
           ]}
           data={logs}
-          loading={false}
+          loading={loading}
           minWidth="min-w-[700px]"
           emptyTitle="No recent audit logs"
           emptySubtitle="System activities will appear here once recorded."
