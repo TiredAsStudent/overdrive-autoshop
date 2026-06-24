@@ -22,9 +22,9 @@ class DashboardService {
       // Global Workforce Size
       query(`SELECT COUNT(*) as total_users FROM users`),
 
-      //  Total Network Storage Used
+      // Live Server Disk Allocation
       query(
-        `SELECT COALESCE(SUM(file_size_mb), 0) as size_mb FROM backup_logs`,
+        `SELECT round(pg_database_size(current_database()) / 1048576.0, 2) as size_mb`,
       ),
 
       // Latest Backup Status

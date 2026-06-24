@@ -248,7 +248,7 @@ const DatabaseBackups = () => {
 
               <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 whitespace-nowrap">
                 <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase truncate max-w-[100px] sm:max-w-none">
-                  {log.operator_name || "System Admin"}
+                  {log.operator_name || "System Automation"}
                 </p>
               </td>
 
