@@ -99,11 +99,9 @@ const DatabaseBackups = () => {
         "System database backup successfully compiled and securely stored.",
         "success",
       );
-
       await loadBackupLogs();
     } catch (error) {
       showToast(error.message, "error");
-
       await loadBackupLogs();
     } finally {
       setIsTriggering(false);
@@ -154,7 +152,7 @@ const DatabaseBackups = () => {
           >
             {isTriggering ? (
               <>
-                <Loader2 size={16} className="animate-spin" /> Compiling Dump...
+                <Loader2 size={16} className="animate-spin" /> Compiling...
               </>
             ) : (
               <>
@@ -173,92 +171,96 @@ const DatabaseBackups = () => {
       />
 
       {/* DATATABLE LEDGER */}
-      <DataTable
-        headers={[
-          "Backup Identity",
-          "Execution Profile",
-          "Storage Size",
-          "Status",
-          "Operator",
-          "Timestamp",
-        ]}
-        data={logs}
-        loading={loading}
-        emptyTitle={
-          searchQuery ? "No matching backups found" : "No backup records found"
-        }
-        emptySubtitle={
-          searchQuery
-            ? "Try adjusting your search query."
-            : "System snapshots will appear here once executed."
-        }
-        renderRow={(log) => (
-          <tr
-            key={log.id}
-            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
-          >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 sm:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/50 shrink-0">
-                  <Database className="w-4 h-4 text-amber-600 dark:text-overdrive-yellow" />
+      <div className="w-full overflow-hidden rounded-2xl sm:rounded-[32px] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 shadow-sm">
+        <DataTable
+          headers={[
+            "Backup Identity",
+            "Execution Profile",
+            "Storage Size",
+            "Status",
+            "Operator",
+            "Timestamp",
+          ]}
+          data={logs}
+          loading={loading}
+          emptyTitle={
+            searchQuery
+              ? "No matching backups found"
+              : "No backup records found"
+          }
+          emptySubtitle={
+            searchQuery
+              ? "Try adjusting your search query."
+              : "System snapshots will appear here once executed."
+          }
+          renderRow={(log) => (
+            <tr
+              key={log.id}
+              className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors border-b border-slate-100 dark:border-white/5 last:border-0"
+            >
+              <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 whitespace-nowrap">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/50 shrink-0">
+                    <Database className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-overdrive-yellow" />
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tracking-tight truncate max-w-[150px] sm:max-w-[200px] lg:max-w-xs font-mono">
+                      {log.file_name}
+                    </p>
+                    <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">
+                      ID: {log.id}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tracking-tight truncate max-w-[200px] sm:max-w-xs font-mono">
-                    {log.file_name}
-                  </p>
-                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">
-                    ID: {log.id}
-                  </p>
-                </div>
-              </div>
-            </td>
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span
-                className={`inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border ${
-                  log.backup_type === "AUTOMATED"
-                    ? "bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20"
-                    : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
-                }`}
-              >
-                {log.backup_type}
-              </span>
-            </td>
+              <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 whitespace-nowrap">
+                <span
+                  className={`inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border ${
+                    log.backup_type === "AUTOMATED"
+                      ? "bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20"
+                      : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
+                  }`}
+                >
+                  {log.backup_type}
+                </span>
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-300">
-                {log.file_size_mb}{" "}
-                <span className="text-[10px] text-slate-400">MB</span>
-              </p>
-            </td>
+              <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 whitespace-nowrap">
+                <p className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-300">
+                  {log.file_size_mb}{" "}
+                  <span className="text-[10px] text-slate-400">MB</span>
+                </p>
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest ${
-                  log.status === "SUCCESS"
-                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20"
-                    : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20"
-                }`}
-              >
-                <Activity size={12} className="sm:w-[14px] sm:h-[14px]" />
-                {log.status}
-              </span>
-            </td>
+              <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 whitespace-nowrap">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest ${
+                    log.status === "SUCCESS"
+                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20"
+                      : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20"
+                  }`}
+                >
+                  <Activity size={12} className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  {log.status}
+                </span>
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase">
-                {log.operator_name || "System Admin"}
-              </p>
-            </td>
+              <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 whitespace-nowrap">
+                <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase truncate max-w-[100px] sm:max-w-none">
+                  {log.operator_name || "System Admin"}
+                </p>
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <p className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                {new Date(log.created_at).toLocaleString()}
-              </p>
-            </td>
-          </tr>
-        )}
-      />
+              <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 text-right whitespace-nowrap">
+                <p className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">
+                  {new Date(log.created_at).toLocaleString()}
+                </p>
+              </td>
+            </tr>
+          )}
+        />
+      </div>
 
       {/* PAGINATION */}
       <Pagination
