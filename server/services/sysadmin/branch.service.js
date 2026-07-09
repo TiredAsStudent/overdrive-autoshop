@@ -1,5 +1,4 @@
 const Branch = require("../../models/Branch");
-const Inventory = require("../../models/Inventory");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class BranchService {
@@ -32,6 +31,7 @@ class BranchService {
   static async getActiveBranches() {
     return await Branch.findActive();
   }
+
   static async getBranchById(id) {
     const branch = await Branch.findById(id);
     if (!branch) throw new Error("Branch not found.");
@@ -45,8 +45,6 @@ class BranchService {
     }
 
     const newBranch = await Branch.create(data);
-
-    await Inventory.seedNewBranch(newBranch.id);
 
     await logSecureAction(
       adminId,

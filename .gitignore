@@ -1,4 +1,4 @@
-# Logs
+# Logs & Caches
 logs
 *.log
 npm-debug.log*
@@ -6,36 +6,52 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+.npm/
+.eslintcache
+.vite/
 
-# Node Modules
+# Dependencies
 node_modules/
+jspm_packages/
 
-# Build Output
+# Build & Output
 dist/
 dist-ssr/
 build/
-coverage/
 .cache/
 
-# Uploaded Files
+# Testing & SQA Reports
+coverage/
+allure-results/
+allure-report/
+test-results/
+
+# File Uploads
 server/uploads/
 
-# Security: Ignore database backups
+# Security & Backups
 backups/
-*.sql
+*.dump
+*.backup
+
+database_dumps/ 
 
 # Environment Variables
 .env
 .env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 !.env.example
 
-# Linter & Framework Caches
-.eslintcache
-.vite/
+# Vercel & Deployment
+.vercel/
 
 # IDE & OS Files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
 .DS_Store
 Thumbs.db
