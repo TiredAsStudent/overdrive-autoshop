@@ -30,7 +30,7 @@ class ServiceCatalogService {
   }
 
   static async createService(data, userId, ipAddress) {
-    // VR-07: Duplicate Check
+    // VR-07: Duplicate Name Check
     const existing = await ServiceModel.findByCategoryAndName(
       data.category,
       data.service_name,
@@ -41,12 +41,36 @@ class ServiceCatalogService {
       );
     }
 
-    // BR-01: Auto-Generate Code
-    data.service_code = await this.generateServiceCode(data.category);
+    let retries = 3; // Maximum retry attempts for race conditions
+    let newService = null;
 
-    const newService = await ServiceModel.create(data);
+    while (retries > 0) {
+      try {
+        // BR-01: Auto-Generate Code
+        data.service_code = await this.generateServiceCode(data.category);
+        newService = await ServiceModel.create(data);
+        break; // Success! Break out of the retry loop.
+      } catch (error) {
+        // PostgreSQL Error 23505 is 'unique_violation'
+        if (
+          error.code === "23505" &&
+          error.constraint === "services_service_code_key"
+        ) {
+          retries--;
+          if (retries === 0) {
+            throw new Error(
+              "High system traffic. Failed to generate a unique service code. Please try again.",
+            );
+          }
+          // Loop repeats, fetching the newly incremented latest code safely.
+        } else {
+          // If it's a different error, throw immediately
+          throw error;
+        }
+      }
+    }
 
-    // Audit Logging
+    // Immutable Audit Logging
     await logSecureAction(
       userId,
       null,
