@@ -3,6 +3,7 @@ const router = express.Router();
 
 // Controllers
 const ServiceController = require("../../controllers/manager/service.controller");
+const InventoryController = require("../../controllers/manager/inventory.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
@@ -20,6 +21,10 @@ const {
   getServicesSchema,
   toggleServiceStatusSchema,
 } = require("../../validations/manager/service.schema");
+const {
+  createInventoryItemSchema,
+  getInventorySchema,
+} = require("../../validations/manager/inventory.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -47,5 +52,22 @@ router.patch(
   validate(toggleServiceStatusSchema),
   ServiceController.toggleServiceStatus,
 );
+
+// ==========================================
+// MODULE: INVENTORY MANAGEMENT
+// ==========================================
+router.post(
+  "/inventory",
+  validate(createInventoryItemSchema),
+  InventoryController.createMasterItem,
+);
+
+router.get(
+  "/inventory",
+  validate(getInventorySchema),
+  InventoryController.getInventoryCatalog,
+);
+
+router.get("/inventory/:id/breakdown", InventoryController.getBranchBreakdown);
 
 module.exports = router;
