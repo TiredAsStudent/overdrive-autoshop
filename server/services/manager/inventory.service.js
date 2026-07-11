@@ -34,22 +34,16 @@ class InventoryService {
       const itemResult = await client.query(insertItemSql, itemValues);
       newItem = itemResult.rows[0];
 
-      // 2. Fetch all Active Branches
-      const branchResult = await client.query(
-        `SELECT id FROM branches WHERE is_active = TRUE`,
-      );
+      // 2. High-Performance SQL Distribution
 
-      // 3. Dynamically Distribute to Branches with 0 stock (BR-02 compliance)
-      if (branchResult.rows.length > 0) {
-        const branchInserts = branchResult.rows
-          .map((b) => `(${b.id}, ${newItem.id}, 0, 5)`)
-          .join(",");
-        const distributeSql = `
-          INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
-          VALUES ${branchInserts}
-        `;
-        await client.query(distributeSql);
-      }
+      const distributeSql = `
+        INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
+        SELECT id, $1, 0, 5 
+        FROM branches 
+        WHERE is_active = TRUE
+        ON CONFLICT DO NOTHING
+      `;
+      await client.query(distributeSql, [newItem.id]);
 
       await client.query("COMMIT"); // Confirm Transaction
     } catch (error) {
