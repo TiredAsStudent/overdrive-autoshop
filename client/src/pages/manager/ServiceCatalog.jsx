@@ -259,8 +259,7 @@ const ServiceCatalog = () => {
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-900 dark:text-emerald-400 tracking-tight">
-                  <DollarSign size={14} className="text-slate-400" />
-                  PHP{" "}
+                  ₱{" "}
                   {parseFloat(service.price).toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                   })}
