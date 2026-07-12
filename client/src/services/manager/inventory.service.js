@@ -1,17 +1,17 @@
 import api from "../api";
 
 export const inventoryService = {
-  // Fetch paginated master catalog with aggregated company totals
   getInventoryCatalog: async (
     page = 1,
     limit = 10,
     search = "",
     category = "all",
+    branch = "all",
     status = "all",
   ) => {
     try {
       const response = await api.get("/manager/inventory", {
-        params: { page, limit, search, category, status },
+        params: { page, limit, search, category, branch, status },
       });
       return response.data;
     } catch (error) {
@@ -23,13 +23,13 @@ export const inventoryService = {
     }
   },
 
-  // Create a new master item (and trigger auto-distribution)
   createMasterItem: async (itemData) => {
     try {
       const payload = {
         ...itemData,
         unit_cost: parseFloat(itemData.unit_cost),
         selling_price: parseFloat(itemData.selling_price),
+        default_reorder_level: parseInt(itemData.default_reorder_level, 10),
       };
       const response = await api.post("/manager/inventory", payload);
       return response.data;
@@ -41,7 +41,39 @@ export const inventoryService = {
     }
   },
 
-  // Fetch the stock levels of a specific item across all branches
+  updateMasterItem: async (id, itemData) => {
+    try {
+      const payload = {
+        ...itemData,
+        unit_cost: parseFloat(itemData.unit_cost),
+        selling_price: parseFloat(itemData.selling_price),
+        default_reorder_level: parseInt(itemData.default_reorder_level, 10),
+      };
+      // Prevent mutating the immutable SKU
+      delete payload.sku;
+
+      const response = await api.put(`/manager/inventory/${id}`, payload);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message || "Failed to update item.";
+      throw new Error(message);
+    }
+  },
+
+  toggleItemStatus: async (id, isActive) => {
+    try {
+      const response = await api.patch(`/manager/inventory/${id}/status`, {
+        is_active: isActive,
+      });
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message || "Failed to update item status.";
+      throw new Error(message);
+    }
+  },
+
   getBranchBreakdown: async (itemId) => {
     try {
       const response = await api.get(`/manager/inventory/${itemId}/breakdown`);
@@ -51,6 +83,40 @@ export const inventoryService = {
         error.response?.data?.error?.message ||
         "Failed to extract branch breakdown.";
       throw new Error(message);
+    }
+  },
+
+  //Fetch chronological ledger
+  getMovementHistory: async (itemId) => {
+    try {
+      const response = await api.get(`/manager/inventory/${itemId}/movements`);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message ||
+        "Failed to extract movement history.";
+      throw new Error(message);
+    }
+  },
+
+  //Fetch SysAdmin Markup Configuration
+  getSystemMarkup: async () => {
+    try {
+      const response = await api.get("/manager/settings/markup");
+      return parseFloat(response.data.data.markup_percentage) || 0;
+    } catch (error) {
+      return 0; // Fallback to 0% markup if it fails
+    }
+  },
+
+  // Safely fetch active branches for the filter dropdown
+  getActiveBranches: async () => {
+    try {
+      const response = await api.get("/manager/branches/active");
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch branches for filter:", error);
+      return { data: [] };
     }
   },
 };

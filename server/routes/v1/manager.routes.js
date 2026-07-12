@@ -4,6 +4,7 @@ const router = express.Router();
 // Controllers
 const ServiceController = require("../../controllers/manager/service.controller");
 const InventoryController = require("../../controllers/manager/inventory.controller");
+const BranchController = require("../../controllers/sysadmin/branch.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -77,6 +78,9 @@ router.get("/settings/markup", async (req, res) => {
     });
   }
 });
+
+// Expose active branches to managers for filtering dropdowns
+router.get("/branches/active", BranchController.getActiveBranches);
 
 // Master Catalog CRUD
 router.post(

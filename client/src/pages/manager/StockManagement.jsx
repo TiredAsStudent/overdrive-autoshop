@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Search, Loader2, Boxes, Network, PackageX } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Loader2,
+  Boxes,
+  Network,
+  Edit2,
+  Archive,
+  RotateCcw,
+  PackageX,
+} from "lucide-react";
 import { inventoryService } from "../../services/manager/inventory.service";
 import MasterItemModal from "../../features/manager/components/MasterItemModal";
-import StockBreakdownModal from "../../features/manager/components/StockBreakdownModal";
+import StockDetailsModal from "../../features/manager/components/StockDetailsModal";
+import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
-
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -27,35 +37,56 @@ const StockManagement = () => {
   const { showToast } = useApp();
 
   const [items, setItems] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters & Pagination
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [showArchived, setShowArchived] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
   // Modals
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "",
+    variant: "danger",
+    onConfirm: () => {},
+  });
+
+  useEffect(() => {
+    // Safely load active branches for the filter using the Manager's token
+    inventoryService
+      .getActiveBranches()
+      .then((res) => setBranches(res.data || []))
+      .catch((err) => console.error("Failed to load branches for filter", err));
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, categoryFilter]);
+  }, [debouncedSearchQuery, categoryFilter, branchFilter, showArchived]);
 
   const loadItems = async () => {
     try {
       setLoading(true);
+      const statusParam = showArchived ? "archived" : "active";
       const response = await inventoryService.getInventoryCatalog(
         currentPage,
         ITEMS_PER_PAGE,
         debouncedSearchQuery,
         categoryFilter,
-        "active",
+        branchFilter,
+        statusParam,
       );
       setItems(response.data || []);
       setTotalPages(response.pagination?.totalPages || 1);
@@ -68,25 +99,60 @@ const StockManagement = () => {
 
   useEffect(() => {
     loadItems();
-  }, [currentPage, debouncedSearchQuery, categoryFilter]);
+  }, [
+    currentPage,
+    debouncedSearchQuery,
+    categoryFilter,
+    branchFilter,
+    showArchived,
+  ]);
 
-  const handleCreateSubmit = async (formData) => {
+  const handleModalSubmit = async (formData) => {
     try {
-      await inventoryService.createMasterItem(formData);
-      showToast(
-        `${formData.item_name} distributed to enterprise successfully.`,
-        "success",
-      );
-      setIsCreateModalOpen(false);
+      if (selectedItem) {
+        await inventoryService.updateMasterItem(selectedItem.id, formData);
+        showToast(`${formData.item_name} updated successfully.`, "success");
+      } else {
+        await inventoryService.createMasterItem(formData);
+        showToast(
+          `${formData.item_name} distributed to enterprise successfully.`,
+          "success",
+        );
+      }
+      setIsModalOpen(false);
       loadItems();
     } catch (error) {
       throw error;
     }
   };
 
-  const openBreakdown = (item) => {
+  const handleToggleStatus = (item) => {
+    const action = item.is_active ? "Archive" : "Restore";
+    const variant = item.is_active ? "danger" : "info";
+    setConfirmConfig({
+      isOpen: true,
+      title: `${action} Master Item`,
+      message: `Are you sure you want to ${action.toLowerCase()} ${item.item_name}?`,
+      confirmText: `Yes, ${action}`,
+      variant: variant,
+      onConfirm: async () => {
+        try {
+          await inventoryService.toggleItemStatus(item.id, !item.is_active);
+          showToast(
+            `${item.item_name} ${item.is_active ? "archived" : "restored"} successfully.`,
+            "success",
+          );
+          loadItems();
+        } catch (error) {
+          showToast(error.message, "error");
+        }
+      },
+    });
+  };
+
+  const openDetails = (item) => {
     setSelectedItem(item);
-    setIsBreakdownModalOpen(true);
+    setIsDetailsOpen(true);
   };
 
   return (
@@ -102,7 +168,7 @@ const StockManagement = () => {
               Stock Management
             </h1>
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Master Parts & Real-Time Aggregation
+              Master Data & Ledger
             </p>
           </div>
         </div>
@@ -118,17 +184,30 @@ const StockManagement = () => {
             </div>
             <input
               type="text"
-              placeholder="Search SKU or Name..."
+              placeholder="Search SKU/Name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500"
             />
           </div>
 
           <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="w-full sm:w-[150px] px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold focus:outline-none focus:border-amber-500 uppercase tracking-widest text-slate-700 dark:text-slate-300"
+          >
+            <option value="all">All Branches</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.branch_name}
+              </option>
+            ))}
+          </select>
+
+          <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="w-full sm:w-[180px] px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:border-amber-500 uppercase tracking-wider"
+            className="w-full sm:w-[150px] px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold focus:outline-none focus:border-amber-500 uppercase tracking-widest text-slate-700 dark:text-slate-300"
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
@@ -137,56 +216,71 @@ const StockManagement = () => {
             ))}
           </select>
 
+          <div className="flex items-center gap-1 bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
+            <button
+              onClick={() => setShowArchived(false)}
+              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${!showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500"}`}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setShowArchived(true)}
+              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500"}`}
+            >
+              Archived
+            </button>
+          </div>
+
           <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer"
+            onClick={() => {
+              setSelectedItem(null);
+              setIsModalOpen(true);
+            }}
+            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm"
           >
             <Plus size={16} /> Register Item
           </button>
         </div>
       </div>
 
-      {/* UNIVERSAL DATATABLE */}
       <DataTable
         headers={[
           "Item Profile",
           "Identifier",
           "Base Financials",
-          "Global Stock",
+          "Aggregated Stock",
           "Actions",
         ]}
         data={items}
         loading={loading}
-        emptyTitle="No master items found"
+        emptyTitle={`No ${showArchived ? "archived" : "active"} items found`}
         renderRow={(item) => (
           <tr
             key={item.id}
-            className="group transition-colors hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
+            className={`group transition-colors ${!item.is_active ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale" : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"}`}
           >
-            {/* 1. Item Profile */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="min-w-0 max-w-[200px] sm:max-w-[300px]">
-                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white italic tracking-tight uppercase truncate">
+                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white italic uppercase truncate">
                   {item.item_name}
+                </p>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
+                  {item.uom}
                 </p>
               </div>
             </td>
 
-            {/* 2. Identifier (SKU & Cat) */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col items-start">
-                <div className="inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
-                  <span className="text-[10px] sm:text-xs font-black text-slate-700 dark:text-slate-300 tracking-[0.1em] uppercase">
-                    {item.sku}
-                  </span>
-                </div>
-                <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-amber-500 mt-1.5 hidden sm:block">
+                <span className="inline-flex px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-[10px] sm:text-xs font-black text-slate-700 dark:text-slate-300 tracking-[0.1em] uppercase">
+                  {item.sku}
+                </span>
+                <span className="text-[7px] font-black uppercase tracking-widest text-amber-500 mt-1.5 hidden sm:block">
                   {item.category}
                 </span>
               </div>
             </td>
 
-            {/* 3. Base Financials */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col gap-1 text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 <p>
@@ -210,7 +304,6 @@ const StockManagement = () => {
               </div>
             </td>
 
-            {/* 4. Global Stock Aggregate */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex items-center gap-2">
                 <div
@@ -231,15 +324,35 @@ const StockManagement = () => {
               </div>
             </td>
 
-            {/* 5. Actions (Strictly Read-Only Analysis) */}
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <button
-                onClick={() => openBreakdown(item)}
-                title="View Branch Distribution"
-                className="inline-flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
-              >
-                <Network size={14} /> Details
-              </button>
+              <div className="flex items-center justify-end gap-1 sm:gap-2">
+                <button
+                  onClick={() => openDetails(item)}
+                  title="View Details & Ledger"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+                >
+                  <Network size={14} /> View Details
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedItem(item);
+                    setIsModalOpen(true);
+                  }}
+                  className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
+                >
+                  <Edit2 size={16} />
+                </button>
+                <button
+                  onClick={() => handleToggleStatus(item)}
+                  className={`p-2 rounded-xl transition-colors cursor-pointer ${item.is_active ? "text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10" : "text-blue-500 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400"}`}
+                >
+                  {item.is_active ? (
+                    <Archive size={16} />
+                  ) : (
+                    <RotateCcw size={16} />
+                  )}
+                </button>
+              </div>
             </td>
           </tr>
         )}
@@ -252,14 +365,24 @@ const StockManagement = () => {
       />
 
       <MasterItemModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateSubmit}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleModalSubmit}
+        initialData={selectedItem}
       />
-      <StockBreakdownModal
-        isOpen={isBreakdownModalOpen}
-        onClose={() => setIsBreakdownModalOpen(false)}
+      <StockDetailsModal
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
         item={selectedItem}
+      />
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
       />
     </div>
   );
