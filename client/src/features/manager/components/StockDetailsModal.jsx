@@ -16,7 +16,7 @@ import {
 import { inventoryService } from "../../../services/manager/inventory.service";
 
 const StockDetailsModal = ({ isOpen, onClose, item }) => {
-  const [activeTab, setActiveTab] = useState("breakdown"); // "breakdown" or "history"
+  const [activeTab, setActiveTab] = useState("breakdown");
   const [breakdown, setBreakdown] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -229,7 +229,23 @@ const StockDetailsModal = ({ isOpen, onClose, item }) => {
                                       {record.branch_name}
                                     </td>
                                     <td className="px-4 py-3">
-                                      <span className="inline-flex px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                                      <span
+                                        className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
+                                          [
+                                            "BILL_RECEIVED",
+                                            "TRANSFER_IN",
+                                          ].includes(record.transaction_type)
+                                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                                            : [
+                                                  "SALES_INVOICE",
+                                                  "TRANSFER_OUT",
+                                                ].includes(
+                                                  record.transaction_type,
+                                                )
+                                              ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
+                                              : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                                        }`}
+                                      >
                                         {record.transaction_type.replace(
                                           /_/g,
                                           " ",
