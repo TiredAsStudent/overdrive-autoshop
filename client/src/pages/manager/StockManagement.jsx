@@ -45,6 +45,7 @@ const StockManagement = () => {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
+  const [stockStatusFilter, setStockStatusFilter] = useState("all");
   const [showArchived, setShowArchived] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -65,7 +66,6 @@ const StockManagement = () => {
   });
 
   useEffect(() => {
-    // Safely load active branches for the filter using the Manager's token
     inventoryService
       .getActiveBranches()
       .then((res) => setBranches(res.data || []))
@@ -74,7 +74,13 @@ const StockManagement = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, categoryFilter, branchFilter, showArchived]);
+  }, [
+    debouncedSearchQuery,
+    categoryFilter,
+    branchFilter,
+    stockStatusFilter,
+    showArchived,
+  ]);
 
   const loadItems = async () => {
     try {
@@ -87,6 +93,7 @@ const StockManagement = () => {
         categoryFilter,
         branchFilter,
         statusParam,
+        stockStatusFilter,
       );
       setItems(response.data || []);
       setTotalPages(response.pagination?.totalPages || 1);
@@ -104,6 +111,7 @@ const StockManagement = () => {
     debouncedSearchQuery,
     categoryFilter,
     branchFilter,
+    stockStatusFilter,
     showArchived,
   ]);
 
@@ -174,7 +182,7 @@ const StockManagement = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="relative w-full sm:max-w-[200px]">
+          <div className="relative w-full sm:max-w-[150px]">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               {searchQuery !== debouncedSearchQuery ? (
                 <Loader2 size={16} className="text-amber-500 animate-spin" />
@@ -187,14 +195,14 @@ const StockManagement = () => {
               placeholder="Search SKU/Name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
             />
           </div>
 
           <select
             value={branchFilter}
             onChange={(e) => setBranchFilter(e.target.value)}
-            className="w-full sm:w-[150px] px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold focus:outline-none focus:border-amber-500 uppercase tracking-widest text-slate-700 dark:text-slate-300"
+            className="w-full sm:w-[130px] px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold focus:outline-none focus:border-amber-500 uppercase tracking-widest text-slate-700 dark:text-slate-300"
           >
             <option value="all">All Branches</option>
             {branches.map((b) => (
@@ -207,13 +215,24 @@ const StockManagement = () => {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="w-full sm:w-[150px] px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold focus:outline-none focus:border-amber-500 uppercase tracking-widest text-slate-700 dark:text-slate-300"
+            className="w-full sm:w-[130px] px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold focus:outline-none focus:border-amber-500 uppercase tracking-widest text-slate-700 dark:text-slate-300"
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {c === "all" ? "All Categories" : c}
               </option>
             ))}
+          </select>
+
+          <select
+            value={stockStatusFilter}
+            onChange={(e) => setStockStatusFilter(e.target.value)}
+            className="w-full sm:w-[130px] px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold focus:outline-none focus:border-amber-500 uppercase tracking-widest text-slate-700 dark:text-slate-300"
+          >
+            <option value="all">All Statuses</option>
+            <option value="in_stock">In Stock</option>
+            <option value="low_stock">Low Stock</option>
+            <option value="out_of_stock">Out of Stock</option>
           </select>
 
           <div className="flex items-center gap-1 bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
@@ -236,7 +255,7 @@ const StockManagement = () => {
               setSelectedItem(null);
               setIsModalOpen(true);
             }}
-            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm"
           >
             <Plus size={16} /> Register Item
           </button>
@@ -305,21 +324,31 @@ const StockManagement = () => {
             </td>
 
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`p-1.5 rounded-md ${parseInt(item.total_company_quantity) > 0 ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600" : "bg-red-100 dark:bg-red-500/20 text-red-600"}`}
-                >
-                  {parseInt(item.total_company_quantity) > 0 ? (
-                    <Boxes size={16} />
-                  ) : (
-                    <PackageX size={16} />
-                  )}
+              <div className="flex flex-col items-start gap-1.5">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`p-1.5 rounded-md ${parseInt(item.total_company_quantity) > 0 ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600" : "bg-red-100 dark:bg-red-500/20 text-red-600"}`}
+                  >
+                    {parseInt(item.total_company_quantity) > 0 ? (
+                      <Boxes size={16} />
+                    ) : (
+                      <PackageX size={16} />
+                    )}
+                  </div>
+                  <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                    {item.total_company_quantity}
+                  </span>
                 </div>
-                <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                  {item.total_company_quantity}
-                </span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                  Units
+                <span
+                  className={`inline-flex px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                    item.global_stock_status === "In Stock"
+                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                      : item.global_stock_status === "Low Stock"
+                        ? "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-500"
+                        : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                  }`}
+                >
+                  {item.global_stock_status}
                 </span>
               </div>
             </td>
@@ -363,7 +392,6 @@ const StockManagement = () => {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
-
       <MasterItemModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

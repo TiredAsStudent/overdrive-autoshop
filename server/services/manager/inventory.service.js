@@ -17,7 +17,6 @@ class InventoryService {
     try {
       await client.query("BEGIN");
 
-      // 1. Create the Master Item
       const insertItemSql = `
         INSERT INTO inventory_items (sku, item_name, category, uom, description, unit_cost, selling_price, default_reorder_level)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -36,7 +35,6 @@ class InventoryService {
       const itemResult = await client.query(insertItemSql, itemValues);
       newItem = itemResult.rows[0];
 
-      // 2. High-Performance SQL Distribution (Auto-populates to branches)
       const distributeSql = `
         INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
         SELECT id, $1, 0, $2 
@@ -49,7 +47,6 @@ class InventoryService {
         newItem.default_reorder_level,
       ]);
 
-      // 3. Log initial creation in the Stock Ledger (Movement History)
       const initMovementSql = `
         INSERT INTO inventory_movements (item_id, branch_id, transaction_type, transaction_reference, quantity_added, remaining_quantity, remarks, created_by)
         SELECT $1, id, 'INITIALIZATION', 'SYSTEM_MASTER_REGISTRY', 0, 0, 'Initial branch stock allocation', $2
@@ -88,14 +85,13 @@ class InventoryService {
 
     const updatedItem = await InventoryModel.update(id, data);
 
-    // Dynamic Audit Severity: Flag financial alterations
     let severity = "INFO";
     if (
       parseFloat(oldItem.unit_cost) !== parseFloat(updatedItem.unit_cost) ||
       parseFloat(oldItem.selling_price) !==
         parseFloat(updatedItem.selling_price)
     ) {
-      severity = "WARNING"; // Elevated tracking for accounting security
+      severity = "WARNING";
     }
 
     await logSecureAction(
@@ -141,11 +137,18 @@ class InventoryService {
     category = "all",
     branch = "all",
     status = "all",
+    stockStatus = "all",
   ) {
     const offset = (page - 1) * limit;
 
     const [totalItems, items] = await Promise.all([
-      InventoryModel.countFilteredItems(search, category, branch, status),
+      InventoryModel.countFilteredItems(
+        search,
+        category,
+        branch,
+        status,
+        stockStatus,
+      ),
       InventoryModel.findPaginatedItems(
         limit,
         offset,
@@ -153,6 +156,7 @@ class InventoryService {
         category,
         branch,
         status,
+        stockStatus,
       ),
     ]);
 

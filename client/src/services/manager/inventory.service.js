@@ -8,10 +8,19 @@ export const inventoryService = {
     category = "all",
     branch = "all",
     status = "all",
+    stockStatus = "all",
   ) => {
     try {
       const response = await api.get("/manager/inventory", {
-        params: { page, limit, search, category, branch, status },
+        params: {
+          page,
+          limit,
+          search,
+          category,
+          branch,
+          status,
+          stock_status: stockStatus,
+        },
       });
       return response.data;
     } catch (error) {
@@ -49,7 +58,6 @@ export const inventoryService = {
         selling_price: parseFloat(itemData.selling_price),
         default_reorder_level: parseInt(itemData.default_reorder_level, 10),
       };
-      // Prevent mutating the immutable SKU
       delete payload.sku;
 
       const response = await api.put(`/manager/inventory/${id}`, payload);
@@ -86,7 +94,6 @@ export const inventoryService = {
     }
   },
 
-  //Fetch chronological ledger
   getMovementHistory: async (itemId) => {
     try {
       const response = await api.get(`/manager/inventory/${itemId}/movements`);
@@ -99,17 +106,15 @@ export const inventoryService = {
     }
   },
 
-  //Fetch SysAdmin Markup Configuration
   getSystemMarkup: async () => {
     try {
       const response = await api.get("/manager/settings/markup");
       return parseFloat(response.data.data.markup_percentage) || 0;
     } catch (error) {
-      return 0; // Fallback to 0% markup if it fails
+      return 0;
     }
   },
 
-  // Safely fetch active branches for the filter dropdown
   getActiveBranches: async () => {
     try {
       const response = await api.get("/manager/branches/active");

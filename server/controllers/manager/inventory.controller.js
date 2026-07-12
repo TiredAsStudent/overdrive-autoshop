@@ -68,6 +68,7 @@ class InventoryController {
       const category = req.query.category || "all";
       const branch = req.query.branch || "all";
       const status = req.query.status || "all";
+      const stock_status = req.query.stock_status || "all";
 
       const result = await InventoryService.getInventoryCatalog(
         page,
@@ -76,6 +77,7 @@ class InventoryController {
         category,
         branch,
         status,
+        stock_status,
       );
 
       return res.status(STATUS_CODES.SUCCESS).json({
