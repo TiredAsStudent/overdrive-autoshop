@@ -188,17 +188,17 @@ class Inventory {
         b.id AS branch_id,
         b.branch_name,
         b.branch_code,
-        bi.quantity,
-        bi.reorder_point,
+        COALESCE(bi.quantity, 0) AS quantity,
+        COALESCE(bi.reorder_point, 5) AS reorder_point,
         bi.last_restock_date,
         CASE
-          WHEN bi.quantity = 0 THEN 'Out of Stock'
-          WHEN bi.quantity <= bi.reorder_point THEN 'Low Stock'
+          WHEN COALESCE(bi.quantity, 0) = 0 THEN 'Out of Stock'
+          WHEN COALESCE(bi.quantity, 0) <= COALESCE(bi.reorder_point, 5) THEN 'Low Stock'
           ELSE 'In Stock'
         END AS stock_status
-      FROM branch_inventory bi
-      JOIN branches b ON bi.branch_id = b.id
-      WHERE bi.item_id = $1 AND b.is_active = TRUE
+      FROM branches b
+      LEFT JOIN branch_inventory bi ON b.id = bi.branch_id AND bi.item_id = $1
+      WHERE b.is_active = TRUE
       ORDER BY b.branch_name ASC
     `;
     const result = await query(sql, [itemId]);
