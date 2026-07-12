@@ -5,6 +5,9 @@ const router = express.Router();
 const ServiceController = require("../../controllers/manager/service.controller");
 const InventoryController = require("../../controllers/manager/inventory.controller");
 
+// Services
+const SettingsService = require("../../services/sysadmin/settings.service");
+
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
 const {
@@ -23,6 +26,8 @@ const {
 } = require("../../validations/manager/service.schema");
 const {
   createInventoryItemSchema,
+  updateInventoryItemSchema,
+  toggleInventoryStatusSchema,
   getInventorySchema,
 } = require("../../validations/manager/inventory.schema");
 
@@ -56,18 +61,47 @@ router.patch(
 // ==========================================
 // MODULE: INVENTORY MANAGEMENT
 // ==========================================
+
+//Expose the Admin Markup Percentage to the Manager Front-End safely
+router.get("/settings/markup", async (req, res) => {
+  try {
+    const settings = await SettingsService.getBusinessSettings();
+    res.status(200).json({
+      success: true,
+      data: { markup_percentage: settings.markup_percentage },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch markup configuration",
+    });
+  }
+});
+
+// Master Catalog CRUD
 router.post(
   "/inventory",
   validate(createInventoryItemSchema),
   InventoryController.createMasterItem,
 );
-
 router.get(
   "/inventory",
   validate(getInventorySchema),
   InventoryController.getInventoryCatalog,
 );
+router.put(
+  "/inventory/:id",
+  validate(updateInventoryItemSchema),
+  InventoryController.updateMasterItem,
+);
+router.patch(
+  "/inventory/:id/status",
+  validate(toggleInventoryStatusSchema),
+  InventoryController.toggleItemStatus,
+);
 
+// Analytics & Movement Ledgers
 router.get("/inventory/:id/breakdown", InventoryController.getBranchBreakdown);
+router.get("/inventory/:id/movements", InventoryController.getMovementHistory);
 
 module.exports = router;

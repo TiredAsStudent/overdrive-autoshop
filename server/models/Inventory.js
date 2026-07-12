@@ -1,26 +1,36 @@
 const { query } = require("../config/db");
 
 class Inventory {
-  static async countFilteredItems(search, category, status) {
-    let sql = `SELECT COUNT(*) FROM inventory_items`;
+  static async countFilteredItems(search, category, branch, status) {
+    let sql = `SELECT COUNT(DISTINCT i.id) FROM inventory_items i`;
+
+    if (branch && branch !== "all") {
+      sql += ` JOIN branch_inventory bi ON i.id = bi.item_id`;
+    }
+
     const conditions = [];
     const values = [];
     let paramIdx = 1;
 
     if (search) {
       conditions.push(
-        `(item_name ILIKE $${paramIdx} OR sku ILIKE $${paramIdx})`,
+        `(i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`,
       );
       values.push(`%${search}%`);
       paramIdx++;
     }
     if (category && category !== "all") {
-      conditions.push(`category = $${paramIdx}`);
+      conditions.push(`i.category = $${paramIdx}`);
       values.push(category);
       paramIdx++;
     }
-    if (status === "active") conditions.push(`is_active = TRUE`);
-    else if (status === "archived") conditions.push(`is_active = FALSE`);
+    if (branch && branch !== "all") {
+      conditions.push(`bi.branch_id = $${paramIdx}`);
+      values.push(branch);
+      paramIdx++;
+    }
+    if (status === "active") conditions.push(`i.is_active = TRUE`);
+    else if (status === "archived") conditions.push(`i.is_active = FALSE`);
 
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
 
@@ -28,18 +38,35 @@ class Inventory {
     return parseInt(result.rows[0].count, 10);
   }
 
-  static async findPaginatedItems(limit, offset, search, category, status) {
+  static async findPaginatedItems(
+    limit,
+    offset,
+    search,
+    category,
+    branch,
+    status,
+  ) {
+    // If a branch is selected, only sum the quantity for that specific branch.
+    // If "all" is selected, sum the global quantity.
+    let joinClause = `LEFT JOIN branch_inventory bi ON i.id = bi.item_id`;
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (branch && branch !== "all") {
+      joinClause += ` AND bi.branch_id = $${paramIdx}`;
+      conditions.push(`bi.branch_id = $${paramIdx}`);
+      values.push(branch);
+      paramIdx++;
+    }
+
     let sql = `
       SELECT 
         i.*,
         COALESCE(SUM(bi.quantity), 0) AS total_company_quantity
       FROM inventory_items i
-      LEFT JOIN branch_inventory bi ON i.id = bi.item_id
+      ${joinClause}
     `;
-
-    const conditions = [];
-    const values = [];
-    let paramIdx = 1;
 
     if (search) {
       conditions.push(
@@ -71,7 +98,47 @@ class Inventory {
     return result.rows[0];
   }
 
-  // Cross-Branch Extraction View (Dynamically computes stock status)
+  static async findById(id) {
+    const sql = `SELECT * FROM inventory_items WHERE id = $1`;
+    const result = await query(sql, [id]);
+    return result.rows[0];
+  }
+
+  static async update(id, data) {
+    const sql = `
+      UPDATE inventory_items 
+      SET 
+        item_name = COALESCE($1, item_name),
+        category = COALESCE($2, category),
+        uom = COALESCE($3, uom),
+        description = COALESCE($4, description),
+        unit_cost = COALESCE($5, unit_cost),
+        selling_price = COALESCE($6, selling_price),
+        default_reorder_level = COALESCE($7, default_reorder_level),
+        updated_at = NOW()
+      WHERE id = $8
+      RETURNING *
+    `;
+    const values = [
+      data.item_name,
+      data.category,
+      data.uom,
+      data.description,
+      data.unit_cost,
+      data.selling_price,
+      data.default_reorder_level,
+      id,
+    ];
+    const result = await query(sql, values);
+    return result.rows[0];
+  }
+
+  static async toggleStatus(id, isActive) {
+    const sql = `UPDATE inventory_items SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
+    const result = await query(sql, [isActive, id]);
+    return result.rows[0];
+  }
+
   static async getBranchBreakdown(itemId) {
     const sql = `
       SELECT 
@@ -90,6 +157,30 @@ class Inventory {
       JOIN branches b ON bi.branch_id = b.id
       WHERE bi.item_id = $1 AND b.is_active = TRUE
       ORDER BY b.branch_name ASC
+    `;
+    const result = await query(sql, [itemId]);
+    return result.rows;
+  }
+
+  static async getMovementHistory(itemId) {
+    const sql = `
+      SELECT 
+        m.id,
+        m.transaction_type,
+        m.transaction_reference,
+        m.quantity_added,
+        m.quantity_deducted,
+        m.remaining_quantity,
+        m.remarks,
+        m.created_at,
+        b.branch_name,
+        u.first_name,
+        u.last_name
+      FROM inventory_movements m
+      JOIN branches b ON m.branch_id = b.id
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.item_id = $1
+      ORDER BY m.created_at DESC
     `;
     const result = await query(sql, [itemId]);
     return result.rows;

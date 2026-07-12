@@ -46,6 +46,16 @@ class BranchService {
 
     const newBranch = await Branch.create(data);
 
+    const { query } = require("../../config/db");
+    const syncSql = `
+      INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
+      SELECT $1, id, 0, default_reorder_level 
+      FROM inventory_items 
+      WHERE is_active = TRUE
+      ON CONFLICT DO NOTHING
+    `;
+    await query(syncSql, [newBranch.id]);
+
     await logSecureAction(
       adminId,
       newBranch.id,
