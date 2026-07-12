@@ -30,7 +30,8 @@ class ServiceCatalogService {
   }
 
   static async createService(data, userId, ipAddress) {
-    // VR-07: Duplicate Name Check
+    if (data.service_name) data.service_name = data.service_name.trim();
+
     const existing = await ServiceModel.findByCategoryAndName(
       data.category,
       data.service_name,
@@ -41,36 +42,30 @@ class ServiceCatalogService {
       );
     }
 
-    let retries = 3; // Maximum retry attempts for race conditions
+    let retries = 3;
     let newService = null;
 
     while (retries > 0) {
       try {
-        // BR-01: Auto-Generate Code
         data.service_code = await this.generateServiceCode(data.category);
         newService = await ServiceModel.create(data);
-        break; // Success! Break out of the retry loop.
+        break;
       } catch (error) {
-        // PostgreSQL Error 23505 is 'unique_violation'
         if (
           error.code === "23505" &&
           error.constraint === "services_service_code_key"
         ) {
           retries--;
-          if (retries === 0) {
+          if (retries === 0)
             throw new Error(
               "High system traffic. Failed to generate a unique service code. Please try again.",
             );
-          }
-          // Loop repeats, fetching the newly incremented latest code safely.
         } else {
-          // If it's a different error, throw immediately
           throw error;
         }
       }
     }
 
-    // Immutable Audit Logging
     await logSecureAction(
       userId,
       null,
@@ -82,8 +77,50 @@ class ServiceCatalogService {
       null,
       newService,
     );
-
     return newService;
+  }
+
+  static async updateService(id, data, userId, ipAddress) {
+    if (data.service_name) data.service_name = data.service_name.trim();
+
+    const oldService = await ServiceModel.findById(id);
+    if (!oldService) throw new Error("Service not found.");
+
+    if (data.service_name || data.category) {
+      const checkCategory = data.category || oldService.category;
+      const checkName = data.service_name || oldService.service_name;
+
+      const existing = await ServiceModel.findByCategoryAndName(
+        checkCategory,
+        checkName,
+        id,
+      );
+      if (existing) {
+        throw new Error(
+          `A service named '${checkName}' already exists under the ${checkCategory} category.`,
+        );
+      }
+    }
+
+    const updatedService = await ServiceModel.update(id, data);
+
+    let severity = "INFO";
+    if (parseFloat(oldService.price) !== parseFloat(updatedService.price)) {
+      severity = "WARNING";
+    }
+
+    await logSecureAction(
+      userId,
+      null,
+      "SERVICE_UPDATED",
+      severity,
+      ipAddress,
+      "services",
+      id,
+      oldService,
+      updatedService,
+    );
+    return updatedService;
   }
 
   static async getServices(
@@ -126,13 +163,11 @@ class ServiceCatalogService {
     const updatedService = await ServiceModel.toggleStatus(id, isActive);
 
     const action = isActive ? "SERVICE_ACTIVATED" : "SERVICE_DEACTIVATED";
-    const severity = isActive ? "INFO" : "WARNING";
-
     await logSecureAction(
       userId,
       null,
       action,
-      severity,
+      isActive ? "INFO" : "WARNING",
       ipAddress,
       "services",
       id,

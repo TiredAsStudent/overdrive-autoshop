@@ -53,6 +53,25 @@ class ServiceController {
     }
   }
 
+  static async updateService(req, res) {
+    try {
+      const service = await ServiceCatalogService.updateService(
+        req.params.id,
+        req.body,
+        req.user.id,
+        req.ip,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        service,
+        "Service profile updated successfully.",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
+
   static async toggleServiceStatus(req, res) {
     try {
       const { is_active } = req.body;

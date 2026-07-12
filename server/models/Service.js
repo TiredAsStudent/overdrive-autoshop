@@ -21,9 +21,16 @@ class Service {
     return result.rows[0];
   }
 
-  static async findByCategoryAndName(category, serviceName) {
-    const sql = `SELECT id FROM services WHERE category = $1 AND service_name ILIKE $2`;
-    const result = await query(sql, [category, serviceName]);
+  static async findByCategoryAndName(category, serviceName, excludeId = null) {
+    let sql = `SELECT id FROM services WHERE category = $1 AND service_name ILIKE $2`;
+    const params = [category, serviceName];
+
+    if (excludeId) {
+      sql += ` AND id != $3`;
+      params.push(excludeId);
+    }
+
+    const result = await query(sql, params);
     return result.rows[0];
   }
 
@@ -93,6 +100,35 @@ class Service {
   static async findById(id) {
     const sql = `SELECT * FROM services WHERE id = $1`;
     const result = await query(sql, [id]);
+    return result.rows[0];
+  }
+
+  static async update(id, data) {
+    const sql = `
+      UPDATE services 
+      SET 
+        service_name = COALESCE($1, service_name),
+        category = COALESCE($2, category),
+        description = COALESCE($3, description),
+        price = COALESCE($4, price),
+        estimated_minutes = COALESCE($5, estimated_minutes),
+        commonly_used_parts = COALESCE($6, commonly_used_parts),
+        is_vatable = COALESCE($7, is_vatable),
+        updated_at = NOW()
+      WHERE id = $8
+      RETURNING *
+    `;
+    const values = [
+      data.service_name,
+      data.category,
+      data.description,
+      data.price,
+      data.estimated_minutes,
+      data.commonly_used_parts,
+      data.is_vatable,
+      id,
+    ];
+    const result = await query(sql, values);
     return result.rows[0];
   }
 

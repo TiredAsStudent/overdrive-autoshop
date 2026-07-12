@@ -22,6 +22,7 @@ const { ROLES } = require("../../constants/roles");
 // Validations
 const {
   createServiceSchema,
+  updateServiceSchema,
   getServicesSchema,
   toggleServiceStatusSchema,
 } = require("../../validations/manager/service.schema");
@@ -46,11 +47,15 @@ router.post(
   validate(createServiceSchema),
   ServiceController.createService,
 );
-
 router.get(
   "/services",
   validate(getServicesSchema),
   ServiceController.getServices,
+);
+router.put(
+  "/services/:id",
+  validate(updateServiceSchema),
+  ServiceController.updateService,
 );
 
 router.patch(
