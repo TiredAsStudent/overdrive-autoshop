@@ -8,7 +8,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Package,
+  Calculator,
 } from "lucide-react";
+import { inventoryService } from "../../../services/manager/inventory.service";
 
 const REASON_CODES = {
   ADD: ["STOCK_COUNT_RECONCILIATION", "CLERICAL_ERROR"],
@@ -40,6 +42,9 @@ const AdjustmentModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
 
+  const [branchBreakdown, setBranchBreakdown] = useState({});
+  const [isLoadingBreakdown, setIsLoadingBreakdown] = useState(false);
+
   const [formData, setFormData] = useState({
     item_id: "",
     branch_id: "",
@@ -51,15 +56,28 @@ const AdjustmentModal = ({
 
   useEffect(() => {
     if (isOpen && selectedItem) {
+      const initialBranch = branches.length > 0 ? branches[0].id : "";
+
       setFormData({
         item_id: selectedItem.id,
-        branch_id: branches.length > 0 ? branches[0].id : "",
+        branch_id: initialBranch,
         adjustment_type: "ADD",
         quantity: "",
         reason: "STOCK_COUNT_RECONCILIATION",
         remarks: "",
       });
       setValidationError("");
+
+      setIsLoadingBreakdown(true);
+      inventoryService
+        .getBranchBreakdown(selectedItem.id)
+        .then((res) => {
+          const breakdownMap = {};
+          res.data.forEach((b) => (breakdownMap[b.branch_id] = b.quantity));
+          setBranchBreakdown(breakdownMap);
+        })
+        .catch(() => setBranchBreakdown({}))
+        .finally(() => setIsLoadingBreakdown(false));
     }
   }, [isOpen, selectedItem, branches]);
 
@@ -84,8 +102,17 @@ const AdjustmentModal = ({
       return;
     }
 
-    if (parseInt(formData.quantity, 10) <= 0 || isNaN(formData.quantity)) {
+    const qty = parseInt(formData.quantity, 10);
+    if (qty <= 0 || isNaN(qty)) {
       setValidationError("Quantity must be greater than 0.");
+      return;
+    }
+
+    const currentBranchStock = branchBreakdown[formData.branch_id] || 0;
+    if (formData.adjustment_type === "DEDUCT" && qty > currentBranchStock) {
+      setValidationError(
+        `Insufficient stock in the selected branch. Cannot deduct ${qty}. Only ${currentBranchStock} available.`,
+      );
       return;
     }
 
@@ -101,6 +128,14 @@ const AdjustmentModal = ({
 
   if (!selectedItem) return null;
 
+  const financialImpact = (
+    parseInt(formData.quantity || 0, 10) * parseFloat(selectedItem.unit_cost)
+  ).toLocaleString(undefined, { minimumFractionDigits: 2 });
+  const currentBranchStock =
+    branchBreakdown[formData.branch_id] !== undefined
+      ? branchBreakdown[formData.branch_id]
+      : "...";
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -113,7 +148,7 @@ const AdjustmentModal = ({
           >
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
+                <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-500">
                   <Scale size={20} />
                 </div>
                 <div>
@@ -143,20 +178,30 @@ const AdjustmentModal = ({
               )}
 
               {/* Target Item Snapshot */}
-              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 mb-6 flex items-center gap-4">
-                <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-slate-400">
-                  <Package size={20} />
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 mb-6 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-slate-400">
+                    <Package size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest">
+                      {selectedItem.sku}
+                    </p>
+                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase mt-0.5 truncate max-w-[200px]">
+                      {selectedItem.item_name}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest">
-                    {selectedItem.sku}
+                <div className="text-right">
+                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                    Base Cost
                   </p>
-                  <p className="text-sm font-black text-slate-900 dark:text-white uppercase mt-0.5 truncate max-w-[250px] sm:max-w-xs">
-                    {selectedItem.item_name}
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                    Aggregated Company Stock:{" "}
-                    {selectedItem.total_company_quantity} {selectedItem.uom}
+                  <p className="text-sm font-black text-slate-900 dark:text-white">
+                    ₱
+                    {parseFloat(selectedItem.unit_cost).toLocaleString(
+                      undefined,
+                      { minimumFractionDigits: 2 },
+                    )}
                   </p>
                 </div>
               </div>
@@ -168,15 +213,24 @@ const AdjustmentModal = ({
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="sm:col-span-2">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Target Branch <span className="text-red-500">*</span>
-                    </label>
+                    <div className="flex justify-between items-end mb-2">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        Target Branch <span className="text-red-500">*</span>
+                      </label>
+                      {/* FIX 1: Display live branch stock */}
+                      {!isLoadingBreakdown && formData.branch_id && (
+                        <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded">
+                          Current Branch Stock: {currentBranchStock}{" "}
+                          {selectedItem.uom}
+                        </span>
+                      )}
+                    </div>
                     <select
                       required
                       name="branch_id"
                       value={formData.branch_id}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                     >
                       {branches.length === 0 && (
                         <option value="">No active branches available</option>
@@ -231,9 +285,29 @@ const AdjustmentModal = ({
                       value={formData.quantity}
                       onChange={handleChange}
                       placeholder="e.g., 5"
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                     />
                   </div>
+
+                  {/* Live Financial Impact Preview */}
+                  {formData.quantity && (
+                    <div
+                      className={`sm:col-span-2 p-3 rounded-xl border flex items-center justify-between ${formData.adjustment_type === "ADD" ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-400" : "bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 text-red-800 dark:text-red-400"}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Calculator size={16} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">
+                          Total Financial{" "}
+                          {formData.adjustment_type === "ADD"
+                            ? "Gain"
+                            : "Write-Off"}
+                        </span>
+                      </div>
+                      <span className="text-sm font-black">
+                        ₱{financialImpact}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="sm:col-span-2">
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
@@ -245,7 +319,7 @@ const AdjustmentModal = ({
                       name="reason"
                       value={formData.reason}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                     >
                       {REASON_CODES[formData.adjustment_type].map((code) => (
                         <option key={code} value={code}>
@@ -253,10 +327,6 @@ const AdjustmentModal = ({
                         </option>
                       ))}
                     </select>
-                    <p className="text-[9px] text-slate-400 mt-2 font-medium">
-                      This reason determines how the financial variance is
-                      mapped to the General Ledger.
-                    </p>
                   </div>
 
                   <div className="sm:col-span-2">
@@ -269,7 +339,7 @@ const AdjustmentModal = ({
                       onChange={handleChange}
                       rows="2"
                       placeholder="Explain the context of this adjustment..."
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 resize-none"
                     />
                   </div>
                 </div>
