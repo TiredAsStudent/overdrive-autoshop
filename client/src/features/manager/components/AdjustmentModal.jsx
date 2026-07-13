@@ -63,7 +63,7 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
             {/* Header */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-500">
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <Scale size={20} />
                 </div>
                 <div>
@@ -203,7 +203,7 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                       ? "Optional remarks for approval or rejection..."
                       : "No remarks provided."
                   }
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 resize-none disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-70 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
