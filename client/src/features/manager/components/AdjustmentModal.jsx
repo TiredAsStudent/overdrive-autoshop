@@ -148,7 +148,7 @@ const AdjustmentModal = ({
           >
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-500">
+                <div className="p-2.5 bg-yellow-50 dark:bg-yellow-500/10 rounded-xl text-overdrive-yellow">
                   <Scale size={20} />
                 </div>
                 <div>
@@ -217,7 +217,7 @@ const AdjustmentModal = ({
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
                         Target Branch <span className="text-red-500">*</span>
                       </label>
-                      {/* FIX 1: Display live branch stock */}
+                      {/* Display live branch stock */}
                       {!isLoadingBreakdown && formData.branch_id && (
                         <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded">
                           Current Branch Stock: {currentBranchStock}{" "}
@@ -230,7 +230,7 @@ const AdjustmentModal = ({
                       name="branch_id"
                       value={formData.branch_id}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1"
                     >
                       {branches.length === 0 && (
                         <option value="">No active branches available</option>
@@ -285,7 +285,7 @@ const AdjustmentModal = ({
                       value={formData.quantity}
                       onChange={handleChange}
                       placeholder="e.g., 5"
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1"
                     />
                   </div>
 
@@ -319,7 +319,7 @@ const AdjustmentModal = ({
                       name="reason"
                       value={formData.reason}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1"
                     >
                       {REASON_CODES[formData.adjustment_type].map((code) => (
                         <option key={code} value={code}>
@@ -339,7 +339,7 @@ const AdjustmentModal = ({
                       onChange={handleChange}
                       rows="2"
                       placeholder="Explain the context of this adjustment..."
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 resize-none"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 resize-none"
                     />
                   </div>
                 </div>
