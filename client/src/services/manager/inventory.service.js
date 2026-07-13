@@ -59,7 +59,6 @@ export const inventoryService = {
         default_reorder_level: parseInt(itemData.default_reorder_level, 10),
       };
       delete payload.sku;
-
       const response = await api.put(`/manager/inventory/${id}`, payload);
       return response.data;
     } catch (error) {
@@ -122,6 +121,25 @@ export const inventoryService = {
     } catch (error) {
       console.error("Failed to fetch branches for filter:", error);
       return { data: [] };
+    }
+  },
+
+  adjustStock: async (adjustmentData) => {
+    try {
+      const payload = {
+        ...adjustmentData,
+        item_id: parseInt(adjustmentData.item_id, 10),
+        branch_id: parseInt(adjustmentData.branch_id, 10),
+        quantity: parseInt(adjustmentData.quantity, 10),
+      };
+      const response = await api.post("/manager/inventory/adjust", payload);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to adjust stock.";
+      throw new Error(message);
     }
   },
 };
