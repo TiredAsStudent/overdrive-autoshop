@@ -72,9 +72,39 @@ const getInventorySchema = z.object({
     .optional(),
 });
 
+const adjustStockSchema = z.object({
+  body: z.object({
+    item_id: z.number().int().positive("Valid Master Item ID is required"),
+    branch_id: z.number().int().positive("Valid Branch ID is required"),
+    adjustment_type: z.enum(["ADD", "DEDUCT"], {
+      required_error: "Adjustment type must be 'ADD' or 'DEDUCT'",
+    }),
+    quantity: z.number().int().positive("Quantity must be greater than 0"),
+    reason: z.enum(
+      [
+        "DAMAGED",
+        "STOLEN_OR_LOST",
+        "STOCK_COUNT_RECONCILIATION",
+        "CLERICAL_ERROR",
+        "PROMOTIONAL_GIVEAWAY",
+      ],
+      {
+        required_error: "A valid accounting reason code is required",
+      },
+    ),
+    remarks: z
+      .string()
+      .trim()
+      .max(255, "Remarks cannot exceed 255 characters")
+      .optional()
+      .nullable(),
+  }),
+});
+
 module.exports = {
   createInventoryItemSchema,
   updateInventoryItemSchema,
   toggleInventoryStatusSchema,
   getInventorySchema,
+  adjustStockSchema,
 };

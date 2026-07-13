@@ -31,6 +31,7 @@ const {
   updateInventoryItemSchema,
   toggleInventoryStatusSchema,
   getInventorySchema,
+  adjustStockSchema,
 } = require("../../validations/manager/inventory.schema");
 
 // ==========================================
@@ -107,6 +108,11 @@ router.patch(
   "/inventory/:id/status",
   validate(toggleInventoryStatusSchema),
   InventoryController.toggleItemStatus,
+);
+router.post(
+  "/inventory/adjust",
+  validate(adjustStockSchema),
+  InventoryController.adjustStock,
 );
 
 // Analytics & Movement Ledgers

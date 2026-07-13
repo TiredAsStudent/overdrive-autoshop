@@ -180,6 +180,50 @@ class InventoryService {
   static async getItemMovementHistory(itemId) {
     return await InventoryModel.getMovementHistory(itemId);
   }
+
+  static async adjustStock(data, userId, ipAddress) {
+    const movementRecord = await InventoryModel.adjustStockTransaction(
+      data,
+      userId,
+    );
+
+    const item = await InventoryModel.findById(data.item_id);
+
+    const severity = data.adjustment_type === "DEDUCT" ? "WARNING" : "INFO";
+    const actionLabel = `STOCK_ADJUSTMENT_${data.adjustment_type}`;
+
+    const oldValues = {
+      quantity:
+        movementRecord.remaining_quantity +
+        movementRecord.quantity_deducted -
+        movementRecord.quantity_added,
+    };
+    const newValues = {
+      quantity: movementRecord.remaining_quantity,
+      financial_impact:
+        data.adjustment_type === "DEDUCT"
+          ? -(
+              movementRecord.quantity_deducted *
+              movementRecord.recorded_unit_cost
+            )
+          : movementRecord.quantity_added * movementRecord.recorded_unit_cost,
+      reason: data.reason,
+    };
+
+    await logSecureAction(
+      userId,
+      data.branch_id,
+      actionLabel,
+      severity,
+      ipAddress,
+      "branch_inventory",
+      data.item_id,
+      oldValues,
+      newValues,
+    );
+
+    return movementRecord;
+  }
 }
 
 module.exports = InventoryService;

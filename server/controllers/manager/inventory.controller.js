@@ -137,6 +137,33 @@ class InventoryController {
       );
     }
   }
+
+  static async adjustStock(req, res) {
+    try {
+      const adjustmentData = req.body;
+      const ledgerEntry = await InventoryService.adjustStock(
+        adjustmentData,
+        req.user.id,
+        req.ip,
+      );
+
+      const verb =
+        adjustmentData.adjustment_type === "ADD" ? "added to" : "deducted from";
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        ledgerEntry,
+        `Stock successfully ${verb} branch. Movement reference: ${ledgerEntry.transaction_reference}`,
+      );
+    } catch (error) {
+      const statusCode = error.message.includes("Insufficient stock")
+        ? STATUS_CODES.BAD_REQUEST
+        : STATUS_CODES.INTERNAL_ERROR;
+
+      return sendError(res, statusCode, error.message);
+    }
+  }
 }
 
 module.exports = InventoryController;

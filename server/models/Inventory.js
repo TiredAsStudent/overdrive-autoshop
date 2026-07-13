@@ -1,5 +1,4 @@
-const { query } = require("../config/db");
-
+const { query, pool } = require("../config/db");
 class Inventory {
   static async countFilteredItems(
     search,
@@ -227,6 +226,96 @@ class Inventory {
     `;
     const result = await query(sql, [itemId]);
     return result.rows;
+  }
+
+  static async adjustStockTransaction(data, userId) {
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const checkSql = `
+        SELECT bi.quantity, i.unit_cost 
+        FROM branch_inventory bi
+        JOIN inventory_items i ON bi.item_id = i.id
+        WHERE bi.branch_id = $1 AND bi.item_id = $2
+        FOR UPDATE
+      `;
+      const checkRes = await client.query(checkSql, [
+        data.branch_id,
+        data.item_id,
+      ]);
+
+      if (checkRes.rows.length === 0) {
+        throw new Error("Inventory record not found for this branch.");
+      }
+
+      const currentQuantity = checkRes.rows[0].quantity;
+      const unitCost = checkRes.rows[0].unit_cost;
+
+      let qtyAdded = 0;
+      let qtyDeducted = 0;
+      let newQuantity = currentQuantity;
+
+      if (data.adjustment_type === "ADD") {
+        qtyAdded = data.quantity;
+        newQuantity += data.quantity;
+      } else if (data.adjustment_type === "DEDUCT") {
+        qtyDeducted = data.quantity;
+        newQuantity -= data.quantity;
+
+        if (newQuantity < 0) {
+          throw new Error(
+            `Insufficient stock. Cannot deduct ${data.quantity}. Only ${currentQuantity} available.`,
+          );
+        }
+      }
+
+      const updateSql = `
+        UPDATE branch_inventory 
+        SET quantity = $1, last_restock_date = CASE WHEN $2 > 0 THEN NOW() ELSE last_restock_date END
+        WHERE branch_id = $3 AND item_id = $4
+        RETURNING *
+      `;
+      await client.query(updateSql, [
+        newQuantity,
+        qtyAdded,
+        data.branch_id,
+        data.item_id,
+      ]);
+
+      const referenceCode = `ADJ-${Date.now().toString().slice(-6)}`;
+      const ledgerSql = `
+        INSERT INTO inventory_movements (
+          item_id, branch_id, transaction_type, transaction_reference, 
+          quantity_added, quantity_deducted, remaining_quantity, 
+          remarks, adjustment_reason, recorded_unit_cost, created_by
+        )
+        VALUES ($1, $2, 'MANUAL_ADJUSTMENT', $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *
+      `;
+
+      const ledgerRes = await client.query(ledgerSql, [
+        data.item_id,
+        data.branch_id,
+        referenceCode,
+        qtyAdded,
+        qtyDeducted,
+        newQuantity,
+        data.remarks,
+        data.reason,
+        unitCost,
+        userId,
+      ]);
+
+      await client.query("COMMIT");
+      return ledgerRes.rows[0];
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 
