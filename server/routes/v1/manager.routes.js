@@ -5,6 +5,7 @@ const router = express.Router();
 const ServiceController = require("../../controllers/manager/service.controller");
 const InventoryController = require("../../controllers/manager/inventory.controller");
 const BranchController = require("../../controllers/sysadmin/branch.controller");
+const StockAdjustmentController = require("../../controllers/manager/stockAdjustment.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -33,6 +34,10 @@ const {
   getInventorySchema,
   adjustStockSchema,
 } = require("../../validations/manager/inventory.schema");
+const {
+  getAdjustmentsSchema,
+  resolveAdjustmentSchema,
+} = require("../../validations/manager/adjustment.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -109,14 +114,28 @@ router.patch(
   validate(toggleInventoryStatusSchema),
   InventoryController.toggleItemStatus,
 );
-router.post(
-  "/inventory/adjust",
-  validate(adjustStockSchema),
-  InventoryController.adjustStock,
-);
 
 // Analytics & Movement Ledgers
 router.get("/inventory/:id/breakdown", InventoryController.getBranchBreakdown);
 router.get("/inventory/:id/movements", InventoryController.getMovementHistory);
+
+// ==========================================
+// MODULE: STOCK ADJUSTMENTS (APPROVAL WORKFLOW)
+// ==========================================
+router.get(
+  "/adjustments",
+  validate(getAdjustmentsSchema),
+  StockAdjustmentController.getRequests,
+);
+router.patch(
+  "/adjustments/:id/approve",
+  validate(resolveAdjustmentSchema),
+  StockAdjustmentController.approveRequest,
+);
+router.patch(
+  "/adjustments/:id/reject",
+  validate(resolveAdjustmentSchema),
+  StockAdjustmentController.rejectRequest,
+);
 
 module.exports = router;
