@@ -3,81 +3,54 @@ import {
   Search,
   Loader2,
   Scale,
-  Filter,
-  X,
-  Boxes,
-  PackageX,
+  Clock,
+  ShieldCheck,
+  XCircle,
+  ArrowUpRight,
+  ArrowDownRight,
+  Eye,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { inventoryService } from "../../services/manager/inventory.service";
+import { stockAdjustmentService } from "../../services/manager/stockAdjustment.service";
 import AdjustmentModal from "../../features/manager/components/AdjustmentModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
-const CATEGORIES = [
-  "all",
-  "Fluids",
-  "Filters",
-  "Brakes",
-  "Engine Parts",
-  "Transmission",
-  "Suspension",
-  "Electrical",
-  "Air Conditioning",
-  "Tires",
-  "Consumables",
-];
-
 const StockAdjustments = () => {
   const { showToast } = useApp();
 
-  const [items, setItems] = useState([]);
-  const [branches, setBranches] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
+  // Filters & Pagination
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("PENDING");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Modals
-  const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-
-  const activeFilterCount = categoryFilter !== "all" ? 1 : 0;
-
-  useEffect(() => {
-    inventoryService
-      .getActiveBranches()
-      .then((res) => setBranches(res.data || []))
-      .catch((err) => console.error("Failed to load branches", err));
-  }, []);
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, categoryFilter]);
+  }, [debouncedSearchQuery, statusFilter]);
 
-  const loadItems = async () => {
+  const loadRequests = async () => {
     try {
       setLoading(true);
-      // For adjustments, we only look at ACTIVE master items
-      const response = await inventoryService.getInventoryCatalog(
+      const response = await stockAdjustmentService.getRequests(
         currentPage,
         ITEMS_PER_PAGE,
         debouncedSearchQuery,
-        categoryFilter,
-        "all",
-        "active",
+        statusFilter,
       );
-      setItems(response.data || []);
-      setTotalPages(response.pagination?.totalPages || 1);
+      setRequests(response.data?.requests || []);
+      setTotalPages(response.data?.pagination?.totalPages || 1);
     } catch (error) {
       showToast(error.message, "error");
     } finally {
@@ -86,21 +59,43 @@ const StockAdjustments = () => {
   };
 
   useEffect(() => {
-    loadItems();
-  }, [currentPage, debouncedSearchQuery, categoryFilter]);
+    loadRequests();
+  }, [currentPage, debouncedSearchQuery, statusFilter]);
 
-  const handleAdjustmentSubmit = async (formData) => {
+  const handleResolution = async (id, action, remarks) => {
     try {
-      const response = await inventoryService.adjustStock(formData);
-      showToast(
-        `Adjustment successful. Ref: ${response.data.transaction_reference}`,
-        "success",
-      );
-      setIsAdjustmentModalOpen(false);
-      loadItems(); // Refresh the table to show updated aggregated stock
+      if (action === "APPROVE") {
+        const res = await stockAdjustmentService.approveRequest(id, remarks);
+        showToast(res.message, "success");
+      } else {
+        const res = await stockAdjustmentService.rejectRequest(id, remarks);
+        showToast(res.message, "info");
+      }
+      setIsModalOpen(false);
+      loadRequests();
     } catch (error) {
       throw error;
     }
+  };
+
+  const renderStatusBadge = (status) => {
+    if (status === "PENDING")
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-500 rounded-lg text-[9px] font-black uppercase tracking-widest border border-amber-200 dark:border-amber-500/20">
+          <Clock size={12} /> Pending
+        </span>
+      );
+    if (status === "APPROVED")
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-200 dark:border-emerald-500/20">
+          <ShieldCheck size={12} /> Approved
+        </span>
+      );
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 rounded-lg text-[9px] font-black uppercase tracking-widest border border-red-200 dark:border-red-500/20">
+        <XCircle size={12} /> Rejected
+      </span>
+    );
   };
 
   return (
@@ -108,15 +103,15 @@ const StockAdjustments = () => {
       {/* ACTION BAR */}
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
         <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Scale className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
+          <div className="p-2.5 sm:p-3 bg-blue-500/10 rounded-xl sm:rounded-2xl shrink-0">
+            <Scale className="text-blue-600 dark:text-blue-400 h-6 w-6 sm:h-7 sm:w-7" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Stock Adjustments
+              Adjustment Approvals
             </h1>
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Manual Variance & Spoilage Override
+              Managerial Inbox & Resolution
             </p>
           </div>
         </div>
@@ -132,99 +127,95 @@ const StockAdjustments = () => {
             </div>
             <input
               type="text"
-              placeholder="Search SKU to adjust..."
+              placeholder="Search item or SKU..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-blue-500 text-slate-900 dark:text-white"
             />
           </div>
 
-          <button
-            onClick={() => setIsFilterModalOpen(true)}
-            className="relative flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] uppercase tracking-widest font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shadow-sm"
-          >
-            <Filter size={14} /> Filters
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-slate-900 shadow-sm">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-1 bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
+            {["PENDING", "APPROVED", "REJECTED"].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${statusFilter === status ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* DATA TABLE */}
       <DataTable
         headers={[
-          "Item Profile",
-          "Identifier",
-          "Unit Cost Snapshot",
-          "Aggregated Stock",
+          "Request Details",
+          "Target Branch",
+          "Variance Details",
+          "Status",
           "Action",
         ]}
-        data={items}
+        data={requests}
         loading={loading}
-        emptyTitle="No active items found"
-        renderRow={(item) => (
+        emptyTitle={`No ${statusFilter.toLowerCase()} requests found`}
+        renderRow={(req) => (
           <tr
-            key={item.id}
+            key={req.id}
             className="group transition-colors hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="min-w-0 max-w-[200px] sm:max-w-[300px]">
                 <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white italic uppercase truncate">
-                  {item.item_name}
+                  {req.item_name}
                 </p>
-                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-                  {item.uom}
-                </p>
-              </div>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start">
-                <span className="inline-flex px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-[10px] sm:text-xs font-black text-slate-700 dark:text-slate-300 tracking-[0.1em] uppercase">
-                  {item.sku}
-                </span>
-                <span className="text-[7px] font-black uppercase tracking-widest text-amber-500 mt-1.5 hidden sm:block">
-                  {item.category}
-                </span>
-              </div>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">
-                ₱
-                {parseFloat(item.unit_cost).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
-              </div>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-1.5">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`p-1.5 rounded-md ${parseInt(item.total_company_quantity) > 0 ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600" : "bg-red-100 dark:bg-red-500/20 text-red-600"}`}
-                  >
-                    {parseInt(item.total_company_quantity) > 0 ? (
-                      <Boxes size={16} />
-                    ) : (
-                      <PackageX size={16} />
-                    )}
-                  </div>
-                  <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                    {item.total_company_quantity}
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                    {req.sku}
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <span className="text-[9px] font-medium text-slate-400">
+                    By {req.requester_first_name} {req.requester_last_name}
                   </span>
                 </div>
               </div>
             </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+                {req.branch_name}
+              </span>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <div className="flex flex-col items-start gap-1">
+                <div
+                  className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black tracking-widest uppercase ${req.adjustment_type === "ADD" ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400"}`}
+                >
+                  {req.adjustment_type === "ADD" ? (
+                    <ArrowUpRight size={12} />
+                  ) : (
+                    <ArrowDownRight size={12} />
+                  )}
+                  {req.requested_quantity} {req.uom}
+                </div>
+                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+                  {req.reason.replace(/_/g, " ")}
+                </span>
+              </div>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              {renderStatusBadge(req.status)}
+            </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <button
                 onClick={() => {
-                  setSelectedItem(item);
-                  setIsAdjustmentModalOpen(true);
+                  setSelectedRequest(req);
+                  setIsModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer shadow-sm shadow-amber-500/20"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
               >
-                <Scale size={14} /> Adjust Stock
+                <Eye size={14} />{" "}
+                {statusFilter === "PENDING" ? "Review Request" : "View Details"}
               </button>
             </td>
           </tr>
@@ -237,69 +228,11 @@ const StockAdjustments = () => {
         onPageChange={setCurrentPage}
       />
 
-      {/* FILTER MODAL */}
-      <AnimatePresence>
-        {isFilterModalOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white dark:bg-slate-800 rounded-[24px] w-full max-w-sm shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden"
-            >
-              <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700/50">
-                <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-slate-900 dark:text-white">
-                  <Filter size={16} className="text-amber-500" /> Advanced
-                  Filters
-                </h3>
-                <button
-                  onClick={() => setIsFilterModalOpen(false)}
-                  className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-6">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                  Item Category
-                </label>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c === "all" ? "All Categories" : c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-white/10 flex gap-3">
-                <button
-                  onClick={() => setCategoryFilter("all")}
-                  className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  Clear
-                </button>
-                <button
-                  onClick={() => setIsFilterModalOpen(false)}
-                  className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors bg-amber-500 hover:bg-amber-600 text-slate-900 shadow-sm cursor-pointer"
-                >
-                  Apply
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       <AdjustmentModal
-        isOpen={isAdjustmentModalOpen}
-        onClose={() => setIsAdjustmentModalOpen(false)}
-        onSubmit={handleAdjustmentSubmit}
-        selectedItem={selectedItem}
-        branches={branches}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleResolution}
+        request={selectedRequest}
       />
     </div>
   );
