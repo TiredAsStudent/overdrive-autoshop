@@ -6,6 +6,7 @@ const ServiceController = require("../../controllers/manager/service.controller"
 const InventoryController = require("../../controllers/manager/inventory.controller");
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 const StockAdjustmentController = require("../../controllers/manager/stockAdjustment.controller");
+const StockTransferController = require("../../controllers/manager/stockTransfer.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -38,11 +39,14 @@ const {
   getAdjustmentsSchema,
   resolveAdjustmentSchema,
 } = require("../../validations/manager/adjustment.schema");
+const {
+  executeTransferSchema,
+  getTransfersSchema,
+} = require("../../validations/manager/transfer.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
 // ==========================================
-// We allow ADMIN here as well so the owner/sysadmin can view the catalog if needed
 router.use(verifyToken, requireRole(ROLES.MANAGER, ROLES.ADMIN));
 
 // ==========================================
@@ -63,7 +67,6 @@ router.put(
   validate(updateServiceSchema),
   ServiceController.updateService,
 );
-
 router.patch(
   "/services/:id/status",
   validate(toggleServiceStatusSchema),
@@ -73,8 +76,6 @@ router.patch(
 // ==========================================
 // MODULE: INVENTORY MANAGEMENT
 // ==========================================
-
-//Expose the Admin Markup Percentage to the Manager Front-End safely
 router.get("/settings/markup", async (req, res) => {
   try {
     const settings = await SettingsService.getBusinessSettings();
@@ -89,11 +90,7 @@ router.get("/settings/markup", async (req, res) => {
     });
   }
 });
-
-// Expose active branches to managers for filtering dropdowns
 router.get("/branches/active", BranchController.getActiveBranches);
-
-// Master Catalog CRUD
 router.post(
   "/inventory",
   validate(createInventoryItemSchema),
@@ -114,8 +111,6 @@ router.patch(
   validate(toggleInventoryStatusSchema),
   InventoryController.toggleItemStatus,
 );
-
-// Analytics & Movement Ledgers
 router.get("/inventory/:id/breakdown", InventoryController.getBranchBreakdown);
 router.get("/inventory/:id/movements", InventoryController.getMovementHistory);
 
@@ -136,6 +131,20 @@ router.patch(
   "/adjustments/:id/reject",
   validate(resolveAdjustmentSchema),
   StockAdjustmentController.rejectRequest,
+);
+
+// ==========================================
+// MODULE: STOCK TRANSFERS
+// ==========================================
+router.get(
+  "/transfers",
+  validate(getTransfersSchema),
+  StockTransferController.getTransfers,
+);
+router.post(
+  "/transfers",
+  validate(executeTransferSchema),
+  StockTransferController.executeTransfer,
 );
 
 module.exports = router;
