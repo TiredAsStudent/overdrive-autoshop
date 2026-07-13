@@ -8,15 +8,17 @@ import {
   Wrench,
   RotateCcw,
   Clock,
-  DollarSign,
   EyeIcon,
+  Edit2,
+  Filter,
+  X,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { serviceCatalogService } from "../../services/manager/serviceCatalog.service";
 import ServiceModal from "../../features/manager/components/ServiceModal";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
-
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -53,6 +55,7 @@ const ServiceCatalog = () => {
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
 
   const [confirmConfig, setConfirmConfig] = useState({
@@ -63,6 +66,8 @@ const ServiceCatalog = () => {
     variant: "danger",
     onConfirm: () => {},
   });
+
+  const activeFilterCount = categoryFilter !== "all" ? 1 : 0;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -94,12 +99,15 @@ const ServiceCatalog = () => {
 
   const handleModalSubmit = async (formData) => {
     try {
-      if (!selectedService) {
+      if (selectedService) {
+        await serviceCatalogService.updateService(selectedService.id, formData);
+        showToast(`${formData.service_name} updated successfully.`, "success");
+      } else {
         await serviceCatalogService.createService(formData);
         showToast(`${formData.service_name} created successfully.`, "success");
-        setIsModalOpen(false);
-        loadServices();
       }
+      setIsModalOpen(false);
+      loadServices();
     } catch (error) {
       throw error;
     }
@@ -151,9 +159,8 @@ const ServiceCatalog = () => {
           </div>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="relative w-full sm:max-w-[200px]">
+          <div className="relative w-full sm:max-w-[200px] flex-1">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               {searchQuery !== debouncedSearchQuery ? (
                 <Loader2 size={16} className="text-amber-500 animate-spin" />
@@ -170,28 +177,28 @@ const ServiceCatalog = () => {
             />
           </div>
 
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="w-full sm:w-[180px] px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:border-amber-500 uppercase tracking-wider"
+          <button
+            onClick={() => setIsFilterModalOpen(true)}
+            className="relative flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] uppercase tracking-widest font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c === "all" ? "All Categories" : c}
-              </option>
-            ))}
-          </select>
+            <Filter size={14} /> Filters
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-slate-900 shadow-sm">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
 
           <div className="flex items-center gap-1 bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
             <button
               onClick={() => setShowArchived(false)}
-              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${!showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500"}`}
+              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${!showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
             >
               Active
             </button>
             <button
               onClick={() => setShowArchived(true)}
-              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500"}`}
+              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
             >
               Archived
             </button>
@@ -226,7 +233,6 @@ const ServiceCatalog = () => {
             key={service.id}
             className={`group transition-colors ${!service.is_active ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale" : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"}`}
           >
-            {/* 1. Service Profile */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="min-w-0 max-w-[200px] sm:max-w-[300px]">
                 <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white italic tracking-tight uppercase truncate">
@@ -236,12 +242,10 @@ const ServiceCatalog = () => {
                   className="text-[9px] sm:text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5"
                   title={service.description}
                 >
-                  {service.description || "No specific instructions provided."}
+                  {service.description || "No description provided."}
                 </p>
               </div>
             </td>
-
-            {/* 2. Category Code */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col items-start">
                 <div className="inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
@@ -254,8 +258,6 @@ const ServiceCatalog = () => {
                 </span>
               </div>
             </td>
-
-            {/* 3. Financials & Time */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-900 dark:text-emerald-400 tracking-tight">
@@ -274,8 +276,6 @@ const ServiceCatalog = () => {
                 </div>
               </div>
             </td>
-
-            {/* 4. Status */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               {!service.is_active ? (
                 <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
@@ -287,8 +287,6 @@ const ServiceCatalog = () => {
                 </span>
               )}
             </td>
-
-            {/* 5. Actions */}
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <div className="flex items-center justify-end gap-1 sm:gap-2">
                 <button
@@ -296,9 +294,9 @@ const ServiceCatalog = () => {
                     setSelectedService(service);
                     setIsModalOpen(true);
                   }}
-                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
                 >
-                  <EyeIcon size={14} className="sm:w-[16px] sm:h-[16px]" />
+                  <Edit2 size={14} className="sm:w-[16px] sm:h-[16px]" />
                 </button>
                 <button
                   onClick={() =>
@@ -328,13 +326,69 @@ const ServiceCatalog = () => {
         onPageChange={setCurrentPage}
       />
 
+      {/* FILTER MODAL */}
+      <AnimatePresence>
+        {isFilterModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white dark:bg-slate-800 rounded-[24px] w-full max-w-sm shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700/50">
+                <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-slate-900 dark:text-white">
+                  <Filter size={16} className="text-amber-500" /> Advanced
+                  Filters
+                </h3>
+                <button
+                  onClick={() => setIsFilterModalOpen(false)}
+                  className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                  Item Category
+                </label>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c === "all" ? "All Categories" : c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-white/10 flex gap-3">
+                <button
+                  onClick={() => setCategoryFilter("all")}
+                  className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={() => setIsFilterModalOpen(false)}
+                  className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors bg-amber-500 hover:bg-amber-600 text-slate-900 shadow-sm cursor-pointer"
+                >
+                  Apply
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <ServiceModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleModalSubmit}
         initialData={selectedService}
       />
-
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}

@@ -26,7 +26,6 @@ export const serviceCatalogService = {
   // Create a new master service
   createService: async (serviceData) => {
     try {
-      // Ensure numerical conversions before sending
       const payload = {
         ...serviceData,
         price: parseFloat(serviceData.price),
@@ -37,6 +36,25 @@ export const serviceCatalogService = {
     } catch (error) {
       const message =
         error.response?.data?.error?.message || "Failed to create service.";
+      throw new Error(message);
+    }
+  },
+
+  updateService: async (id, serviceData) => {
+    try {
+      const payload = {
+        ...serviceData,
+        price: parseFloat(serviceData.price),
+        estimated_minutes: parseInt(serviceData.estimated_minutes, 10),
+      };
+
+      delete payload.service_code;
+
+      const response = await api.put(`/manager/services/${id}`, payload);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message || "Failed to update service.";
       throw new Error(message);
     }
   },
@@ -53,6 +71,18 @@ export const serviceCatalogService = {
         error.response?.data?.error?.message ||
         "Failed to update service status.";
       throw new Error(message);
+    }
+  },
+
+  getActiveInventoryItems: async () => {
+    try {
+      const response = await api.get("/manager/inventory", {
+        params: { page: 1, limit: 500, status: "active" },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Failed to load inventory mapping:", error);
+      return { data: [] };
     }
   },
 };
