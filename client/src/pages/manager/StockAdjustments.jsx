@@ -11,6 +11,7 @@ import {
   Eye,
 } from "lucide-react";
 import { stockAdjustmentService } from "../../services/manager/stockAdjustment.service";
+import { inventoryService } from "../../services/manager/inventory.service";
 import AdjustmentModal from "../../features/manager/components/AdjustmentModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
@@ -28,6 +29,9 @@ const StockAdjustments = () => {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState("PENDING");
 
+  const [branches, setBranches] = useState([]);
+  const [branchFilter, setBranchFilter] = useState("all");
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -37,8 +41,15 @@ const StockAdjustments = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
 
   useEffect(() => {
+    inventoryService
+      .getActiveBranches()
+      .then((res) => setBranches(res.data || []))
+      .catch((err) => console.error("Failed to load branches", err));
+  }, []);
+
+  useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter]);
+  }, [debouncedSearchQuery, statusFilter, branchFilter]);
 
   const loadRequests = async () => {
     try {
@@ -48,6 +59,7 @@ const StockAdjustments = () => {
         ITEMS_PER_PAGE,
         debouncedSearchQuery,
         statusFilter,
+        branchFilter,
       );
       setRequests(response.data?.requests || []);
       setTotalPages(response.data?.pagination?.totalPages || 1);
@@ -60,7 +72,7 @@ const StockAdjustments = () => {
 
   useEffect(() => {
     loadRequests();
-  }, [currentPage, debouncedSearchQuery, statusFilter]);
+  }, [currentPage, debouncedSearchQuery, statusFilter, branchFilter]);
 
   const handleResolution = async (id, action, remarks) => {
     try {
@@ -133,6 +145,20 @@ const StockAdjustments = () => {
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-blue-500 text-slate-900 dark:text-white"
             />
           </div>
+
+          {/* Branch Filter */}
+          <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="w-full sm:w-auto px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-blue-500 text-slate-700 dark:text-slate-300 cursor-pointer"
+          >
+            <option value="all">All Branches</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.branch_name}
+              </option>
+            ))}
+          </select>
 
           <div className="flex items-center gap-1 bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
             {["PENDING", "APPROVED", "REJECTED"].map((status) => (

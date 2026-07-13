@@ -7,11 +7,12 @@ class StockAdjustmentService {
     limit = 10,
     search = "",
     status = "PENDING",
+    branch = "all",
   ) {
     const offset = (page - 1) * limit;
     const [totalItems, requests] = await Promise.all([
-      StockAdjustmentModel.countFiltered(search, status),
-      StockAdjustmentModel.findPaginated(limit, offset, search, status),
+      StockAdjustmentModel.countFiltered(search, status, branch),
+      StockAdjustmentModel.findPaginated(limit, offset, search, status, branch),
     ]);
     const totalPages = Math.ceil(totalItems / limit);
     return {

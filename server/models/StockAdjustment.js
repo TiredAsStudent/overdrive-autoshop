@@ -1,7 +1,7 @@
 const { query, pool } = require("../config/db");
 
 class StockAdjustment {
-  static async countFiltered(search, status) {
+  static async countFiltered(search, status, branch = "all") {
     let sql = `
       SELECT COUNT(DISTINCT sar.id) 
       FROM stock_adjustment_requests sar
@@ -14,6 +14,11 @@ class StockAdjustment {
     if (status !== "all") {
       conditions.push(`sar.status = $${paramIdx}`);
       values.push(status);
+      paramIdx++;
+    }
+    if (branch !== "all") {
+      conditions.push(`sar.branch_id = $${paramIdx}`);
+      values.push(branch);
       paramIdx++;
     }
     if (search) {
@@ -29,7 +34,7 @@ class StockAdjustment {
     return parseInt(result.rows[0].count, 10);
   }
 
-  static async findPaginated(limit, offset, search, status) {
+  static async findPaginated(limit, offset, search, status, branch = "all") {
     let sql = `
       SELECT 
         sar.id, sar.adjustment_type, sar.quantity AS requested_quantity, sar.reason, 
@@ -53,6 +58,11 @@ class StockAdjustment {
     if (status !== "all") {
       conditions.push(`sar.status = $${paramIdx}`);
       values.push(status);
+      paramIdx++;
+    }
+    if (branch !== "all") {
+      conditions.push(`sar.branch_id = $${paramIdx}`);
+      values.push(branch);
       paramIdx++;
     }
     if (search) {

@@ -9,12 +9,14 @@ class StockAdjustmentController {
       const limit = parseInt(req.query.limit, 10) || 10;
       const search = req.query.search || "";
       const status = req.query.status || "PENDING";
+      const branch = req.query.branch || "all";
 
       const result = await StockAdjustmentService.getRequests(
         page,
         limit,
         search,
         status,
+        branch,
       );
       return sendSuccess(
         res,
@@ -49,8 +51,8 @@ class StockAdjustmentController {
       );
     } catch (error) {
       const statusCode = error.message.includes("Concurrency Conflict")
-        ? STATUS_CODES.CONFLICT
-        : STATUS_CODES.BAD_REQUEST;
+        ? STATUS_CODES.CONFLICT || 409
+        : STATUS_CODES.BAD_REQUEST || 400;
       return sendError(res, statusCode, error.message);
     }
   }
