@@ -7,7 +7,6 @@ import {
   FileText,
   UserCheck,
   Edit2,
-  PlayCircle,
   Archive,
   RotateCcw,
 } from "lucide-react";
@@ -21,7 +20,7 @@ import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
 const Customers = () => {
-  const { showToast, setSession, activeCustomer } = useApp();
+  const { showToast } = useApp();
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -116,11 +115,6 @@ const Customers = () => {
         }
       },
     });
-  };
-
-  const startSalesSession = (customerData) => {
-    setSession(null, customerData);
-    showToast(`Active Session Bound: ${customerData.full_name}`, "success");
   };
 
   return (
@@ -245,23 +239,12 @@ const Customers = () => {
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <div className="flex items-center justify-end gap-1.5">
-                {customer.is_active && (
-                  <button
-                    onClick={() => startSalesSession(customer)}
-                    disabled={activeCustomer?.id === customer.id}
-                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeCustomer?.id === customer.id ? "bg-amber-500 text-slate-900 shadow-sm cursor-default" : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-200 dark:text-slate-900 cursor-pointer shadow-sm"}`}
-                  >
-                    <PlayCircle size={14} />{" "}
-                    {activeCustomer?.id === customer.id
-                      ? "Session Active"
-                      : "Set Active Session"}
-                  </button>
-                )}
                 <button
                   onClick={() => {
                     setSelectedCustomer(customer);
                     setIsDrawerOpen(true);
                   }}
+                  title="View Profile"
                   className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
                 >
                   <FileText size={16} />
@@ -271,12 +254,16 @@ const Customers = () => {
                     setSelectedCustomer(customer);
                     setIsModalOpen(true);
                   }}
+                  title="Edit Profile"
                   className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
                 >
                   <Edit2 size={16} />
                 </button>
                 <button
                   onClick={() => handleToggleStatus(customer)}
+                  title={
+                    customer.is_active ? "Archive Customer" : "Restore Customer"
+                  }
                   className={`p-2 rounded-xl transition-colors cursor-pointer ${customer.is_active ? "text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10" : "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400"}`}
                 >
                   {customer.is_active ? (
