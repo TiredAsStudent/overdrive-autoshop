@@ -3,7 +3,10 @@ const { logSecureAction } = require("../../utils/auditLogger");
 
 class CustomerService {
   static async registerCustomer(data, activeUser, ipAddress) {
-    // 1. Verify Duplicates (VR-06)
+    if (data.contact_number) {
+      data.contact_number = data.contact_number.replace(/[\s-]/g, "");
+    }
+
     const duplicate = await CustomerModel.checkDuplicate(
       data.full_name,
       data.contact_number,
@@ -18,7 +21,6 @@ class CustomerService {
       );
     }
 
-    // 2. Resolve Context: STAFF auto-assigns to their branch. ADMIN/MANAGER requires an explicit target branch or defaults to global (null).
     let targetBranchId = activeUser.branchId;
     if (activeUser.role !== "STAFF" && data.branch_id) {
       targetBranchId = data.branch_id;
@@ -27,14 +29,33 @@ class CustomerService {
     if (!targetBranchId && activeUser.role === "STAFF") {
       throw new Error("System Error: Staff member has no branch context.");
     }
-
-    // 3. Generate Code & Save
-    data.customer_code = await CustomerModel.generateCustomerCode();
     data.branch_id = targetBranchId;
 
-    const newCustomer = await CustomerModel.create(data);
+    let retries = 3;
+    let newCustomer = null;
 
-    // 4. Secure Logging
+    while (retries > 0) {
+      try {
+        data.customer_code = await CustomerModel.generateCustomerCode();
+        newCustomer = await CustomerModel.create(data);
+        break;
+      } catch (error) {
+        if (
+          error.code === "23505" &&
+          error.constraint === "customers_customer_code_key"
+        ) {
+          retries--;
+          if (retries === 0) {
+            throw new Error(
+              "High system traffic. Failed to generate a unique customer code. Please try again.",
+            );
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
+
     await logSecureAction(
       activeUser.id,
       targetBranchId,
@@ -53,6 +74,10 @@ class CustomerService {
   static async updateCustomer(id, data, activeUser, ipAddress) {
     const oldCustomer = await CustomerModel.findById(id);
     if (!oldCustomer) throw new Error("Customer record not found.");
+
+    if (data.contact_number) {
+      data.contact_number = data.contact_number.replace(/[\s-]/g, "");
+    }
 
     if (data.full_name || data.contact_number) {
       const checkName = data.full_name || oldCustomer.full_name;
