@@ -3,6 +3,7 @@ const router = express.Router();
 
 // Controllers
 const CustomerController = require("../../controllers/staff/customer.controller");
+const EstimateController = require("../../controllers/staff/estimate.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
@@ -19,6 +20,11 @@ const {
   updateCustomerSchema,
   getCustomersSchema,
 } = require("../../validations/staff/customer.schema");
+const {
+  createEstimateSchema,
+  updateStatusSchema,
+  getEstimatesSchema,
+} = require("../../validations/staff/estimate.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -46,6 +52,26 @@ router.put(
   "/customers/:id",
   validate(updateCustomerSchema),
   CustomerController.updateCustomer,
+);
+
+// ==========================================
+// MODULE: ESTIMATES (PRE-SALES)
+// ==========================================
+router.post(
+  "/estimates",
+  validate(createEstimateSchema),
+  EstimateController.createEstimate,
+);
+router.get(
+  "/estimates",
+  validate(getEstimatesSchema),
+  EstimateController.getEstimates,
+);
+router.get("/estimates/:id", EstimateController.getEstimateDetails);
+router.patch(
+  "/estimates/:id/status",
+  validate(updateStatusSchema),
+  EstimateController.updateStatus,
 );
 
 module.exports = router;
