@@ -84,56 +84,49 @@ class StockTransfer {
     try {
       await client.query("BEGIN");
 
-      // 1. Lock Source Branch Stock and verify adequate quantity
-      const sourceRes = await client.query(
+      await client.query(
         `
-        SELECT bi.quantity, i.unit_cost, i.default_reorder_level
-        FROM branch_inventory bi
-        JOIN inventory_items i ON bi.item_id = i.id
-        WHERE bi.branch_id = $1 AND bi.item_id = $2
-        FOR UPDATE
+        INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
+        VALUES ($1, $2, 0, (SELECT default_reorder_level FROM inventory_items WHERE id = $2))
+        ON CONFLICT (branch_id, item_id) DO NOTHING
       `,
-        [data.source_branch_id, data.item_id],
+        [data.destination_branch_id, data.item_id],
       );
 
-      if (sourceRes.rows.length === 0)
-        throw new Error("Inventory record not found at source branch.");
+      const lockRes = await client.query(
+        `
+        SELECT bi.branch_id, bi.quantity, i.unit_cost 
+        FROM branch_inventory bi
+        JOIN inventory_items i ON bi.item_id = i.id
+        WHERE bi.item_id = $1 AND bi.branch_id IN ($2, $3)
+        ORDER BY bi.branch_id ASC
+        FOR UPDATE
+      `,
+        [data.item_id, data.source_branch_id, data.destination_branch_id],
+      );
 
-      const sourceData = sourceRes.rows[0];
+      const sourceData = lockRes.rows.find(
+        (r) => r.branch_id === data.source_branch_id,
+      );
+      const destData = lockRes.rows.find(
+        (r) => r.branch_id === data.destination_branch_id,
+      );
+
+      if (!sourceData)
+        throw new Error("Inventory record not found at source branch.");
+      if (!destData)
+        throw new Error(
+          "Critical: Failed to initialize destination inventory row.",
+        );
+
       if (sourceData.quantity < data.quantity) {
         throw new Error(
           `Insufficient stock. Cannot transfer ${data.quantity}. Source branch only has ${sourceData.quantity} available.`,
         );
       }
 
-      // 2. Upsert and Lock Destination Branch Stock
-      await client.query(
-        `
-        INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
-        VALUES ($1, $2, 0, $3)
-        ON CONFLICT (branch_id, item_id) DO NOTHING
-      `,
-        [
-          data.destination_branch_id,
-          data.item_id,
-          sourceData.default_reorder_level,
-        ],
-      );
-
-      const destRes = await client.query(
-        `
-        SELECT quantity FROM branch_inventory 
-        WHERE branch_id = $1 AND item_id = $2 
-        FOR UPDATE
-      `,
-        [data.destination_branch_id, data.item_id],
-      );
-
-      const destQuantity = destRes.rows[0].quantity;
-
-      // 3. Execute Dual Quantity Mutations
       const newSourceQty = sourceData.quantity - data.quantity;
-      const newDestQty = destQuantity + data.quantity;
+      const newDestQty = destData.quantity + data.quantity;
 
       await client.query(
         "UPDATE branch_inventory SET quantity = $1 WHERE branch_id = $2 AND item_id = $3",
@@ -145,10 +138,8 @@ class StockTransfer {
         [newDestQty, data.destination_branch_id, data.item_id],
       );
 
-      // 4. Generate the Shared Transfer Reference Code
       const refCode = `ST-${Date.now().toString().slice(-6)}`;
 
-      // 5. Dual Ledger Logging (Double-Entry Accounting Standard)
       const ledgerSql = `
         INSERT INTO inventory_movements (item_id, branch_id, transaction_type, transaction_reference, quantity_added, quantity_deducted, remaining_quantity, remarks, recorded_unit_cost, created_by)
         VALUES 
@@ -168,7 +159,6 @@ class StockTransfer {
         newDestQty,
       ]);
 
-      // 6. Generate Master Document
       const transferRes = await client.query(
         `
         INSERT INTO stock_transfers (transfer_reference, item_id, source_branch_id, destination_branch_id, quantity, recorded_unit_cost, reason, created_by)
