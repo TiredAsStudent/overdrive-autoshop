@@ -64,7 +64,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // -- Mount Routes --
 app.use("/api/v1/auth", require("./routes/v1/auth.routes"));
 app.use("/api/v1/manager", require("./routes/v1/manager.routes"));
-// app.use("/api/v1/staff", require("./routes/v1/staff.routes"));
+app.use("/api/v1/staff", require("./routes/v1/staff.routes"));
 app.use("/api/v1/sysadmin", require("./routes/v1/sysadmin.routes"));
 
 // --- GLOBAL ERROR CATCHING ---
