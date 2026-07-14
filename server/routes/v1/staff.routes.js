@@ -5,6 +5,11 @@ const router = express.Router();
 const CustomerController = require("../../controllers/staff/customer.controller");
 const EstimateController = require("../../controllers/staff/estimate.controller");
 
+// Bring in Read-Only Controllers for Estimates formulation
+const ServiceController = require("../../controllers/manager/service.controller");
+const InventoryController = require("../../controllers/manager/inventory.controller");
+const SettingsController = require("../../controllers/sysadmin/settings.controller");
+
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
 const branchGuard = require("../../middlewares/branchMiddleware");
@@ -29,10 +34,7 @@ const {
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
 // ==========================================
-// Sales operations are frontline but visible to management
 router.use(verifyToken, requireRole(ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN));
-
-// branchGuard ensures req.branchId is correctly injected based on the logged-in user
 router.use(branchGuard);
 
 // ==========================================
@@ -73,5 +75,12 @@ router.patch(
   validate(updateStatusSchema),
   EstimateController.updateStatus,
 );
+
+// ==========================================
+// MODULE: READ-ONLY CATALOGS (For Estimate Form)
+// ==========================================
+router.get("/services", ServiceController.getServices);
+router.get("/inventory", InventoryController.getInventoryCatalog);
+router.get("/settings", SettingsController.getSettings);
 
 module.exports = router;
