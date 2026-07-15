@@ -4,6 +4,7 @@ const router = express.Router();
 // Controllers
 const CustomerController = require("../../controllers/staff/customer.controller");
 const EstimateController = require("../../controllers/staff/estimate.controller");
+const SalesOrderController = require("../../controllers/staff/salesOrder.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -30,6 +31,11 @@ const {
   updateStatusSchema,
   getEstimatesSchema,
 } = require("../../validations/staff/estimate.schema");
+const {
+  createSalesOrderSchema,
+  updateSalesOrderSchema,
+  getSalesOrdersSchema,
+} = require("../../validations/staff/salesOrder.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -82,5 +88,25 @@ router.patch(
 router.get("/services", ServiceController.getServices);
 router.get("/inventory", InventoryController.getInventoryCatalog);
 router.get("/settings", SettingsController.getSettings);
+
+// ==========================================
+// MODULE: SALES ORDERS (OPERATIONAL WORK ORDERS)
+// ==========================================
+router.post(
+  "/sales-orders",
+  validate(createSalesOrderSchema),
+  SalesOrderController.createSalesOrder,
+);
+router.get(
+  "/sales-orders",
+  validate(getSalesOrdersSchema),
+  SalesOrderController.getSalesOrders,
+);
+router.get("/sales-orders/:id", SalesOrderController.getSalesOrderDetails);
+router.patch(
+  "/sales-orders/:id",
+  validate(updateSalesOrderSchema),
+  SalesOrderController.updateSalesOrder,
+);
 
 module.exports = router;
