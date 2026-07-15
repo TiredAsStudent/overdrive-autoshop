@@ -278,7 +278,7 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                 disabled={!invoice || loading}
                 className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Printer size={16} /> Print
+                <Printer size={16} /> Print Document
               </button>
               <button
                 disabled={!invoice || loading || invoice.status === "PAID"}
