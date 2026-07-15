@@ -112,7 +112,7 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
             {/* Header */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl text-emerald-500">
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <Receipt size={20} />
                 </div>
                 <div>
@@ -144,7 +144,7 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
 
               {isLoadingOrders ? (
                 <div className="flex flex-col items-center justify-center py-10 opacity-50">
-                  <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mb-3" />
+                  <Loader2 className="w-8 h-8 text-amber-500 animate-spin mb-3" />
                   <p className="text-xs font-black uppercase tracking-widest text-slate-500">
                     Scanning Completed Work Orders...
                   </p>
@@ -166,7 +166,7 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
                       name="sales_order_id"
                       value={formData.sales_order_id}
                       onChange={handleOrderSelect}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-emerald-500"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
                     >
                       <option value="">-- Select a Completed Order --</option>
                       {completedOrders.map((so) => (
@@ -198,7 +198,7 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
                           Receivable Amount
                         </p>
-                        <span className="text-lg font-black text-emerald-600 dark:text-emerald-500">
+                        <span className="text-lg font-black text-amber-600 dark:text-amber-500">
                           ₱
                           {parseFloat(
                             selectedOrderPreview.grand_total,
@@ -222,7 +222,7 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
                         name="due_date"
                         value={formData.due_date}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-emerald-500"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
                       />
                     </div>
                     <div>
@@ -266,7 +266,7 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
                   isLoadingOrders ||
                   completedOrders.length === 0
                 }
-                className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />

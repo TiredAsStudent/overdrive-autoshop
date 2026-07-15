@@ -68,7 +68,7 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
             {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl text-emerald-500">
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <Receipt size={20} />
                 </div>
                 <div>
@@ -96,7 +96,7 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                  <Loader2 className="w-8 h-8 animate-spin mb-3 text-emerald-500" />
+                  <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
                   <p className="text-[10px] font-black uppercase tracking-widest">
                     Retrieving Ledger...
                   </p>
@@ -140,7 +140,7 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
 
                   {/* Due Date */}
                   <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
-                    <Calendar size={18} className="text-emerald-500" />
+                    <Calendar size={18} className="text-amber-500" />
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                         Payment Due Date
@@ -282,7 +282,7 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
               </button>
               <button
                 disabled={!invoice || loading || invoice.status === "PAID"}
-                className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
+                className="flex-1 py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <CreditCard size={16} /> Record Payment
               </button>
