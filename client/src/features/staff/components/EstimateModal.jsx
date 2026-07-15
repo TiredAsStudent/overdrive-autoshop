@@ -49,7 +49,6 @@ const EstimateModal = ({ isOpen, onClose, onSubmit }) => {
       const fetchCatalogs = async () => {
         setIsLoadingCatalogs(true);
         try {
-          // Pointing directly to the newly exposed /staff/ routes to bypass Manager RBAC
           const [custRes, servRes, partRes, setRes] = await Promise.all([
             customerService.getCustomers(1, 200, "", "active", "all"),
             api.get("/staff/services", {
@@ -62,8 +61,8 @@ const EstimateModal = ({ isOpen, onClose, onSubmit }) => {
           ]);
 
           setCustomers(custRes.data?.customers || []);
-          setServices(servRes.data?.data || []); // Extracting array from API wrapper
-          setParts(partRes.data?.data || []); // Extracting array from API wrapper
+          setServices(servRes.data?.data || []);
+          setParts(partRes.data?.data || []);
           setVatRate(parseFloat(setRes.data?.data?.vat_percentage || 12) / 100);
         } catch (error) {
           console.error(error);
@@ -126,20 +125,48 @@ const EstimateModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   const handleItemChange = (id, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.map((item) => {
-        if (item.id === id) {
-          const updated = { ...item, [field]: value };
-          if (field === "line_type") {
-            updated.service_id = "";
-            updated.item_id = "";
-          }
-          return updated;
+    setFormData((prev) => {
+      let newItems = [...prev.items];
+      const itemIndex = newItems.findIndex((i) => i.id === id);
+
+      if (itemIndex > -1) {
+        newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
+
+        if (field === "line_type") {
+          newItems[itemIndex].service_id = "";
+          newItems[itemIndex].item_id = "";
         }
-        return item;
-      }),
-    }));
+
+        if (field === "service_id" && value) {
+          const selectedService = services.find(
+            (s) => s.id.toString() === value.toString(),
+          );
+
+          if (
+            selectedService &&
+            selectedService.commonly_used_parts &&
+            selectedService.commonly_used_parts.length > 0
+          ) {
+            const partsToAdd = selectedService.commonly_used_parts
+              .map((partId) => parts.find((p) => p.id === partId))
+              .filter(Boolean);
+
+            const newRows = partsToAdd.map((p, idx) => ({
+              id: Date.now() + idx + 1,
+              line_type: "PART",
+              service_id: "",
+              item_id: p.id.toString(),
+              quantity: 1,
+              discount: 0,
+            }));
+
+            newItems.splice(itemIndex + 1, 0, ...newRows);
+          }
+        }
+      }
+
+      return { ...prev, items: newItems };
+    });
   };
 
   const calculatePreview = () => {
