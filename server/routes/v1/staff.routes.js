@@ -5,6 +5,7 @@ const router = express.Router();
 const CustomerController = require("../../controllers/staff/customer.controller");
 const EstimateController = require("../../controllers/staff/estimate.controller");
 const SalesOrderController = require("../../controllers/staff/salesOrder.controller");
+const InvoiceController = require("../../controllers/staff/invoice.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -36,6 +37,11 @@ const {
   updateSalesOrderSchema,
   getSalesOrdersSchema,
 } = require("../../validations/staff/salesOrder.schema");
+const {
+  createInvoiceSchema,
+  updateInvoiceSchema,
+  getInvoicesSchema,
+} = require("../../validations/staff/invoice.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -107,6 +113,26 @@ router.patch(
   "/sales-orders/:id",
   validate(updateSalesOrderSchema),
   SalesOrderController.updateSalesOrder,
+);
+
+// ==========================================
+// MODULE: INVOICES (OFFICIAL BILLING)
+// ==========================================
+router.post(
+  "/invoices",
+  validate(createInvoiceSchema),
+  InvoiceController.createInvoice,
+);
+router.get(
+  "/invoices",
+  validate(getInvoicesSchema),
+  InvoiceController.getInvoices,
+);
+router.get("/invoices/:id", InvoiceController.getInvoiceDetails);
+router.patch(
+  "/invoices/:id",
+  validate(updateInvoiceSchema),
+  InvoiceController.updateInvoice,
 );
 
 module.exports = router;
