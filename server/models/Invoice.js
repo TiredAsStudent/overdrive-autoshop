@@ -59,7 +59,6 @@ class Invoice {
 
       // 2. Process Line Items AND Inventory Deductions
       for (const item of itemsData) {
-        // A. Insert the billing line item
         const itemSql = `
           INSERT INTO invoice_items (
             invoice_id, line_type, service_id, item_id, 
@@ -77,9 +76,8 @@ class Invoice {
           item.discount_amount,
         ]);
 
-        // B. Permanent Inventory Deduction Trigger
         if (item.line_type === "PART") {
-          // Lock the specific inventory row
+          // Lock row for safe deduction
           const checkSql = `SELECT quantity FROM branch_inventory WHERE branch_id = $1 AND item_id = $2 FOR UPDATE`;
           const checkRes = await client.query(checkSql, [
             invoiceData.branch_id,
@@ -101,7 +99,6 @@ class Invoice {
             );
           }
 
-          // Deduct quantity
           const updateStockSql = `UPDATE branch_inventory SET quantity = $1 WHERE branch_id = $2 AND item_id = $3`;
           await client.query(updateStockSql, [
             newQty,
@@ -109,7 +106,6 @@ class Invoice {
             item.item_id,
           ]);
 
-          // Write Immutable Movement Ledger
           const ledgerSql = `
             INSERT INTO inventory_movements (
               item_id, branch_id, transaction_type, transaction_reference, 
@@ -128,7 +124,7 @@ class Invoice {
         }
       }
 
-      // 3. Lock Upstream Sales Order Status
+      // 3. Lock Upstream Sales Order
       const updateSOSql = `UPDATE sales_orders SET status = 'INVOICED', updated_at = NOW() WHERE id = $1`;
       await client.query(updateSOSql, [salesOrderId]);
 
@@ -144,8 +140,13 @@ class Invoice {
 
   static async findById(id) {
     const sql = `
-      SELECT i.*, c.full_name as customer_name, c.contact_number, c.email, c.address as customer_address, 
-             b.branch_name, u.first_name as created_by_name, so.sales_order_number
+      SELECT i.*, 
+             c.full_name as customer_name, c.contact_number, c.email, c.address as customer_address, 
+             b.branch_name, u.first_name as created_by_name, so.sales_order_number,
+             CASE 
+               WHEN i.status IN ('UNPAID', 'PARTIALLY_PAID') AND i.due_date < CURRENT_DATE THEN 'OVERDUE'
+               ELSE i.status 
+             END as status
       FROM invoices i
       JOIN customers c ON i.customer_id = c.id
       JOIN branches b ON i.branch_id = b.id
@@ -196,11 +197,27 @@ class Invoice {
       values.push(`%${search}%`);
       paramIdx++;
     }
+
+    // Dynamic Overdue Time-Trap Filter Logic
     if (status && status !== "all") {
-      conditions.push(`i.status = $${paramIdx}`);
-      values.push(status.toUpperCase());
-      paramIdx++;
+      const upperStatus = status.toUpperCase();
+      if (upperStatus === "OVERDUE") {
+        conditions.push(
+          `i.status IN ('UNPAID', 'PARTIALLY_PAID') AND i.due_date < CURRENT_DATE`,
+        );
+      } else if (upperStatus === "UNPAID" || upperStatus === "PARTIALLY_PAID") {
+        conditions.push(
+          `i.status = $${paramIdx} AND i.due_date >= CURRENT_DATE`,
+        );
+        values.push(upperStatus);
+        paramIdx++;
+      } else {
+        conditions.push(`i.status = $${paramIdx}`);
+        values.push(upperStatus);
+        paramIdx++;
+      }
     }
+
     if (branchId && branchId !== "all") {
       conditions.push(`i.branch_id = $${paramIdx}`);
       values.push(branchId);
@@ -214,8 +231,12 @@ class Invoice {
 
   static async findPaginatedFiltered(limit, offset, search, status, branchId) {
     let sql = `
-      SELECT i.id, i.invoice_number, i.grand_total, i.amount_paid, i.status, i.due_date, i.created_at,
-             c.full_name as customer_name, b.branch_name
+      SELECT i.id, i.invoice_number, i.grand_total, i.amount_paid, i.due_date, i.created_at,
+             c.full_name as customer_name, b.branch_name,
+             CASE 
+               WHEN i.status IN ('UNPAID', 'PARTIALLY_PAID') AND i.due_date < CURRENT_DATE THEN 'OVERDUE'
+               ELSE i.status 
+             END as status
       FROM invoices i
       JOIN customers c ON i.customer_id = c.id
       JOIN branches b ON i.branch_id = b.id
@@ -231,11 +252,27 @@ class Invoice {
       values.push(`%${search}%`);
       paramIdx++;
     }
+
+    // Dynamic Overdue Time-Trap Filter Logic
     if (status && status !== "all") {
-      conditions.push(`i.status = $${paramIdx}`);
-      values.push(status.toUpperCase());
-      paramIdx++;
+      const upperStatus = status.toUpperCase();
+      if (upperStatus === "OVERDUE") {
+        conditions.push(
+          `i.status IN ('UNPAID', 'PARTIALLY_PAID') AND i.due_date < CURRENT_DATE`,
+        );
+      } else if (upperStatus === "UNPAID" || upperStatus === "PARTIALLY_PAID") {
+        conditions.push(
+          `i.status = $${paramIdx} AND i.due_date >= CURRENT_DATE`,
+        );
+        values.push(upperStatus);
+        paramIdx++;
+      } else {
+        conditions.push(`i.status = $${paramIdx}`);
+        values.push(upperStatus);
+        paramIdx++;
+      }
     }
+
     if (branchId && branchId !== "all") {
       conditions.push(`i.branch_id = $${paramIdx}`);
       values.push(branchId);
