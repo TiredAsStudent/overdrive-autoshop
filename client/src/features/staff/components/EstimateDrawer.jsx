@@ -241,7 +241,7 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
                 disabled={!estimate || loading}
                 className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Printer size={16} /> Print FRS Document
+                <Printer size={16} /> Print Document
               </button>
             </div>
           </motion.div>
