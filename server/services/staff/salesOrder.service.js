@@ -1,14 +1,13 @@
 const SalesOrderModel = require("../../models/SalesOrder");
 const EstimateModel = require("../../models/Estimate");
 const { logSecureAction } = require("../../utils/auditLogger");
+const { query } = require("../../config/db");
 
 class SalesOrderService {
   static async createSalesOrder(data, activeUser, ipAddress) {
-    // 1. Fetch Source Estimate
     const estimate = await EstimateModel.findById(data.estimate_id);
     if (!estimate) throw new Error("Source Estimate not found.");
 
-    // 2. Validate Rules (VR-01, BR-08)
     if (estimate.status !== "APPROVED") {
       throw new Error(
         `Cannot convert this estimate. Its current status is ${estimate.status}. Only APPROVED estimates can be converted.`,
@@ -24,7 +23,6 @@ class SalesOrderService {
       );
     }
 
-    // 3. Map Data (VR-05: Exact copy of financials to prevent tampering)
     const soPayload = {
       customer_id: estimate.customer_id,
       branch_id: estimate.branch_id,
@@ -47,7 +45,6 @@ class SalesOrderService {
       discount_amount: item.discount_amount,
     }));
 
-    // 4. Execute Atomic Conversion
     let retries = 3;
     let newSO = null;
 
@@ -68,7 +65,7 @@ class SalesOrderService {
         ) {
           throw new Error(
             "This Estimate has already been converted into a Sales Order.",
-          ); // VR-03
+          );
         }
         if (
           error.code === "23505" &&
@@ -118,8 +115,56 @@ class SalesOrderService {
       throw new Error("Unauthorized.");
     }
 
-    if (so.status === "INVOICED" || so.status === "CANCELLED") {
-      throw new Error(`Sales Order is locked. It is currently ${so.status}.`);
+    const currentStatus = so.status;
+    const newStatus = data.status;
+
+    if (
+      currentStatus === "INVOICED" ||
+      currentStatus === "CANCELLED" ||
+      currentStatus === "COMPLETED"
+    ) {
+      if (newStatus && newStatus !== currentStatus) {
+        throw new Error(
+          `Sales Order is locked. You cannot change the status of a ${currentStatus} document.`,
+        );
+      }
+    }
+
+    if (newStatus && newStatus !== currentStatus) {
+      const validTransitions = {
+        PENDING_SERVICE: ["IN_PROGRESS", "CANCELLED"],
+        IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+      };
+
+      if (
+        !validTransitions[currentStatus] ||
+        !validTransitions[currentStatus].includes(newStatus)
+      ) {
+        throw new Error(
+          `Illegal Operation: Cannot transition Sales Order from ${currentStatus} directly to ${newStatus}.`,
+        );
+      }
+
+      if (newStatus === "IN_PROGRESS") {
+        const parts = so.items.filter((item) => item.line_type === "PART");
+
+        for (const part of parts) {
+          const stockSql = `SELECT quantity FROM branch_inventory WHERE branch_id = $1 AND item_id = $2`;
+          const stockResult = await query(stockSql, [
+            so.branch_id,
+            part.item_id,
+          ]);
+
+          const availableStock =
+            stockResult.rows.length > 0 ? stockResult.rows[0].quantity : 0;
+
+          if (availableStock < part.quantity) {
+            throw new Error(
+              `Stock Shortage: Cannot start service. Insufficient inventory for "${part.item_name}". Required: ${part.quantity}, Available: ${availableStock}.`,
+            );
+          }
+        }
+      }
     }
 
     const updated = await SalesOrderModel.update(id, data);
@@ -133,7 +178,7 @@ class SalesOrderService {
       "sales_orders",
       id,
       {
-        status: so.status,
+        status: currentStatus,
         estimated_completion_date: so.estimated_completion_date,
       },
       {
