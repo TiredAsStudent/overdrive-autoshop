@@ -46,7 +46,6 @@ const PaymentModal = ({
       const fetchInvoices = async () => {
         setIsLoadingInvoices(true);
         try {
-          // Fetch all to cover UNPAID, PARTIALLY_PAID, and OVERDUE efficiently
           const res = await invoiceService.getInvoices(
             1,
             200,
@@ -54,13 +53,11 @@ const PaymentModal = ({
             "all",
             "all",
           );
-          // Filter out PAID or CANCELLED on the frontend
           const pending = (res.data?.invoices || []).filter(
             (inv) => inv.status !== "PAID" && inv.status !== "CANCELLED",
           );
           setUnresolvedInvoices(pending);
 
-          // If triggered from the drawer/shortcut with an initial ID
           if (initialInvoiceId) {
             const preSelected = pending.find(
               (i) => i.id.toString() === initialInvoiceId.toString(),
@@ -110,16 +107,17 @@ const PaymentModal = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Dynamic Amortization Math
   const grandTotal = selectedInvoice
     ? parseFloat(selectedInvoice.grand_total)
     : 0;
   const previouslyPaid = selectedInvoice
     ? parseFloat(selectedInvoice.amount_paid)
     : 0;
-  const currentBalance = grandTotal - previouslyPaid;
+
+  const currentBalance = Math.round((grandTotal - previouslyPaid) * 100) / 100;
   const amountToApply = parseFloat(formData.amount_received) || 0;
-  const projectedBalance = currentBalance - amountToApply;
+  const projectedBalance =
+    Math.round((currentBalance - amountToApply) * 100) / 100;
 
   const requiresReference = ["GCASH", "MAYA", "BANK_TRANSFER"].includes(
     formData.payment_method,
@@ -133,11 +131,17 @@ const PaymentModal = ({
       return setValidationError("You must select an invoice.");
     if (amountToApply <= 0)
       return setValidationError("Payment amount must be greater than zero.");
-    if (amountToApply > currentBalance)
+
+    if (amountToApply > currentBalance) {
       return setValidationError(
         `Payment exceeds the remaining balance of ₱${currentBalance.toFixed(2)}`,
       );
-    if (requiresReference && !formData.reference_number.trim()) {
+    }
+
+    if (
+      requiresReference &&
+      (!formData.reference_number || !formData.reference_number.trim())
+    ) {
       return setValidationError(
         `A Transaction Reference is required for ${formData.payment_method} payments.`,
       );
@@ -238,7 +242,9 @@ const PaymentModal = ({
                           {(
                             parseFloat(inv.grand_total) -
                             parseFloat(inv.amount_paid)
-                          ).toLocaleString()}
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
                         </option>
                       ))}
                     </select>
@@ -328,7 +334,7 @@ const PaymentModal = ({
                           onClick={() =>
                             setFormData({
                               ...formData,
-                              amount_received: currentBalance.toString(),
+                              amount_received: currentBalance.toFixed(2),
                             })
                           }
                           className="mt-1.5 text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors"
@@ -366,7 +372,7 @@ const PaymentModal = ({
                           required
                           type="text"
                           name="reference_number"
-                          value={formData.reference_number}
+                          value={formData.reference_number || ""}
                           onChange={handleChange}
                           className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
                           placeholder="e.g., Bank Ref or GCash Ref No."
@@ -383,7 +389,7 @@ const PaymentModal = ({
                       </label>
                       <textarea
                         name="notes"
-                        value={formData.notes}
+                        value={formData.notes || ""}
                         onChange={handleChange}
                         rows="2"
                         className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none"
