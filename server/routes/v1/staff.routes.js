@@ -7,6 +7,7 @@ const EstimateController = require("../../controllers/staff/estimate.controller"
 const SalesOrderController = require("../../controllers/staff/salesOrder.controller");
 const InvoiceController = require("../../controllers/staff/invoice.controller");
 const PaymentController = require("../../controllers/staff/payment.controller");
+const VendorController = require("../../controllers/staff/vendor.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -47,6 +48,11 @@ const {
   createPaymentSchema,
   getPaymentsSchema,
 } = require("../../validations/staff/payment.schema");
+const {
+  createVendorSchema,
+  updateVendorSchema,
+  getVendorsSchema,
+} = require("../../validations/staff/vendor.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -154,5 +160,20 @@ router.get(
   PaymentController.getPayments,
 );
 router.get("/payments/:id", PaymentController.getPaymentDetails);
+
+// ==========================================
+// MODULE: VENDORS (SUPPLIER CRM)
+// ==========================================
+router.post(
+  "/vendors",
+  validate(createVendorSchema),
+  VendorController.registerVendor,
+);
+router.get("/vendors", validate(getVendorsSchema), VendorController.getVendors);
+router.put(
+  "/vendors/:id",
+  validate(updateVendorSchema),
+  VendorController.updateVendor,
+);
 
 module.exports = router;
