@@ -146,46 +146,47 @@ class Vendor {
   }
 
   static async update(id, data) {
+    const setClauses = [];
+    const values = [];
+    let paramIdx = 1;
+
+    const updatableFields = [
+      "business_name",
+      "contact_person",
+      "business_address",
+      "contact_number",
+      "email",
+      "tin",
+      "is_vat_registered",
+      "is_active",
+      "notes",
+    ];
+
+    for (const field of updatableFields) {
+      if (data[field] !== undefined) {
+        setClauses.push(`${field} = $${paramIdx}`);
+        values.push(data[field]);
+        paramIdx++;
+      }
+    }
+
+    if (setClauses.length === 0) {
+      const res = await query(`SELECT * FROM vendors WHERE id = $1`, [id]);
+      return res.rows[0];
+    }
+
+    setClauses.push(`updated_at = NOW()`);
+
+    values.push(id);
+
     const sql = `
       UPDATE vendors 
-      SET 
-        business_name = COALESCE($1, business_name),
-        contact_person = COALESCE($2, contact_person),
-        business_address = COALESCE($3, business_address),
-        contact_number = COALESCE($4, contact_number),
-        email = $5,
-        tin = $6,
-        is_vat_registered = COALESCE($7, is_vat_registered),
-        is_active = COALESCE($8, is_active),
-        notes = COALESCE($9, notes),
-        updated_at = NOW()
-      WHERE id = $10
+      SET ${setClauses.join(", ")}
+      WHERE id = $${paramIdx}
       RETURNING *
     `;
 
-    // Explicit undefined check for nullable fields so we don't accidentally wipe them if not included in the payload
-    const finalEmail = data.email !== undefined ? data.email : undefined;
-    const finalTin = data.tin !== undefined ? data.tin : undefined;
-
-    const values = [
-      data.business_name,
-      data.contact_person,
-      data.business_address,
-      data.contact_number,
-      finalEmail,
-      finalTin,
-      data.is_vat_registered,
-      data.is_active,
-      data.notes,
-      id,
-    ];
-
-    // Replace undefined with raw column reference to preserve existing data
-    const queryStr = sql
-      .replace(/\$5/g, finalEmail !== undefined ? "$5" : "email")
-      .replace(/\$6/g, finalTin !== undefined ? "$6" : "tin");
-
-    const result = await query(queryStr, values);
+    const result = await query(sql, values);
     return result.rows[0];
   }
 }
