@@ -20,7 +20,7 @@ class PurchaseOrder {
     return `${prefix}${String(sequence).padStart(4, "0")}`;
   }
 
-  // Atomic Creation Engine
+  // Atomic Creation Engine with Bulk Insertion
   static async createTransaction(poData, computedItems) {
     const client = await pool.connect();
     try {
@@ -48,22 +48,34 @@ class PurchaseOrder {
       const headerRes = await client.query(headerSql, headerValues);
       const newPO = headerRes.rows[0];
 
-      // 2. Insert Items
-      for (const item of computedItems) {
-        const itemSql = `
+      if (computedItems && computedItems.length > 0) {
+        let itemSql = `
           INSERT INTO purchase_order_items (
             purchase_order_id, line_type, item_id, sublet_description, quantity, recorded_unit_cost, discount_amount
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ) VALUES 
         `;
-        await client.query(itemSql, [
-          newPO.id,
-          item.line_type,
-          item.item_id,
-          item.sublet_description,
-          item.quantity,
-          item.recorded_unit_cost,
-          item.discount_amount,
-        ]);
+        const values = [];
+        const placeholders = [];
+        let paramIdx = 1;
+
+        computedItems.forEach((item) => {
+          placeholders.push(
+            `($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6})`,
+          );
+          values.push(
+            newPO.id,
+            item.line_type,
+            item.item_id,
+            item.sublet_description,
+            item.quantity,
+            item.recorded_unit_cost,
+            item.discount_amount,
+          );
+          paramIdx += 7;
+        });
+
+        itemSql += placeholders.join(", ");
+        await client.query(itemSql, values);
       }
 
       await client.query("COMMIT");
@@ -76,7 +88,7 @@ class PurchaseOrder {
     }
   }
 
-  // Atomic Full Update Engine (For DRAFT / REJECTED records)
+  //Atomic Full Update Engine with Bulk Insertion
   static async updateTransaction(poId, poData, computedItems) {
     const client = await pool.connect();
     try {
@@ -98,20 +110,26 @@ class PurchaseOrder {
       ]);
       const updatedPO = updateRes.rows[0];
 
-      // 2. Erase existing items & replace (Clean Slate method)
       if (computedItems && computedItems.length > 0) {
         await client.query(
           `DELETE FROM purchase_order_items WHERE purchase_order_id = $1`,
           [poId],
         );
 
-        for (const item of computedItems) {
-          const itemSql = `
-            INSERT INTO purchase_order_items (
-              purchase_order_id, line_type, item_id, sublet_description, quantity, recorded_unit_cost, discount_amount
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-          `;
-          await client.query(itemSql, [
+        let itemSql = `
+          INSERT INTO purchase_order_items (
+            purchase_order_id, line_type, item_id, sublet_description, quantity, recorded_unit_cost, discount_amount
+          ) VALUES 
+        `;
+        const values = [];
+        const placeholders = [];
+        let paramIdx = 1;
+
+        computedItems.forEach((item) => {
+          placeholders.push(
+            `($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6})`,
+          );
+          values.push(
             poId,
             item.line_type,
             item.item_id,
@@ -119,8 +137,12 @@ class PurchaseOrder {
             item.quantity,
             item.recorded_unit_cost,
             item.discount_amount,
-          ]);
-        }
+          );
+          paramIdx += 7;
+        });
+
+        itemSql += placeholders.join(", ");
+        await client.query(itemSql, values);
       }
 
       await client.query("COMMIT");
