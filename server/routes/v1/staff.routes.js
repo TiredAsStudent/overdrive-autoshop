@@ -8,6 +8,7 @@ const SalesOrderController = require("../../controllers/staff/salesOrder.control
 const InvoiceController = require("../../controllers/staff/invoice.controller");
 const PaymentController = require("../../controllers/staff/payment.controller");
 const VendorController = require("../../controllers/staff/vendor.controller");
+const PurchaseOrderController = require("../../controllers/staff/purchaseOrder.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -53,6 +54,12 @@ const {
   updateVendorSchema,
   getVendorsSchema,
 } = require("../../validations/staff/vendor.schema");
+const {
+  createPurchaseOrderSchema,
+  updatePurchaseOrderSchema,
+  updatePOStatusSchema,
+  getPurchaseOrdersSchema,
+} = require("../../validations/staff/purchaseOrder.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -174,6 +181,34 @@ router.put(
   "/vendors/:id",
   validate(updateVendorSchema),
   VendorController.updateVendor,
+);
+
+// ==========================================
+// MODULE: PURCHASE ORDERS (PROCUREMENT)
+// ==========================================
+router.post(
+  "/purchase-orders",
+  validate(createPurchaseOrderSchema),
+  PurchaseOrderController.createPurchaseOrder,
+);
+router.get(
+  "/purchase-orders",
+  validate(getPurchaseOrdersSchema),
+  PurchaseOrderController.getPurchaseOrders,
+);
+router.get(
+  "/purchase-orders/:id",
+  PurchaseOrderController.getPurchaseOrderDetails,
+);
+router.put(
+  "/purchase-orders/:id",
+  validate(updatePurchaseOrderSchema),
+  PurchaseOrderController.updatePurchaseOrder,
+);
+router.patch(
+  "/purchase-orders/:id/status",
+  validate(updatePOStatusSchema),
+  PurchaseOrderController.updateStatus,
 );
 
 module.exports = router;
