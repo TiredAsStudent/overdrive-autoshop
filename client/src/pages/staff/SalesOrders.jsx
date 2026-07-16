@@ -216,9 +216,6 @@ const SalesOrders = () => {
               <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
                 {order.customer_name}
               </p>
-              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-                {order.branch_name}
-              </p>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <p className="text-xs font-bold text-slate-600 dark:text-slate-400">

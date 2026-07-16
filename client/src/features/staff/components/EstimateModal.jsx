@@ -322,7 +322,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit }) => {
                         <option value="">-- Select Active Customer --</option>
                         {customers.map((c) => (
                           <option key={c.id} value={c.id}>
-                            {c.full_name} ({c.contact_number})
+                            {c.full_name}
                           </option>
                         ))}
                       </select>
