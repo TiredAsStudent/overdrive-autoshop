@@ -194,7 +194,7 @@ const Vendors = () => {
             }}
             className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-amber-500/20 active:scale-95 transition-all"
           >
-            <Plus size={16} /> Register
+            <Plus size={16} /> Register Supplier
           </button>
         </div>
       </div>
@@ -227,7 +227,7 @@ const Vendors = () => {
                   {vendor.business_name}
                 </p>
                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate w-full">
-                  {vendor.branch_name || "Global Entity"}
+                  {vendor.business_address || "Global Entity"}
                 </p>
               </div>
             </td>
