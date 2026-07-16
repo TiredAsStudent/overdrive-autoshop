@@ -13,8 +13,7 @@ import {
   Settings,
 } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
-import { inventoryService } from "../../../services/manager/inventory.service";
-import { settingsService } from "../../../services/sysadmin/settings.service";
+import { catalogService } from "../../../services/staff/catalog.service";
 
 const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,7 +40,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
         try {
           const [venRes, invRes, setRes] = await Promise.all([
             vendorService.getVendors(1, 500, "", "active", "all", "all"),
-            inventoryService.getInventoryCatalog(
+            catalogService.getInventoryCatalog(
               1,
               1000,
               "",
@@ -49,7 +48,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               "all",
               "active",
             ),
-            settingsService.getSettings(),
+            catalogService.getSettings(),
           ]);
           setVendors(venRes.data?.vendors || []);
           setInventory(invRes.data || []);
