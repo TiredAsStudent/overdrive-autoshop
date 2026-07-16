@@ -6,6 +6,7 @@ const CustomerController = require("../../controllers/staff/customer.controller"
 const EstimateController = require("../../controllers/staff/estimate.controller");
 const SalesOrderController = require("../../controllers/staff/salesOrder.controller");
 const InvoiceController = require("../../controllers/staff/invoice.controller");
+const PaymentController = require("../../controllers/staff/payment.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -42,6 +43,10 @@ const {
   updateInvoiceSchema,
   getInvoicesSchema,
 } = require("../../validations/staff/invoice.schema");
+const {
+  createPaymentSchema,
+  getPaymentsSchema,
+} = require("../../validations/staff/payment.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -134,5 +139,20 @@ router.patch(
   validate(updateInvoiceSchema),
   InvoiceController.updateInvoice,
 );
+
+// ==========================================
+// MODULE: PAYMENTS (CASH COLLECTIONS)
+// ==========================================
+router.post(
+  "/payments",
+  validate(createPaymentSchema),
+  PaymentController.recordPayment,
+);
+router.get(
+  "/payments",
+  validate(getPaymentsSchema),
+  PaymentController.getPayments,
+);
+router.get("/payments/:id", PaymentController.getPaymentDetails);
 
 module.exports = router;
