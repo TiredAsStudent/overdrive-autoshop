@@ -13,18 +13,15 @@ class PurchaseOrderService {
     const settings = await SystemSetting.getSettings();
     const vatRate = vendor.is_vat_registered
       ? parseFloat(settings.vat_percentage) / 100
-      : 0; // VR-07
+      : 0;
 
     let subtotal = 0;
     const computedItems = [];
 
     for (const item of itemsArray) {
-      // Validate Item Master Linkage if applicable
-      if (item.line_type === "PART") {
-        const partRec = await InventoryModel.findById(item.item_id);
-        if (!partRec || !partRec.is_active)
-          throw new Error(`Part ID ${item.item_id} is invalid or inactive.`);
-      }
+      const partRec = await InventoryModel.findById(item.item_id);
+      if (!partRec || !partRec.is_active)
+        throw new Error(`Part ID ${item.item_id} is invalid or inactive.`);
 
       const cost = parseFloat(item.recorded_unit_cost);
       const qty = parseInt(item.quantity, 10);
@@ -40,10 +37,7 @@ class PurchaseOrderService {
       subtotal += lineNet;
 
       computedItems.push({
-        line_type: item.line_type,
-        item_id: item.line_type === "PART" ? item.item_id : null,
-        sublet_description:
-          item.line_type === "SUBLET" ? item.sublet_description : null,
+        item_id: item.item_id,
         quantity: qty,
         recorded_unit_cost: cost,
         discount_amount: discount,
@@ -64,7 +58,6 @@ class PurchaseOrderService {
   }
 
   static async createPurchaseOrder(data, activeUser, ipAddress) {
-    // Delivery Date verification (VR-06)
     const deliveryDate = new Date(data.expected_delivery_date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -75,7 +68,6 @@ class PurchaseOrderService {
       activeUser.role === "STAFF" ? activeUser.branchId : activeUser.branchId;
     if (!branchId) throw new Error("A valid branch context is required.");
 
-    // Formulate Line Items & Financials
     const { computedItems, financials } = await this._formulateFinancials(
       data.vendor_id,
       data.items,
@@ -151,7 +143,6 @@ class PurchaseOrderService {
       );
     }
 
-    // BR-05: Editing Lock
     if (!["DRAFT", "REJECTED"].includes(oldPO.status)) {
       throw new Error(
         `Document Locked: You cannot modify a PO that is currently ${oldPO.status}.`,
@@ -209,7 +200,6 @@ class PurchaseOrderService {
     if (activeUser.role === "STAFF" && po.branch_id !== activeUser.branchId)
       throw new Error("Unauthorized.");
 
-    // Staff can only submit or cancel drafts. Manager approvals are handled in a different module.
     if (
       newStatus === "PENDING_APPROVAL" &&
       !["DRAFT", "REJECTED"].includes(po.status)

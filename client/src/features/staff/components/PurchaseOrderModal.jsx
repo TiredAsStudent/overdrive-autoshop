@@ -10,7 +10,7 @@ import {
   Edit2,
   Send,
   Save,
-  Settings,
+  Calculator,
 } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
@@ -73,9 +73,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
           notes: initialData.notes || "",
           items: initialData.items.map((i) => ({
             id: Math.random().toString(36).substr(2, 9),
-            line_type: i.line_type,
             item_id: i.item_id || "",
-            sublet_description: i.sublet_description || "",
             quantity: i.quantity,
             recorded_unit_cost: parseFloat(i.recorded_unit_cost),
             discount_amount: parseFloat(i.discount_amount),
@@ -89,9 +87,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
           items: [
             {
               id: "init-1",
-              line_type: "PART",
               item_id: "",
-              sublet_description: "",
               quantity: 1,
               recorded_unit_cost: 0,
               discount_amount: 0,
@@ -116,27 +112,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
         ...prev.items,
         {
           id: Math.random().toString(36).substr(2, 9),
-          line_type: "PART",
           item_id: "",
-          sublet_description: "",
-          quantity: 1,
-          recorded_unit_cost: 0,
-          discount_amount: 0,
-        },
-      ],
-    }));
-  };
-
-  const addSubletRow = () => {
-    setFormData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          id: Math.random().toString(36).substr(2, 9),
-          line_type: "SUBLET",
-          item_id: "",
-          sublet_description: "",
           quantity: 1,
           recorded_unit_cost: 0,
           discount_amount: 0,
@@ -209,10 +185,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       return setValidationError("At least one item must be added.");
 
     for (const item of formData.items) {
-      if (item.line_type === "PART" && !item.item_id)
-        return setValidationError("All part rows must have an item selected.");
-      if (item.line_type === "SUBLET" && !item.sublet_description.trim())
-        return setValidationError("All sublet rows must have a description.");
+      if (!item.item_id)
+        return setValidationError(
+          "All rows must have an inventory item selected.",
+        );
       if (item.quantity <= 0)
         return setValidationError("Quantity must be greater than zero.");
       if (item.recorded_unit_cost < 0)
@@ -227,9 +203,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       notes: formData.notes,
       is_submitting: isSubmittingForApproval,
       items: formData.items.map((i) => ({
-        line_type: i.line_type,
-        item_id: i.item_id ? parseInt(i.item_id, 10) : null,
-        sublet_description: i.sublet_description,
+        item_id: parseInt(i.item_id, 10),
         quantity: parseInt(i.quantity, 10),
         recorded_unit_cost: parseFloat(i.recorded_unit_cost),
         discount_amount: parseFloat(i.discount_amount),
@@ -271,7 +245,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                     {initialData ? "Update Document" : "Draft Purchase Order"}
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                    Procurement Commitment
+                    Physical Parts Procurement
                   </p>
                 </div>
               </div>
@@ -303,7 +277,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               ) : (
                 <form id="poForm" className="space-y-8">
                   {/* Top Meta Data */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50/50 dark:bg-black/10 p-5 rounded-2xl border border-slate-100 dark:border-white/5">
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Target Vendor <span className="text-red-500">*</span>
@@ -314,7 +288,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         value={formData.vendor_id}
                         onChange={handleChange}
                         disabled={!!initialData}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
                       >
                         <option value="">-- Select Active Vendor --</option>
                         {vendors.map((v) => (
@@ -344,169 +318,141 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         name="expected_delivery_date"
                         value={formData.expected_delivery_date}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                       />
                     </div>
                   </div>
 
                   {/* Procurement Line Items */}
-                  <div className="bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 border-b border-slate-200 dark:border-slate-700/50 pb-4">
-                      <div>
-                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
-                          Procurement Lines
-                        </h3>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                          Add items or outsourced services.
-                        </p>
-                      </div>
-                      <div className="flex gap-2 w-full sm:w-auto">
-                        <button
-                          type="button"
-                          onClick={addPartRow}
-                          className="flex-1 sm:flex-none px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5"
-                        >
-                          <Plus size={12} /> Add Part
-                        </button>
-                        <button
-                          type="button"
-                          onClick={addSubletRow}
-                          className="flex-1 sm:flex-none px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5"
-                        >
-                          <Settings size={12} /> Add Sublet
-                        </button>
-                      </div>
+                  <div>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                        <Calculator size={16} /> Itemized Parts Breakdown
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={addPartRow}
+                        className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 w-full sm:w-auto"
+                      >
+                        <Plus size={12} /> Add Part
+                      </button>
                     </div>
 
                     <div className="space-y-3">
-                      {formData.items.map((item, index) => (
+                      {formData.items.map((item) => (
                         <div
                           key={item.id}
-                          className="grid grid-cols-12 gap-3 items-end bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 relative group"
+                          className="flex flex-col lg:flex-row gap-3 p-3 sm:p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl relative group"
                         >
                           {/* Item/Description Input */}
-                          <div className="col-span-12 md:col-span-5">
+                          <div className="w-full lg:w-[45%] shrink-0">
                             <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
-                              {item.line_type === "PART"
-                                ? "Inventory Item"
-                                : "Sublet Description"}
+                              Master Inventory Item
                             </label>
-                            {item.line_type === "PART" ? (
-                              <select
-                                required
-                                value={item.item_id}
-                                onChange={(e) =>
-                                  handleRowChange(
-                                    item.id,
-                                    "item_id",
-                                    e.target.value,
-                                  )
-                                }
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                              >
-                                <option value="">
-                                  -- Select Master Part --
+                            <select
+                              required
+                              value={item.item_id}
+                              onChange={(e) =>
+                                handleRowChange(
+                                  item.id,
+                                  "item_id",
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                            >
+                              <option value="">-- Select Master Part --</option>
+                              {inventory.map((inv) => (
+                                <option key={inv.id} value={inv.id}>
+                                  [{inv.sku}] {inv.item_name}
                                 </option>
-                                {inventory.map((inv) => (
-                                  <option key={inv.id} value={inv.id}>
-                                    [{inv.sku}] {inv.item_name}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="flex flex-wrap lg:flex-nowrap items-end gap-3 flex-1 min-w-0">
+                            {/* Cost Input */}
+                            <div className="flex-1 min-w-[100px]">
+                              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
+                                Unit Cost
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
+                                  ₱
+                                </span>
+                                <input
+                                  required
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={item.recorded_unit_cost}
+                                  onChange={(e) =>
+                                    handleRowChange(
+                                      item.id,
+                                      "recorded_unit_cost",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-full pl-6 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Qty Input */}
+                            <div className="w-20 shrink-0">
+                              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5 text-center">
+                                Qty
+                              </label>
                               <input
                                 required
-                                type="text"
-                                value={item.sublet_description}
-                                onChange={(e) =>
-                                  handleRowChange(
-                                    item.id,
-                                    "sublet_description",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="e.g., Cylinder Boring Service"
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                              />
-                            )}
-                          </div>
-                          {/* Cost Input */}
-                          <div className="col-span-4 md:col-span-2">
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
-                              Unit Cost
-                            </label>
-                            <input
-                              required
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.recorded_unit_cost}
-                              onChange={(e) =>
-                                handleRowChange(
-                                  item.id,
-                                  "recorded_unit_cost",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                            />
-                          </div>
-                          {/* Qty Input */}
-                          <div className="col-span-4 md:col-span-2">
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
-                              Qty
-                            </label>
-                            <input
-                              required
-                              type="number"
-                              min="1"
-                              step="1"
-                              value={item.quantity}
-                              onChange={(e) =>
-                                handleRowChange(
-                                  item.id,
-                                  "quantity",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                            />
-                          </div>
-                          {/* Discount Input */}
-                          <div className="col-span-4 md:col-span-2">
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
-                              Discount
-                            </label>
-
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
-                                ₱
-                              </span>
-
-                              <input
                                 type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="Disc."
-                                value={item.discount_amount}
+                                min="1"
+                                step="1"
+                                value={item.quantity}
                                 onChange={(e) =>
                                   handleRowChange(
                                     item.id,
-                                    "discount_amount",
+                                    "quantity",
                                     e.target.value,
                                   )
                                 }
-                                className="w-full pl-7 pr-3 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-400"
+                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-mono text-center text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                               />
                             </div>
-                          </div>
-                          {/* Delete Action */}
-                          <div className="col-span-12 md:col-span-1 flex justify-end pb-1.5">
+
+                            {/* Discount Input */}
+                            <div className="w-28 shrink-0">
+                              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
+                                Discount
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
+                                  ₱
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  placeholder="Disc."
+                                  value={item.discount_amount}
+                                  onChange={(e) =>
+                                    handleRowChange(
+                                      item.id,
+                                      "discount_amount",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-full pl-6 px-3 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-xs font-mono text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Delete Action */}
                             <button
                               type="button"
                               onClick={() => removeRow(item.id)}
                               disabled={formData.items.length === 1}
-                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-30"
+                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-30 mb-0.5"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -514,61 +460,80 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         </div>
                       ))}
                     </div>
-
-                    {/* Financial Lock Summary */}
-                    <div className="mt-6 flex justify-end">
-                      <div className="w-full sm:w-72 bg-slate-900 dark:bg-black rounded-xl p-4 text-white shadow-lg space-y-2">
-                        <div className="flex justify-between items-center text-xs font-bold text-slate-400">
-                          <span>Subtotal</span>
-                          <span>
-                            ₱
-                            {subtotal.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs font-bold text-slate-400 border-b border-white/10 pb-3">
-                          <span>
-                            VAT ({isVatRegistered ? "Applied" : "Exempt"})
-                          </span>
-                          <span>
-                            ₱
-                            {vatAmount.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center pt-1">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-white">
-                            Grand Total
-                          </span>
-                          <span className="text-lg font-black text-white">
-                            ₱
-                            {grandTotal.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Notes Area */}
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Shipping Notes / Instructions{" "}
-                      <span className="text-slate-400 font-medium lowercase">
-                        (Optional)
-                      </span>
-                    </label>
-                    <textarea
-                      name="notes"
-                      value={formData.notes}
-                      onChange={handleChange}
-                      rows="2"
-                      placeholder="e.g., Urgent delivery required for weekend repair job."
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
-                    />
+                  {/* Document Footer (Notes & Math) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Shipping Notes / Instructions{" "}
+                          <span className="text-slate-400 font-medium lowercase">
+                            (Optional)
+                          </span>
+                        </label>
+                        <textarea
+                          name="notes"
+                          value={formData.notes}
+                          onChange={handleChange}
+                          rows="3"
+                          placeholder="e.g., Urgent delivery required for weekend repair job."
+                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Financial Summary Preview */}
+                    <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 sm:p-6 text-white shadow-xl">
+                      <div className="flex justify-between items-center mb-1 text-sm font-medium text-slate-400">
+                        <span>Subtotal</span>
+                        <span>
+                          ₱
+                          {subtotal.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                      {vatAmount > 0 && (
+                        <div className="flex justify-between items-center mb-1 text-sm font-bold text-amber-500">
+                          <span>Discounts</span>
+                          <span>
+                            - ₱
+                            {(subtotal - grandTotal + vatAmount).toLocaleString(
+                              undefined,
+                              { minimumFractionDigits: 2 },
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center mb-4 text-sm font-medium text-slate-400">
+                        <span className="flex items-center gap-1.5">
+                          VAT{" "}
+                          <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded">
+                            {isVatRegistered
+                              ? `${(systemVatRate * 100).toFixed(0)}%`
+                              : "Exempt"}
+                          </span>
+                        </span>
+                        <span>
+                          ₱
+                          {vatAmount.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+                        <span className="text-sm font-black uppercase tracking-widest text-slate-300">
+                          Grand Total
+                        </span>
+                        <span className="text-2xl sm:text-3xl font-black text-amber-500">
+                          ₱
+                          {grandTotal.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </form>
               )}

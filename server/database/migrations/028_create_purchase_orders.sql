@@ -1,10 +1,9 @@
 -- 028_create_purchase_orders.sql
 -- Purpose: Schema for official Procurement Commitments (Zero immediate Ledger Impact)
 
--- 1. Create Enums
+-- 1. Create Status Enum
 DO $$ BEGIN
     CREATE TYPE purchase_order_status_enum AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'CLOSED', 'CANCELLED');
-    CREATE TYPE purchase_order_line_type_enum AS ENUM ('PART', 'SUBLET');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -12,11 +11,10 @@ END $$;
 -- 2. Parent Document Table
 CREATE TABLE IF NOT EXISTS purchase_orders (
     id SERIAL PRIMARY KEY,
-    purchase_order_number VARCHAR(30) UNIQUE NOT NULL, -- Format: PO-YYYYMM-XXXX
-    vendor_id INT NOT NULL REFERENCES vendors(id) ON DELETE RESTRICT, -- BR-01 Compliance
-    branch_id INT NOT NULL REFERENCES branches(id) ON DELETE RESTRICT, -- BR-09 Compliance
+    purchase_order_number VARCHAR(30) UNIQUE NOT NULL, 
+    vendor_id INT NOT NULL REFERENCES vendors(id) ON DELETE RESTRICT, 
+    branch_id INT NOT NULL REFERENCES branches(id) ON DELETE RESTRICT, 
     
-    -- Financial Architecture
     subtotal NUMERIC(10, 2) NOT NULL CHECK (subtotal >= 0.00),
     vat_amount NUMERIC(10, 2) NOT NULL CHECK (vat_amount >= 0.00),
     grand_total NUMERIC(10, 2) NOT NULL CHECK (grand_total >= 0.00),
@@ -24,7 +22,7 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     status purchase_order_status_enum DEFAULT 'DRAFT',
     expected_delivery_date DATE NOT NULL,
     notes TEXT,
-    approval_remarks TEXT, -- Used by Managers to state rejection/approval reasons
+    approval_remarks TEXT, 
     
     created_by INT REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -35,14 +33,10 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
 CREATE TABLE IF NOT EXISTS purchase_order_items (
     id SERIAL PRIMARY KEY,
     purchase_order_id INT REFERENCES purchase_orders(id) ON DELETE CASCADE,
-    line_type purchase_order_line_type_enum NOT NULL,
     
-    -- Polymorphic Sourcing
-    item_id INT REFERENCES inventory_items(id) ON DELETE RESTRICT, -- Used if line_type is 'PART'
-    sublet_description VARCHAR(255),                               -- Used if line_type is 'SUBLET'
-    
-    quantity INT NOT NULL CHECK (quantity > 0), -- VR-03 Enforced
-    recorded_unit_cost NUMERIC(10, 2) NOT NULL CHECK (recorded_unit_cost >= 0.00), -- VR-04 Enforced
+    item_id INT NOT NULL REFERENCES inventory_items(id) ON DELETE RESTRICT, 
+    quantity INT NOT NULL CHECK (quantity > 0), 
+    recorded_unit_cost NUMERIC(10, 2) NOT NULL CHECK (recorded_unit_cost >= 0.00),
     discount_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00 CHECK (discount_amount >= 0.00)
 );
 

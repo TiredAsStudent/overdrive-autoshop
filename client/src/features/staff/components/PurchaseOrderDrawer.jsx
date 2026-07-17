@@ -10,7 +10,6 @@ import {
   Loader2,
   Store,
   Package,
-  Settings,
   AlertCircle,
 } from "lucide-react";
 import { purchaseOrderService } from "../../../services/staff/purchaseOrder.service";
@@ -165,11 +164,10 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                   {/* Line Items Detail */}
                   <div>
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 px-1 border-b border-slate-200 dark:border-slate-800 pb-2">
-                      Procurement List
+                      Parts List
                     </h3>
                     <div className="space-y-3">
                       {po.items.map((item) => {
-                        const isPart = item.line_type === "PART";
                         const net =
                           parseFloat(item.recorded_unit_cost) * item.quantity -
                           parseFloat(item.discount_amount);
@@ -179,20 +177,12 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                             className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                              <div
-                                className={`p-1.5 rounded-md shrink-0 ${isPart ? "bg-amber-100 text-amber-600 dark:bg-amber-500/20" : "bg-blue-100 text-blue-600 dark:bg-blue-500/20"}`}
-                              >
-                                {isPart ? (
-                                  <Package size={14} />
-                                ) : (
-                                  <Settings size={14} />
-                                )}
+                              <div className="p-1.5 rounded-md shrink-0 bg-amber-100 text-amber-600 dark:bg-amber-500/20">
+                                <Package size={14} />
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <p className="text-xs font-black text-slate-900 dark:text-white truncate uppercase italic">
-                                  {isPart
-                                    ? `[${item.sku}] ${item.item_name}`
-                                    : item.sublet_description}
+                                  [{item.sku}] {item.item_name}
                                 </p>
                                 <p className="text-[9px] font-bold text-slate-500 tracking-widest mt-0.5">
                                   {item.quantity}x @ ₱
@@ -254,6 +244,7 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                     </div>
                   </div>
 
+                  {/* Notes */}
                   {po.notes && (
                     <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">

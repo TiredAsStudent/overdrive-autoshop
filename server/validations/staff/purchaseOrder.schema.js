@@ -1,28 +1,12 @@
 const { z } = require("zod");
 
-// Define a strict schema for the polymorphic PO item matrix
-const poItemSchema = z
-  .object({
-    line_type: z.enum(["PART", "SUBLET"]),
-    item_id: z.number().int().positive().optional().nullable(),
-    sublet_description: z.string().trim().max(255).optional().nullable(),
-    quantity: z.number().int().min(1, "Quantity must be at least 1"),
-    recorded_unit_cost: z.number().min(0, "Unit cost cannot be negative"),
-    discount_amount: z.number().min(0).default(0),
-  })
-  .refine(
-    (data) => {
-      if (data.line_type === "PART") return !!data.item_id;
-      if (data.line_type === "SUBLET")
-        return !!data.sublet_description && data.sublet_description.length > 0;
-      return false;
-    },
-    {
-      message:
-        "Invalid line item: Master PART requires an item ID, while SUBLET requires a text description.",
-      path: ["line_type"],
-    },
-  );
+// Strictly validates Inventory Parts only
+const poItemSchema = z.object({
+  item_id: z.number().int().positive("A valid inventory item is required"),
+  quantity: z.number().int().min(1, "Quantity must be at least 1"),
+  recorded_unit_cost: z.number().min(0, "Unit cost cannot be negative"),
+  discount_amount: z.number().min(0).default(0),
+});
 
 const createPurchaseOrderSchema = z.object({
   body: z.object({
@@ -33,8 +17,8 @@ const createPurchaseOrderSchema = z.object({
     notes: z.string().trim().optional(),
     items: z
       .array(poItemSchema)
-      .min(1, "At least one procurement item must be included"), // VR-02
-    is_submitting: z.boolean().optional().default(false), // Toggle to instantly push to PENDING_APPROVAL
+      .min(1, "At least one procurement item must be included"),
+    is_submitting: z.boolean().optional().default(false),
   }),
 });
 

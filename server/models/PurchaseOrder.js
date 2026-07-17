@@ -20,13 +20,11 @@ class PurchaseOrder {
     return `${prefix}${String(sequence).padStart(4, "0")}`;
   }
 
-  // Atomic Creation Engine with Bulk Insertion
   static async createTransaction(poData, computedItems) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // 1. Insert Header
       const headerSql = `
         INSERT INTO purchase_orders (
           purchase_order_number, vendor_id, branch_id, subtotal, vat_amount, grand_total, 
@@ -51,7 +49,7 @@ class PurchaseOrder {
       if (computedItems && computedItems.length > 0) {
         let itemSql = `
           INSERT INTO purchase_order_items (
-            purchase_order_id, line_type, item_id, sublet_description, quantity, recorded_unit_cost, discount_amount
+            purchase_order_id, item_id, quantity, recorded_unit_cost, discount_amount
           ) VALUES 
         `;
         const values = [];
@@ -60,18 +58,16 @@ class PurchaseOrder {
 
         computedItems.forEach((item) => {
           placeholders.push(
-            `($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6})`,
+            `($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4})`,
           );
           values.push(
             newPO.id,
-            item.line_type,
             item.item_id,
-            item.sublet_description,
             item.quantity,
             item.recorded_unit_cost,
             item.discount_amount,
           );
-          paramIdx += 7;
+          paramIdx += 5;
         });
 
         itemSql += placeholders.join(", ");
@@ -88,13 +84,11 @@ class PurchaseOrder {
     }
   }
 
-  //Atomic Full Update Engine with Bulk Insertion
   static async updateTransaction(poId, poData, computedItems) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // 1. Update Header
       const updateHeaderSql = `
         UPDATE purchase_orders 
         SET subtotal = $1, vat_amount = $2, grand_total = $3, expected_delivery_date = $4, notes = $5, updated_at = NOW()
@@ -118,7 +112,7 @@ class PurchaseOrder {
 
         let itemSql = `
           INSERT INTO purchase_order_items (
-            purchase_order_id, line_type, item_id, sublet_description, quantity, recorded_unit_cost, discount_amount
+            purchase_order_id, item_id, quantity, recorded_unit_cost, discount_amount
           ) VALUES 
         `;
         const values = [];
@@ -127,18 +121,16 @@ class PurchaseOrder {
 
         computedItems.forEach((item) => {
           placeholders.push(
-            `($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6})`,
+            `($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4})`,
           );
           values.push(
             poId,
-            item.line_type,
             item.item_id,
-            item.sublet_description,
             item.quantity,
             item.recorded_unit_cost,
             item.discount_amount,
           );
-          paramIdx += 7;
+          paramIdx += 5;
         });
 
         itemSql += placeholders.join(", ");
@@ -172,7 +164,7 @@ class PurchaseOrder {
     const itemsSql = `
       SELECT poi.*, i.sku, i.item_name, i.uom
       FROM purchase_order_items poi
-      LEFT JOIN inventory_items i ON poi.item_id = i.id
+      JOIN inventory_items i ON poi.item_id = i.id
       WHERE poi.purchase_order_id = $1
     `;
     const itemsResult = await query(itemsSql, [id]);
