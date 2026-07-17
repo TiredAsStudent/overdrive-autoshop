@@ -165,8 +165,11 @@ class PurchaseOrderService {
       financials = result.financials;
     }
 
+    const newStatus = data.is_submitting ? "PENDING_APPROVAL" : oldPO.status;
+
     const payload = {
       ...financials,
+      status: newStatus,
       expected_delivery_date:
         data.expected_delivery_date || oldPO.expected_delivery_date,
       notes: data.notes !== undefined ? data.notes : oldPO.notes,
@@ -186,8 +189,8 @@ class PurchaseOrderService {
       ipAddress,
       "purchase_orders",
       id,
-      { grand_total: oldPO.grand_total },
-      { grand_total: updatedPO.grand_total },
+      { status: oldPO.status, grand_total: oldPO.grand_total },
+      { status: updatedPO.status, grand_total: updatedPO.grand_total },
     );
 
     return updatedPO;

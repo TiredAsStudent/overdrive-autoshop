@@ -91,8 +91,8 @@ class PurchaseOrder {
 
       const updateHeaderSql = `
         UPDATE purchase_orders 
-        SET subtotal = $1, vat_amount = $2, grand_total = $3, expected_delivery_date = $4, notes = $5, updated_at = NOW()
-        WHERE id = $6 RETURNING *
+        SET subtotal = $1, vat_amount = $2, grand_total = $3, expected_delivery_date = $4, notes = $5, status = $6, updated_at = NOW()
+        WHERE id = $7 RETURNING *
       `;
       const updateRes = await client.query(updateHeaderSql, [
         poData.subtotal,
@@ -100,6 +100,7 @@ class PurchaseOrder {
         poData.grand_total,
         poData.expected_delivery_date,
         poData.notes,
+        poData.status,
         poId,
       ]);
       const updatedPO = updateRes.rows[0];

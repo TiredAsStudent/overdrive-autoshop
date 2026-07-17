@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -152,28 +152,40 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   };
 
   // Real-Time Financial Preview Engine
-  const { subtotal, vatAmount, grandTotal, isVatRegistered } = useMemo(() => {
+  const calculatePreview = () => {
     const selectedVendor = vendors.find(
       (v) => v.id.toString() === formData.vendor_id.toString(),
     );
-    const vatStatus = selectedVendor ? selectedVendor.is_vat_registered : false;
+    const isVatRegistered = selectedVendor
+      ? selectedVendor.is_vat_registered
+      : false;
 
-    let currentSub = 0;
+    let grossSubtotal = 0;
+    let discountTotal = 0;
+
     formData.items.forEach((item) => {
       const cost = parseFloat(item.recorded_unit_cost) || 0;
       const qty = parseInt(item.quantity) || 0;
-      const discount = parseFloat(item.discount_amount) || 0;
-      currentSub += Math.max(0, cost * qty - discount);
+      const disc = parseFloat(item.discount_amount) || 0;
+
+      grossSubtotal += cost * qty;
+      discountTotal += disc;
     });
 
-    const currentVat = vatStatus ? currentSub * systemVatRate : 0;
+    const netSubtotal = Math.max(0, grossSubtotal - discountTotal);
+    const vatAmount = isVatRegistered ? netSubtotal * systemVatRate : 0;
+
     return {
-      subtotal: currentSub,
-      vatAmount: currentVat,
-      grandTotal: currentSub + currentVat,
-      isVatRegistered: vatStatus,
+      grossSubtotal,
+      discountTotal,
+      netSubtotal,
+      vatAmount,
+      grandTotal: netSubtotal + vatAmount,
+      isVatRegistered,
     };
-  }, [formData.items, formData.vendor_id, vendors, systemVatRate]);
+  };
+
+  const preview = calculatePreview();
 
   const handleFormSubmit = async (e, isSubmittingForApproval) => {
     e.preventDefault();
@@ -299,9 +311,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       </select>
                       {formData.vendor_id && (
                         <p
-                          className={`text-[9px] font-bold tracking-widest uppercase mt-2 ${isVatRegistered ? "text-emerald-500" : "text-slate-400"}`}
+                          className={`text-[9px] font-bold tracking-widest uppercase mt-2 ${preview.isVatRegistered ? "text-emerald-500" : "text-slate-400"}`}
                         >
-                          {isVatRegistered
+                          {preview.isVatRegistered
                             ? `VAT Registered (System Rate: ${(systemVatRate * 100).toFixed(0)}%)`
                             : "Non-VAT Entity"}
                         </p>
@@ -489,20 +501,19 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         <span>Subtotal</span>
                         <span>
                           ₱
-                          {subtotal.toLocaleString(undefined, {
+                          {preview.grossSubtotal.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                           })}
                         </span>
                       </div>
-                      {vatAmount > 0 && (
+                      {preview.discountTotal > 0 && (
                         <div className="flex justify-between items-center mb-1 text-sm font-bold text-amber-500">
                           <span>Discounts</span>
                           <span>
                             - ₱
-                            {(subtotal - grandTotal + vatAmount).toLocaleString(
-                              undefined,
-                              { minimumFractionDigits: 2 },
-                            )}
+                            {preview.discountTotal.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
                           </span>
                         </div>
                       )}
@@ -510,14 +521,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         <span className="flex items-center gap-1.5">
                           VAT{" "}
                           <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded">
-                            {isVatRegistered
+                            {preview.isVatRegistered
                               ? `${(systemVatRate * 100).toFixed(0)}%`
                               : "Exempt"}
                           </span>
                         </span>
                         <span>
                           ₱
-                          {vatAmount.toLocaleString(undefined, {
+                          {preview.vatAmount.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                           })}
                         </span>
@@ -528,7 +539,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         </span>
                         <span className="text-2xl sm:text-3xl font-black text-amber-500">
                           ₱
-                          {grandTotal.toLocaleString(undefined, {
+                          {preview.grandTotal.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                           })}
                         </span>
