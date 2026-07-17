@@ -165,7 +165,7 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                   {/* Line Items Detail */}
                   <div>
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 px-1 border-b border-slate-200 dark:border-slate-800 pb-2">
-                      Procurement Roster
+                      Procurement List
                     </h3>
                     <div className="space-y-3">
                       {po.items.map((item) => {
@@ -274,7 +274,7 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                 disabled={!po || loading}
                 className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Printer size={16} /> Print Procurement Document
+                <Printer size={16} /> Print Document
               </button>
             </div>
           </motion.div>

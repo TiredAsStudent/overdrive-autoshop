@@ -278,7 +278,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 transition-colors rounded-xl disabled:opacity-50"
+                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
               >
                 <X size={24} />
               </button>
@@ -477,20 +477,28 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                             <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
                               Discount
                             </label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.discount_amount}
-                              onChange={(e) =>
-                                handleRowChange(
-                                  item.id,
-                                  "discount_amount",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-amber-600 dark:text-amber-500 focus:outline-none focus:border-amber-500"
-                            />
+
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
+                                ₱
+                              </span>
+
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="Disc."
+                                value={item.discount_amount}
+                                onChange={(e) =>
+                                  handleRowChange(
+                                    item.id,
+                                    "discount_amount",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-full pl-7 pr-3 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-400"
+                              />
+                            </div>
                           </div>
                           {/* Delete Action */}
                           <div className="col-span-12 md:col-span-1 flex justify-end pb-1.5">
@@ -531,10 +539,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           </span>
                         </div>
                         <div className="flex justify-between items-center pt-1">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-white">
                             Grand Total
                           </span>
-                          <span className="text-lg font-black text-amber-500">
+                          <span className="text-lg font-black text-white">
                             ₱
                             {grandTotal.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
