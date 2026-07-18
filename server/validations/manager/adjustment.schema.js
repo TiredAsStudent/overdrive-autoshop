@@ -16,6 +16,7 @@ const getAdjustmentsSchema = z.object({
         .enum(["PENDING", "APPROVED", "REJECTED", "all"])
         .optional()
         .default("PENDING"),
+      branch: z.string().optional(),
     })
     .optional(),
 });

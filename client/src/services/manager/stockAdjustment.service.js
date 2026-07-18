@@ -6,10 +6,11 @@ export const stockAdjustmentService = {
     limit = 10,
     search = "",
     status = "PENDING",
+    branch = "all",
   ) => {
     try {
       const response = await api.get("/manager/adjustments", {
-        params: { page, limit, search, status },
+        params: { page, limit, search, status, branch },
       });
       return response.data;
     } catch (error) {

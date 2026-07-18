@@ -29,12 +29,19 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
   if (!request) return null;
 
   const isPending = request.status === "PENDING";
+  const isDeduct = request.adjustment_type === "DEDUCT";
 
-  // FRS Section 6.2 Bonus: Calculate Estimated Financial Impact
+  // Financial Impact Math
   const financialImpact = (
     request.requested_quantity * parseFloat(request.unit_cost)
   ).toLocaleString(undefined, { minimumFractionDigits: 2 });
-  const isDeduct = request.adjustment_type === "DEDUCT";
+
+  // Resulting Stock Math
+  const currentStock = parseInt(request.current_system_quantity, 10) || 0;
+  const requestedQty = parseInt(request.requested_quantity, 10) || 0;
+  const resultingStock = isDeduct
+    ? currentStock - requestedQty
+    : currentStock + requestedQty;
 
   const handleAction = async (actionType) => {
     setValidationError("");
@@ -46,7 +53,7 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
       setValidationError(
         error.message || `Failed to ${actionType.toLowerCase()} request.`,
       );
-      setIsSubmitting(false); // Only stop loading if error, otherwise component unmounts
+      setIsSubmitting(false);
     }
   };
 
@@ -141,10 +148,24 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                     )}
                     {request.requested_quantity} {request.uom}
                   </div>
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-2">
-                    Current System Stock: {request.current_system_quantity}{" "}
-                    {request.uom}
-                  </p>
+
+                  {/* Resulting Stock UI */}
+                  <div className="mt-4 space-y-1.5">
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      <span>Current System Stock:</span>
+                      <span>
+                        {currentStock} {request.uom}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
+                      <span>Resulting Stock:</span>
+                      <span
+                        className={resultingStock < 0 ? "text-red-500" : ""}
+                      >
+                        {resultingStock} {request.uom}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
