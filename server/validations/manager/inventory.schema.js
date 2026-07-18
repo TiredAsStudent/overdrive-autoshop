@@ -66,8 +66,11 @@ const getInventorySchema = z.object({
         .optional(),
       search: z.string().optional(),
       category: z.string().optional(),
-      branch: z.string().optional(), // Added Branch Filtering
+      branch: z.string().optional(),
       status: z.enum(["active", "archived", "all"]).optional(),
+      stock_status: z
+        .enum(["in_stock", "low_stock", "out_of_stock", "all"])
+        .optional(),
     })
     .optional(),
 });
