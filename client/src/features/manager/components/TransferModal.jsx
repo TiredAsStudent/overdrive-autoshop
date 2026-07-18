@@ -105,12 +105,21 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
     }
   };
 
+  // Pre-calculated values for UI
   const selectedItemData = catalogItems.find(
     (i) => i.id === parseInt(formData.item_id),
   );
+
+  const transferQty = parseInt(formData.quantity, 10) || 0;
+
   const availableSourceStock = formData.source_branch_id
     ? branchStock[formData.source_branch_id] || 0
     : "...";
+
+  const availableDestStock = formData.destination_branch_id
+    ? branchStock[formData.destination_branch_id] || 0
+    : "...";
+
   const financialImpact =
     selectedItemData && formData.quantity
       ? (
@@ -190,6 +199,7 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                     <ArrowRightLeft size={14} />
                   </div>
 
+                  {/* SOURCE BRANCH AREA */}
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center justify-between">
                       <span className="flex items-center gap-2">
@@ -199,11 +209,29 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                       {!isLoadingStock &&
                         formData.item_id &&
                         formData.source_branch_id && (
-                          <span
-                            className={`text-[9px] px-1.5 py-0.5 rounded ${availableSourceStock > 0 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"}`}
-                          >
-                            Stock: {availableSourceStock}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] font-bold text-slate-500">
+                              Stock:
+                            </span>
+                            <span
+                              className={`text-[9px] px-1.5 py-0.5 rounded font-black ${availableSourceStock > 0 ? "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300" : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"}`}
+                            >
+                              {availableSourceStock}
+                            </span>
+                            {transferQty > 0 &&
+                              availableSourceStock !== "..." && (
+                                <>
+                                  <span className="text-[9px] text-slate-400">
+                                    →
+                                  </span>
+                                  <span
+                                    className={`text-[9px] px-1.5 py-0.5 rounded font-black ${availableSourceStock - transferQty < 0 ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"}`}
+                                  >
+                                    {availableSourceStock - transferQty}
+                                  </span>
+                                </>
+                              )}
+                          </div>
                         )}
                     </label>
                     <select
@@ -222,10 +250,37 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                     </select>
                   </div>
 
+                  {/* DESTINATION BRANCH AREA */}
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
-                      <MapPin size={14} className="text-emerald-500" />{" "}
-                      Destination Branch <span className="text-red-500">*</span>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <MapPin size={14} className="text-emerald-500" />{" "}
+                        Destination Branch{" "}
+                        <span className="text-red-500">*</span>
+                      </span>
+                      {!isLoadingStock &&
+                        formData.item_id &&
+                        formData.destination_branch_id && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] font-bold text-slate-500">
+                              Stock:
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                              {availableDestStock}
+                            </span>
+                            {transferQty > 0 &&
+                              availableDestStock !== "..." && (
+                                <>
+                                  <span className="text-[9px] text-slate-400">
+                                    →
+                                  </span>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                                    {availableDestStock + transferQty}
+                                  </span>
+                                </>
+                              )}
+                          </div>
+                        )}
                     </label>
                     <select
                       required
