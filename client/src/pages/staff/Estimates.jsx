@@ -7,6 +7,7 @@ import {
   CheckCircle,
   XCircle,
   FileSearch,
+  ArrowRight,
 } from "lucide-react";
 import { estimateService } from "../../services/staff/estimate.service";
 import EstimateModal from "../../features/staff/components/EstimateModal";
@@ -245,6 +246,19 @@ const Estimates = () => {
                 >
                   <FileSearch size={16} />
                 </button>
+
+                {estimate.status === "APPROVED" && (
+                  <button
+                    onClick={() =>
+                      showToast("Routing to Sales Order Conversion...", "info")
+                    }
+                    title="Convert to Sales Order"
+                    className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 dark:text-indigo-400 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <ArrowRight size={16} />
+                  </button>
+                )}
+
                 {estimate.status === "PENDING_APPROVAL" && (
                   <>
                     <button

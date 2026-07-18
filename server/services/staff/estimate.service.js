@@ -7,14 +7,6 @@ const { logSecureAction } = require("../../utils/auditLogger");
 
 class EstimateService {
   static async createEstimate(data, activeUser, ipAddress) {
-    // 1. Verify Date Logic (VR-06)
-    const validUntilDate = new Date(data.valid_until);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (validUntilDate < today) {
-      throw new Error("The Valid Until date cannot be in the past.");
-    }
-
     // 2. Security: Establish Branch Ownership (BR-08)
     const branchId =
       activeUser.role === "STAFF"
