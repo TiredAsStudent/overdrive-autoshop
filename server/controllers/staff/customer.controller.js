@@ -30,7 +30,11 @@ class CustomerController {
       const limit = parseInt(req.query.limit, 10) || 10;
       const search = req.query.search || "";
       const status = req.query.status || "all";
-      const branch = req.query.branch || "all";
+
+      let branch = req.query.branch || "all";
+      if (req.user.role === "STAFF") {
+        branch = req.user.branchId;
+      }
 
       const result = await CustomerService.getCustomers(
         page,

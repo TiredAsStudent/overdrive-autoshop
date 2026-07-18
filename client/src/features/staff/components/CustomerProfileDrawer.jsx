@@ -128,7 +128,16 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 px-2">
                   Financial History (Pending Module)
                 </h3>
-                <div className="grid grid-cols-3 gap-3">
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center opacity-60">
+                    <span className="block text-xl font-black text-slate-900 dark:text-white mb-1">
+                      -
+                    </span>
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-slate-500">
+                      Estimates
+                    </span>
+                  </div>
                   <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center opacity-60">
                     <span className="block text-xl font-black text-slate-900 dark:text-white mb-1">
                       -

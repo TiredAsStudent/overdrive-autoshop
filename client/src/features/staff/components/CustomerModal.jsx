@@ -137,7 +137,7 @@ const CustomerModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                     </label>
                     <input
                       required
-                      type="text"
+                      type="tel"
                       name="contact_number"
                       value={formData.contact_number}
                       onChange={handleChange}
