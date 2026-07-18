@@ -8,6 +8,7 @@ import {
   AlertCircle,
   PackagePlus,
   Search,
+  Activity,
 } from "lucide-react";
 import { serviceCatalogService } from "../../../services/manager/serviceCatalog.service";
 
@@ -169,6 +170,44 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </div>
               )}
 
+              {/* View Service Usage Summary */}
+              {initialData && (
+                <div className="mb-6 p-4 bg-slate-50/50 dark:bg-black/10 border border-slate-100 dark:border-white/5 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg">
+                      <Activity size={16} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        Service Usage
+                      </p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                        {parseInt(initialData.usage_count, 10) || 0}{" "}
+                        <span className="text-xs font-medium text-slate-500">
+                          Transactions
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      Last Transaction
+                    </p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      {initialData.last_used_date
+                        ? new Date(
+                            initialData.last_used_date,
+                          ).toLocaleDateString("en-PH", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "Never Used"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <form
                 id="serviceForm"
                 onSubmit={handleSubmit}
@@ -186,28 +225,28 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5 tracking-widest">
                             Service Name <span className="text-red-500">*</span>
                           </label>
+
                           <input
                             required
                             type="text"
                             name="service_name"
                             value={formData.service_name}
                             onChange={handleChange}
-                            disabled={!!initialData}
                             placeholder="e.g., Standard Engine Tune-up"
-                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1"
                           />
                         </div>
                         <div>
                           <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5 tracking-widest">
                             Category <span className="text-red-500">*</span>
                           </label>
+
                           <select
                             required
                             name="category"
                             value={formData.category}
                             onChange={handleChange}
-                            disabled={!!initialData}
-                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1"
                           >
                             {CATEGORIES.map((cat) => (
                               <option key={cat} value={cat}>

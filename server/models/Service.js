@@ -68,7 +68,12 @@ class Service {
   }
 
   static async findPaginatedFiltered(limit, offset, search, category, status) {
-    let sql = `SELECT * FROM services`;
+    let sql = `
+      SELECT *,
+        (SELECT COUNT(DISTINCT invoice_id) FROM invoice_items WHERE service_id = services.id) AS usage_count,
+        (SELECT MAX(i.created_at) FROM invoices i JOIN invoice_items ii ON i.id = ii.invoice_id WHERE ii.service_id = services.id) AS last_used_date
+      FROM services
+    `;
     const conditions = [];
     const values = [];
     let paramIdx = 1;
@@ -98,7 +103,12 @@ class Service {
   }
 
   static async findById(id) {
-    const sql = `SELECT * FROM services WHERE id = $1`;
+    const sql = `
+      SELECT *,
+        (SELECT COUNT(DISTINCT invoice_id) FROM invoice_items WHERE service_id = services.id) AS usage_count,
+        (SELECT MAX(i.created_at) FROM invoices i JOIN invoice_items ii ON i.id = ii.invoice_id WHERE ii.service_id = services.id) AS last_used_date
+      FROM services WHERE id = $1
+    `;
     const result = await query(sql, [id]);
     return result.rows[0];
   }
