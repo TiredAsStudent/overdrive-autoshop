@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   CreditCard,
-  Calendar,
   Building2,
   User,
   Printer,
@@ -93,9 +92,16 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                   <h2 className="text-lg font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
                     {payment?.payment_number || "Loading..."}
                   </h2>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                    Official Payment Receipt
-                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      Official Payment Receipt
+                    </p>
+                    {payment?.status === "VOID" && (
+                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
+                        VOIDED
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <button
@@ -165,10 +171,12 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          Timestamp
+                          Payment Date
                         </p>
                         <p className="text-xs font-bold text-slate-900 dark:text-white mt-1.5">
-                          {new Date(payment.created_at).toLocaleString()}
+                          {new Date(
+                            payment.payment_date || payment.created_at,
+                          ).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -185,7 +193,9 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                   </div>
 
                   {/* Receipt Math */}
-                  <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 text-white shadow-xl">
+                  <div
+                    className={`rounded-2xl p-5 shadow-xl ${payment.status === "VOID" ? "bg-rose-950/20 border border-rose-500/20" : "bg-slate-900 dark:bg-black"}`}
+                  >
                     <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-4">
                       <span>Associated Invoice Total</span>
                       <span>
@@ -197,10 +207,14 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                       </span>
                     </div>
                     <div className="flex justify-between items-center pt-4 border-t border-slate-800">
-                      <span className="text-sm font-black uppercase tracking-widest text-emerald-400">
+                      <span
+                        className={`text-sm font-black uppercase tracking-widest ${payment.status === "VOID" ? "text-rose-400 line-through" : "text-emerald-400"}`}
+                      >
                         Amount Received
                       </span>
-                      <span className="text-3xl font-black text-emerald-500">
+                      <span
+                        className={`text-3xl font-black ${payment.status === "VOID" ? "text-rose-500/50 line-through" : "text-emerald-500"}`}
+                      >
                         ₱
                         {parseFloat(payment.amount_received).toLocaleString(
                           undefined,
@@ -234,7 +248,7 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
             {/* Print Footer Stub */}
             <div className="p-6 border-t border-slate-100 dark:border-slate-800">
               <button
-                disabled={!payment || loading}
+                disabled={!payment || loading || payment.status === "VOID"}
                 className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20 disabled:opacity-50"
               >
                 <Printer size={16} /> Print Official Receipt

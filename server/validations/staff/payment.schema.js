@@ -13,7 +13,13 @@ const createPaymentSchema = z.object({
       payment_method: z.enum(["CASH", "GCASH", "MAYA", "BANK_TRANSFER"], {
         errorMap: () => ({ message: "Invalid payment method selected." }),
       }),
-
+      payment_date: z
+        .string()
+        .refine(
+          (val) => new Date(val) <= new Date(),
+          "Payment Date cannot be in the future.",
+        )
+        .optional(),
       reference_number: z.string().trim().max(100).optional().nullable(),
       notes: z.string().trim().optional().nullable(),
     })

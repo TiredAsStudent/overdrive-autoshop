@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Loader2, CreditCard, Plus, FileSearch } from "lucide-react";
+import { Search, Loader2, CreditCard, FileSearch, Ban } from "lucide-react";
 import { paymentService } from "../../services/staff/payment.service";
 import PaymentModal from "../../features/staff/components/PaymentModal";
 import PaymentDrawer from "../../features/staff/components/PaymentDrawer";
@@ -158,13 +158,6 @@ const Payments = () => {
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
             />
           </div>
-
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-amber-500/20 shrink-0 transition-all active:scale-[0.98]"
-          >
-            <Plus size={16} /> Collect Cash
-          </button>
         </div>
       </div>
 
@@ -184,15 +177,26 @@ const Payments = () => {
         renderRow={(pay) => (
           <tr
             key={pay.id}
-            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+            className={`group transition-colors ${pay.status === "VOID" ? "opacity-60 bg-slate-50/50 dark:bg-slate-800/20" : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"}`}
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col">
-                <span className="inline-flex w-fit px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
-                  {pay.payment_number}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex w-fit px-2.5 py-1 rounded-md text-xs font-black tracking-widest uppercase ${pay.status === "VOID" ? "bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 line-through" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
+                  >
+                    {pay.payment_number}
+                  </span>
+                  {pay.status === "VOID" && (
+                    <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">
+                      VOID
+                    </span>
+                  )}
+                </div>
                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1.5">
-                  {new Date(pay.created_at).toLocaleDateString()}
+                  {new Date(
+                    pay.payment_date || pay.created_at,
+                  ).toLocaleDateString()}
                 </span>
               </div>
             </td>
@@ -201,7 +205,7 @@ const Payments = () => {
                 {pay.invoice_number}
               </p>
               <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">
-                Current Status: {pay.current_invoice_status.replace("_", " ")}
+                Current Status: {pay.current_invoice_status?.replace("_", " ")}
               </p>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
@@ -210,7 +214,9 @@ const Payments = () => {
               </p>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black text-emerald-600 dark:text-emerald-500">
+              <span
+                className={`text-sm font-black ${pay.status === "VOID" ? "text-slate-400 line-through" : "text-emerald-600 dark:text-emerald-500"}`}
+              >
                 + ₱
                 {parseFloat(pay.amount_received).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
@@ -228,16 +234,42 @@ const Payments = () => {
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <button
-                onClick={() => {
-                  setSelectedPaymentId(pay.id);
-                  setIsDrawerOpen(true);
-                }}
-                title="View Receipt"
-                className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
-              >
-                <FileSearch size={16} />
-              </button>
+              <div className="flex items-center justify-end gap-1.5">
+                <button
+                  onClick={() => {
+                    setSelectedPaymentId(pay.id);
+                    setIsDrawerOpen(true);
+                  }}
+                  title="View Receipt"
+                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                >
+                  <FileSearch size={16} />
+                </button>
+
+                {pay.status !== "VOID" && (
+                  <button
+                    onClick={async () => {
+                      if (
+                        window.confirm(
+                          `Are you sure you want to VOID receipt ${pay.payment_number}? This will reverse the invoice balance and cannot be undone.`,
+                        )
+                      ) {
+                        try {
+                          await paymentService.voidPayment(pay.id);
+                          showToast("Payment voided successfully.", "success");
+                          loadPayments();
+                        } catch (error) {
+                          showToast(error.message, "error");
+                        }
+                      }
+                    }}
+                    title="Void Receipt"
+                    className="p-2 bg-slate-50 hover:bg-rose-100 text-slate-400 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-500/20 dark:text-slate-500 dark:hover:text-rose-400 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Ban size={16} />
+                  </button>
+                )}
+              </div>
             </td>
           </tr>
         )}

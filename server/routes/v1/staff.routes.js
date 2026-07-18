@@ -167,6 +167,7 @@ router.get(
   PaymentController.getPayments,
 );
 router.get("/payments/:id", PaymentController.getPaymentDetails);
+router.patch("/payments/:id/void", PaymentController.voidPayment);
 
 // ==========================================
 // MODULE: VENDORS (SUPPLIER CRM)

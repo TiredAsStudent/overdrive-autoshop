@@ -29,7 +29,6 @@ const PaymentModal = ({
   const [validationError, setValidationError] = useState("");
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(true);
 
-  // Master List of Unresolved Invoices
   const [unresolvedInvoices, setUnresolvedInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
@@ -37,6 +36,7 @@ const PaymentModal = ({
     invoice_id: "",
     amount_received: "",
     payment_method: "CASH",
+    payment_date: new Date().toISOString().split("T")[0],
     reference_number: "",
     notes: "",
   });
@@ -54,7 +54,10 @@ const PaymentModal = ({
             "all",
           );
           const pending = (res.data?.invoices || []).filter(
-            (inv) => inv.status !== "PAID" && inv.status !== "CANCELLED",
+            (inv) =>
+              inv.status !== "PAID" &&
+              inv.status !== "CANCELLED" &&
+              inv.status !== "VOID",
           );
           setUnresolvedInvoices(pending);
 
@@ -80,6 +83,7 @@ const PaymentModal = ({
         invoice_id: initialInvoiceId || "",
         amount_received: "",
         payment_method: "CASH",
+        payment_date: new Date().toISOString().split("T")[0],
         reference_number: "",
         notes: "",
       });
@@ -151,6 +155,7 @@ const PaymentModal = ({
       invoice_id: parseInt(formData.invoice_id, 10),
       amount_received: amountToApply,
       payment_method: formData.payment_method,
+      payment_date: formData.payment_date,
       reference_number: requiresReference
         ? formData.reference_number.trim()
         : null,
@@ -360,6 +365,21 @@ const PaymentModal = ({
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Payment Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        required
+                        type="date"
+                        name="payment_date"
+                        max={new Date().toISOString().split("T")[0]}
+                        value={formData.payment_date}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
+                      />
                     </div>
 
                     {requiresReference && (

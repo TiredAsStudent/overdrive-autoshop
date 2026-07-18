@@ -8,6 +8,13 @@ class PaymentService {
     const invoice = await InvoiceModel.findById(data.invoice_id);
     if (!invoice) throw new Error("Target Invoice not found.");
 
+    // SAFETY CHECK: Pre-Voided Upstream Check
+    if (invoice.status === "VOID") {
+      throw new Error(
+        "Cannot process payment. The target invoice has been voided.",
+      );
+    }
+
     if (
       activeUser.role === "STAFF" &&
       invoice.branch_id !== activeUser.branchId
@@ -59,6 +66,38 @@ class PaymentService {
         amount_received: result.payment.amount_received,
         new_invoice_status: result.updatedInvoice.status,
         total_amount_paid: result.updatedInvoice.amount_paid,
+      },
+    );
+
+    return result;
+  }
+
+  static async voidPayment(paymentId, activeUser, ipAddress) {
+    const payment = await PaymentModel.findById(paymentId);
+    if (!payment) throw new Error("Payment record not found.");
+
+    if (
+      activeUser.role === "STAFF" &&
+      payment.branch_id !== activeUser.branchId
+    ) {
+      throw new Error("Unauthorized access.");
+    }
+
+    const result = await PaymentModel.voidPaymentTransaction(paymentId);
+
+    // Audit Log for financial reversal
+    await logSecureAction(
+      activeUser.id,
+      payment.branch_id,
+      "SALES_PAYMENT_VOIDED",
+      "WARNING",
+      ipAddress,
+      "payments",
+      payment.id,
+      { status: "VALID", invoice_amount_paid: payment.invoice_total },
+      {
+        status: "VOID",
+        invoice_amount_paid: result.updatedInvoice.amount_paid,
       },
     );
 

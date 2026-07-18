@@ -53,11 +53,16 @@ class Payment {
 
       // 2. Generate Payment Sequence & Insert Record
       paymentData.payment_number = await this.generatePaymentCode();
+
+      // Default to current date if payment_date wasn't provided
+      const targetDate =
+        paymentData.payment_date || new Date().toISOString().split("T")[0];
+
       const insertSql = `
         INSERT INTO payments (
           payment_number, invoice_id, branch_id, amount_received, 
-          payment_method, reference_number, notes, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          payment_method, reference_number, notes, created_by, payment_date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `;
       const insertValues = [
@@ -69,12 +74,12 @@ class Payment {
         paymentData.reference_number,
         paymentData.notes,
         userId,
+        targetDate,
       ];
       const insertRes = await client.query(insertSql, insertValues);
       const newPayment = insertRes.rows[0];
 
       // 3. Increment Invoice amount_paid and Compute New Status natively in PostgreSQL
-      // This neutralizes JS floating-point issues by forcing the DB to handle the exact decimal math.
       const updateInvoiceSql = `
         UPDATE invoices 
         SET 
@@ -96,6 +101,59 @@ class Payment {
       await client.query("COMMIT");
 
       return { payment: newPayment, updatedInvoice };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async voidPaymentTransaction(paymentId) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // 1. Lock Payment
+      const paySql = `SELECT * FROM payments WHERE id = $1 FOR UPDATE`;
+      const payRes = await client.query(paySql, [paymentId]);
+      const payment = payRes.rows[0];
+
+      if (!payment) throw new Error("Payment not found.");
+      if (payment.status === "VOID")
+        throw new Error("This payment is already voided.");
+
+      // 2. Lock Parent Invoice
+      const invSql = `SELECT id, grand_total, amount_paid FROM invoices WHERE id = $1 FOR UPDATE`;
+      await client.query(invSql, [payment.invoice_id]);
+
+      // 3. Mark Payment as VOID
+      const updatePaySql = `UPDATE payments SET status = 'VOID' WHERE id = $1 RETURNING *`;
+      const updatedPay = await client.query(updatePaySql, [paymentId]);
+
+      // 4. Reverse Invoice Math natively in PostgreSQL
+      const updateInvSql = `
+        UPDATE invoices
+        SET amount_paid = amount_paid - $1,
+            status = CASE
+                       WHEN (amount_paid - $1) <= 0 THEN 'UNPAID'::invoice_payment_status_enum
+                       WHEN (amount_paid - $1) >= grand_total THEN 'PAID'::invoice_payment_status_enum
+                       ELSE 'PARTIALLY_PAID'::invoice_payment_status_enum
+                     END,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING status, amount_paid, grand_total
+      `;
+      const updatedInv = await client.query(updateInvSql, [
+        payment.amount_received,
+        payment.invoice_id,
+      ]);
+
+      await client.query("COMMIT");
+      return {
+        voidedPayment: updatedPay.rows[0],
+        updatedInvoice: updatedInv.rows[0],
+      };
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -155,7 +213,7 @@ class Payment {
 
   static async findPaginatedFiltered(limit, offset, search, method, branchId) {
     let sql = `
-      SELECT p.id, p.payment_number, p.amount_received, p.payment_method, p.created_at, p.reference_number,
+      SELECT p.id, p.payment_number, p.amount_received, p.payment_method, p.payment_date, p.created_at, p.reference_number, p.status,
              i.invoice_number, i.status as current_invoice_status, c.full_name as customer_name, b.branch_name
       FROM payments p
       JOIN invoices i ON p.invoice_id = i.id

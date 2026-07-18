@@ -20,10 +20,29 @@ class PaymentController {
     } catch (error) {
       const code =
         error.message.includes("exceeds the remaining balance") ||
-        error.message.includes("fully paid")
+        error.message.includes("fully paid") ||
+        error.message.includes("voided")
           ? STATUS_CODES.CONFLICT
           : STATUS_CODES.BAD_REQUEST;
       return sendError(res, code, error.message);
+    }
+  }
+
+  static async voidPayment(req, res) {
+    try {
+      const result = await PaymentService.voidPayment(
+        req.params.id,
+        req.user,
+        req.ip,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        result,
+        "Payment successfully voided and balances reversed.",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
 
@@ -31,7 +50,12 @@ class PaymentController {
     try {
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
-      const { search, method, branch } = req.query;
+      let { search, method, branch } = req.query; // Changed to let
+
+      // SECURITY PATCH: Strict Branch Isolation (BR-09)
+      if (req.user.role === "STAFF") {
+        branch = req.user.branchId;
+      }
 
       const result = await PaymentService.getPayments(
         page,
