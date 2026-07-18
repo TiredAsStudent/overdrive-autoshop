@@ -8,6 +8,7 @@ import {
   CheckCircle,
   XCircle,
   FileSearch,
+  Receipt,
 } from "lucide-react";
 import { salesOrderService } from "../../services/staff/salesOrder.service";
 import SalesOrderModal from "../../features/staff/components/SalesOrderModal";
@@ -253,6 +254,19 @@ const SalesOrders = () => {
                 >
                   <FileSearch size={16} />
                 </button>
+
+                {order.status === "COMPLETED" && (
+                  <button
+                    onClick={() =>
+                      showToast("Routing to Invoice Generation...", "info")
+                    }
+                    title="Convert to Invoice"
+                    className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 dark:text-indigo-400 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Receipt size={16} />
+                  </button>
+                )}
+
                 {order.status === "PENDING_SERVICE" && (
                   <>
                     <button
