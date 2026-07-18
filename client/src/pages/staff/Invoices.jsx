@@ -6,6 +6,7 @@ import {
   Plus,
   FileSearch,
   CreditCard,
+  Ban,
 } from "lucide-react";
 import { invoiceService } from "../../services/staff/invoice.service";
 import InvoiceModal from "../../features/staff/components/InvoiceModal";
@@ -21,6 +22,7 @@ const STATUS_FILTERS = [
   { id: "PARTIALLY_PAID", label: "Partial" },
   { id: "PAID", label: "Paid" },
   { id: "OVERDUE", label: "Overdue" },
+  { id: "VOID", label: "Void" },
 ];
 
 const Invoices = () => {
@@ -94,6 +96,8 @@ const Invoices = () => {
         return "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
       case "OVERDUE":
         return "text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20";
+      case "VOID":
+        return "text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700 line-through";
       default:
         return "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
     }
@@ -228,7 +232,34 @@ const Invoices = () => {
                   >
                     <FileSearch size={16} />
                   </button>
-                  {inv.status !== "PAID" && (
+
+                  {inv.status === "UNPAID" && (
+                    <button
+                      onClick={async () => {
+                        if (
+                          window.confirm(
+                            `Are you sure you want to VOID Invoice ${inv.invoice_number}? This cannot be undone.`,
+                          )
+                        ) {
+                          try {
+                            await invoiceService.updateInvoice(inv.id, {
+                              status: "VOID",
+                            });
+                            showToast("Invoice marked as VOID.", "success");
+                            loadInvoices();
+                          } catch (error) {
+                            showToast(error.message, "error");
+                          }
+                        }
+                      }}
+                      title="Void Invoice"
+                      className="p-2 bg-slate-50 hover:bg-rose-100 text-slate-400 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-500/20 dark:text-slate-500 dark:hover:text-rose-400 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <Ban size={16} />
+                    </button>
+                  )}
+
+                  {inv.status !== "PAID" && inv.status !== "VOID" && (
                     <button
                       title="Record Payment"
                       className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:text-emerald-400 rounded-xl transition-colors cursor-pointer"

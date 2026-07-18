@@ -4,14 +4,12 @@ const { logSecureAction } = require("../../utils/auditLogger");
 
 class InvoiceService {
   static async createInvoice(data, activeUser, ipAddress) {
-    // 1. Fetch Source Sales Order
     const so = await SalesOrderModel.findById(data.sales_order_id);
     if (!so) throw new Error("Source Sales Order not found.");
 
-    // 2. Validate Rules (VR-01, BR-09, VR-08)
     if (so.status !== "COMPLETED") {
       throw new Error(
-        `Cannot invoice this work order. Its current status is ${so.status}. Only COMPLETED orders can be billed.`,
+        `Cannot invoice this work order. Its current status is ${so.status}.`,
       );
     }
 
@@ -21,14 +19,15 @@ class InvoiceService {
       );
     }
 
-    const dueDate = new Date(data.due_date);
+    const targetDueDate = data.due_date ? new Date(data.due_date) : new Date();
+    targetDueDate.setHours(0, 0, 0, 0);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (dueDate < today) {
+    if (targetDueDate < today) {
       throw new Error("The Due Date cannot be in the past.");
     }
 
-    // 3. Map Data (VR-05: Exact copy of financials to prevent tampering)
     const invoicePayload = {
       customer_id: so.customer_id,
       branch_id: so.branch_id,
@@ -36,7 +35,7 @@ class InvoiceService {
       total_discount: so.total_discount,
       vat_amount: so.vat_amount,
       grand_total: so.grand_total,
-      due_date: data.due_date,
+      due_date: targetDueDate.toISOString().split("T")[0],
       notes: data.notes || null,
       created_by: activeUser.id,
     };
@@ -132,18 +131,28 @@ class InvoiceService {
       throw new Error("Unauthorized.");
     }
 
-    const updated = await InvoiceModel.update(id, data);
+    if (data.status === "VOID" && invoice.status !== "UNPAID") {
+      throw new Error("Only entirely UNPAID invoices can be marked as VOID.");
+    }
+
+    const payload = {
+      due_date: data.due_date,
+      notes: data.notes,
+      status: data.status,
+    };
+
+    const updated = await InvoiceModel.update(id, payload);
 
     await logSecureAction(
       activeUser.id,
       activeUser.branchId,
       "INVOICE_METADATA_UPDATED",
-      "INFO",
+      data.status === "VOID" ? "WARNING" : "INFO",
       ipAddress,
       "invoices",
       id,
-      { due_date: invoice.due_date },
-      { due_date: updated.due_date },
+      { status: invoice.status, due_date: invoice.due_date },
+      { status: updated.status, due_date: updated.due_date },
     );
 
     return updated;

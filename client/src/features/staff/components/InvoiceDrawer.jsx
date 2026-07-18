@@ -35,15 +35,17 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case "UNPAID":
-        return "text-slate-600 bg-slate-100 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
+        return "text-slate-600 bg-slate-100 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
       case "PARTIALLY_PAID":
-        return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
+        return "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
       case "PAID":
-        return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
+        return "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
       case "OVERDUE":
-        return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
+        return "text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20";
+      case "VOID":
+        return "text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700 line-through";
       default:
-        return "text-slate-600 bg-slate-50 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
+        return "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
     }
   };
 

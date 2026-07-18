@@ -176,11 +176,17 @@ class Invoice {
       SET 
         due_date = COALESCE($1, due_date),
         notes = COALESCE($2, notes),
+        status = COALESCE($3, status),
         updated_at = NOW()
-      WHERE id = $3
+      WHERE id = $4
       RETURNING *
     `;
-    const result = await query(sql, [data.due_date, data.notes, id]);
+    const result = await query(sql, [
+      data.due_date,
+      data.notes,
+      data.status,
+      id,
+    ]);
     return result.rows[0];
   }
 
