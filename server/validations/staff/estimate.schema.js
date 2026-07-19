@@ -22,17 +22,39 @@ const itemSchema = z
     },
   );
 
+// Shared validation logic for dates
+const validUntilRefine = (val) => {
+  const selectedDate = new Date(val);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Strip time for pure date comparison
+  return !isNaN(selectedDate.getTime()) && selectedDate >= today;
+};
+
 const createEstimateSchema = z.object({
   body: z.object({
     customer_id: z.number().int().positive("Valid Customer is required"),
     valid_until: z
       .string()
-      .refine((val) => !isNaN(Date.parse(val)), "Invalid date format"),
+      .refine(validUntilRefine, "Valid Until date cannot be in the past"),
     notes: z.string().trim().optional(),
     terms_conditions: z.string().trim().optional(),
     items: z
       .array(itemSchema)
-      .min(1, "At least one service or part must be included"), // VR-02
+      .min(1, "At least one service or part must be included"),
+  }),
+});
+
+const updateEstimateSchema = z.object({
+  body: z.object({
+    customer_id: z.number().int().positive("Valid Customer is required"),
+    valid_until: z
+      .string()
+      .refine(validUntilRefine, "Valid Until date cannot be in the past"),
+    notes: z.string().trim().optional(),
+    terms_conditions: z.string().trim().optional(),
+    items: z
+      .array(itemSchema)
+      .min(1, "At least one service or part must be included"),
   }),
 });
 
@@ -61,6 +83,7 @@ const getEstimatesSchema = z.object({
 
 module.exports = {
   createEstimateSchema,
+  updateEstimateSchema,
   updateStatusSchema,
   getEstimatesSchema,
 };

@@ -34,6 +34,7 @@ const {
   createEstimateSchema,
   updateStatusSchema,
   getEstimatesSchema,
+  updateEstimateSchema,
 } = require("../../validations/staff/estimate.schema");
 const {
   createSalesOrderSchema,
@@ -100,6 +101,11 @@ router.get(
   EstimateController.getEstimates,
 );
 router.get("/estimates/:id", EstimateController.getEstimateDetails);
+router.put(
+  "/estimates/:id",
+  validate(updateEstimateSchema),
+  EstimateController.updateEstimate,
+);
 router.patch(
   "/estimates/:id/status",
   validate(updateStatusSchema),

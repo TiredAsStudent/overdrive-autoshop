@@ -8,6 +8,7 @@ import {
   XCircle,
   FileSearch,
   ArrowRight,
+  Edit2,
 } from "lucide-react";
 import { estimateService } from "../../services/staff/estimate.service";
 import EstimateModal from "../../features/staff/components/EstimateModal";
@@ -41,6 +42,7 @@ const Estimates = () => {
 
   // Modals & Drawers
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [estimateToEdit, setEstimateToEdit] = useState(null);
   const [selectedEstimateId, setSelectedEstimateId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({
@@ -81,9 +83,15 @@ const Estimates = () => {
 
   const handleModalSubmit = async (formData) => {
     try {
-      await estimateService.createEstimate(formData);
-      showToast("Official Quotation Generated Successfully.", "success");
+      if (estimateToEdit) {
+        await estimateService.updateEstimate(estimateToEdit.id, formData);
+        showToast("Quotation Updated Successfully.", "success");
+      } else {
+        await estimateService.createEstimate(formData);
+        showToast("Official Quotation Generated Successfully.", "success");
+      }
       setIsModalOpen(false);
+      setEstimateToEdit(null);
       loadEstimates();
     } catch (error) {
       throw error;
@@ -175,7 +183,10 @@ const Estimates = () => {
           </div>
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEstimateToEdit(null);
+              setIsModalOpen(true);
+            }}
             className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-amber-500/20 shrink-0 transition-all active:scale-[0.98]"
           >
             <Plus size={16} /> Create Estimate
@@ -247,6 +258,30 @@ const Estimates = () => {
                   <FileSearch size={16} />
                 </button>
 
+                {(estimate.status === "PENDING_APPROVAL" ||
+                  estimate.status === "DRAFT") && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await estimateService.getEstimateDetails(
+                          estimate.id,
+                        );
+                        setEstimateToEdit(res.data);
+                        setIsModalOpen(true);
+                      } catch (err) {
+                        showToast(
+                          err.message || "Failed to load estimate details.",
+                          "error",
+                        );
+                      }
+                    }}
+                    title="Edit Document"
+                    className="p-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Edit2 size={16} />{" "}
+                  </button>
+                )}
+
                 {estimate.status === "APPROVED" && (
                   <button
                     onClick={() =>
@@ -294,6 +329,7 @@ const Estimates = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleModalSubmit}
+        initialData={estimateToEdit}
       />
       <EstimateDrawer
         isOpen={isDrawerOpen}

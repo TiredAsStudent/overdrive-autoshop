@@ -21,15 +21,32 @@ class EstimateController {
     }
   }
 
+  static async updateEstimate(req, res) {
+    try {
+      const estimate = await EstimateService.updateEstimate(
+        req.params.id,
+        req.body,
+        req.user,
+        req.ip,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        estimate,
+        "Estimate successfully updated.",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
+
   static async getEstimates(req, res) {
     try {
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
       let { search, status, branch } = req.query;
 
-      if (req.user.role === "STAFF") {
-        branch = req.user.branchId;
-      }
+      if (req.user.role === "STAFF") branch = req.user.branchId;
 
       const result = await EstimateService.getEstimates(
         page,

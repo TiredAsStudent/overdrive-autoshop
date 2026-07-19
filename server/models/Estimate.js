@@ -26,7 +26,6 @@ class Estimate {
     try {
       await client.query("BEGIN");
 
-      // 1. Insert Parent Header
       const headerSql = `
         INSERT INTO estimates (
           estimate_number, customer_id, branch_id, 
@@ -51,7 +50,6 @@ class Estimate {
       const headerRes = await client.query(headerSql, headerValues);
       const newEstimate = headerRes.rows[0];
 
-      // 2. Bulk Insert Child Items
       for (const item of computedItems) {
         const itemSql = `
           INSERT INTO estimate_items (
@@ -81,6 +79,65 @@ class Estimate {
     }
   }
 
+  static async updateTransaction(id, estimateData, computedItems) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const headerSql = `
+        UPDATE estimates SET 
+          customer_id = $1, subtotal = $2, total_discount = $3, vat_amount = $4, 
+          grand_total = $5, valid_until = $6, notes = $7, terms_conditions = $8, updated_at = NOW()
+        WHERE id = $9
+        RETURNING *
+      `;
+      const headerValues = [
+        estimateData.customer_id,
+        estimateData.subtotal,
+        estimateData.total_discount,
+        estimateData.vat_amount,
+        estimateData.grand_total,
+        estimateData.valid_until,
+        estimateData.notes,
+        estimateData.terms_conditions,
+        id,
+      ];
+      const headerRes = await client.query(headerSql, headerValues);
+      const updatedEstimate = headerRes.rows[0];
+
+      await client.query(`DELETE FROM estimate_items WHERE estimate_id = $1`, [
+        id,
+      ]);
+
+      for (const item of computedItems) {
+        const itemSql = `
+          INSERT INTO estimate_items (
+            estimate_id, line_type, service_id, item_id, 
+            quantity, recorded_unit_cost, recorded_selling_price, discount_amount
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `;
+        await client.query(itemSql, [
+          id,
+          item.line_type,
+          item.service_id,
+          item.item_id,
+          item.quantity,
+          item.recorded_unit_cost,
+          item.recorded_selling_price,
+          item.discount_amount,
+        ]);
+      }
+
+      await client.query("COMMIT");
+      return updatedEstimate;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   static async updateStatus(id, status) {
     const sql = `UPDATE estimates SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
     const result = await query(sql, [status, id]);
@@ -88,9 +145,15 @@ class Estimate {
   }
 
   static async findById(id) {
-    // Parent Details
     const sql = `
-      SELECT e.*, c.full_name as customer_name, c.contact_number, c.email, b.branch_name, u.first_name as created_by_name
+      SELECT 
+        e.id, e.estimate_number, e.customer_id, e.branch_id, e.subtotal, e.total_discount, 
+        e.vat_amount, e.grand_total, e.valid_until, e.notes, e.terms_conditions, e.created_by, e.created_at, e.updated_at,
+        CASE 
+          WHEN e.status IN ('DRAFT', 'PENDING_APPROVAL') AND e.valid_until < CURRENT_DATE THEN 'EXPIRED' 
+          ELSE e.status 
+        END as status,
+        c.full_name as customer_name, c.contact_number, c.email, b.branch_name, u.first_name as created_by_name
       FROM estimates e
       JOIN customers c ON e.customer_id = c.id
       JOIN branches b ON e.branch_id = b.id
@@ -101,7 +164,6 @@ class Estimate {
     const estimate = result.rows[0];
     if (!estimate) return null;
 
-    // Child Items
     const itemsSql = `
       SELECT ei.*, 
              s.service_code, s.service_name, 
@@ -135,9 +197,17 @@ class Estimate {
       paramIdx++;
     }
     if (status && status !== "all") {
-      conditions.push(`e.status = $${paramIdx}`);
-      values.push(status.toUpperCase());
-      paramIdx++;
+      if (status.toUpperCase() === "EXPIRED") {
+        conditions.push(
+          `(e.status IN ('DRAFT', 'PENDING_APPROVAL') AND e.valid_until < CURRENT_DATE)`,
+        );
+      } else {
+        conditions.push(
+          `(e.status = $${paramIdx} AND (e.valid_until >= CURRENT_DATE OR e.status NOT IN ('DRAFT', 'PENDING_APPROVAL')))`,
+        );
+        values.push(status.toUpperCase());
+        paramIdx++;
+      }
     }
     if (branchId && branchId !== "all") {
       conditions.push(`e.branch_id = $${paramIdx}`);
@@ -152,7 +222,11 @@ class Estimate {
 
   static async findPaginatedFiltered(limit, offset, search, status, branchId) {
     let sql = `
-      SELECT e.id, e.estimate_number, e.grand_total, e.status, e.valid_until, e.created_at,
+      SELECT e.id, e.estimate_number, e.grand_total, e.valid_until, e.created_at,
+             CASE 
+               WHEN e.status IN ('DRAFT', 'PENDING_APPROVAL') AND e.valid_until < CURRENT_DATE THEN 'EXPIRED' 
+               ELSE e.status 
+             END as status,
              c.full_name as customer_name, b.branch_name
       FROM estimates e
       JOIN customers c ON e.customer_id = c.id
@@ -170,9 +244,17 @@ class Estimate {
       paramIdx++;
     }
     if (status && status !== "all") {
-      conditions.push(`e.status = $${paramIdx}`);
-      values.push(status.toUpperCase());
-      paramIdx++;
+      if (status.toUpperCase() === "EXPIRED") {
+        conditions.push(
+          `(e.status IN ('DRAFT', 'PENDING_APPROVAL') AND e.valid_until < CURRENT_DATE)`,
+        );
+      } else {
+        conditions.push(
+          `(e.status = $${paramIdx} AND (e.valid_until >= CURRENT_DATE OR e.status NOT IN ('DRAFT', 'PENDING_APPROVAL')))`,
+        );
+        values.push(status.toUpperCase());
+        paramIdx++;
+      }
     }
     if (branchId && branchId !== "all") {
       conditions.push(`e.branch_id = $${paramIdx}`);

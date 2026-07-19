@@ -12,7 +12,7 @@ import {
 import { customerService } from "../../../services/staff/customer.service";
 import api from "../../../services/api";
 
-const EstimateModal = ({ isOpen, onClose, onSubmit }) => {
+const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
   const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true);
@@ -59,11 +59,45 @@ const EstimateModal = ({ isOpen, onClose, onSubmit }) => {
             }),
             api.get("/staff/settings"),
           ]);
-
           setCustomers(custRes.data?.customers || []);
           setServices(servRes.data?.data || []);
           setParts(partRes.data?.data || []);
           setVatRate(parseFloat(setRes.data?.data?.vat_percentage || 12) / 100);
+
+          if (initialData) {
+            setFormData({
+              customer_id: initialData.customer_id.toString(),
+              valid_until: initialData.valid_until.split("T")[0],
+              notes: initialData.notes || "",
+              terms_conditions: initialData.terms_conditions || "",
+              items: initialData.items.map((i, idx) => ({
+                id: Date.now() + idx,
+                line_type: i.line_type,
+                service_id: i.service_id ? i.service_id.toString() : "",
+                item_id: i.item_id ? i.item_id.toString() : "",
+                quantity: i.quantity,
+                discount: parseFloat(i.discount_amount),
+              })),
+            });
+          } else {
+            setFormData({
+              customer_id: "",
+              valid_until: defaultValidUntil.toISOString().split("T")[0],
+              notes: "",
+              terms_conditions:
+                "Prices are valid for 30 days. Final invoice may vary based on unforeseen internal damages discovered during repair.",
+              items: [
+                {
+                  id: Date.now(),
+                  line_type: "SERVICE",
+                  service_id: "",
+                  item_id: "",
+                  quantity: 1,
+                  discount: 0,
+                },
+              ],
+            });
+          }
         } catch (error) {
           console.error(error);
           setValidationError("Failed to load system catalogs. Please refresh.");
@@ -72,27 +106,9 @@ const EstimateModal = ({ isOpen, onClose, onSubmit }) => {
         }
       };
       fetchCatalogs();
-
-      setFormData({
-        customer_id: "",
-        valid_until: defaultValidUntil.toISOString().split("T")[0],
-        notes: "",
-        terms_conditions:
-          "Prices are valid for 30 days. Final invoice may vary based on unforeseen internal damages discovered during repair.",
-        items: [
-          {
-            id: Date.now(),
-            line_type: "SERVICE",
-            service_id: "",
-            item_id: "",
-            quantity: 1,
-            discount: 0,
-          },
-        ],
-      });
       setValidationError("");
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;
@@ -268,7 +284,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit }) => {
                 </div>
                 <div>
                   <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
-                    Build Estimate
+                    {initialData ? `Edit Estimate` : "Build Estimate"}
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                     Pre-Sales Quotation Matrix
@@ -578,7 +594,9 @@ const EstimateModal = ({ isOpen, onClose, onSubmit }) => {
                 ) : (
                   <Calculator size={16} />
                 )}
-                Generate Official Estimate
+                {initialData
+                  ? "Update Quotation"
+                  : "Generate Official Estimate"}
               </button>
             </div>
           </motion.div>

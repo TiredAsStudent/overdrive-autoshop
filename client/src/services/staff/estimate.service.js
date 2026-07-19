@@ -19,7 +19,6 @@ export const estimateService = {
       );
     }
   },
-
   getEstimateDetails: async (id) => {
     try {
       const response = await api.get(`/staff/estimates/${id}`);
@@ -31,7 +30,6 @@ export const estimateService = {
       );
     }
   },
-
   createEstimate: async (estimateData) => {
     try {
       const response = await api.post("/staff/estimates", estimateData);
@@ -42,7 +40,16 @@ export const estimateService = {
       );
     }
   },
-
+  updateEstimate: async (id, estimateData) => {
+    try {
+      const response = await api.put(`/staff/estimates/${id}`, estimateData);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message || "Failed to update estimate.",
+      );
+    }
+  },
   updateStatus: async (id, status) => {
     try {
       const response = await api.patch(`/staff/estimates/${id}/status`, {
