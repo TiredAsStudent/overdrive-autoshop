@@ -148,7 +148,7 @@ class Estimate {
     const sql = `
       SELECT 
         e.id, e.estimate_number, e.customer_id, e.branch_id, e.subtotal, e.total_discount, 
-        e.vat_amount, e.grand_total, e.valid_until, e.notes, e.terms_conditions, e.created_by, e.created_at, e.updated_at,
+        e.vat_amount, e.grand_total, TO_CHAR(e.valid_until, 'YYYY-MM-DD') AS valid_until, e.notes, e.terms_conditions, e.created_by, e.created_at, e.updated_at,
         CASE 
           WHEN e.status IN ('DRAFT', 'PENDING_APPROVAL') AND e.valid_until < CURRENT_DATE THEN 'EXPIRED' 
           ELSE e.status 
@@ -222,7 +222,7 @@ class Estimate {
 
   static async findPaginatedFiltered(limit, offset, search, status, branchId) {
     let sql = `
-      SELECT e.id, e.estimate_number, e.grand_total, e.valid_until, e.created_at,
+      SELECT e.id, e.estimate_number, e.grand_total, TO_CHAR(e.valid_until, 'YYYY-MM-DD') AS valid_until, e.created_at,
              CASE 
                WHEN e.status IN ('DRAFT', 'PENDING_APPROVAL') AND e.valid_until < CURRENT_DATE THEN 'EXPIRED' 
                ELSE e.status 
