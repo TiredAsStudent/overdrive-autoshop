@@ -13,6 +13,7 @@ import PaymentModal from "../../features/staff/components/PaymentModal";
 import PaymentDrawer from "../../features/staff/components/PaymentDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
+import ConfirmModal from "../../components/shared/ConfirmModal";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -45,11 +46,17 @@ const Payments = () => {
   const [selectedPaymentId, setSelectedPaymentId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  // Confirm Modal State
+  const [voidConfig, setVoidConfig] = useState({
+    isOpen: false,
+    paymentId: null,
+    paymentNumber: "",
+  });
+
   useEffect(() => {
     if (location.state?.invoiceId) {
       setInitialInvoiceId(location.state.invoiceId);
       setIsModalOpen(true);
-
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -96,6 +103,19 @@ const Payments = () => {
       loadPayments();
     } catch (error) {
       throw error;
+    }
+  };
+
+  const handleConfirmVoid = async () => {
+    if (!voidConfig.paymentId) return;
+    try {
+      await paymentService.voidPayment(voidConfig.paymentId);
+      showToast("Payment voided successfully.", "success");
+      loadPayments();
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setVoidConfig({ isOpen: false, paymentId: null, paymentNumber: "" });
     }
   };
 
@@ -275,20 +295,12 @@ const Payments = () => {
 
                 {pay.status !== "VOID" && (
                   <button
-                    onClick={async () => {
-                      if (
-                        window.confirm(
-                          `Are you sure you want to VOID receipt ${pay.payment_number}? This will reverse the invoice balance and cannot be undone.`,
-                        )
-                      ) {
-                        try {
-                          await paymentService.voidPayment(pay.id);
-                          showToast("Payment voided successfully.", "success");
-                          loadPayments();
-                        } catch (error) {
-                          showToast(error.message, "error");
-                        }
-                      }
+                    onClick={() => {
+                      setVoidConfig({
+                        isOpen: true,
+                        paymentId: pay.id,
+                        paymentNumber: pay.payment_number,
+                      });
                     }}
                     title="Void Receipt"
                     className="p-2 bg-slate-50 hover:bg-rose-100 text-slate-400 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-500/20 dark:text-slate-500 dark:hover:text-rose-400 rounded-xl transition-colors cursor-pointer"
@@ -318,10 +330,23 @@ const Payments = () => {
         onSubmit={handleModalSubmit}
         initialInvoiceId={initialInvoiceId}
       />
+
       <PaymentDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         paymentId={selectedPaymentId}
+      />
+
+      <ConfirmModal
+        isOpen={voidConfig.isOpen}
+        onClose={() =>
+          setVoidConfig({ isOpen: false, paymentId: null, paymentNumber: "" })
+        }
+        onConfirm={handleConfirmVoid}
+        title="Void Receipt"
+        message={`Are you sure you want to VOID receipt ${voidConfig.paymentNumber}? This will reverse the invoice balance and cannot be undone.`}
+        confirmText="Void Receipt"
+        variant="danger"
       />
     </div>
   );

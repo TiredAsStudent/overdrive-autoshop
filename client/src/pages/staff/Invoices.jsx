@@ -15,6 +15,7 @@ import InvoiceModal from "../../features/staff/components/InvoiceModal";
 import InvoiceDrawer from "../../features/staff/components/InvoiceDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
+import ConfirmModal from "../../components/shared/ConfirmModal";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -47,6 +48,13 @@ const Invoices = () => {
 
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Confirm Modal State
+  const [voidConfig, setVoidConfig] = useState({
+    isOpen: false,
+    invoiceId: null,
+    invoiceNumber: "",
+  });
 
   useEffect(() => {
     setCurrentPage(1);
@@ -91,6 +99,21 @@ const Invoices = () => {
       loadInvoices();
     } catch (error) {
       throw error;
+    }
+  };
+
+  const handleConfirmVoid = async () => {
+    if (!voidConfig.invoiceId) return;
+    try {
+      await invoiceService.updateInvoice(voidConfig.invoiceId, {
+        status: "VOID",
+      });
+      showToast("Invoice marked as VOID.", "success");
+      loadInvoices();
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setVoidConfig({ isOpen: false, invoiceId: null, invoiceNumber: "" });
     }
   };
 
@@ -260,22 +283,12 @@ const Invoices = () => {
 
                   {inv.status === "UNPAID" && (
                     <button
-                      onClick={async () => {
-                        if (
-                          window.confirm(
-                            `Are you sure you want to VOID Invoice ${inv.invoice_number}? This cannot be undone.`,
-                          )
-                        ) {
-                          try {
-                            await invoiceService.updateInvoice(inv.id, {
-                              status: "VOID",
-                            });
-                            showToast("Invoice marked as VOID.", "success");
-                            loadInvoices();
-                          } catch (error) {
-                            showToast(error.message, "error");
-                          }
-                        }
+                      onClick={() => {
+                        setVoidConfig({
+                          isOpen: true,
+                          invoiceId: inv.id,
+                          invoiceNumber: inv.invoice_number,
+                        });
                       }}
                       title="Void Invoice"
                       className="p-2 bg-slate-50 hover:bg-rose-100 text-slate-400 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-500/20 dark:text-slate-500 dark:hover:text-rose-400 rounded-xl transition-colors cursor-pointer"
@@ -317,10 +330,23 @@ const Invoices = () => {
         mode={modalMode}
         initialData={selectedInvoiceData}
       />
+
       <InvoiceDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         invoiceId={selectedInvoiceId}
+      />
+
+      <ConfirmModal
+        isOpen={voidConfig.isOpen}
+        onClose={() =>
+          setVoidConfig({ isOpen: false, invoiceId: null, invoiceNumber: "" })
+        }
+        onConfirm={handleConfirmVoid}
+        title="Void Invoice"
+        message={`Are you sure you want to VOID Invoice ${voidConfig.invoiceNumber}? This cannot be undone.`}
+        confirmText="Void Invoice"
+        variant="danger"
       />
     </div>
   );
