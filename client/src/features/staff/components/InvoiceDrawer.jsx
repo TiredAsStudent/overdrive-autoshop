@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   X,
   Receipt,
@@ -17,6 +18,7 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (isOpen && invoiceId) {
@@ -35,17 +37,17 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case "UNPAID":
-        return "text-slate-600 bg-slate-100 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+        return "text-slate-600 bg-slate-100 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
       case "PARTIALLY_PAID":
-        return "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+        return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
       case "PAID":
-        return "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+        return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
       case "OVERDUE":
-        return "text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20";
+        return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
       case "VOID":
-        return "text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700 line-through";
+        return "text-slate-400 bg-slate-100 dark:bg-slate-800 dark:text-slate-500 border-slate-200 dark:border-slate-700 line-through";
       default:
-        return "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+        return "text-slate-600 bg-slate-50 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
     }
   };
 
@@ -67,7 +69,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="fixed inset-y-0 right-0 w-full sm:w-[500px] md:w-[600px] bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800"
           >
-            {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
@@ -94,7 +95,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
               </button>
             </div>
 
-            {/* Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
@@ -112,7 +112,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
 
               {invoice && !loading && (
                 <div className="space-y-8">
-                  {/* Meta Profile & Link */}
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                       <User size={14} className="text-slate-400 mb-2" />
@@ -140,7 +139,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                     </div>
                   </div>
 
-                  {/* Due Date */}
                   <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
                     <Calendar size={18} className="text-amber-500" />
                     <div>
@@ -153,7 +151,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                     </div>
                   </div>
 
-                  {/* Render Lines */}
                   <div>
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 px-1 border-b border-slate-200 dark:border-slate-800 pb-2">
                       Finalized Billing Statement
@@ -197,7 +194,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                     </div>
                   </div>
 
-                  {/* Receivables Calculation */}
                   <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 text-white shadow-xl">
                     <div className="space-y-1.5 mb-4 text-sm font-medium text-slate-400">
                       <div className="flex justify-between">
@@ -259,7 +255,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                     </div>
                   </div>
 
-                  {/* Notes */}
                   {invoice.notes && (
                     <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
@@ -274,7 +269,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
               )}
             </div>
 
-            {/* Print Footer Stub */}
             <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
               <button
                 disabled={!invoice || loading}
@@ -283,7 +277,17 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                 <Printer size={16} /> Print Document
               </button>
               <button
-                disabled={!invoice || loading || invoice.status === "PAID"}
+                onClick={() =>
+                  navigate("/staff/payments", {
+                    state: { invoiceId: invoice.id },
+                  })
+                }
+                disabled={
+                  !invoice ||
+                  loading ||
+                  invoice.status === "PAID" ||
+                  invoice.status === "VOID"
+                }
                 className="flex-1 py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <CreditCard size={16} /> Record Payment

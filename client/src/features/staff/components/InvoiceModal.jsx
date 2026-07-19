@@ -1,60 +1,78 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Receipt, AlertCircle, Loader2, FileCheck2 } from "lucide-react";
+import {
+  X,
+  Receipt,
+  AlertCircle,
+  Loader2,
+  FileCheck2,
+  Edit,
+} from "lucide-react";
 import { salesOrderService } from "../../../services/staff/salesOrder.service";
 
-const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
+const InvoiceModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  mode = "CREATE",
+  initialData = null,
+}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
-  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
-  // Master List of Completed Work Orders
   const [completedOrders, setCompletedOrders] = useState([]);
   const [selectedOrderPreview, setSelectedOrderPreview] = useState(null);
 
-  const defaultDueDate = new Date();
-  defaultDueDate.setDate(defaultDueDate.getDate() + 30); // Net 30 default
-
   const [formData, setFormData] = useState({
     sales_order_id: "",
-    due_date: defaultDueDate.toISOString().split("T")[0],
-    notes:
-      "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
+    due_date: "",
+    notes: "",
   });
 
   useEffect(() => {
     if (isOpen) {
-      const fetchCompletedOrders = async () => {
-        setIsLoadingOrders(true);
-        try {
-          const res = await salesOrderService.getSalesOrders(
-            1,
-            100,
-            "",
-            "COMPLETED",
-            "all",
-          );
-          setCompletedOrders(res.data?.salesOrders || []);
-        } catch (error) {
-          setValidationError(
-            "Failed to load completed sales orders. Please refresh.",
-          );
-        } finally {
-          setIsLoadingOrders(false);
-        }
-      };
-      fetchCompletedOrders();
+      if (mode === "CREATE") {
+        const defaultDueDate = new Date();
+        defaultDueDate.setDate(defaultDueDate.getDate() + 30);
 
-      setFormData({
-        sales_order_id: "",
-        due_date: defaultDueDate.toISOString().split("T")[0],
-        notes:
-          "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
-      });
-      setSelectedOrderPreview(null);
+        const fetchCompletedOrders = async () => {
+          setIsLoadingOrders(true);
+          try {
+            const res = await salesOrderService.getSalesOrders(
+              1,
+              100,
+              "",
+              "COMPLETED",
+              "all",
+            );
+            setCompletedOrders(res.data?.salesOrders || []);
+          } catch (error) {
+            setValidationError(
+              "Failed to load completed sales orders. Please refresh.",
+            );
+          } finally {
+            setIsLoadingOrders(false);
+          }
+        };
+        fetchCompletedOrders();
+
+        setFormData({
+          sales_order_id: "",
+          due_date: defaultDueDate.toISOString().split("T")[0],
+          notes:
+            "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
+        });
+        setSelectedOrderPreview(null);
+      } else if (mode === "EDIT" && initialData) {
+        setFormData({
+          due_date: initialData.due_date || "",
+          notes: initialData.notes || "",
+        });
+      }
       setValidationError("");
     }
-  }, [isOpen]);
+  }, [isOpen, mode, initialData]);
 
   const handleOrderSelect = (e) => {
     const soId = e.target.value;
@@ -78,16 +96,23 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
     e.preventDefault();
     setValidationError("");
 
-    if (!formData.sales_order_id)
-      return setValidationError(
-        "You must select a completed work order to bill.",
-      );
-
-    const payload = {
-      sales_order_id: parseInt(formData.sales_order_id, 10),
-      due_date: formData.due_date,
-      notes: formData.notes,
-    };
+    let payload = {};
+    if (mode === "CREATE") {
+      if (!formData.sales_order_id)
+        return setValidationError(
+          "You must select a completed work order to bill.",
+        );
+      payload = {
+        sales_order_id: parseInt(formData.sales_order_id, 10),
+        due_date: formData.due_date,
+        notes: formData.notes,
+      };
+    } else {
+      payload = {
+        due_date: formData.due_date,
+        notes: formData.notes,
+      };
+    }
 
     setIsSubmitting(true);
     try {
@@ -113,14 +138,22 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
-                  <Receipt size={20} />
+                  {mode === "CREATE" ? (
+                    <Receipt size={20} />
+                  ) : (
+                    <Edit size={20} />
+                  )}
                 </div>
                 <div>
                   <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
-                    Generate Invoice
+                    {mode === "CREATE"
+                      ? "Generate Invoice"
+                      : `Update ${initialData?.invoice_number}`}
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                    Official Financial Billing
+                    {mode === "CREATE"
+                      ? "Official Financial Billing"
+                      : "Adjust Billing Metadata"}
                   </p>
                 </div>
               </div>
@@ -133,7 +166,6 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
               </button>
             </div>
 
-            {/* Body */}
             <div className="px-6 sm:px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
@@ -155,62 +187,65 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
                   onSubmit={handleSubmit}
                   className="space-y-6"
                 >
-                  {/* Select Order */}
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Completed Sales Order Reference{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      required
-                      name="sales_order_id"
-                      value={formData.sales_order_id}
-                      onChange={handleOrderSelect}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
-                    >
-                      <option value="">-- Select a Completed Order --</option>
-                      {completedOrders.map((so) => (
-                        <option key={so.id} value={so.id}>
-                          [{so.sales_order_number}] {so.customer_name} - ₱
-                          {parseFloat(so.grand_total).toLocaleString()}
-                        </option>
-                      ))}
-                    </select>
-                    {completedOrders.length === 0 && (
-                      <p className="text-[10px] text-red-500 mt-2 font-bold">
-                        No unbilled completed orders found.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Dynamic Preview Card */}
-                  {selectedOrderPreview && (
-                    <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-between">
+                  {mode === "CREATE" && (
+                    <>
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                          Billing Customer
-                        </p>
-                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
-                          {selectedOrderPreview.customer_name}
-                        </p>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Completed Sales Order Reference{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          name="sales_order_id"
+                          value={formData.sales_order_id}
+                          onChange={handleOrderSelect}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
+                        >
+                          <option value="">
+                            -- Select a Completed Order --
+                          </option>
+                          {completedOrders.map((so) => (
+                            <option key={so.id} value={so.id}>
+                              [{so.sales_order_number}] {so.customer_name} - ₱
+                              {parseFloat(so.grand_total).toLocaleString()}
+                            </option>
+                          ))}
+                        </select>
+                        {completedOrders.length === 0 && (
+                          <p className="text-[10px] text-red-500 mt-2 font-bold">
+                            No unbilled completed orders found.
+                          </p>
+                        )}
                       </div>
-                      <div className="text-right">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                          Receivable Amount
-                        </p>
-                        <span className="text-lg font-black text-amber-600 dark:text-amber-500">
-                          ₱
-                          {parseFloat(
-                            selectedOrderPreview.grand_total,
-                          ).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-                    </div>
+
+                      {selectedOrderPreview && (
+                        <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-between">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                              Billing Customer
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
+                              {selectedOrderPreview.customer_name}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                              Receivable Amount
+                            </p>
+                            <span className="text-lg font-black text-amber-600 dark:text-amber-500">
+                              ₱
+                              {parseFloat(
+                                selectedOrderPreview.grand_total,
+                              ).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  {/* Billing Data */}
                   <div className="grid grid-cols-1 gap-5">
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
@@ -242,29 +277,31 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
                     </div>
                   </div>
 
-                  <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4 rounded-xl">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500 flex items-center gap-2">
-                      <AlertCircle size={14} /> Accounting Notice
-                    </p>
-                    <p className="text-xs text-amber-900 dark:text-amber-200/80 mt-1">
-                      Generating this invoice will permanently deduct the
-                      associated physical parts from the branch inventory
-                      ledger.
-                    </p>
-                  </div>
+                  {mode === "CREATE" && (
+                    <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4 rounded-xl">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500 flex items-center gap-2">
+                        <AlertCircle size={14} /> Accounting Notice
+                      </p>
+                      <p className="text-xs text-amber-900 dark:text-amber-200/80 mt-1">
+                        Generating this invoice will officially post the
+                        transaction to Accounts Receivable and lock the
+                        financial totals. Physical inventory has already been
+                        deducted.
+                      </p>
+                    </div>
+                  )}
                 </form>
               )}
             </div>
 
-            {/* Footer */}
             <div className="p-6 border-t border-slate-100 dark:border-slate-700/50">
               <button
                 type="submit"
                 form="invoiceForm"
                 disabled={
                   isSubmitting ||
-                  isLoadingOrders ||
-                  completedOrders.length === 0
+                  (mode === "CREATE" &&
+                    (isLoadingOrders || completedOrders.length === 0))
                 }
                 className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50"
               >
@@ -273,7 +310,7 @@ const InvoiceModal = ({ isOpen, onClose, onSubmit }) => {
                 ) : (
                   <FileCheck2 size={16} />
                 )}
-                Issue Official Invoice
+                {mode === "CREATE" ? "Issue Official Invoice" : "Save Changes"}
               </button>
             </div>
           </motion.div>

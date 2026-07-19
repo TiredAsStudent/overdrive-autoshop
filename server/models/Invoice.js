@@ -21,7 +21,6 @@ class Invoice {
     return `${prefix}${String(sequence).padStart(4, "0")}`;
   }
 
-  // ATOMIC BILLING & INVENTORY ENGINE
   static async createFromSalesOrder(
     invoiceData,
     itemsData,
@@ -57,7 +56,6 @@ class Invoice {
       const headerRes = await client.query(headerSql, headerValues);
       const newInvoice = headerRes.rows[0];
 
-      // 2. Process Line Items AND Inventory Deductions
       for (const item of itemsData) {
         const itemSql = `
           INSERT INTO invoice_items (
@@ -75,53 +73,6 @@ class Invoice {
           item.recorded_selling_price,
           item.discount_amount,
         ]);
-
-        if (item.line_type === "PART") {
-          // Lock row for safe deduction
-          const checkSql = `SELECT quantity FROM branch_inventory WHERE branch_id = $1 AND item_id = $2 FOR UPDATE`;
-          const checkRes = await client.query(checkSql, [
-            invoiceData.branch_id,
-            item.item_id,
-          ]);
-
-          if (checkRes.rows.length === 0) {
-            throw new Error(
-              `Inventory constraint violation. Item ID ${item.item_id} does not exist in branch ledger.`,
-            );
-          }
-
-          const currentQty = checkRes.rows[0].quantity;
-          const newQty = currentQty - item.quantity;
-
-          if (newQty < 0) {
-            throw new Error(
-              `Critical Stock Error: Cannot generate invoice. Not enough physical stock for Item ID ${item.item_id}.`,
-            );
-          }
-
-          const updateStockSql = `UPDATE branch_inventory SET quantity = $1 WHERE branch_id = $2 AND item_id = $3`;
-          await client.query(updateStockSql, [
-            newQty,
-            invoiceData.branch_id,
-            item.item_id,
-          ]);
-
-          const ledgerSql = `
-            INSERT INTO inventory_movements (
-              item_id, branch_id, transaction_type, transaction_reference, 
-              quantity_deducted, remaining_quantity, remarks, created_by
-            ) VALUES ($1, $2, 'SALES_INVOICE', $3, $4, $5, $6, $7)
-          `;
-          await client.query(ledgerSql, [
-            item.item_id,
-            invoiceData.branch_id,
-            newInvoice.invoice_number,
-            item.quantity,
-            newQty,
-            `Billed to Customer ID: ${invoiceData.customer_id}`,
-            userId,
-          ]);
-        }
       }
 
       // 3. Lock Upstream Sales Order
@@ -140,7 +91,7 @@ class Invoice {
 
   static async findById(id) {
     const sql = `
-      SELECT i.*, 
+      SELECT i.*, TO_CHAR(i.due_date, 'YYYY-MM-DD') as due_date,
              c.full_name as customer_name, c.contact_number, c.email, c.address as customer_address, 
              b.branch_name, u.first_name as created_by_name, so.sales_order_number,
              CASE 
@@ -171,23 +122,41 @@ class Invoice {
   }
 
   static async update(id, data) {
-    const sql = `
-      UPDATE invoices 
-      SET 
-        due_date = COALESCE($1, due_date),
-        notes = COALESCE($2, notes),
-        status = COALESCE($3, status),
-        updated_at = NOW()
-      WHERE id = $4
-      RETURNING *
-    `;
-    const result = await query(sql, [
-      data.due_date,
-      data.notes,
-      data.status,
-      id,
-    ]);
-    return result.rows[0];
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const sql = `
+        UPDATE invoices 
+        SET 
+          due_date = COALESCE($1, due_date),
+          notes = COALESCE($2, notes),
+          status = COALESCE($3, status),
+          updated_at = NOW()
+        WHERE id = $4
+        RETURNING *
+      `;
+      const result = await client.query(sql, [
+        data.due_date,
+        data.notes,
+        data.status,
+        id,
+      ]);
+      const updatedInvoice = result.rows[0];
+
+      if (data.status === "VOID" && updatedInvoice) {
+        const revertSql = `UPDATE sales_orders SET status = 'COMPLETED', updated_at = NOW() WHERE id = $1`;
+        await client.query(revertSql, [updatedInvoice.sales_order_id]);
+      }
+
+      await client.query("COMMIT");
+      return updatedInvoice;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async countFiltered(search, status, branchId) {
@@ -204,7 +173,6 @@ class Invoice {
       paramIdx++;
     }
 
-    // Dynamic Overdue Time-Trap Filter Logic
     if (status && status !== "all") {
       const upperStatus = status.toUpperCase();
       if (upperStatus === "OVERDUE") {
@@ -237,7 +205,7 @@ class Invoice {
 
   static async findPaginatedFiltered(limit, offset, search, status, branchId) {
     let sql = `
-      SELECT i.id, i.invoice_number, i.grand_total, i.amount_paid, i.due_date, i.created_at,
+      SELECT i.id, i.invoice_number, i.grand_total, i.amount_paid, TO_CHAR(i.due_date, 'YYYY-MM-DD') as due_date, i.created_at,
              c.full_name as customer_name, b.branch_name,
              CASE 
                WHEN i.status IN ('UNPAID', 'PARTIALLY_PAID') AND i.due_date < CURRENT_DATE THEN 'OVERDUE'
@@ -259,7 +227,6 @@ class Invoice {
       paramIdx++;
     }
 
-    // Dynamic Overdue Time-Trap Filter Logic
     if (status && status !== "all") {
       const upperStatus = status.toUpperCase();
       if (upperStatus === "OVERDUE") {

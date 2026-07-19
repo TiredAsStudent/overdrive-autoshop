@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Loader2,
@@ -7,6 +8,7 @@ import {
   FileSearch,
   CreditCard,
   Ban,
+  Edit2,
 } from "lucide-react";
 import { invoiceService } from "../../services/staff/invoice.service";
 import InvoiceModal from "../../features/staff/components/InvoiceModal";
@@ -27,11 +29,11 @@ const STATUS_FILTERS = [
 
 const Invoices = () => {
   const { showToast } = useApp();
+  const navigate = useNavigate();
 
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters & State
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -39,8 +41,10 @@ const Invoices = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Modals & Drawers
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("CREATE");
+  const [selectedInvoiceData, setSelectedInvoiceData] = useState(null);
+
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -58,7 +62,6 @@ const Invoices = () => {
         statusFilter,
         "all",
       );
-      console.log(response.data?.invoices || []);
       setInvoices(response.data?.invoices || []);
       setTotalPages(response.data?.pagination?.totalPages || 1);
     } catch (error) {
@@ -74,11 +77,16 @@ const Invoices = () => {
 
   const handleModalSubmit = async (formData) => {
     try {
-      await invoiceService.createInvoice(formData);
-      showToast(
-        "Invoice generated. Inventory deducted successfully.",
-        "success",
-      );
+      if (modalMode === "CREATE") {
+        await invoiceService.createInvoice(formData);
+        showToast(
+          "Invoice generated. Accounts Receivable posted successfully.",
+          "success",
+        );
+      } else {
+        await invoiceService.updateInvoice(selectedInvoiceData.id, formData);
+        showToast("Invoice metadata updated successfully.", "success");
+      }
       setIsModalOpen(false);
       loadInvoices();
     } catch (error) {
@@ -153,7 +161,11 @@ const Invoices = () => {
           </div>
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setModalMode("CREATE");
+              setSelectedInvoiceData(null);
+              setIsModalOpen(true);
+            }}
             className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-amber-500/20 shrink-0 transition-all active:scale-[0.98]"
           >
             <Plus size={16} /> Bill Order
@@ -161,7 +173,6 @@ const Invoices = () => {
         </div>
       </div>
 
-      {/* DATA TABLE */}
       <DataTable
         headers={[
           "Invoice",
@@ -233,6 +244,20 @@ const Invoices = () => {
                     <FileSearch size={16} />
                   </button>
 
+                  {inv.status !== "PAID" && inv.status !== "VOID" && (
+                    <button
+                      onClick={() => {
+                        setModalMode("EDIT");
+                        setSelectedInvoiceData(inv);
+                        setIsModalOpen(true);
+                      }}
+                      title="Edit Due Date & Notes"
+                      className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  )}
+
                   {inv.status === "UNPAID" && (
                     <button
                       onClick={async () => {
@@ -261,6 +286,11 @@ const Invoices = () => {
 
                   {inv.status !== "PAID" && inv.status !== "VOID" && (
                     <button
+                      onClick={() =>
+                        navigate("/staff/payments", {
+                          state: { invoiceId: inv.id },
+                        })
+                      }
                       title="Record Payment"
                       className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:text-emerald-400 rounded-xl transition-colors cursor-pointer"
                     >
@@ -280,11 +310,12 @@ const Invoices = () => {
         onPageChange={setCurrentPage}
       />
 
-      {/* Modals & Drawers */}
       <InvoiceModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleModalSubmit}
+        mode={modalMode}
+        initialData={selectedInvoiceData}
       />
       <InvoiceDrawer
         isOpen={isDrawerOpen}
