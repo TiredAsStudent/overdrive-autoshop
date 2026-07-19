@@ -278,7 +278,7 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
               </button>
               <button
                 onClick={() =>
-                  navigate("/staff/payments", {
+                  navigate("/staff/sales/payments", {
                     state: { invoiceId: invoice.id },
                   })
                 }

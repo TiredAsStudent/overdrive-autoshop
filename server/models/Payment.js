@@ -164,7 +164,8 @@ class Payment {
 
   static async findById(id) {
     const sql = `
-      SELECT p.*, i.invoice_number, i.grand_total as invoice_total, c.full_name as customer_name,
+      SELECT p.*, TO_CHAR(p.payment_date, 'YYYY-MM-DD') as payment_date, 
+             i.invoice_number, i.grand_total as invoice_total, c.full_name as customer_name,
              u.first_name as created_by_name, b.branch_name
       FROM payments p
       JOIN invoices i ON p.invoice_id = i.id
@@ -213,7 +214,9 @@ class Payment {
 
   static async findPaginatedFiltered(limit, offset, search, method, branchId) {
     let sql = `
-      SELECT p.id, p.payment_number, p.amount_received, p.payment_method, p.payment_date, p.created_at, p.reference_number, p.status,
+      SELECT p.id, p.payment_number, p.amount_received, p.payment_method, 
+             TO_CHAR(p.payment_date, 'YYYY-MM-DD') as payment_date, 
+             p.created_at, p.reference_number, p.status,
              i.invoice_number, i.status as current_invoice_status, c.full_name as customer_name, b.branch_name
       FROM payments p
       JOIN invoices i ON p.invoice_id = i.id

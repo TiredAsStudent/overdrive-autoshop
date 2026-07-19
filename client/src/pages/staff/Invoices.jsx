@@ -287,7 +287,7 @@ const Invoices = () => {
                   {inv.status !== "PAID" && inv.status !== "VOID" && (
                     <button
                       onClick={() =>
-                        navigate("/staff/payments", {
+                        navigate("/staff/sales/payments", {
                           state: { invoiceId: inv.id },
                         })
                       }

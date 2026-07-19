@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Search, Loader2, CreditCard, FileSearch, Ban } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import {
+  Search,
+  Loader2,
+  CreditCard,
+  FileSearch,
+  Ban,
+  Plus,
+} from "lucide-react";
 import { paymentService } from "../../services/staff/payment.service";
 import PaymentModal from "../../features/staff/components/PaymentModal";
 import PaymentDrawer from "../../features/staff/components/PaymentDrawer";
@@ -18,6 +26,7 @@ const METHOD_FILTERS = [
 
 const Payments = () => {
   const { showToast } = useApp();
+  const location = useLocation();
 
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,8 +41,18 @@ const Payments = () => {
 
   // Modals & Drawers
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [initialInvoiceId, setInitialInvoiceId] = useState(null);
   const [selectedPaymentId, setSelectedPaymentId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.invoiceId) {
+      setInitialInvoiceId(location.state.invoiceId);
+      setIsModalOpen(true);
+
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -73,6 +92,7 @@ const Payments = () => {
         "success",
       );
       setIsModalOpen(false);
+      setInitialInvoiceId(null);
       loadPayments();
     } catch (error) {
       throw error;
@@ -158,6 +178,13 @@ const Payments = () => {
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
             />
           </div>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm flex justify-center items-center gap-2 whitespace-nowrap"
+          >
+            <Plus size={16} /> Record Payment
+          </button>
         </div>
       </div>
 
@@ -284,8 +311,12 @@ const Payments = () => {
       {/* Modals & Drawers */}
       <PaymentModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setInitialInvoiceId(null);
+        }}
         onSubmit={handleModalSubmit}
+        initialInvoiceId={initialInvoiceId}
       />
       <PaymentDrawer
         isOpen={isDrawerOpen}

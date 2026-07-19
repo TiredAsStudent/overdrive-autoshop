@@ -15,10 +15,12 @@ const createPaymentSchema = z.object({
       }),
       payment_date: z
         .string()
-        .refine(
-          (val) => new Date(val) <= new Date(),
-          "Payment Date cannot be in the future.",
-        )
+        .refine((val) => {
+          const inputDate = new Date(val);
+          const endOfToday = new Date();
+          endOfToday.setHours(23, 59, 59, 999);
+          return inputDate <= endOfToday;
+        }, "Payment Date cannot be in the future.")
         .optional(),
       reference_number: z.string().trim().max(100).optional().nullable(),
       notes: z.string().trim().optional().nullable(),
