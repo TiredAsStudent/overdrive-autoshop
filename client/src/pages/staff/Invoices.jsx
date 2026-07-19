@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Search,
   Loader2,
@@ -31,6 +31,7 @@ const STATUS_FILTERS = [
 const Invoices = () => {
   const { showToast } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,15 @@ const Invoices = () => {
     invoiceId: null,
     invoiceNumber: "",
   });
+
+  useEffect(() => {
+    if (location.state?.salesOrderId) {
+      setModalMode("CREATE");
+      setSelectedInvoiceData({ sales_order_id: location.state.salesOrderId });
+      setIsModalOpen(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     setCurrentPage(1);

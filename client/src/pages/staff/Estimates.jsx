@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Loader2,
@@ -28,6 +29,7 @@ const STATUS_FILTERS = [
 
 const Estimates = () => {
   const { showToast } = useApp();
+  const navigate = useNavigate();
 
   const [estimates, setEstimates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -285,7 +287,9 @@ const Estimates = () => {
                 {estimate.status === "APPROVED" && (
                   <button
                     onClick={() =>
-                      showToast("Routing to Sales Order Conversion...", "info")
+                      navigate("/staff/sales/sales-orders", {
+                        state: { estimateId: estimate.id },
+                      })
                     }
                     title="Convert to Sales Order"
                     className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 dark:text-indigo-400 rounded-xl transition-colors cursor-pointer"

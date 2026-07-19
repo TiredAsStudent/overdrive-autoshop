@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Search,
   Loader2,
@@ -30,6 +31,8 @@ const STATUS_FILTERS = [
 
 const SalesOrders = () => {
   const { showToast } = useApp();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +59,16 @@ const SalesOrders = () => {
     variant: "danger",
     onConfirm: () => {},
   });
+
+  useEffect(() => {
+    if (location.state?.estimateId) {
+      setModalMode("CREATE");
+
+      setSelectedOrderData({ estimate_id: location.state.estimateId });
+      setIsModalOpen(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -288,7 +301,9 @@ const SalesOrders = () => {
                 {order.status === "COMPLETED" && (
                   <button
                     onClick={() =>
-                      showToast("Routing to Invoice Generation...", "info")
+                      navigate("/staff/sales/invoices", {
+                        state: { salesOrderId: order.id },
+                      })
                     }
                     title="Convert to Invoice"
                     className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 dark:text-indigo-400 rounded-xl transition-colors cursor-pointer"
