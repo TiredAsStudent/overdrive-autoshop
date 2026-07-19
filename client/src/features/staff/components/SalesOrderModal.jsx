@@ -5,17 +5,22 @@ import {
   ClipboardList,
   AlertCircle,
   Loader2,
-  CalendarClock,
   ArrowRightLeft,
+  Edit,
 } from "lucide-react";
 import { estimateService } from "../../../services/staff/estimate.service";
 
-const SalesOrderModal = ({ isOpen, onClose, onSubmit }) => {
+const SalesOrderModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  mode = "CREATE",
+  initialData = null,
+}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
-  const [isLoadingEstimates, setIsLoadingEstimates] = useState(true);
+  const [isLoadingEstimates, setIsLoadingEstimates] = useState(false);
 
-  // Master List of Approved Estimates
   const [approvedEstimates, setApprovedEstimates] = useState([]);
   const [selectedEstimatePreview, setSelectedEstimatePreview] = useState(null);
 
@@ -25,41 +30,46 @@ const SalesOrderModal = ({ isOpen, onClose, onSubmit }) => {
     notes: "",
   });
 
-  // Pre-fetch ONLY Approved Estimates when modal opens
   useEffect(() => {
     if (isOpen) {
-      const fetchApprovedEstimates = async () => {
-        setIsLoadingEstimates(true);
-        try {
-          const res = await estimateService.getEstimates(
-            1,
-            100,
-            "",
-            "APPROVED",
-            "all",
-          );
-          setApprovedEstimates(res.data?.estimates || []);
-        } catch (error) {
-          setValidationError(
-            "Failed to load approved estimates. Please refresh.",
-          );
-        } finally {
-          setIsLoadingEstimates(false);
-        }
-      };
-      fetchApprovedEstimates();
-
-      setFormData({
-        estimate_id: "",
-        estimated_completion_date: "",
-        notes: "",
-      });
-      setSelectedEstimatePreview(null);
+      if (mode === "CREATE") {
+        const fetchApprovedEstimates = async () => {
+          setIsLoadingEstimates(true);
+          try {
+            const res = await estimateService.getEstimates(
+              1,
+              100,
+              "",
+              "APPROVED",
+              "all",
+            );
+            setApprovedEstimates(res.data?.estimates || []);
+          } catch (error) {
+            setValidationError(
+              "Failed to load approved estimates. Please refresh.",
+            );
+          } finally {
+            setIsLoadingEstimates(false);
+          }
+        };
+        fetchApprovedEstimates();
+        setFormData({
+          estimate_id: "",
+          estimated_completion_date: "",
+          notes: "",
+        });
+        setSelectedEstimatePreview(null);
+      } else if (mode === "EDIT" && initialData) {
+        setFormData({
+          estimated_completion_date:
+            initialData.estimated_completion_date || "",
+          notes: initialData.notes || "",
+        });
+      }
       setValidationError("");
     }
-  }, [isOpen]);
+  }, [isOpen, mode, initialData]);
 
-  // When an estimate is selected, find it in the array to show a quick preview
   const handleEstimateSelect = (e) => {
     const estId = e.target.value;
     setFormData({ ...formData, estimate_id: estId });
@@ -82,16 +92,23 @@ const SalesOrderModal = ({ isOpen, onClose, onSubmit }) => {
     e.preventDefault();
     setValidationError("");
 
-    if (!formData.estimate_id)
-      return setValidationError(
-        "You must select an approved estimate to convert.",
-      );
-
-    const payload = {
-      estimate_id: parseInt(formData.estimate_id, 10),
-      estimated_completion_date: formData.estimated_completion_date || null,
-      notes: formData.notes,
-    };
+    let payload = {};
+    if (mode === "CREATE") {
+      if (!formData.estimate_id)
+        return setValidationError(
+          "You must select an approved estimate to convert.",
+        );
+      payload = {
+        estimate_id: parseInt(formData.estimate_id, 10),
+        estimated_completion_date: formData.estimated_completion_date || null,
+        notes: formData.notes,
+      };
+    } else {
+      payload = {
+        estimated_completion_date: formData.estimated_completion_date || null,
+        notes: formData.notes,
+      };
+    }
 
     setIsSubmitting(true);
     try {
@@ -117,14 +134,22 @@ const SalesOrderModal = ({ isOpen, onClose, onSubmit }) => {
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
-                  <ArrowRightLeft size={20} />
+                  {mode === "CREATE" ? (
+                    <ArrowRightLeft size={20} />
+                  ) : (
+                    <Edit size={20} />
+                  )}
                 </div>
                 <div>
                   <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
-                    Convert to Sales Order
+                    {mode === "CREATE"
+                      ? "Convert to Sales Order"
+                      : `Update ${initialData?.sales_order_number}`}
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                    Official Work Authorization
+                    {mode === "CREATE"
+                      ? "Official Work Authorization"
+                      : "Adjust Operational Details"}
                   </p>
                 </div>
               </div>
@@ -159,64 +184,60 @@ const SalesOrderModal = ({ isOpen, onClose, onSubmit }) => {
                   onSubmit={handleSubmit}
                   className="space-y-6"
                 >
-                  {/* Select Estimate */}
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Approved Estimate Reference{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      required
-                      name="estimate_id"
-                      value={formData.estimate_id}
-                      onChange={handleEstimateSelect}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
-                    >
-                      <option value="">
-                        -- Select an Approved Estimate --
-                      </option>
-                      {approvedEstimates.map((est) => (
-                        <option key={est.id} value={est.id}>
-                          [{est.estimate_number}] {est.customer_name} - ₱
-                          {parseFloat(est.grand_total).toLocaleString()}
-                        </option>
-                      ))}
-                    </select>
-                    {approvedEstimates.length === 0 && (
-                      <p className="text-[10px] text-red-500 mt-2 font-bold">
-                        No approved estimates available for conversion.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Dynamic Preview Card */}
-                  {selectedEstimatePreview && (
-                    <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-between">
+                  {mode === "CREATE" && (
+                    <>
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                          Financial Lock
-                        </p>
-                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
-                          {selectedEstimatePreview.customer_name}
-                        </p>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Approved Estimate Reference{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          name="estimate_id"
+                          value={formData.estimate_id}
+                          onChange={handleEstimateSelect}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
+                        >
+                          <option value="">
+                            -- Select an Approved Estimate --
+                          </option>
+                          {approvedEstimates.map((est) => (
+                            <option key={est.id} value={est.id}>
+                              [{est.estimate_number}] {est.customer_name} - ₱
+                              {parseFloat(est.grand_total).toLocaleString()}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                          Grand Total
-                        </p>
-                        <span className="text-lg font-black text-amber-600 dark:text-amber-500">
-                          ₱
-                          {parseFloat(
-                            selectedEstimatePreview.grand_total,
-                          ).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-                    </div>
+
+                      {selectedEstimatePreview && (
+                        <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-between">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                              Financial Lock
+                            </p>
+                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
+                              {selectedEstimatePreview.customer_name}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                              Grand Total
+                            </p>
+                            <span className="text-lg font-black text-amber-600 dark:text-amber-500">
+                              ₱
+                              {parseFloat(
+                                selectedEstimatePreview.grand_total,
+                              ).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  {/* Operational Data */}
                   <div className="grid grid-cols-1 gap-5">
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
@@ -261,8 +282,8 @@ const SalesOrderModal = ({ isOpen, onClose, onSubmit }) => {
                 form="salesOrderForm"
                 disabled={
                   isSubmitting ||
-                  isLoadingEstimates ||
-                  approvedEstimates.length === 0
+                  (mode === "CREATE" &&
+                    (isLoadingEstimates || approvedEstimates.length === 0))
                 }
                 className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50"
               >
@@ -271,7 +292,9 @@ const SalesOrderModal = ({ isOpen, onClose, onSubmit }) => {
                 ) : (
                   <ClipboardList size={16} />
                 )}
-                Confirm & Initialize Work Order
+                {mode === "CREATE"
+                  ? "Confirm & Initialize Work Order"
+                  : "Save Operational Updates"}
               </button>
             </div>
           </motion.div>

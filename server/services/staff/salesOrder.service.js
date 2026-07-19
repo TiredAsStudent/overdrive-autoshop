@@ -130,6 +130,8 @@ class SalesOrderService {
       }
     }
 
+    let updated;
+
     if (newStatus && newStatus !== currentStatus) {
       const validTransitions = {
         PENDING_SERVICE: ["IN_PROGRESS", "CANCELLED"],
@@ -164,10 +166,23 @@ class SalesOrderService {
             );
           }
         }
-      }
-    }
 
-    const updated = await SalesOrderModel.update(id, data);
+        updated = await SalesOrderModel.transitionToInProgress(
+          id,
+          data,
+          parts,
+          so.branch_id,
+          activeUser.id,
+        );
+      } else {
+        if (newStatus === "COMPLETED") {
+          data.completed_at = new Date().toISOString();
+        }
+        updated = await SalesOrderModel.update(id, data);
+      }
+    } else {
+      updated = await SalesOrderModel.update(id, data);
+    }
 
     await logSecureAction(
       activeUser.id,

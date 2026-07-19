@@ -9,6 +9,7 @@ import {
   XCircle,
   FileSearch,
   Receipt,
+  Edit2,
 } from "lucide-react";
 import { salesOrderService } from "../../services/staff/salesOrder.service";
 import SalesOrderModal from "../../features/staff/components/SalesOrderModal";
@@ -43,6 +44,8 @@ const SalesOrders = () => {
 
   // Modals & Drawers
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("CREATE");
+  const [selectedOrderData, setSelectedOrderData] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({
@@ -83,8 +86,16 @@ const SalesOrders = () => {
 
   const handleModalSubmit = async (formData) => {
     try {
-      await salesOrderService.createSalesOrder(formData);
-      showToast("Sales Order / Job Card initialized successfully.", "success");
+      if (modalMode === "CREATE") {
+        await salesOrderService.createSalesOrder(formData);
+        showToast("Work Order initialized successfully.", "success");
+      } else {
+        await salesOrderService.updateSalesOrder(
+          selectedOrderData.id,
+          formData,
+        );
+        showToast("Work Order details updated.", "success");
+      }
       setIsModalOpen(false);
       loadOrders();
     } catch (error) {
@@ -182,7 +193,11 @@ const SalesOrders = () => {
           </div>
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setModalMode("CREATE");
+              setSelectedOrderData(null);
+              setIsModalOpen(true);
+            }}
             className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-amber-500/20 shrink-0 transition-all active:scale-[0.98]"
           >
             <Plus size={16} /> Convert Order
@@ -255,6 +270,21 @@ const SalesOrders = () => {
                   <FileSearch size={16} />
                 </button>
 
+                {(order.status === "PENDING_SERVICE" ||
+                  order.status === "IN_PROGRESS") && (
+                  <button
+                    onClick={() => {
+                      setModalMode("EDIT");
+                      setSelectedOrderData(order);
+                      setIsModalOpen(true);
+                    }}
+                    title="Edit Dates & Notes"
+                    className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                )}
+
                 {order.status === "COMPLETED" && (
                   <button
                     onClick={() =>
@@ -311,6 +341,8 @@ const SalesOrders = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleModalSubmit}
+        mode={modalMode}
+        initialData={selectedOrderData}
       />
       <SalesOrderDrawer
         isOpen={isDrawerOpen}

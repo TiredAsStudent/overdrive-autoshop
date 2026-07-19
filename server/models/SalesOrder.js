@@ -21,13 +21,11 @@ class SalesOrder {
     return `${prefix}${String(sequence).padStart(4, "0")}`;
   }
 
-  // Atomic Conversion Pipeline
   static async createFromEstimate(soData, itemsData, estimateId) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // 1. Insert Sales Order Header
       const headerSql = `
         INSERT INTO sales_orders (
           sales_order_number, estimate_id, customer_id, branch_id, 
@@ -52,7 +50,6 @@ class SalesOrder {
       const headerRes = await client.query(headerSql, headerValues);
       const newSO = headerRes.rows[0];
 
-      // 2. Insert Copied Line Items
       for (const item of itemsData) {
         const itemSql = `
           INSERT INTO sales_order_items (
@@ -72,7 +69,6 @@ class SalesOrder {
         ]);
       }
 
-      // 3. Lock Upstream Estimate Status
       const updateEstSql = `UPDATE estimates SET status = 'CONVERTED', updated_at = NOW() WHERE id = $1`;
       await client.query(updateEstSql, [estimateId]);
 
@@ -86,9 +82,86 @@ class SalesOrder {
     }
   }
 
+  static async transitionToInProgress(id, data, partsArray, branchId, userId) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const updateSql = `
+        UPDATE sales_orders
+        SET status = $1, estimated_completion_date = COALESCE($2, estimated_completion_date), notes = COALESCE($3, notes), updated_at = NOW()
+        WHERE id = $4 RETURNING *
+      `;
+      const soRes = await client.query(updateSql, [
+        "IN_PROGRESS",
+        data.estimated_completion_date,
+        data.notes,
+        id,
+      ]);
+      const updatedSO = soRes.rows[0];
+
+      for (const part of partsArray) {
+        const invSql = `UPDATE branch_inventory SET quantity = quantity - $1 WHERE branch_id = $2 AND item_id = $3 RETURNING quantity`;
+        const invRes = await client.query(invSql, [
+          part.quantity,
+          branchId,
+          part.item_id,
+        ]);
+
+        const movSql = `
+          INSERT INTO inventory_movements 
+          (item_id, branch_id, transaction_type, transaction_reference, quantity_deducted, remaining_quantity, remarks, created_by) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `;
+        await client.query(movSql, [
+          part.item_id,
+          branchId,
+          "MANUAL_ADJUSTMENT",
+          `SO: ${updatedSO.sales_order_number}`,
+          part.quantity,
+          invRes.rows[0].quantity,
+          "Stock allocated for operational execution.",
+          userId,
+        ]);
+      }
+
+      await client.query("COMMIT");
+      return updatedSO;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async update(id, data) {
+    const sql = `
+      UPDATE sales_orders 
+      SET 
+        status = COALESCE($1, status),
+        estimated_completion_date = COALESCE($2, estimated_completion_date),
+        notes = COALESCE($3, notes),
+        completed_at = COALESCE($4, completed_at),
+        updated_at = NOW()
+      WHERE id = $5
+      RETURNING *
+    `;
+    const result = await query(sql, [
+      data.status,
+      data.estimated_completion_date,
+      data.notes,
+      data.completed_at || null,
+      id,
+    ]);
+    return result.rows[0];
+  }
+
   static async findById(id) {
     const sql = `
-      SELECT so.*, c.full_name as customer_name, c.contact_number, c.email, b.branch_name, u.first_name as created_by_name, e.estimate_number
+      SELECT so.*, TO_CHAR(so.estimated_completion_date, 'YYYY-MM-DD') as estimated_completion_date, 
+             c.full_name as customer_name, c.contact_number, c.email, b.branch_name, 
+             u.first_name as created_by_name, e.estimate_number
       FROM sales_orders so
       JOIN customers c ON so.customer_id = c.id
       JOIN branches b ON so.branch_id = b.id
@@ -110,26 +183,6 @@ class SalesOrder {
     const itemsResult = await query(itemsSql, [id]);
     so.items = itemsResult.rows;
     return so;
-  }
-
-  static async update(id, data) {
-    const sql = `
-      UPDATE sales_orders 
-      SET 
-        status = COALESCE($1, status),
-        estimated_completion_date = COALESCE($2, estimated_completion_date),
-        notes = COALESCE($3, notes),
-        updated_at = NOW()
-      WHERE id = $4
-      RETURNING *
-    `;
-    const result = await query(sql, [
-      data.status,
-      data.estimated_completion_date,
-      data.notes,
-      id,
-    ]);
-    return result.rows[0];
   }
 
   static async countFiltered(search, status, branchId) {
@@ -163,8 +216,9 @@ class SalesOrder {
 
   static async findPaginatedFiltered(limit, offset, search, status, branchId) {
     let sql = `
-      SELECT so.id, so.sales_order_number, so.grand_total, so.status, so.estimated_completion_date, so.created_at,
-             c.full_name as customer_name, b.branch_name
+      SELECT so.id, so.sales_order_number, so.grand_total, so.status, 
+             TO_CHAR(so.estimated_completion_date, 'YYYY-MM-DD') as estimated_completion_date, 
+             so.created_at, c.full_name as customer_name, b.branch_name
       FROM sales_orders so
       JOIN customers c ON so.customer_id = c.id
       JOIN branches b ON so.branch_id = b.id
