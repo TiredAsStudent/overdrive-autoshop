@@ -9,6 +9,7 @@ const InvoiceController = require("../../controllers/staff/invoice.controller");
 const PaymentController = require("../../controllers/staff/payment.controller");
 const VendorController = require("../../controllers/staff/vendor.controller");
 const PurchaseOrderController = require("../../controllers/staff/purchaseOrder.controller");
+const BillController = require("../../controllers/staff/bill.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -61,6 +62,10 @@ const {
   updatePOStatusSchema,
   getPurchaseOrdersSchema,
 } = require("../../validations/staff/purchaseOrder.schema");
+const {
+  createBillSchema,
+  getBillsSchema,
+} = require("../../validations/staff/bill.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -204,6 +209,10 @@ router.get(
   PurchaseOrderController.getPurchaseOrders,
 );
 router.get(
+  "/purchase-orders/eligible-for-billing",
+  PurchaseOrderController.getEligibleForBilling,
+);
+router.get(
   "/purchase-orders/:id",
   PurchaseOrderController.getPurchaseOrderDetails,
 );
@@ -217,5 +226,14 @@ router.patch(
   validate(updatePOStatusSchema),
   PurchaseOrderController.updateStatus,
 );
+
+// ==========================================
+// MODULE: SUPPLIER BILLS (ACCOUNTS PAYABLE)
+// ==========================================
+router.post("/bills", validate(createBillSchema), BillController.createBill);
+router.get("/bills", validate(getBillsSchema), BillController.getBills);
+router.get("/bills/:id", BillController.getBillDetails);
+
+router.patch("/bills/:id/receive", BillController.confirmReceipt);
 
 module.exports = router;

@@ -114,6 +114,29 @@ class PurchaseOrderController {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
+
+  static async getEligibleForBilling(req, res) {
+    try {
+      const branchId =
+        req.user.role === "STAFF"
+          ? req.user.branchId
+          : req.query.branch || req.user.branchId;
+      const pos = await PurchaseOrderModel.findEligibleForBilling(branchId);
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        pos,
+        "Eligible Purchase Orders retrieved for billing.",
+      );
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to fetch eligible POs.",
+        error.message,
+      );
+    }
+  }
 }
 
 module.exports = PurchaseOrderController;

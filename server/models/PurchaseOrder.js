@@ -263,6 +263,21 @@ class PurchaseOrder {
     const result = await query(sql, values);
     return result.rows;
   }
+
+  static async findEligibleForBilling(branchId) {
+    const sql = `
+      SELECT po.id, po.purchase_order_number, po.grand_total, v.business_name as vendor_name, v.id as vendor_id
+      FROM purchase_orders po
+      JOIN vendors v ON po.vendor_id = v.id
+      LEFT JOIN bills b ON po.id = b.purchase_order_id
+      WHERE po.status = 'APPROVED' 
+        AND b.id IS NULL 
+        AND po.branch_id = $1
+      ORDER BY po.created_at DESC
+    `;
+    const result = await query(sql, [branchId]);
+    return result.rows;
+  }
 }
 
 module.exports = PurchaseOrder;
