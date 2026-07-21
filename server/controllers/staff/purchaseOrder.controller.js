@@ -121,7 +121,8 @@ class PurchaseOrderController {
         req.user.role === "STAFF"
           ? req.user.branchId
           : req.query.branch || req.user.branchId;
-      const pos = await PurchaseOrderModel.findEligibleForBilling(branchId);
+
+      const pos = await PurchaseOrderService.getEligibleForBilling(branchId);
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,

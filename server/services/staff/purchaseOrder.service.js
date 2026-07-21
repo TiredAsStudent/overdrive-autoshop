@@ -271,6 +271,12 @@ class PurchaseOrderService {
       },
     };
   }
+
+  static async getEligibleForBilling(branchId) {
+    if (!branchId) throw new Error("Branch context is required.");
+
+    return await PurchaseOrderModel.findEligibleForBilling(branchId);
+  }
 }
 
 module.exports = PurchaseOrderService;
