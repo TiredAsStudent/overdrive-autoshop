@@ -69,9 +69,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
           vendor_id: initialData.vendor_id || "",
 
           expected_delivery_date: initialData.expected_delivery_date
-            ? new Date(initialData.expected_delivery_date)
-                .toISOString()
-                .split("T")[0]
+            ? (() => {
+                const d = new Date(initialData.expected_delivery_date);
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, "0");
+                const day = String(d.getDate()).padStart(2, "0");
+                return `${year}-${month}-${day}`;
+              })()
             : "",
           notes: initialData.notes || "",
           items: initialData.items.map((i) => ({
