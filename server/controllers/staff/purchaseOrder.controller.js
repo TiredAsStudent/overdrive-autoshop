@@ -23,7 +23,11 @@ class PurchaseOrderController {
     try {
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
-      const { search, status, vendor, branch } = req.query;
+      let { search, status, vendor, branch } = req.query;
+
+      if (req.user.role === "STAFF") {
+        branch = req.user.branchId;
+      }
 
       const result = await PurchaseOrderService.getPurchaseOrders(
         page,

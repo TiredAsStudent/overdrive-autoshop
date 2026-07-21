@@ -67,8 +67,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       if (initialData) {
         setFormData({
           vendor_id: initialData.vendor_id || "",
+
           expected_delivery_date: initialData.expected_delivery_date
-            ? initialData.expected_delivery_date.split("T")[0]
+            ? new Date(initialData.expected_delivery_date)
+                .toISOString()
+                .split("T")[0]
             : "",
           notes: initialData.notes || "",
           items: initialData.items.map((i) => ({
