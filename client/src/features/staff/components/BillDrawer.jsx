@@ -199,6 +199,20 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                         })}
                       </span>
                     </div>
+
+                    {parseFloat(bill.discount_amount) > 0 && (
+                      <div className="flex justify-between text-xs font-medium text-red-600 dark:text-red-400">
+                        <span>Discount Applied</span>
+                        <span className="font-mono">
+                          - ₱
+                          {parseFloat(bill.discount_amount).toLocaleString(
+                            undefined,
+                            { minimumFractionDigits: 2 },
+                          )}
+                        </span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between text-xs font-medium text-amber-800 dark:text-amber-200/70">
                       <span>
                         VAT ({bill.is_vat_registered ? "12%" : "Exempt"})
