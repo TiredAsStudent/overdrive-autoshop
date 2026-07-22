@@ -6,7 +6,6 @@ import {
   Plus,
   FileText,
   CheckCircle2,
-  CopyCheck,
   ScanLine,
 } from "lucide-react";
 import { billService } from "../../services/staff/bill.service";
@@ -199,7 +198,7 @@ const Bills = () => {
           "Supplier & PO",
           "Date Logs",
           "Grand Total",
-          "Status",
+          "Status (Rcv / Pay)",
           "Actions",
         ]}
         data={bills}
@@ -253,17 +252,30 @@ const Bills = () => {
               </span>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <span
-                className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase border ${
-                  bill.status === "RECEIVED"
-                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
-                    : bill.status === "CLOSED"
-                      ? "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400 border-sky-200 dark:border-sky-500/20"
-                      : "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-500 border-amber-200 dark:border-amber-500/20"
-                }`}
-              >
-                {bill.status.replace("_", " ")}
-              </span>
+              <div className="flex flex-col items-start gap-2">
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase border ${
+                    bill.status === "RECEIVED"
+                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                      : bill.status === "CLOSED"
+                        ? "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400 border-sky-200 dark:border-sky-500/20"
+                        : "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-500 border-amber-200 dark:border-amber-500/20"
+                  }`}
+                >
+                  {bill.status.replace("_", " ")}
+                </span>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase border ${
+                    bill.payment_status === "PAID"
+                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                      : bill.payment_status === "PARTIALLY_PAID"
+                        ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20"
+                        : "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
+                  }`}
+                >
+                  {bill.payment_status?.replace("_", " ") || "UNPAID"}
+                </span>
+              </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
               <div className="flex items-center justify-end gap-1.5">

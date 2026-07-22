@@ -10,6 +10,7 @@ import {
   Store,
   ShieldCheck,
   Calculator,
+  Printer,
 } from "lucide-react";
 import { billService } from "../../../services/staff/bill.service";
 
@@ -85,7 +86,8 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                 <>
                   {/* Status & PO Link */}
                   <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                      {/* Receive Status */}
                       <span
                         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded text-[10px] font-black tracking-widest uppercase ${
                           bill.status === "RECEIVED"
@@ -101,10 +103,23 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                         {bill.status === "PENDING_RECEIPT" && (
                           <Clock size={12} />
                         )}
-                        {bill.status}
+                        {bill.status.replace("_", " ")}
+                      </span>
+
+                      {/* Payment Status */}
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded text-[10px] font-black tracking-widest uppercase ${
+                          bill.payment_status === "PAID"
+                            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20"
+                            : bill.payment_status === "PARTIALLY_PAID"
+                              ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20"
+                              : "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20"
+                        }`}
+                      >
+                        {bill.payment_status?.replace("_", " ") || "UNPAID"}
                       </span>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right mt-2 sm:mt-0">
                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                         Source PO
                       </p>
@@ -245,6 +260,16 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                   )}
                 </>
               ) : null}
+            </div>
+
+            {/* Print Footer Stub */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800">
+              <button
+                disabled={!bill || loading}
+                className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Printer size={16} /> Print Document
+              </button>
             </div>
           </motion.div>
         </>

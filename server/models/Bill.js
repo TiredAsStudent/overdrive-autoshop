@@ -117,7 +117,6 @@ class Bill {
 
       // 4. Update Inventory & Log Movements
       for (const item of items) {
-        // Increment branch_inventory (Requires standard existence setup)
         const invUpdateSql = `
           UPDATE branch_inventory 
           SET quantity = quantity + $1, last_restock_date = NOW()
@@ -240,7 +239,7 @@ class Bill {
     branchId,
   ) {
     let sql = `
-      SELECT b.id, b.bill_number, b.vendor_invoice_number, b.grand_total, b.status, b.bill_date, b.date_received,
+      SELECT b.id, b.bill_number, b.vendor_invoice_number, b.grand_total, b.status, b.payment_status, b.bill_date, b.date_received,
              po.purchase_order_number, v.business_name as vendor_name, br.branch_name
       FROM bills b
       JOIN purchase_orders po ON b.purchase_order_id = po.id
