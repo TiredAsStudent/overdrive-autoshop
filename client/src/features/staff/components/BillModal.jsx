@@ -185,7 +185,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                     ))}
                   </select>
                   {eligiblePOs.length === 0 && !isLoadingPOs && (
-                    <p className="text-[10px] text-amber-500 mt-2 font-medium italic">
+                    <p className="text-[10px] text-red-500 mt-2 font-medium">
                       No pending approved Purchase Orders found for this branch.
                     </p>
                   )}

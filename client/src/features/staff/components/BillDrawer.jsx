@@ -241,7 +241,7 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                     </div>
                     <div className="pt-3 border-t border-amber-200 dark:border-amber-500/30 flex justify-between items-center">
                       <span className="text-[10px] font-black uppercase tracking-widest text-amber-900 dark:text-amber-400">
-                        Grand Total (AP)
+                        Grand Total
                       </span>
                       <span className="text-base font-black font-mono text-amber-700 dark:text-amber-500">
                         ₱

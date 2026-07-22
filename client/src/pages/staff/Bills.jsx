@@ -125,7 +125,7 @@ const Bills = () => {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Supplier Bills
+              Bills
             </h1>
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
               Accounts Payable Registry
@@ -168,19 +168,6 @@ const Bills = () => {
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
             />
           </div>
-
-          {/* OCR Trigger Hook (Placeholder for Capstone Feature) */}
-          <button
-            onClick={() =>
-              showToast(
-                "OCR Processing Pipeline will be active in the next release.",
-                "info",
-              )
-            }
-            className="w-full sm:w-auto px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all"
-          >
-            <ScanLine size={16} /> Auto-Scan
-          </button>
 
           <button
             onClick={() => setIsModalOpen(true)}

@@ -86,7 +86,7 @@ class BillService {
       branch_id: branchId,
       vendor_invoice_number: data.vendor_invoice_number,
       bill_date: data.bill_date,
-      status: data.status,
+      status: "PENDING_RECEIPT",
       notes: data.notes,
       created_by: activeUser.id,
       ...financials,
