@@ -10,6 +10,7 @@ const PaymentController = require("../../controllers/staff/payment.controller");
 const VendorController = require("../../controllers/staff/vendor.controller");
 const PurchaseOrderController = require("../../controllers/staff/purchaseOrder.controller");
 const BillController = require("../../controllers/staff/bill.controller");
+const ExpenseController = require("../../controllers/staff/expense.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -66,6 +67,12 @@ const {
   createBillSchema,
   getBillsSchema,
 } = require("../../validations/staff/bill.schema");
+const {
+  createExpenseSchema,
+  updateExpenseSchema,
+  updateExpenseStatusSchema,
+  getExpensesSchema,
+} = require("../../validations/staff/expense.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -235,5 +242,30 @@ router.get("/bills", validate(getBillsSchema), BillController.getBills);
 router.get("/bills/:id", BillController.getBillDetails);
 
 router.patch("/bills/:id/receive", BillController.confirmReceipt);
+
+// ==========================================
+// MODULE: OPERATIONAL EXPENSES (OpEx)
+// ==========================================
+router.post(
+  "/expenses",
+  validate(createExpenseSchema),
+  ExpenseController.createExpense,
+);
+router.get(
+  "/expenses",
+  validate(getExpensesSchema),
+  ExpenseController.getExpenses,
+);
+router.get("/expenses/:id", ExpenseController.getExpenseDetails);
+router.put(
+  "/expenses/:id",
+  validate(updateExpenseSchema),
+  ExpenseController.updateExpense,
+);
+router.patch(
+  "/expenses/:id/status",
+  validate(updateExpenseStatusSchema),
+  ExpenseController.updateStatus,
+);
 
 module.exports = router;
