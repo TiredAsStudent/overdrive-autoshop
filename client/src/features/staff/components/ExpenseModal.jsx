@@ -286,6 +286,48 @@ const ExpenseModal = ({
                       </span>
                     </div>
                   </label>
+
+                  {/* Real-time Math Preview */}
+                  {formData.total_amount && !isNaN(formData.total_amount) && (
+                    <div className="mt-4 p-3 bg-amber-100/50 dark:bg-amber-500/10 rounded-xl flex justify-between items-center border border-amber-200 dark:border-amber-500/20">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500">
+                          Live VAT Breakdown
+                        </span>
+                        <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                          {formData.is_vatable
+                            ? "12% Input VAT Extracted"
+                            : "VAT Exempt"}
+                        </span>
+                      </div>
+                      <div className="text-right font-mono text-xs font-black text-amber-700 dark:text-amber-400">
+                        <p>
+                          Subtotal: ₱
+                          {formData.is_vatable
+                            ? (
+                                parseFloat(formData.total_amount) / 1.12
+                              ).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })
+                            : parseFloat(formData.total_amount).toLocaleString(
+                                undefined,
+                                { minimumFractionDigits: 2 },
+                              )}
+                        </p>
+                        {formData.is_vatable && (
+                          <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-0.5">
+                            VAT: ₱
+                            {(
+                              parseFloat(formData.total_amount) -
+                              parseFloat(formData.total_amount) / 1.12
+                            ).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Row 4 - Optional Support Info */}

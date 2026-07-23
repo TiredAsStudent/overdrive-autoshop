@@ -15,7 +15,13 @@ const createExpenseSchema = z.object({
       .default("CASH"),
 
     vendor_id: z.number().int().positive().optional().nullable(),
-    reference_number: z.string().trim().max(100).optional().nullable(),
+    reference_number: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .max(100)
+      .optional()
+      .nullable(),
     notes: z.string().trim().optional().nullable(),
 
     is_submitting: z.boolean().optional().default(false), // True = PENDING_APPROVAL, False = DRAFT
@@ -37,7 +43,13 @@ const updateExpenseSchema = z.object({
         .enum(["CASH", "PETTY_CASH", "GCASH", "MAYA", "BANK_TRANSFER", "CHECK"])
         .optional(),
       vendor_id: z.number().int().positive().optional().nullable(),
-      reference_number: z.string().trim().max(100).optional().nullable(),
+      reference_number: z
+        .string()
+        .trim()
+        .toUpperCase()
+        .max(100)
+        .optional()
+        .nullable(),
       notes: z.string().trim().optional().nullable(),
     })
     .refine((data) => Object.keys(data).length > 0, {
