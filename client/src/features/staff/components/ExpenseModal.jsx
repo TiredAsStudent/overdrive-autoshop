@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ReceiptText, AlertCircle, Loader2, Calendar } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
+import { catalogService } from "../../../services/staff/catalog.service";
 
 const formatToLocalDateInput = (date = new Date()) => {
   const d = new Date(date);
@@ -34,6 +35,7 @@ const ExpenseModal = ({
 
   const [vendors, setVendors] = useState([]);
   const [isLoadingVendors, setIsLoadingVendors] = useState(false);
+  const [vatRate, setVatRate] = useState(12);
 
   const [formData, setFormData] = useState({
     expense_date: formatToLocalDateInput(),
@@ -53,7 +55,14 @@ const ExpenseModal = ({
       setValidationError("");
       setIsLoadingVendors(true);
 
-      // Fetch active vendors for the optional dropdown
+      catalogService
+        .getSettings()
+        .then((res) => {
+          const fetchedVat = parseFloat(res.data?.vat_percentage);
+          if (!isNaN(fetchedVat)) setVatRate(fetchedVat);
+        })
+        .catch((err) => console.error("Failed to load settings:", err));
+
       vendorService
         .getVendors(1, 1000, "", "active", "all", "all")
         .then((res) => setVendors(res.data?.vendors || []))
@@ -128,6 +137,9 @@ const ExpenseModal = ({
       setIsSubmitting(false);
     }
   };
+
+  // Dynamic VAT Multiplier Formula
+  const vatMultiplier = 1 + vatRate / 100;
 
   return (
     <AnimatePresence>
@@ -282,7 +294,8 @@ const ExpenseModal = ({
                         Input VAT Applicable
                       </span>
                       <span className="text-[10px] text-slate-500">
-                        System will automatically extract 12% for Tax Ledger.
+                        System will automatically extract {vatRate}% for Tax
+                        Ledger.
                       </span>
                     </div>
                   </label>
@@ -296,7 +309,7 @@ const ExpenseModal = ({
                         </span>
                         <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
                           {formData.is_vatable
-                            ? "12% Input VAT Extracted"
+                            ? `${vatRate}% Input VAT Extracted`
                             : "VAT Exempt"}
                         </span>
                       </div>
@@ -305,13 +318,18 @@ const ExpenseModal = ({
                           Subtotal: ₱
                           {formData.is_vatable
                             ? (
-                                parseFloat(formData.total_amount) / 1.12
+                                parseFloat(formData.total_amount) /
+                                vatMultiplier
                               ).toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
                               })
                             : parseFloat(formData.total_amount).toLocaleString(
                                 undefined,
-                                { minimumFractionDigits: 2 },
+                                {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                },
                               )}
                         </p>
                         {formData.is_vatable && (
@@ -319,9 +337,10 @@ const ExpenseModal = ({
                             VAT: ₱
                             {(
                               parseFloat(formData.total_amount) -
-                              parseFloat(formData.total_amount) / 1.12
+                              parseFloat(formData.total_amount) / vatMultiplier
                             ).toLocaleString(undefined, {
                               minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
                             })}
                           </p>
                         )}

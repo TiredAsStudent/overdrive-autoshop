@@ -10,14 +10,27 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { expenseService } from "../../../services/staff/expense.service";
+import { catalogService } from "../../../services/staff/catalog.service";
 
 const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [vatRate, setVatRate] = useState(12);
 
   useEffect(() => {
     if (isOpen && expenseId) {
       setLoading(true);
+
+      // Fetch dynamic VAT Rate for display
+      catalogService
+        .getSettings()
+        .then((res) => {
+          const fetchedVat = parseFloat(res.data?.vat_percentage);
+          if (!isNaN(fetchedVat)) setVatRate(fetchedVat);
+        })
+        .catch((err) => console.error("Failed to load settings:", err));
+
+      // Fetch expense details
       expenseService
         .getExpenseDetails(expenseId)
         .then((res) => setExpense(res.data))
@@ -181,7 +194,8 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                     </div>
                     <div className="flex justify-between text-xs font-medium text-amber-800 dark:text-amber-200/70">
                       <span>
-                        Input VAT ({expense.is_vatable ? "12%" : "Exempt"})
+                        Input VAT (
+                        {expense.is_vatable ? `${vatRate}%` : "Exempt"})
                       </span>
                       <span className="font-mono">
                         ₱
@@ -225,7 +239,7 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                 disabled={!expense || loading}
                 className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Printer size={16} /> Print Voucher
+                <Printer size={16} /> Print Document
               </button>
             </div>
           </motion.div>
