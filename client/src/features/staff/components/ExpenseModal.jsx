@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, ReceiptText, AlertCircle, Loader2, Calendar } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
+import { expenseService } from "../../../services/staff/expense.service";
 
 const formatToLocalDateInput = (date = new Date()) => {
   const d = new Date(date);
@@ -82,19 +83,41 @@ const ExpenseModal = ({
           notes: "",
           is_submitting: false,
         });
-      } else if (mode === "EDIT" && initialData) {
+      } else if (mode === "EDIT" && initialData?.id) {
         setFormData({
           expense_date: formatToLocalDateInput(initialData.expense_date),
           category: initialData.category || "",
           description: initialData.description || "",
           total_amount: initialData.total_amount || "",
           is_vatable: initialData.is_vatable ?? true,
-          payment_method: initialData.payment_method || "CASH",
-          vendor_id: initialData.vendor_id || "",
-          reference_number: initialData.reference_number || "",
-          notes: initialData.notes || "",
+          payment_method: "CASH",
+          vendor_id: "",
+          reference_number: "",
+          notes: "",
           is_submitting: false,
         });
+
+        expenseService
+          .getExpenseDetails(initialData.id)
+          .then((res) => {
+            const fullData = res.data;
+
+            setFormData({
+              expense_date: formatToLocalDateInput(fullData.expense_date),
+              category: fullData.category || "",
+              description: fullData.description || "",
+              total_amount: fullData.total_amount || "",
+              is_vatable: fullData.is_vatable ?? true,
+              payment_method: fullData.payment_method || "CASH",
+              vendor_id: fullData.vendor_id || "",
+              reference_number: fullData.reference_number || "",
+              notes: fullData.notes || "",
+              is_submitting: false,
+            });
+          })
+          .catch(() =>
+            setValidationError("Could not fetch full expense details."),
+          );
       }
     }
   }, [isOpen, mode, initialData]);
