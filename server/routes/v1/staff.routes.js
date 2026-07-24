@@ -11,6 +11,7 @@ const VendorController = require("../../controllers/staff/vendor.controller");
 const PurchaseOrderController = require("../../controllers/staff/purchaseOrder.controller");
 const BillController = require("../../controllers/staff/bill.controller");
 const ExpenseController = require("../../controllers/staff/expense.controller");
+const StaffInventoryController = require("../../controllers/staff/inventory.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -73,6 +74,9 @@ const {
   updateExpenseStatusSchema,
   getExpensesSchema,
 } = require("../../validations/staff/expense.schema");
+const {
+  getStaffInventorySchema,
+} = require("../../validations/staff/inventory.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -266,6 +270,20 @@ router.patch(
   "/expenses/:id/status",
   validate(updateExpenseStatusSchema),
   ExpenseController.updateStatus,
+);
+
+// ==========================================
+// MODULE: BRANCH INVENTORY
+// ==========================================
+router.get(
+  "/inventory",
+  validate(getStaffInventorySchema),
+  StaffInventoryController.getInventory,
+);
+router.get("/inventory/:id", StaffInventoryController.getInventoryDetails);
+router.get(
+  "/inventory/:id/movements",
+  StaffInventoryController.getMovementHistory,
 );
 
 module.exports = router;
