@@ -228,6 +228,30 @@ class Inventory {
     return result.rows;
   }
 
+  static async getBranchMovementHistory(itemId, branchId) {
+    const sql = `
+      SELECT 
+        m.id,
+        m.transaction_type,
+        m.transaction_reference,
+        m.quantity_added,
+        m.quantity_deducted,
+        m.remaining_quantity,
+        m.remarks,
+        m.created_at,
+        b.branch_name,
+        u.first_name,
+        u.last_name
+      FROM inventory_movements m
+      JOIN branches b ON m.branch_id = b.id
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.item_id = $1 AND m.branch_id = $2
+      ORDER BY m.created_at DESC
+    `;
+    const result = await query(sql, [itemId, branchId]);
+    return result.rows;
+  }
+
   static async adjustStockTransaction(data, userId) {
     const client = await pool.connect();
 

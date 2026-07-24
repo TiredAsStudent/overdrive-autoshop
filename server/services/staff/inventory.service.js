@@ -74,18 +74,10 @@ class StaffInventoryService {
    * Retrieves movement history, strictly filtering out transactions from other branches.
    */
   static async getItemMovementHistory(itemId, branchId) {
-    // 1. Get the branch name to match against the global ledger
-    const branch = await BranchModel.findById(branchId);
-    if (!branch) throw new Error("Branch configuration error.");
-
-    // 2. Fetch the global history (Reusing your optimized model)
-    const globalHistory = await InventoryModel.getMovementHistory(itemId);
-
-    // 3. BR-02 Compliance: Filter out any movements that did not occur in this branch
-    const branchHistory = globalHistory.filter(
-      (movement) => movement.branch_name === branch.branch_name,
+    const branchHistory = await InventoryModel.getBranchMovementHistory(
+      itemId,
+      branchId,
     );
-
     return branchHistory;
   }
 }

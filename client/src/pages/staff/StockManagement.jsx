@@ -180,9 +180,9 @@ const StockManagement = () => {
         headers={[
           "Item Profile",
           "Unit Cost",
-          "On-Hand Stock",
+          "Branch Stock",
           "Asset Valuation",
-          "Status",
+          "Branch Status",
           "Actions",
         ]}
         data={items}
