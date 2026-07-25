@@ -171,7 +171,8 @@ const StockAdjustments = () => {
             <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex flex-col">
                 <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">
-                  {req.adjustment_number || `ADJ-LEGACY-${req.id}`}
+                  {req.adjustment_number ||
+                    `ADJ-${String(req.id).padStart(5, "0")}`}
                 </span>
                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                   {new Date(req.created_at).toLocaleDateString()}
