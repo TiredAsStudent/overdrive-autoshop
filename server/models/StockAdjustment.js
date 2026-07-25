@@ -198,6 +198,66 @@ class StockAdjustment {
       throw new Error("Request not found or already resolved.");
     return result.rows[0];
   }
+
+  // ==========================================
+  // STAFF INTAKE METHODS
+  // ==========================================
+
+  /**
+   * Enforces VR-06: Checks if a pending request already exists for this item in this branch.
+   */
+  static async checkPendingRequest(itemId, branchId) {
+    const sql = `
+      SELECT id FROM stock_adjustment_requests 
+      WHERE item_id = $1 AND branch_id = $2 AND status = 'PENDING'
+    `;
+    const result = await query(sql, [itemId, branchId]);
+    return result.rows[0];
+  }
+
+  /**
+   * Creates the new adjustment request.
+   */
+  static async createRequest(data) {
+    const sql = `
+      INSERT INTO stock_adjustment_requests (
+        adjustment_number,
+        item_id, 
+        branch_id, 
+        requested_by, 
+        adjustment_type, 
+        current_system_quantity,
+        physical_count,
+        quantity, 
+        reason, 
+        staff_remarks, 
+        status
+      ) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PENDING')
+      RETURNING *
+    `;
+
+    // Auto-generate ADJ-YYYYMM-XXXX string
+    const datePrefix = new Date().toISOString().slice(0, 7).replace("-", "");
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const adjustmentNumber = `ADJ-${datePrefix}-${randomSuffix}`;
+
+    const values = [
+      adjustmentNumber,
+      data.item_id,
+      data.branch_id,
+      data.requested_by,
+      data.adjustment_type,
+      data.current_system_quantity,
+      data.physical_count,
+      data.quantity, // This is the absolute variance
+      data.reason,
+      data.staff_remarks,
+    ];
+
+    const result = await query(sql, values);
+    return result.rows[0];
+  }
 }
 
 module.exports = StockAdjustment;

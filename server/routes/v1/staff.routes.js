@@ -12,6 +12,7 @@ const PurchaseOrderController = require("../../controllers/staff/purchaseOrder.c
 const BillController = require("../../controllers/staff/bill.controller");
 const ExpenseController = require("../../controllers/staff/expense.controller");
 const StaffInventoryController = require("../../controllers/staff/inventory.controller");
+const StaffStockAdjustmentController = require("../../controllers/staff/stockAdjustment.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -77,6 +78,10 @@ const {
 const {
   getStaffInventorySchema,
 } = require("../../validations/staff/inventory.schema");
+const {
+  createStockAdjustmentSchema,
+  getStockAdjustmentsSchema,
+} = require("../../validations/staff/stockAdjustment.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -284,6 +289,20 @@ router.get("/inventory/:id", StaffInventoryController.getInventoryDetails);
 router.get(
   "/inventory/:id/movements",
   StaffInventoryController.getMovementHistory,
+);
+
+// ==========================================
+// MODULE: STOCK ADJUSTMENTS (DISCREPANCY REPORTING)
+// ==========================================
+router.post(
+  "/stock-adjustments",
+  validate(createStockAdjustmentSchema),
+  StaffStockAdjustmentController.createRequest,
+);
+router.get(
+  "/stock-adjustments",
+  validate(getStockAdjustmentsSchema),
+  StaffStockAdjustmentController.getRequests,
 );
 
 module.exports = router;
