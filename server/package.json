@@ -15,10 +15,8 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "crypto": "^1.0.1",
-    "decimal.js": "^10.6.0",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.2",
@@ -31,7 +29,7 @@
     "node-cron": "^4.5.0",
     "nodemailer": "^9.0.1",
     "pg": "^8.20.0",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
