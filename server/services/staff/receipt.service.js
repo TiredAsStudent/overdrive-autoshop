@@ -50,17 +50,30 @@ class ReceiptService {
 
       return completedScan;
     } catch (error) {
-      // Delete the file if AI parsing completely fails
       await ReceiptScanModel.updateStatus(initialScan.id, "DISCARDED");
+
       try {
-        await fs.unlink(file.path);
+        const cleanPath = scanData.file_path.replace(/^\//, "");
+        const absolutePath = path.join(__dirname, "../../", cleanPath);
+        await fs.unlink(absolutePath);
       } catch (unlinkError) {
-        console.error(
-          "Failed to delete corrupted file from disk:",
-          unlinkError,
-        );
+        console.error("Cleanup Error during AI Failure:", unlinkError.message);
       }
-      throw new Error(`OCR Processing failed: ${error.message}`);
+
+      let cleanMessage = "The document was unreadable or the AI engine failed.";
+
+      if (
+        error.message.includes("API_KEY_INVALID") ||
+        error.message.includes("API key not valid")
+      ) {
+        cleanMessage =
+          "AI Engine Offline: The Google Gemini API key is invalid or missing.";
+      } else if (error.message.includes("invalid data structure")) {
+        cleanMessage =
+          "The AI engine could not confidently structure the receipt data.";
+      }
+
+      throw new Error(cleanMessage);
     }
   }
 
@@ -88,12 +101,20 @@ class ReceiptService {
 
     const cancelledScan = await ReceiptScanModel.updateStatus(id, "DISCARDED");
 
-    // Physically delete the file from the server to save space
     try {
-      const absolutePath = path.join(__dirname, "../../../", scan.file_path);
+      const cleanPath = scan.file_path.replace(/^\//, "");
+
+      const absolutePath = path.join(__dirname, "../../", cleanPath);
+
       await fs.unlink(absolutePath);
+      console.log(
+        `[STORAGE] Successfully deleted discarded file: ${absolutePath}`,
+      );
     } catch (unlinkError) {
-      console.error("Storage Cleanup Warning: File might already be deleted.");
+      console.error(
+        "[STORAGE WARNING] Failed to delete file:",
+        unlinkError.message,
+      );
     }
 
     await logSecureAction(
