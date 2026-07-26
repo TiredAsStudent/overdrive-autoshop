@@ -1,5 +1,5 @@
 const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
-const fs = require("fs");
+const fs = require("fs").promises;
 
 class OCRService {
   /**
@@ -89,7 +89,7 @@ class OCRService {
       });
 
       // 3. Prepare the Image/PDF File
-      const fileData = fs.readFileSync(filePath);
+      const fileData = await fs.readFile(filePath);
       const imagePart = {
         inlineData: {
           data: fileData.toString("base64"),
