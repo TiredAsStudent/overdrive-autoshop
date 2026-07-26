@@ -45,7 +45,28 @@ const uploadLogo = multer({
   fileFilter: imageFileFilter,
 });
 
-// Receipt Scan Upload (OCR Engine)
+// Strict Document & Image Filter for OCR (Allows PDF)
+const documentFileFilter = (req, file, cb) => {
+  const allowedExtensions = /jpeg|jpg|png|webp|pdf/;
+  const allowedMimeTypes =
+    /image\/jpeg|image\/png|image\/webp|application\/pdf/;
+
+  const extname = allowedExtensions.test(
+    path.extname(file.originalname).toLowerCase(),
+  );
+  const mimetype = allowedMimeTypes.test(file.mimetype);
+
+  if (extname && mimetype) {
+    return cb(null, true);
+  }
+  cb(
+    new Error(
+      "Strict Upload Policy: Only images (JPEG, PNG) and PDFs are allowed for receipts.",
+    ),
+  );
+};
+
+// Receipt Scan Upload (OCR Engine) - 10MB and supports PDF
 const uploadReceipt = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, receiptDir),
@@ -57,8 +78,8 @@ const uploadReceipt = multer({
       );
     },
   }),
-  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB limit for high-res mobile camera scans
-  fileFilter: imageFileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: documentFileFilter,
 });
 
 module.exports = { uploadLogo, uploadReceipt };

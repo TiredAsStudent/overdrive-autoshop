@@ -13,6 +13,7 @@ const BillController = require("../../controllers/staff/bill.controller");
 const ExpenseController = require("../../controllers/staff/expense.controller");
 const StaffInventoryController = require("../../controllers/staff/inventory.controller");
 const StaffStockAdjustmentController = require("../../controllers/staff/stockAdjustment.controller");
+const ReceiptController = require("../../controllers/staff/receipt.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -26,6 +27,7 @@ const {
   verifyToken,
   requireRole,
 } = require("../../middlewares/authMiddleware");
+const { uploadReceipt } = require("../../middlewares/uploadMiddleware");
 const { ROLES } = require("../../constants/roles");
 
 // Validations
@@ -82,6 +84,7 @@ const {
   createStockAdjustmentSchema,
   getStockAdjustmentsSchema,
 } = require("../../validations/staff/stockAdjustment.schema");
+const { scanIdParamSchema } = require("../../validations/staff/receipt.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -303,6 +306,27 @@ router.get(
   "/stock-adjustments",
   validate(getStockAdjustmentsSchema),
   StaffStockAdjustmentController.getRequests,
+);
+
+// ==========================================
+// MODULE: RECEIPTS (OCR SCANNER)
+// ==========================================
+router.post(
+  "/receipts/scan",
+  uploadReceipt.single("receipt"),
+  ReceiptController.uploadAndScan,
+);
+
+router.get(
+  "/receipts/scan/:id",
+  validate(scanIdParamSchema),
+  ReceiptController.getScanDetails,
+);
+
+router.patch(
+  "/receipts/scan/:id/cancel",
+  validate(scanIdParamSchema),
+  ReceiptController.cancelScan,
 );
 
 module.exports = router;

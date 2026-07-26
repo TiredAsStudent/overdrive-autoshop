@@ -1,24 +1,94 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
 const fs = require("fs");
 
 class OCRService {
   /**
    * Processes a receipt document using Google's Gemini Multimodal AI.
-   * Extracts data directly into structured JSON and calculates a confidence score.
+   * Uses Structured Outputs to guarantee 100% valid JSON syntax.
    */
   static async processDocument(filePath, mimeType) {
     try {
-      // 1. Initialize Gemini AI
       if (!process.env.GEMINI_API_KEY) {
         throw new Error(
           "GEMINI_API_KEY is missing from environment variables.",
         );
       }
+
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      // 1. Define the strict mathematical JSON Schema
+      const receiptSchema = {
+        type: SchemaType.OBJECT,
+        properties: {
+          vendor_name: {
+            type: SchemaType.STRING,
+            description: "Name of the auto shop vendor or store",
+          },
+          receipt_number: {
+            type: SchemaType.STRING,
+            description: "Receipt, Invoice, or Transaction number",
+          },
+          receipt_date: {
+            type: SchemaType.STRING,
+            description: "Date of transaction in YYYY-MM-DD",
+          },
+          subtotal: {
+            type: SchemaType.NUMBER,
+            description: "Subtotal amount before tax",
+          },
+          vat_amount: {
+            type: SchemaType.NUMBER,
+            description: "Tax or VAT amount",
+          },
+          grand_total: {
+            type: SchemaType.NUMBER,
+            description: "Total amount paid",
+          },
+          items: {
+            type: SchemaType.ARRAY,
+            description: "List of purchased parts or items",
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                description: {
+                  type: SchemaType.STRING,
+                  description: "Name of the item",
+                },
+                quantity: {
+                  type: SchemaType.NUMBER,
+                  description: "Quantity purchased",
+                },
+                unit_price: {
+                  type: SchemaType.NUMBER,
+                  description: "Price per unit",
+                },
+                total_price: {
+                  type: SchemaType.NUMBER,
+                  description: "Total price for this line",
+                },
+              },
+              required: [
+                "description",
+                "quantity",
+                "unit_price",
+                "total_price",
+              ],
+            },
+          },
+        },
+        required: ["items"], // Forces the AI to always return the items array
+      };
 
-      // 2. Prepare the Image/PDF File for Gemini
+      // 2. Initialize Model with Strict JSON Mode Enabled
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: receiptSchema,
+        },
+      });
+
+      // 3. Prepare the Image/PDF File
       const fileData = fs.readFileSync(filePath);
       const imagePart = {
         inlineData: {
@@ -27,66 +97,27 @@ class OCRService {
         },
       };
 
-      // 3. Strict Prompt Engineering (Forcing JSON Output)
-      const prompt = `
-        You are a highly accurate OCR and data extraction system for an auto shop accounting system.
-        Analyze this receipt and extract the following information into a strict JSON object.
-        Do not include Markdown blocks (like \`\`\`json). Return ONLY the raw JSON string.
-
-        Expected JSON structure:
-        {
-          "vendor_name": "string or null",
-          "receipt_number": "string or null",
-          "receipt_date": "YYYY-MM-DD or null",
-          "subtotal": number or null,
-          "vat_amount": number or null,
-          "grand_total": number or null,
-          "items": [
-            {
-              "description": "string",
-              "quantity": number,
-              "unit_price": number,
-              "total_price": number
-            }
-          ]
-        }
-
-        Rules:
-        - If a value is missing, illegible, or not applicable, output null.
-        - Extract numbers as raw floats (e.g., 5040.00). Do not include currency symbols or commas.
-        - Look closely for automotive parts like "Brake Pads", "Oil Filter", etc., in the items list.
-      `;
-
-      // 4. Call the Gemini API
+      // 4. Send the Request
+      const prompt =
+        "Analyze this receipt. Extract the financial details and all line items.";
       const result = await model.generateContent([prompt, imagePart]);
+
+      // Because we used Structured Outputs, this text is GUARANTEED to be perfectly valid JSON.
       const responseText = result.response.text();
+      const extractedJSON = JSON.parse(responseText);
 
-      // 5. Clean & Parse Response (Safeguard against AI formatting)
-      const cleanText = responseText
-        .replace(/```json/gi, "")
-        .replace(/```/gi, "")
-        .trim();
-
-      let extractedJSON;
-      try {
-        extractedJSON = JSON.parse(cleanText);
-      } catch (parseError) {
-        console.error("Failed to parse Gemini output:", cleanText);
-        throw new Error("AI returned an invalid data structure.");
-      }
-
-      // 6. Calculate Confidence Score (Based on FRS Business Rules)
+      // 5. Calculate Confidence Score (Based on FRS Business Rules)
       let score = 0;
       if (extractedJSON.vendor_name) score += 25;
       if (extractedJSON.grand_total) score += 30;
       if (extractedJSON.receipt_date) score += 25;
       if (extractedJSON.receipt_number) score += 20;
 
-      // 7. Return Formatted Data for the Database
+      // 6. Return Formatted Data for the Database
       return {
         extracted_data: JSON.stringify(extractedJSON),
         confidence_score: score,
-        raw_ocr_text: cleanText,
+        raw_ocr_text: responseText,
       };
     } catch (error) {
       console.error("[OCR Service Error]:", error);
