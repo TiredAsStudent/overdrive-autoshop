@@ -1,4 +1,4 @@
-const { query } = require("../config/db");
+const { query, pool } = require("../config/db");
 
 class Expense {
   static async generateExpenseCode() {
@@ -192,6 +192,85 @@ class Expense {
 
     const result = await query(sql, values);
     return result.rows;
+  }
+
+  static async createFromVerification(
+    scanId,
+    data,
+    activeUserId,
+    activeBranchId,
+  ) {
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const scanRes = await client.query(
+        `SELECT * FROM receipt_scans WHERE id = $1 FOR UPDATE`,
+        [scanId],
+      );
+      const scan = scanRes.rows[0];
+
+      if (!scan) throw new Error("Receipt scan session not found.");
+      if (scan.branch_id !== activeBranchId)
+        throw new Error("Unauthorized: Cross-branch verification denied.");
+      if (scan.status !== "PENDING_VERIFICATION") {
+        throw new Error(
+          `Transaction Rejected: This receipt is currently marked as ${scan.status}.`,
+        );
+      }
+
+      const expense_number = await this.generateExpenseCode();
+
+      const description = `OCR Verified Expense: ${data.vendor_name}`;
+
+      const insertSql = `
+        INSERT INTO expenses (
+          expense_number, branch_id, vendor_id, vendor_name, category, description,
+          reference_number, expense_date, is_vatable, subtotal, vat_amount, total_amount,
+          payment_method, status, scan_id, receipt_url, line_items, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) 
+        RETURNING *
+      `;
+
+      const values = [
+        expense_number,
+        scan.branch_id,
+        data.vendor_id || null,
+        data.vendor_name,
+        data.category,
+        description,
+        data.receipt_number || null,
+        data.expense_date,
+        data.is_vatable,
+        data.subtotal,
+        data.vat_amount,
+        data.total_amount,
+        data.payment_method,
+        "APPROVED",
+        scan.id,
+        scan.file_path,
+        JSON.stringify(data.line_items),
+        activeUserId,
+      ];
+
+      const expRes = await client.query(insertSql, values);
+      const newExpense = expRes.rows[0];
+
+      await client.query(
+        `UPDATE receipt_scans SET status = 'VERIFIED', updated_at = NOW() WHERE id = $1`,
+        [scan.id],
+      );
+
+      await client.query("COMMIT");
+
+      return { newExpense, scan };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 

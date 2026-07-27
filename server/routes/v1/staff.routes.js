@@ -84,7 +84,10 @@ const {
   createStockAdjustmentSchema,
   getStockAdjustmentsSchema,
 } = require("../../validations/staff/stockAdjustment.schema");
-const { scanIdParamSchema } = require("../../validations/staff/receipt.schema");
+const {
+  scanIdParamSchema,
+  verifyReceiptSchema,
+} = require("../../validations/staff/receipt.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
@@ -327,6 +330,12 @@ router.patch(
   "/receipts/scan/:id/cancel",
   validate(scanIdParamSchema),
   ReceiptController.cancelScan,
+);
+
+router.post(
+  "/receipts/scan/:id/verify",
+  validate(verifyReceiptSchema),
+  ReceiptController.verifyReceipt,
 );
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const fs = require("fs").promises;
 const path = require("path");
+const ExpenseModel = require("../../models/Expense");
 const ReceiptScanModel = require("../../models/ReceiptScan");
 const OCRService = require("../ocr.service");
 const { logSecureAction } = require("../../utils/auditLogger");
@@ -130,6 +131,44 @@ class ReceiptService {
     );
 
     return cancelledScan;
+  }
+
+  static async verifyAndPostExpense(scanId, data, activeUser, ipAddress) {
+    try {
+      const { newExpense, scan } = await ExpenseModel.createFromVerification(
+        scanId,
+        data,
+        activeUser.id,
+        activeUser.branchId,
+      );
+
+      await logSecureAction(
+        activeUser.id,
+        scan.branch_id,
+        "RECEIPT_VERIFIED_AND_POSTED",
+        "WARNING",
+        ipAddress,
+        "expenses",
+        newExpense.id,
+        { scan_id: scan.id },
+        {
+          expense_number: newExpense.expense_number,
+          total: newExpense.total_amount,
+        },
+      );
+
+      return newExpense;
+    } catch (error) {
+      if (
+        error.code === "23505" &&
+        error.constraint === "idx_unique_expense_ref"
+      ) {
+        throw new Error(
+          `The Receipt Number '${data.receipt_number}' has already been recorded for this vendor.`,
+        );
+      }
+      throw error;
+    }
   }
 }
 

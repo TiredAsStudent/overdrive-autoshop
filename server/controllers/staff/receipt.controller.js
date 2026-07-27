@@ -69,6 +69,31 @@ class ReceiptController {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
+
+  static async verifyReceipt(req, res) {
+    try {
+      const expense = await ReceiptService.verifyAndPostExpense(
+        req.params.id,
+        req.body,
+        req.user,
+        req.ip,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.CREATED,
+        expense,
+        "Receipt successfully verified and posted to operational expenses.",
+      );
+    } catch (error) {
+      const code =
+        error.message.includes("already been recorded") ||
+        error.message.includes("Transaction Rejected")
+          ? STATUS_CODES.CONFLICT
+          : STATUS_CODES.BAD_REQUEST;
+
+      return sendError(res, code, error.message);
+    }
+  }
 }
 
 module.exports = ReceiptController;
