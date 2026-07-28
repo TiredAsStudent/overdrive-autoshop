@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { receiptService } from "../../services/staff/receipt.service";
+import { catalogService } from "../../services/staff/catalog.service";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 
 // Standard GL Expense Categories for the Staff
@@ -42,6 +43,8 @@ const ReceiptVerification = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scanData, setScanData] = useState(null);
   const [confidenceScore, setConfidenceScore] = useState(0);
+  const [vatRate, setVatRate] = useState(0.12);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -71,13 +74,38 @@ const ReceiptVerification = () => {
     onConfirm: () => {},
   });
 
-  // Fetch Data on Mount
   useEffect(() => {
-    const fetchScanDetails = async () => {
+    let isMounted = true;
+    const handleResize = () => {
+      if (isMounted) setIsDesktop(window.innerWidth >= 1024);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchDetails = async () => {
       try {
         setLoading(true);
-        const res = await receiptService.getScanDetails(id);
+
+        const [res, settingsRes] = await Promise.all([
+          receiptService.getScanDetails(id),
+          catalogService
+            .getSettings()
+            .catch(() => ({ data: { data: { vat_percentage: 12 } } })),
+        ]);
+
+        if (!isMounted) return;
+
         const data = res.data;
+        const systemVat =
+          parseFloat(settingsRes.data?.data?.vat_percentage || 12) / 100;
+        setVatRate(systemVat);
 
         if (data.status !== "PENDING_VERIFICATION") {
           showToast(`This receipt is already ${data.status}.`, "warning");
@@ -110,14 +138,20 @@ const ReceiptVerification = () => {
 
         setLineItems(parsed.items || []);
       } catch (error) {
-        showToast(error.message, "error");
-        navigate("/staff/receipts/receipt-scanner");
+        if (isMounted) {
+          showToast(error.message, "error");
+          navigate("/staff/receipts/receipt-scanner");
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
-    if (id) fetchScanDetails();
+    if (id) fetchDetails();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id, navigate, showToast]);
 
   // Handle Form Inputs
@@ -155,7 +189,6 @@ const ReceiptVerification = () => {
     setLineItems(lineItems.filter((_, i) => i !== index));
   };
 
-  // Auto-Calculate Grand Totals based on Line Items
   const handleAutoCalculate = () => {
     const calculatedTotal = lineItems.reduce(
       (sum, item) => sum + parseFloat(item.total_price || 0),
@@ -166,7 +199,8 @@ const ReceiptVerification = () => {
     let vat = 0;
 
     if (formData.is_vatable) {
-      subtotal = calculatedTotal / 1.12;
+      const vatDivisor = 1 + vatRate;
+      subtotal = calculatedTotal / vatDivisor;
       vat = calculatedTotal - subtotal;
     }
 
@@ -177,7 +211,7 @@ const ReceiptVerification = () => {
       total_amount: parseFloat(calculatedTotal.toFixed(2)),
     }));
 
-    showToast("Financials recalculated based on line items.", "info");
+    showToast(`Financials recalculated using ${vatRate * 100}% VAT.`, "info");
   };
 
   // Submission & Cancellation
@@ -320,10 +354,12 @@ const ReceiptVerification = () => {
             </div>
           </div>
 
-          <div className="flex-1 relative bg-slate-100/50 dark:bg-[#0B1120] overflow-hidden flex items-center justify-center overflow-auto custom-scrollbar cursor-move">
+          <div
+            className={`flex-1 relative bg-slate-100/50 dark:bg-[#0B1120] overflow-hidden flex items-center justify-center overflow-auto custom-scrollbar ${isDesktop ? "cursor-move" : "cursor-auto"}`}
+          >
             {scanData?.file_path && (
               <motion.div
-                drag
+                drag={isDesktop}
                 dragConstraints={{
                   left: -500,
                   right: 500,
@@ -332,7 +368,7 @@ const ReceiptVerification = () => {
                 }}
                 animate={{ scale: zoom, rotate: rotation }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="w-full h-full flex items-center justify-center p-4"
+                className={`w-full h-full flex items-center justify-center p-4 ${!isDesktop ? "touch-auto" : "touch-none"}`}
               >
                 {scanData.mime_type === "application/pdf" ? (
                   <iframe
