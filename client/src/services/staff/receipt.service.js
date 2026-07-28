@@ -43,4 +43,18 @@ export const receiptService = {
       );
     }
   },
+
+  verifyAndPostExpense: async (id, verificationData) => {
+    try {
+      const response = await api.post(
+        `/staff/receipts/scan/${id}/verify`,
+        verificationData,
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message || "Failed to verify receipt.",
+      );
+    }
+  },
 };

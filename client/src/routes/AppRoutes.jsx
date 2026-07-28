@@ -598,7 +598,7 @@ const LocationBasedRoutes = ({ user }) => {
               }
             />
             <Route
-              path="receipts/receipt-verification"
+              path="receipts/verification/:id"
               element={
                 <PageWrapper>
                   <StaffReceiptVerification />

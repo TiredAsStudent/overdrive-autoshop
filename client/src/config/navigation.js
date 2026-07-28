@@ -169,10 +169,6 @@ export const staffMenu = [
     icon: ScanText,
     items: [
       { name: "Receipt Scanner", path: "/staff/receipts/receipt-scanner" },
-      {
-        name: "Receipt Verification",
-        path: "/staff/receipts/receipt-verification",
-      },
       { name: "Receipt History", path: "/staff/receipts/receipt-history" },
     ],
   },
