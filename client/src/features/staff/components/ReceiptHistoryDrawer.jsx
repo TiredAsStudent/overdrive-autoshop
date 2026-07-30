@@ -27,6 +27,8 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
   const [rotation, setRotation] = useState(0);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
 
+  const [imageError, setImageError] = useState(false);
+
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
     window.addEventListener("resize", handleResize);
@@ -39,6 +41,7 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
       setError("");
       setZoom(1);
       setRotation(0);
+      setImageError(false);
       receiptService
         .getHistoryDetails(scanId)
         .then((res) => setData(res.data))
@@ -183,12 +186,25 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                             src={fileUrl}
                             className="w-full h-[90%] rounded-xl shadow-2xl bg-white pointer-events-none"
                             title="Document PDF"
+                            onError={() => setImageError(true)}
                           />
+                        ) : imageError ? (
+                          <div className="flex flex-col items-center justify-center p-10 bg-slate-100 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-center shadow-lg">
+                            <FileText size={48} className="mb-4 opacity-50" />
+                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-1">
+                              File Unavailable
+                            </h3>
+                            <p className="text-[10px] font-medium max-w-[200px]">
+                              The source document could not be loaded from the
+                              storage server.
+                            </p>
+                          </div>
                         ) : (
                           <img
                             src={fileUrl}
                             alt="Archived Receipt"
                             className="max-w-full max-h-full object-contain shadow-2xl rounded-xl pointer-events-none"
+                            onError={() => setImageError(true)}
                           />
                         )}
                       </motion.div>
