@@ -22,7 +22,7 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Viewer States (No HTML5 Canvas)
+  // Viewer States
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
@@ -65,11 +65,11 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
 
   const handleNavigateToExpense = () => {
     onClose();
-    // Navigate to expenses and search for this exact expense number
     navigate(`/staff/purchases/expenses?search=${data.expense_number}`);
   };
 
   const fileUrl = `${import.meta.env.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:5000"}${data?.file_path}`;
+  const isPdf = data?.original_filename?.toLowerCase().endsWith(".pdf");
 
   return (
     <AnimatePresence>
@@ -135,10 +135,12 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                 <>
                   {/* LEFT PANE: Document Viewer */}
                   <div className="w-full lg:w-[55%] h-[40vh] lg:h-full bg-slate-200 dark:bg-[#0B1120] relative flex flex-col border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800">
+                    {/* Viewer Controls */}
                     <div className="absolute top-4 left-4 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur px-3 py-2 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-2">
                       <button
                         onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
                         className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors cursor-pointer"
+                        title="Zoom Out"
                       >
                         <ZoomOut size={16} />
                       </button>
@@ -148,6 +150,7 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                       <button
                         onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
                         className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors cursor-pointer"
+                        title="Zoom In"
                       >
                         <ZoomIn size={16} />
                       </button>
@@ -155,9 +158,29 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                       <button
                         onClick={() => setRotation((r) => r + 90)}
                         className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors cursor-pointer"
+                        title="Rotate"
                       >
                         <RotateCw size={16} />
                       </button>
+
+                      {/* PDF Fallback Link */}
+                      {isPdf && (
+                        <>
+                          <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors flex items-center gap-1.5 cursor-pointer"
+                            title="Open PDF in new tab"
+                          >
+                            <ExternalLink size={16} />
+                            <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">
+                              Open PDF
+                            </span>
+                          </a>
+                        </>
+                      )}
                     </div>
 
                     <div
@@ -179,9 +202,7 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                         }}
                         className={`w-full h-full flex items-center justify-center p-8 ${!isDesktop ? "touch-auto" : "touch-none"}`}
                       >
-                        {data.original_filename
-                          ?.toLowerCase()
-                          .endsWith(".pdf") ? (
+                        {isPdf ? (
                           <iframe
                             src={fileUrl}
                             className="w-full h-[90%] rounded-xl shadow-2xl bg-white pointer-events-none"
