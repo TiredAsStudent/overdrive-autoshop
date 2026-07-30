@@ -4,6 +4,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const path = require("path");
+const fs = require("fs").promises;
 
 // Import Database & Utilities
 const { connectDB, query } = require("./config/db");
@@ -101,6 +102,48 @@ cron.schedule("0 0 * * *", async () => {
     );
   } catch (err) {
     console.error("[CRON] Automated backup failed:", err.message);
+  }
+});
+
+cron.schedule("0 2 * * *", async () => {
+  console.log("[CRON] Running Receipt Garbage Collection...");
+  try {
+    const staleScans = await query(
+      `SELECT id, file_path FROM receipt_scans 
+       WHERE status IN ('PROCESSING', 'PENDING_VERIFICATION') 
+       AND created_at < NOW() - INTERVAL '24 hours'`,
+    );
+
+    if (staleScans.rows.length > 0) {
+      for (const scan of staleScans.rows) {
+        try {
+          const cleanPath = scan.file_path.replace(/^\//, "");
+          const absolutePath = path.join(__dirname, cleanPath);
+          await fs.unlink(absolutePath);
+        } catch (err) {
+          if (err.code !== "ENOENT") {
+            console.error(
+              `[CRON] Failed to delete physical file for scan ${scan.id}:`,
+              err.message,
+            );
+          }
+        }
+
+        await query(
+          `UPDATE receipt_scans SET status = 'DISCARDED' WHERE id = $1`,
+          [scan.id],
+        );
+      }
+      console.log(
+        `[CRON] Cleaned up ${staleScans.rows.length} orphaned receipt scans.`,
+      );
+    } else {
+      console.log(
+        "[CRON] No orphaned receipts found. Server storage is clean.",
+      );
+    }
+  } catch (err) {
+    console.error("[CRON] Receipt Garbage Collection failed:", err.message);
   }
 });
 

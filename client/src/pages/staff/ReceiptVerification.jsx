@@ -296,7 +296,7 @@ const ReceiptVerification = () => {
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
         <div className="flex items-center gap-3 sm:gap-4">
           <button
-            onClick={() => navigate("/staff/receipts/receipt-scanner")}
+            onClick={handleCancel}
             className="p-2 sm:p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl sm:rounded-2xl transition-colors text-slate-600 dark:text-slate-300 cursor-pointer"
           >
             <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
