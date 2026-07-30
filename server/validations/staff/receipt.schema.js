@@ -53,16 +53,22 @@ const getReceiptHistorySchema = z.object({
       vendor_id: z.string().optional(),
       start_date: z
         .string()
-        .refine((val) => !isNaN(Date.parse(val)), "Invalid start date format")
-        .optional(),
+        .optional()
+
+        .refine(
+          (val) => !val || !isNaN(Date.parse(val)),
+          "Invalid start date format",
+        ),
       end_date: z
         .string()
-        .refine((val) => !isNaN(Date.parse(val)), "Invalid end date format")
-        .optional(),
+        .optional()
+        .refine(
+          (val) => !val || !isNaN(Date.parse(val)),
+          "Invalid end date format",
+        ),
     })
     .optional(),
 });
-
 module.exports = {
   scanIdParamSchema,
   verifyReceiptSchema,

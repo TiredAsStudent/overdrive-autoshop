@@ -67,16 +67,11 @@ export const receiptService = {
     endDate = "",
   ) => {
     try {
-      const response = await api.get("/staff/receipts/history", {
-        params: {
-          page,
-          limit,
-          search,
-          vendor_id: vendorId,
-          start_date: startDate,
-          end_date: endDate,
-        },
-      });
+      const params = { page, limit, search, vendor_id: vendorId };
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+
+      const response = await api.get("/staff/receipts/history", { params });
       return response.data;
     } catch (error) {
       throw new Error(
