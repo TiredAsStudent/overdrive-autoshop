@@ -57,4 +57,44 @@ export const receiptService = {
       );
     }
   },
+
+  getReceiptHistory: async (
+    page = 1,
+    limit = 10,
+    search = "",
+    vendorId = "all",
+    startDate = "",
+    endDate = "",
+  ) => {
+    try {
+      const response = await api.get("/staff/receipts/history", {
+        params: {
+          page,
+          limit,
+          search,
+          vendor_id: vendorId,
+          start_date: startDate,
+          end_date: endDate,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to load receipt history.",
+      );
+    }
+  },
+
+  getHistoryDetails: async (id) => {
+    try {
+      const response = await api.get(`/staff/receipts/history/${id}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to load history details.",
+      );
+    }
+  },
 };
