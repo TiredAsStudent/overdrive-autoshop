@@ -170,6 +170,81 @@ class ReceiptService {
       throw error;
     }
   }
+
+  static async getReceiptHistory(
+    page = 1,
+    limit = 10,
+    search = "",
+    vendorId = "all",
+    startDate,
+    endDate,
+    activeUser,
+  ) {
+    const offset = (page - 1) * limit;
+    const branchId = activeUser.branchId;
+
+    const [totalItems, historyRecords] = await Promise.all([
+      ReceiptScanModel.countHistoryFiltered(
+        search,
+        vendorId,
+        startDate,
+        endDate,
+        branchId,
+      ),
+      ReceiptScanModel.findHistoryPaginated(
+        limit,
+        offset,
+        search,
+        vendorId,
+        startDate,
+        endDate,
+        branchId,
+      ),
+    ]);
+
+    return {
+      historyRecords,
+      pagination: {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
+  }
+
+  static async getHistoryDetails(id, activeUser, ipAddress) {
+    const historyDetail = await ReceiptScanModel.findHistoryDetailsById(id);
+
+    if (!historyDetail) {
+      throw new Error("Archived receipt not found or not fully verified.");
+    }
+
+    const scanValidation = await ReceiptScanModel.findById(id);
+    if (
+      activeUser.role === "STAFF" &&
+      scanValidation.branch_id !== activeUser.branchId
+    ) {
+      throw new Error("Unauthorized: Cross-branch access denied.");
+    }
+
+    await logSecureAction(
+      activeUser.id,
+      activeUser.branchId,
+      "VIEW_RECEIPT_HISTORY_DETAILS",
+      "INFO",
+      ipAddress,
+      "receipt_scans",
+      id,
+      null,
+      {
+        expense_number: historyDetail.expense_number,
+        filename: historyDetail.original_filename,
+      },
+    );
+
+    return historyDetail;
+  }
 }
 
 module.exports = ReceiptService;

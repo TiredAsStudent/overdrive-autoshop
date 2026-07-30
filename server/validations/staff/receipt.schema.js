@@ -44,7 +44,27 @@ const verifyReceiptSchema = z.object({
   }),
 });
 
+const getReceiptHistorySchema = z.object({
+  query: z
+    .object({
+      page: z.string().regex(/^\d+$/).optional(),
+      limit: z.string().regex(/^\d+$/).optional(),
+      search: z.string().optional(),
+      vendor_id: z.string().optional(),
+      start_date: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), "Invalid start date format")
+        .optional(),
+      end_date: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), "Invalid end date format")
+        .optional(),
+    })
+    .optional(),
+});
+
 module.exports = {
   scanIdParamSchema,
   verifyReceiptSchema,
+  getReceiptHistorySchema,
 };

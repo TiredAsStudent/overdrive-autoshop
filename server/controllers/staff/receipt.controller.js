@@ -94,6 +94,60 @@ class ReceiptController {
       return sendError(res, code, error.message);
     }
   }
+
+  static async getReceiptHistory(req, res) {
+    try {
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const { search, vendor_id, start_date, end_date } = req.query;
+
+      const result = await ReceiptService.getReceiptHistory(
+        page,
+        limit,
+        search,
+        vendor_id,
+        start_date,
+        end_date,
+        req.user,
+      );
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        result,
+        "Archived receipt history retrieved successfully.",
+      );
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to fetch receipt history.",
+        error.message,
+      );
+    }
+  }
+
+  static async getHistoryDetails(req, res) {
+    try {
+      const historyDetail = await ReceiptService.getHistoryDetails(
+        req.params.id,
+        req.user,
+        req.ip,
+      );
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        historyDetail,
+        "Receipt history details retrieved successfully.",
+      );
+    } catch (error) {
+      const code = error.message.includes("Unauthorized")
+        ? STATUS_CODES.FORBIDDEN
+        : STATUS_CODES.NOT_FOUND;
+      return sendError(res, code, error.message);
+    }
+  }
 }
 
 module.exports = ReceiptController;

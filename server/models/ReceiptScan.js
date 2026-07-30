@@ -50,6 +50,111 @@ class ReceiptScan {
     const result = await query(sql, [id]);
     return result.rows[0];
   }
+
+  static async countHistoryFiltered(
+    search,
+    vendorId,
+    startDate,
+    endDate,
+    branchId,
+  ) {
+    let sql = `
+      SELECT COUNT(DISTINCT rs.id) 
+      FROM receipt_scans rs
+      INNER JOIN expenses e ON e.scan_id = rs.id
+      WHERE rs.branch_id = $1 AND rs.status = 'VERIFIED'
+    `;
+    const values = [branchId];
+    let paramIdx = 2;
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx} OR rs.original_filename ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (vendorId && vendorId !== "all") {
+      sql += ` AND e.vendor_id = $${paramIdx}`;
+      values.push(vendorId);
+      paramIdx++;
+    }
+    if (startDate) {
+      sql += ` AND e.expense_date >= $${paramIdx}`;
+      values.push(startDate);
+      paramIdx++;
+    }
+    if (endDate) {
+      sql += ` AND e.expense_date <= $${paramIdx}`;
+      values.push(endDate);
+      paramIdx++;
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findHistoryPaginated(
+    limit,
+    offset,
+    search,
+    vendorId,
+    startDate,
+    endDate,
+    branchId,
+  ) {
+    let sql = `
+      SELECT 
+        rs.id, rs.original_filename, rs.confidence_score, rs.created_at as verification_date,
+        e.expense_number, e.expense_date, e.vendor_name, e.total_amount as grand_total, e.status as expense_status
+      FROM receipt_scans rs
+      INNER JOIN expenses e ON e.scan_id = rs.id
+      WHERE rs.branch_id = $1 AND rs.status = 'VERIFIED'
+    `;
+    const values = [branchId];
+    let paramIdx = 2;
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx} OR rs.original_filename ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (vendorId && vendorId !== "all") {
+      sql += ` AND e.vendor_id = $${paramIdx}`;
+      values.push(vendorId);
+      paramIdx++;
+    }
+    if (startDate) {
+      sql += ` AND e.expense_date >= $${paramIdx}`;
+      values.push(startDate);
+      paramIdx++;
+    }
+    if (endDate) {
+      sql += ` AND e.expense_date <= $${paramIdx}`;
+      values.push(endDate);
+      paramIdx++;
+    }
+
+    sql += ` ORDER BY rs.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
+  static async findHistoryDetailsById(id) {
+    const sql = `
+      SELECT 
+        rs.id, rs.original_filename, rs.file_path, rs.confidence_score, rs.created_at as verification_date, rs.extracted_data,
+        e.expense_number, e.expense_date, e.vendor_name, e.subtotal, e.vat_amount, e.total_amount as grand_total, 
+        e.status as expense_status, e.line_items,
+        u.first_name as verified_by_first, u.last_name as verified_by_last
+      FROM receipt_scans rs
+      INNER JOIN expenses e ON e.scan_id = rs.id
+      LEFT JOIN users u ON e.created_by = u.id
+      WHERE rs.id = $1 AND rs.status = 'VERIFIED'
+    `;
+    const result = await query(sql, [id]);
+    return result.rows[0];
+  }
 }
 
 module.exports = ReceiptScan;

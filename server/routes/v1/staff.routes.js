@@ -87,6 +87,7 @@ const {
 const {
   scanIdParamSchema,
   verifyReceiptSchema,
+  getReceiptHistorySchema,
 } = require("../../validations/staff/receipt.schema");
 
 // ==========================================
@@ -336,6 +337,18 @@ router.post(
   "/receipts/scan/:id/verify",
   validate(verifyReceiptSchema),
   ReceiptController.verifyReceipt,
+);
+
+router.get(
+  "/receipts/history",
+  validate(getReceiptHistorySchema),
+  ReceiptController.getReceiptHistory,
+);
+
+router.get(
+  "/receipts/history/:id",
+  validate(scanIdParamSchema),
+  ReceiptController.getHistoryDetails,
 );
 
 module.exports = router;
