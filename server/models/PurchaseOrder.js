@@ -151,7 +151,7 @@ class PurchaseOrder {
   static async findById(id) {
     const sql = `
       SELECT po.*, v.business_name as vendor_name, v.contact_person, v.email as vendor_email, 
-             b.branch_name, u.first_name as created_by_name
+             b.branch_name, u.first_name as created_by_name, u.last_name as created_by_last_name
       FROM purchase_orders po
       JOIN vendors v ON po.vendor_id = v.id
       JOIN branches b ON po.branch_id = b.id
@@ -177,6 +177,17 @@ class PurchaseOrder {
   static async updateStatus(id, status) {
     const sql = `UPDATE purchase_orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
     const result = await query(sql, [status, id]);
+    return result.rows[0];
+  }
+
+  static async processApprovalDecision(id, status, remarks) {
+    const sql = `
+      UPDATE purchase_orders 
+      SET status = $1, approval_remarks = $2, updated_at = NOW() 
+      WHERE id = $3 AND status = 'PENDING_APPROVAL'
+      RETURNING *
+    `;
+    const result = await query(sql, [status, remarks, id]);
     return result.rows[0];
   }
 
@@ -223,11 +234,12 @@ class PurchaseOrder {
     branchId,
   ) {
     let sql = `
-      SELECT po.id, po.purchase_order_number, po.grand_total, po.status, po.expected_delivery_date, po.created_at,
-             v.business_name as vendor_name, b.branch_name
+      SELECT po.id, po.purchase_order_number, po.grand_total, po.status, po.expected_delivery_date, po.created_at, po.updated_at,
+             v.business_name as vendor_name, b.branch_name, u.first_name as created_by_name
       FROM purchase_orders po
       JOIN vendors v ON po.vendor_id = v.id
       JOIN branches b ON po.branch_id = b.id
+      LEFT JOIN users u ON po.created_by = u.id
     `;
     const conditions = [];
     const values = [];
@@ -257,7 +269,74 @@ class PurchaseOrder {
     }
 
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
-    sql += ` ORDER BY po.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    sql += ` ORDER BY po.updated_at DESC, po.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
+  static async countApprovalHistory(search, vendorId, branchId) {
+    let sql = `SELECT COUNT(DISTINCT po.id) FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id WHERE po.status IN ('APPROVED', 'REJECTED')`;
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      sql += ` AND (po.purchase_order_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (vendorId && vendorId !== "all") {
+      sql += ` AND po.vendor_id = $${paramIdx}`;
+      values.push(vendorId);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND po.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedApprovalHistory(
+    limit,
+    offset,
+    search,
+    vendorId,
+    branchId,
+  ) {
+    let sql = `
+      SELECT po.id, po.purchase_order_number, po.grand_total, po.status, po.expected_delivery_date, po.updated_at as processed_at,
+             v.business_name as vendor_name, b.branch_name, u.first_name as created_by_name
+      FROM purchase_orders po
+      JOIN vendors v ON po.vendor_id = v.id
+      JOIN branches b ON po.branch_id = b.id
+      LEFT JOIN users u ON po.created_by = u.id
+      WHERE po.status IN ('APPROVED', 'REJECTED')
+    `;
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      sql += ` AND (po.purchase_order_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (vendorId && vendorId !== "all") {
+      sql += ` AND po.vendor_id = $${paramIdx}`;
+      values.push(vendorId);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND po.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    sql += ` ORDER BY po.updated_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
     values.push(limit, offset);
 
     const result = await query(sql, values);

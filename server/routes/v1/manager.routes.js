@@ -7,12 +7,14 @@ const InventoryController = require("../../controllers/manager/inventory.control
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 const StockAdjustmentController = require("../../controllers/manager/stockAdjustment.controller");
 const StockTransferController = require("../../controllers/manager/stockTransfer.controller");
+const POApprovalController = require("../../controllers/manager/poApproval.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
+const branchGuard = require("../../middlewares/branchMiddleware");
 const {
   verifyToken,
   requireRole,
@@ -43,11 +45,17 @@ const {
   executeTransferSchema,
   getTransfersSchema,
 } = require("../../validations/manager/transfer.schema");
+const {
+  getPoApprovalsSchema,
+  approvePoSchema,
+  rejectPoSchema,
+} = require("../../validations/manager/poApproval.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
 // ==========================================
 router.use(verifyToken, requireRole(ROLES.MANAGER, ROLES.ADMIN));
+router.use(branchGuard);
 
 // ==========================================
 // MODULE: SERVICE CATALOG
@@ -145,6 +153,31 @@ router.post(
   "/transfers",
   validate(executeTransferSchema),
   StockTransferController.executeTransfer,
+);
+
+// ==========================================
+// MODULE: PURCHASE ORDER APPROVALS
+// ==========================================
+router.get(
+  "/approvals/purchase-orders/pending",
+  validate(getPoApprovalsSchema),
+  POApprovalController.getPendingApprovals,
+);
+router.get(
+  "/approvals/purchase-orders/history",
+  validate(getPoApprovalsSchema),
+  POApprovalController.getApprovalHistory,
+);
+router.get("/approvals/purchase-orders/:id", POApprovalController.getPODetails);
+router.patch(
+  "/approvals/purchase-orders/:id/approve",
+  validate(approvePoSchema),
+  POApprovalController.approvePO,
+);
+router.patch(
+  "/approvals/purchase-orders/:id/reject",
+  validate(rejectPoSchema),
+  POApprovalController.rejectPO,
 );
 
 module.exports = router;
