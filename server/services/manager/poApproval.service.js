@@ -91,7 +91,6 @@ class POApprovalService {
       id,
       actionStatus,
       remarks || null,
-      activeUser,
     );
 
     if (!updatedPO) {
@@ -113,7 +112,7 @@ class POApprovalService {
       "purchase_orders",
       id,
       { status: po.status },
-      { status: actionStatus, remarks: updatedPO.approval_remarks },
+      { status: actionStatus, remarks },
     );
 
     return updatedPO;
