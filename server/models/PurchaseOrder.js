@@ -180,15 +180,46 @@ class PurchaseOrder {
     return result.rows[0];
   }
 
-  static async processApprovalDecision(id, status, remarks) {
-    const sql = `
-      UPDATE purchase_orders 
-      SET status = $1, approval_remarks = $2, updated_at = NOW() 
-      WHERE id = $3 AND status = 'PENDING_APPROVAL'
-      RETURNING *
-    `;
-    const result = await query(sql, [status, remarks, id]);
-    return result.rows[0];
+  static async processApprovalDecision(id, status, remarks, activeUser) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const lockSql = `SELECT status FROM purchase_orders WHERE id = $1 FOR UPDATE`;
+      const lockRes = await client.query(lockSql, [id]);
+
+      if (lockRes.rows.length === 0) {
+        throw new Error("Purchase Order not found.");
+      }
+
+      if (lockRes.rows[0].status !== "PENDING_APPROVAL") {
+        throw new Error(
+          "Conflict: This Purchase Order is no longer pending. It may have been processed by another manager.",
+        );
+      }
+
+      const signature = `\n\n[Audit Trace: Processed by Manager ID ${activeUser.id} - ${activeUser.first_name || "Authorized User"}]`;
+      let finalRemarks = remarks
+        ? remarks.trim()
+        : "Approved without additional remarks.";
+      finalRemarks += signature;
+
+      const updateSql = `
+        UPDATE purchase_orders 
+        SET status = $1, approval_remarks = $2, updated_at = NOW() 
+        WHERE id = $3
+        RETURNING *
+      `;
+      const result = await client.query(updateSql, [status, finalRemarks, id]);
+
+      await client.query("COMMIT");
+      return result.rows[0];
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async countFiltered(search, status, vendorId, branchId) {
