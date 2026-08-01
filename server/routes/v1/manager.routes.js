@@ -8,6 +8,7 @@ const BranchController = require("../../controllers/sysadmin/branch.controller")
 const StockAdjustmentController = require("../../controllers/manager/stockAdjustment.controller");
 const StockTransferController = require("../../controllers/manager/stockTransfer.controller");
 const POApprovalController = require("../../controllers/manager/poApproval.controller");
+const ExpenseApprovalController = require("../../controllers/manager/expenseApproval.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -50,6 +51,11 @@ const {
   approvePoSchema,
   rejectPoSchema,
 } = require("../../validations/manager/poApproval.schema");
+const {
+  getExpenseApprovalsSchema,
+  approveExpenseSchema,
+  rejectExpenseSchema,
+} = require("../../validations/manager/expenseApproval.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -178,6 +184,34 @@ router.patch(
   "/approvals/purchase-orders/:id/reject",
   validate(rejectPoSchema),
   POApprovalController.rejectPO,
+);
+
+// ==========================================
+// MODULE: EXPENSE APPROVALS
+// ==========================================
+router.get(
+  "/approvals/expenses/pending",
+  validate(getExpenseApprovalsSchema),
+  ExpenseApprovalController.getPendingApprovals,
+);
+router.get(
+  "/approvals/expenses/history",
+  validate(getExpenseApprovalsSchema),
+  ExpenseApprovalController.getApprovalHistory,
+);
+router.get(
+  "/approvals/expenses/:id",
+  ExpenseApprovalController.getExpenseDetails,
+);
+router.patch(
+  "/approvals/expenses/:id/approve",
+  validate(approveExpenseSchema),
+  ExpenseApprovalController.approveExpense,
+);
+router.patch(
+  "/approvals/expenses/:id/reject",
+  validate(rejectExpenseSchema),
+  ExpenseApprovalController.rejectExpense,
 );
 
 module.exports = router;
