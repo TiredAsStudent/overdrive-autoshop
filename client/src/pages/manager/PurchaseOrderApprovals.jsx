@@ -7,6 +7,7 @@ import {
   Archive,
 } from "lucide-react";
 import { poApprovalService } from "../../services/manager/poApproval.service";
+import { inventoryService } from "../../services/manager/inventory.service";
 import PurchaseOrderApprovalDrawer from "../../features/manager/components/POApprovalDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
@@ -17,6 +18,7 @@ const PurchaseOrderApprovals = () => {
   const { showToast } = useApp();
 
   const [orders, setOrders] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // View Mode: 'PENDING' | 'HISTORY'
@@ -25,6 +27,7 @@ const PurchaseOrderApprovals = () => {
   // Filters & State
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [branchFilter, setBranchFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -34,8 +37,15 @@ const PurchaseOrderApprovals = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
+    inventoryService
+      .getActiveBranches()
+      .then((res) => setBranches(res.data || []))
+      .catch((err) => console.error("Failed to load branches", err));
+  }, []);
+
+  useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, viewMode]);
+  }, [debouncedSearchQuery, viewMode, branchFilter]);
 
   const loadOrders = async () => {
     try {
@@ -46,11 +56,15 @@ const PurchaseOrderApprovals = () => {
               currentPage,
               ITEMS_PER_PAGE,
               debouncedSearchQuery,
+              "all",
+              branchFilter,
             )
           : await poApprovalService.getApprovalHistory(
               currentPage,
               ITEMS_PER_PAGE,
               debouncedSearchQuery,
+              "all",
+              branchFilter,
             );
 
       setOrders(res.data?.purchaseOrders || []);
@@ -64,7 +78,7 @@ const PurchaseOrderApprovals = () => {
 
   useEffect(() => {
     loadOrders();
-  }, [currentPage, debouncedSearchQuery, viewMode]);
+  }, [currentPage, debouncedSearchQuery, viewMode, branchFilter]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -121,6 +135,20 @@ const PurchaseOrderApprovals = () => {
               <Archive size={14} /> Audit History
             </button>
           </div>
+
+          {/* Branch Filter Dropdown */}
+          <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="w-full sm:w-auto px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-indigo-500 text-slate-700 dark:text-slate-300 cursor-pointer"
+          >
+            <option value="all">All Branches</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.branch_name}
+              </option>
+            ))}
+          </select>
 
           {/* Search Bar */}
           <div className="relative w-full sm:max-w-[200px] flex-1">
