@@ -13,6 +13,8 @@ import {
   XCircle,
   MessageSquare,
   ScanText,
+  ZoomIn,
+  ImageOff,
 } from "lucide-react";
 import { expenseApprovalService } from "../../../services/manager/expenseApproval.service";
 import { useApp } from "../../../context/AppContext";
@@ -28,12 +30,18 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
 
+  const [imageError, setImageError] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
+
   useEffect(() => {
     if (isOpen && expenseId) {
       setLoading(true);
       setError("");
       setRemarks("");
       setValidationError("");
+      setImageError(false);
+      setIsZoomed(false);
+
       expenseApprovalService
         .getExpenseDetails(expenseId)
         .then((res) => setExpense(res.data))
@@ -84,7 +92,6 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
     }
   };
 
-  // Safe extraction of base URL for images
   const getBaseUrl = () => {
     if (api.defaults.baseURL) {
       return api.defaults.baseURL.replace("/api/v1", "");
@@ -319,15 +326,38 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
                   {/* Receipt Image Preview (If OCR'd) */}
                   {expense.receipt_url && (
                     <div>
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 px-1 flex items-center gap-1.5">
-                        <ScanText size={12} /> Attached Receipt / OCR Scan
-                      </h3>
-                      <div className="relative group w-full h-64 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex items-center justify-center p-2">
-                        <img
-                          src={`${getBaseUrl()}${expense.receipt_url}`}
-                          alt="Expense Receipt"
-                          className="w-full h-full object-contain rounded-lg shadow-sm"
-                        />
+                      <div className="flex items-center justify-between px-1 mb-2">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                          <ScanText size={12} /> Attached Receipt / OCR Scan
+                        </h3>
+                        {!imageError && (
+                          <button
+                            onClick={() => setIsZoomed(!isZoomed)}
+                            className="text-[10px] font-bold text-amber-500 flex items-center gap-1 hover:text-amber-600 transition-colors"
+                          >
+                            <ZoomIn size={12} /> {isZoomed ? "Shrink" : "Zoom"}
+                          </button>
+                        )}
+                      </div>
+
+                      <div
+                        className={`relative group w-full bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex items-center justify-center p-2 transition-all duration-300 ${isZoomed ? "h-auto min-h-[500px]" : "h-64"}`}
+                      >
+                        {imageError ? (
+                          <div className="flex flex-col items-center justify-center text-slate-400 space-y-2">
+                            <ImageOff size={32} className="opacity-50" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest">
+                              Image file unavailable
+                            </p>
+                          </div>
+                        ) : (
+                          <img
+                            src={`${getBaseUrl()}${expense.receipt_url}`}
+                            alt="Expense Receipt"
+                            onError={() => setImageError(true)}
+                            className="w-full h-full object-contain rounded-lg shadow-sm"
+                          />
+                        )}
                       </div>
                     </div>
                   )}
