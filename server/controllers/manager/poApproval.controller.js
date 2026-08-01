@@ -5,7 +5,7 @@ const { STATUS_CODES } = require("../../constants/statusCodes");
 class POApprovalController {
   static async getPendingApprovals(req, res) {
     try {
-      const branchId = req.branchId || "all";
+      const branchId = req.query.branch || "all";
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
       const { search, vendor } = req.query;
@@ -36,7 +36,7 @@ class POApprovalController {
 
   static async getApprovalHistory(req, res) {
     try {
-      const branchId = req.branchId || "all";
+      const branchId = req.query.branch || "all";
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
       const { search, vendor } = req.query;

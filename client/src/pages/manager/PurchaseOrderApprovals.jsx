@@ -122,7 +122,7 @@ const PurchaseOrderApprovals = () => {
                   : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              <ClipboardCheck size={14} /> Pending Queue
+              Pending
             </button>
             <button
               onClick={() => setViewMode("HISTORY")}
@@ -132,7 +132,7 @@ const PurchaseOrderApprovals = () => {
                   : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              <Archive size={14} /> Audit History
+              History
             </button>
           </div>
 
@@ -210,9 +210,6 @@ const PurchaseOrderApprovals = () => {
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
                 {order.vendor_name}
-              </p>
-              <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">
-                {order.branch_name}
               </p>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
