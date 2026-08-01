@@ -104,7 +104,7 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
             {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl text-indigo-500">
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <ShoppingCart size={20} />
                 </div>
                 <div>
@@ -133,7 +133,7 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                  <Loader2 className="w-8 h-8 animate-spin mb-3 text-indigo-500" />
+                  <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
                   <p className="text-[10px] font-black uppercase tracking-widest">
                     Retrieving Document...
                   </p>
@@ -186,17 +186,17 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
                         <Building2 size={10} /> {po.branch_name}
                       </p>
                     </div>
-                    <div className="flex-1 p-4 bg-indigo-50 dark:bg-indigo-500/5 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
-                      <Calendar size={14} className="text-indigo-400 mb-2" />
-                      <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-500 mb-1">
+                    <div className="flex-1 p-4 bg-amber-50 dark:bg-amber-500/5 rounded-2xl border border-amber-100 dark:border-amber-500/20">
+                      <Calendar size={14} className="text-amber-400 mb-2" />
+                      <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-1">
                         Delivery Target
                       </p>
-                      <p className="text-xs font-bold text-indigo-900 dark:text-indigo-400 truncate">
+                      <p className="text-xs font-bold text-amber-900 dark:text-amber-400 truncate">
                         {new Date(
                           po.expected_delivery_date,
                         ).toLocaleDateString()}
                       </p>
-                      <p className="text-[10px] text-indigo-600/70 dark:text-indigo-500/70 truncate mt-0.5 flex items-center gap-1">
+                      <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70 truncate mt-0.5 flex items-center gap-1">
                         <User size={10} /> By: {po.created_by_name}
                       </p>
                     </div>
@@ -249,7 +249,7 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
 
                   {/* Totals Lock */}
                   <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 text-white shadow-xl opacity-95">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-3 border-b border-white/10 pb-2">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-amber-500 mb-3 border-b border-white/10 pb-2">
                       Requested Financial Commitment
                     </p>
                     <div className="space-y-1.5 mb-4 text-sm font-medium text-slate-400">
@@ -276,7 +276,7 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
                       <span className="text-sm font-black uppercase tracking-widest text-slate-300">
                         Grand Total
                       </span>
-                      <span className="text-2xl font-black text-indigo-400">
+                      <span className="text-2xl font-black text-amber-500">
                         ₱
                         {parseFloat(po.grand_total).toLocaleString(undefined, {
                           minimumFractionDigits: 2,
@@ -310,7 +310,7 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
                         placeholder="Provide feedback or justification..."
                         rows="3"
                         disabled={isSubmitting}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none disabled:opacity-50"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-50"
                       />
                     </div>
                   )}
