@@ -9,6 +9,7 @@ const StockAdjustmentController = require("../../controllers/manager/stockAdjust
 const StockTransferController = require("../../controllers/manager/stockTransfer.controller");
 const POApprovalController = require("../../controllers/manager/poApproval.controller");
 const ExpenseApprovalController = require("../../controllers/manager/expenseApproval.controller");
+const ReceiptApprovalController = require("../../controllers/manager/receiptApproval.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -56,6 +57,11 @@ const {
   approveExpenseSchema,
   rejectExpenseSchema,
 } = require("../../validations/manager/expenseApproval.schema");
+const {
+  getReceiptApprovalsSchema,
+  approveReceiptSchema,
+  rejectReceiptSchema,
+} = require("../../validations/manager/receiptApproval.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -187,7 +193,7 @@ router.patch(
 );
 
 // ==========================================
-// MODULE: EXPENSE APPROVALS
+// MODULE: EXPENSE APPROVALS (MANUAL)
 // ==========================================
 router.get(
   "/approvals/expenses/pending",
@@ -212,6 +218,34 @@ router.patch(
   "/approvals/expenses/:id/reject",
   validate(rejectExpenseSchema),
   ExpenseApprovalController.rejectExpense,
+);
+
+// ==========================================
+// MODULE: RECEIPT APPROVALS (OCR INGESTION)
+// ==========================================
+router.get(
+  "/approvals/receipts/pending",
+  validate(getReceiptApprovalsSchema),
+  ReceiptApprovalController.getPendingApprovals,
+);
+router.get(
+  "/approvals/receipts/history",
+  validate(getReceiptApprovalsSchema),
+  ReceiptApprovalController.getApprovalHistory,
+);
+router.get(
+  "/approvals/receipts/:id",
+  ReceiptApprovalController.getReceiptDetails,
+);
+router.patch(
+  "/approvals/receipts/:id/approve",
+  validate(approveReceiptSchema),
+  ReceiptApprovalController.approveReceipt,
+);
+router.patch(
+  "/approvals/receipts/:id/reject",
+  validate(rejectReceiptSchema),
+  ReceiptApprovalController.rejectReceipt,
 );
 
 module.exports = router;

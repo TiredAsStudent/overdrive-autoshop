@@ -98,7 +98,7 @@ class Expense {
 
   static async findById(id) {
     const sql = `
-      SELECT e.*, v.business_name as vendor_name, b.branch_name, u.first_name as created_by_name
+      SELECT e.*, v.business_name as vendor_name_db, b.branch_name, u.first_name as created_by_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
@@ -111,7 +111,7 @@ class Expense {
 
   static async countFiltered(search, status, category, branchId) {
     let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id`;
-    const conditions = [];
+    const conditions = ["e.scan_id IS NULL"];
     const values = [];
     let paramIdx = 1;
 
@@ -158,7 +158,7 @@ class Expense {
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
     `;
-    const conditions = [];
+    const conditions = ["e.scan_id IS NULL"];
     const values = [];
     let paramIdx = 1;
 
@@ -187,6 +187,74 @@ class Expense {
 
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
     sql += ` ORDER BY e.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
+  static async countApprovalHistory(search, category, branchId) {
+    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id WHERE e.status IN ('APPROVED', 'REJECTED') AND e.scan_id IS NULL`;
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (category && category !== "all") {
+      sql += ` AND e.category ILIKE $${paramIdx}`;
+      values.push(`%${category}%`);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND e.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedApprovalHistory(
+    limit,
+    offset,
+    search,
+    category,
+    branchId,
+  ) {
+    let sql = `
+      SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
+             e.total_amount, e.status, e.resolved_at as processed_at,
+             v.business_name as vendor_name, b.branch_name, u.first_name as resolved_by_name
+      FROM expenses e
+      LEFT JOIN vendors v ON e.vendor_id = v.id
+      JOIN branches b ON e.branch_id = b.id
+      LEFT JOIN users u ON e.resolved_by = u.id
+      WHERE e.status IN ('APPROVED', 'REJECTED') AND e.scan_id IS NULL
+    `;
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (category && category !== "all") {
+      sql += ` AND e.category ILIKE $${paramIdx}`;
+      values.push(`%${category}%`);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND e.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    sql += ` ORDER BY e.resolved_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
     values.push(limit, offset);
 
     const result = await query(sql, values);
@@ -229,59 +297,61 @@ class Expense {
     return result.rows[0];
   }
 
-  static async countApprovalHistory(search, category, branchId) {
-    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id WHERE e.status IN ('APPROVED', 'REJECTED')`;
+  static async countReceiptApprovals(search, status, branchId) {
+    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e WHERE e.scan_id IS NOT NULL`;
+    const conditions = [];
     const values = [];
     let paramIdx = 1;
 
     if (search) {
-      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`;
+      conditions.push(
+        `(e.expense_number ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`,
+      );
       values.push(`%${search}%`);
       paramIdx++;
     }
-    if (category && category !== "all") {
-      sql += ` AND e.category ILIKE $${paramIdx}`;
-      values.push(`%${category}%`);
+    if (status && status !== "all") {
+      conditions.push(`e.status = $${paramIdx}`);
+      values.push(status.toUpperCase());
       paramIdx++;
     }
     if (branchId && branchId !== "all") {
-      sql += ` AND e.branch_id = $${paramIdx}`;
+      conditions.push(`e.branch_id = $${paramIdx}`);
       values.push(branchId);
       paramIdx++;
     }
 
+    if (conditions.length > 0) sql += ` AND ` + conditions.join(" AND ");
     const result = await query(sql, values);
     return parseInt(result.rows[0].count, 10);
   }
 
-  static async findPaginatedApprovalHistory(
+  static async findPaginatedReceiptApprovals(
     limit,
     offset,
     search,
-    category,
+    status,
     branchId,
   ) {
     let sql = `
-      SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
-             e.total_amount, e.status, e.resolved_at as processed_at,
-             v.business_name as vendor_name, b.branch_name, u.first_name as resolved_by_name
+      SELECT e.id, e.expense_number, e.expense_date, e.category, 
+             e.total_amount, e.status, e.vendor_name, b.branch_name, rs.confidence_score, rs.created_at as scan_date
       FROM expenses e
-      LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
-      LEFT JOIN users u ON e.resolved_by = u.id
-      WHERE e.status IN ('APPROVED', 'REJECTED')
+      JOIN receipt_scans rs ON e.scan_id = rs.id
+      WHERE e.scan_id IS NOT NULL
     `;
     const values = [];
     let paramIdx = 1;
 
     if (search) {
-      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`;
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
       values.push(`%${search}%`);
       paramIdx++;
     }
-    if (category && category !== "all") {
-      sql += ` AND e.category ILIKE $${paramIdx}`;
-      values.push(`%${category}%`);
+    if (status && status !== "all") {
+      sql += ` AND e.status = $${paramIdx}`;
+      values.push(status.toUpperCase());
       paramIdx++;
     }
     if (branchId && branchId !== "all") {
@@ -290,11 +360,25 @@ class Expense {
       paramIdx++;
     }
 
-    sql += ` ORDER BY e.resolved_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    sql += ` ORDER BY e.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
     values.push(limit, offset);
 
     const result = await query(sql, values);
     return result.rows;
+  }
+
+  static async findReceiptApprovalById(id) {
+    const sql = `
+      SELECT e.*, b.branch_name, u.first_name as created_by_name,
+             rs.file_path, rs.confidence_score, rs.original_filename, rs.extracted_data
+      FROM expenses e
+      JOIN branches b ON e.branch_id = b.id
+      LEFT JOIN users u ON e.created_by = u.id
+      JOIN receipt_scans rs ON e.scan_id = rs.id
+      WHERE e.id = $1 AND e.scan_id IS NOT NULL
+    `;
+    const result = await query(sql, [id]);
+    return result.rows[0];
   }
 
   static async createFromVerification(
@@ -324,7 +408,6 @@ class Expense {
       }
 
       const expense_number = await this.generateExpenseCode();
-
       const description = `OCR Verified Expense: ${data.vendor_name}`;
 
       const insertSql = `
@@ -350,7 +433,7 @@ class Expense {
         data.vat_amount,
         data.total_amount,
         data.payment_method,
-        "APPROVED",
+        "PENDING_APPROVAL",
         scan.id,
         scan.file_path,
         JSON.stringify(data.line_items),
