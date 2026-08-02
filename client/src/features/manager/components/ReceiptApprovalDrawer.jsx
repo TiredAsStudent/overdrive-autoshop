@@ -37,6 +37,13 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
   const [imageError, setImageError] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     if (isOpen && receiptId) {
@@ -220,7 +227,8 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                           onClick={() =>
                             setZoom((z) => Math.max(0.5, z - 0.25))
                           }
-                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer"
+                          disabled={isPdf}
+                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Zoom Out"
                         >
                           <ZoomOut size={14} />
@@ -231,7 +239,8 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                         <button
                           type="button"
                           onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
-                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer"
+                          disabled={isPdf}
+                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Zoom In"
                         >
                           <ZoomIn size={14} />
@@ -240,7 +249,8 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                         <button
                           type="button"
                           onClick={() => setRotation((r) => r + 90)}
-                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer"
+                          disabled={isPdf}
+                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Rotate"
                         >
                           <RotateCw size={14} />
@@ -249,7 +259,11 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                     </div>
 
                     {/* Image Preview Canvas */}
-                    <div className="flex-1 overflow-auto custom-scrollbar flex items-center justify-center p-4">
+                    <div
+                      className={`flex-1 overflow-auto custom-scrollbar flex items-center justify-center p-4 ${
+                        isDesktop && !isPdf ? "cursor-move" : "cursor-auto"
+                      }`}
+                    >
                       {isPdf ? (
                         <iframe
                           src={fileUrl}
@@ -265,6 +279,13 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                         </div>
                       ) : (
                         <motion.img
+                          drag={isDesktop && !isPdf}
+                          dragConstraints={{
+                            left: -500,
+                            right: 500,
+                            top: -500,
+                            bottom: 500,
+                          }}
                           animate={{ scale: zoom, rotate: rotation }}
                           transition={{
                             type: "spring",
