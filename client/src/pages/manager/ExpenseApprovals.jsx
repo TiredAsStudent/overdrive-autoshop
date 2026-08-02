@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Search,
-  Loader2,
-  ReceiptText,
-  FileSearch,
-  Archive,
-} from "lucide-react";
+import { Search, Loader2, ReceiptText, FileSearch } from "lucide-react";
 import { expenseApprovalService } from "../../services/manager/expenseApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 import ExpenseApprovalDrawer from "../../features/manager/components/ExpenseApprovalDrawer";
@@ -109,7 +103,7 @@ const ExpenseApprovals = () => {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              OpEx Approvals
+              Expense Approvals
             </h1>
             <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
               Operational Expense Governance
@@ -128,7 +122,7 @@ const ExpenseApprovals = () => {
                   : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              <ReceiptText size={14} /> Pending
+              Pending
             </button>
             <button
               onClick={() => setViewMode("HISTORY")}
@@ -138,7 +132,7 @@ const ExpenseApprovals = () => {
                   : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              <Archive size={14} /> History
+              History
             </button>
           </div>
 
