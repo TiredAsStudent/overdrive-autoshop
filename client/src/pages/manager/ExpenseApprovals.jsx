@@ -80,6 +80,12 @@ const ExpenseApprovals = () => {
     loadExpenses();
   }, [currentPage, debouncedSearchQuery, viewMode, branchFilter]);
 
+  useEffect(() => {
+    if (!loading && expenses.length === 0 && currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  }, [expenses.length, loading, currentPage]);
+
   const getStatusBadge = (status) => {
     switch (status) {
       case "PENDING_APPROVAL":
