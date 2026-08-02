@@ -381,6 +381,62 @@ class Expense {
     return result.rows[0];
   }
 
+  static async countReceiptApprovalHistory(search, branchId) {
+    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e WHERE e.scan_id IS NOT NULL AND e.status IN ('APPROVED', 'REJECTED')`;
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND e.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedReceiptApprovalHistory(
+    limit,
+    offset,
+    search,
+    branchId,
+  ) {
+    let sql = `
+      SELECT e.id, e.expense_number, e.expense_date, e.category, e.total_amount, e.status, e.vendor_name, e.resolved_at as processed_at,
+             b.branch_name, rs.confidence_score, u.first_name as resolved_by_name
+      FROM expenses e
+      JOIN branches b ON e.branch_id = b.id
+      JOIN receipt_scans rs ON e.scan_id = rs.id
+      LEFT JOIN users u ON e.resolved_by = u.id
+      WHERE e.scan_id IS NOT NULL AND e.status IN ('APPROVED', 'REJECTED')
+    `;
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND e.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    sql += ` ORDER BY e.resolved_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
   static async createFromVerification(
     scanId,
     data,

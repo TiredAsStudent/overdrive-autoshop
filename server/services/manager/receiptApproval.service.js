@@ -41,34 +41,13 @@ class ReceiptApprovalService {
     const offset = (page - 1) * limit;
 
     const [totalItems, receipts] = await Promise.all([
-      ExpenseModel.countReceiptApprovals(search, null, branchId).then(
-        (count) => {
-          return ExpenseModel.pool
-            .query(
-              `SELECT COUNT(DISTINCT e.id) FROM expenses e WHERE e.scan_id IS NOT NULL AND e.status IN ('APPROVED', 'REJECTED') ${
-                search
-                  ? `AND (e.expense_number ILIKE '%${search}%' OR e.vendor_name ILIKE '%${search}%')`
-                  : ""
-              } ${branchId !== "all" ? `AND e.branch_id = ${branchId}` : ""}`,
-            )
-            .then((res) => parseInt(res.rows[0].count, 10));
-        },
+      ExpenseModel.countReceiptApprovalHistory(search, branchId),
+      ExpenseModel.findPaginatedReceiptApprovalHistory(
+        limit,
+        offset,
+        search,
+        branchId,
       ),
-      ExpenseModel.pool
-        .query(
-          `SELECT e.id, e.expense_number, e.expense_date, e.category, e.total_amount, e.status, e.vendor_name, e.resolved_at as processed_at,
-                b.branch_name, rs.confidence_score, u.first_name as resolved_by_name
-         FROM expenses e
-         JOIN branches b ON e.branch_id = b.id
-         JOIN receipt_scans rs ON e.scan_id = rs.id
-         LEFT JOIN users u ON e.resolved_by = u.id
-         WHERE e.scan_id IS NOT NULL AND e.status IN ('APPROVED', 'REJECTED')
-         ${search ? `AND (e.expense_number ILIKE '%${search}%' OR e.vendor_name ILIKE '%${search}%')` : ""}
-         ${branchId !== "all" ? `AND e.branch_id = ${branchId}` : ""}
-         ORDER BY e.resolved_at DESC LIMIT $1 OFFSET $2`,
-          [limit, offset],
-        )
-        .then((res) => res.rows),
     ]);
 
     return {
