@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Loader2, ScanLine, FileSearch, Archive } from "lucide-react";
+import { Search, Loader2, ScanLine, FileSearch } from "lucide-react";
 import { receiptApprovalService } from "../../services/manager/receiptApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 import ReceiptApprovalDrawer from "../../features/manager/components/ReceiptApprovalDrawer";
@@ -131,7 +131,7 @@ const ReceiptApprovals = () => {
                   : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              <ScanLine size={14} /> Pending
+              Pending
             </button>
             <button
               onClick={() => setViewMode("HISTORY")}
@@ -141,7 +141,7 @@ const ReceiptApprovals = () => {
                   : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
-              <Archive size={14} /> History
+              History
             </button>
           </div>
 

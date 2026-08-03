@@ -265,11 +265,25 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                       }`}
                     >
                       {isPdf ? (
-                        <iframe
-                          src={fileUrl}
-                          className="w-full h-full rounded-xl shadow-md bg-white"
-                          title="PDF Receipt Scan"
-                        />
+                        <div className="w-full h-full relative group bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden">
+                          <iframe
+                            src={fileUrl}
+                            className="w-full h-full rounded-xl shadow-md bg-white"
+                            title="PDF Receipt Scan"
+                          />
+                          {/* Fallback button to open PDF in a new tab */}
+                          <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <a
+                              href={fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl hover:bg-amber-500 dark:hover:bg-amber-500 transition-colors"
+                            >
+                              <FileText size={14} />
+                              Open PDF in New Tab
+                            </a>
+                          </div>
+                        </div>
                       ) : imageError ? (
                         <div className="flex flex-col items-center justify-center text-slate-400 p-8 text-center">
                           <ImageOff size={36} className="opacity-40 mb-2" />

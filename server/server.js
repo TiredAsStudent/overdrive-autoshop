@@ -60,7 +60,16 @@ app.get("/api/health", async (req, res, next) => {
 });
 
 // --- STATIC FILES (Uploads) ---
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    res.removeHeader("X-Frame-Options");
+    res.removeHeader("Content-Security-Policy");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    next();
+  },
+  express.static(path.join(__dirname, "uploads")),
+);
 
 // -- Mount Routes --
 app.use("/api/v1/auth", require("./routes/v1/auth.routes"));
