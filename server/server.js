@@ -13,18 +13,28 @@ const { STATUS_CODES } = require("./constants/statusCodes");
 
 const app = express();
 
+const allowedOrigin =
+  process.env.NODE_ENV === "development"
+    ? process.env.FRONTEND_URL_DEV || "http://localhost:5173"
+    : process.env.FRONTEND_URL_PROD;
+
 // --- SECURITY & GLOBAL MIDDLEWARE ---
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+
+    xFrameOptions: false,
+
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "frame-ancestors": ["'self'", allowedOrigin],
+        "img-src": ["'self'", "data:", "blob:", allowedOrigin],
+      },
+    },
   }),
 );
 app.set("trust proxy", 1);
-
-const allowedOrigin =
-  process.env.NODE_ENV === "development"
-    ? process.env.FRONTEND_URL_DEV
-    : process.env.FRONTEND_URL_PROD;
 
 //Global Middleware
 app.use(
@@ -60,16 +70,7 @@ app.get("/api/health", async (req, res, next) => {
 });
 
 // --- STATIC FILES (Uploads) ---
-app.use(
-  "/uploads",
-  (req, res, next) => {
-    res.removeHeader("X-Frame-Options");
-    res.removeHeader("Content-Security-Policy");
-    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-    next();
-  },
-  express.static(path.join(__dirname, "uploads")),
-);
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // -- Mount Routes --
 app.use("/api/v1/auth", require("./routes/v1/auth.routes"));

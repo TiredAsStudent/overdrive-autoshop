@@ -13,8 +13,10 @@ import {
   ZoomOut,
   RotateCw,
   ExternalLink,
+  ImageOff,
 } from "lucide-react";
 import { receiptService } from "../../../services/staff/receipt.service";
+import api from "../../../services/api";
 
 const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
   const navigate = useNavigate();
@@ -68,8 +70,17 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
     navigate(`/staff/purchases/expenses?search=${data.expense_number}`);
   };
 
-  const fileUrl = `${import.meta.env.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:5000"}${data?.file_path}`;
+  const getBaseUrl = () => {
+    if (api.defaults.baseURL) {
+      return api.defaults.baseURL.replace("/api/v1", "");
+    }
+    return import.meta.env.VITE_API_URL
+      ? import.meta.env.VITE_API_URL.replace("/api/v1", "")
+      : "http://localhost:5000";
+  };
+
   const isPdf = data?.original_filename?.toLowerCase().endsWith(".pdf");
+  const fileUrl = data?.file_path ? `${getBaseUrl()}${data.file_path}` : "";
 
   return (
     <AnimatePresence>
@@ -139,7 +150,8 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                     <div className="absolute top-4 left-4 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur px-3 py-2 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-2">
                       <button
                         onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
-                        className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors cursor-pointer"
+                        disabled={isPdf}
+                        className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Zoom Out"
                       >
                         <ZoomOut size={16} />
@@ -149,7 +161,8 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                       </span>
                       <button
                         onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
-                        className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors cursor-pointer"
+                        disabled={isPdf}
+                        className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Zoom In"
                       >
                         <ZoomIn size={16} />
@@ -157,78 +170,73 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                       <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
                       <button
                         onClick={() => setRotation((r) => r + 90)}
-                        className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors cursor-pointer"
+                        disabled={isPdf}
+                        className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Rotate"
                       >
                         <RotateCw size={16} />
                       </button>
-
-                      {/* PDF Fallback Link */}
-                      {isPdf && (
-                        <>
-                          <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
-                          <a
-                            href={fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors flex items-center gap-1.5 cursor-pointer"
-                            title="Open PDF in new tab"
-                          >
-                            <ExternalLink size={16} />
-                            <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">
-                              Open PDF
-                            </span>
-                          </a>
-                        </>
-                      )}
                     </div>
 
+                    {/* Image / PDF Preview Canvas */}
                     <div
-                      className={`flex-1 overflow-hidden flex items-center justify-center ${isDesktop ? "cursor-move" : "cursor-auto"}`}
+                      className={`flex-1 overflow-auto custom-scrollbar flex items-center justify-center p-8 ${
+                        isDesktop && !isPdf ? "cursor-move" : "cursor-auto"
+                      }`}
                     >
-                      <motion.div
-                        drag={isDesktop}
-                        dragConstraints={{
-                          left: -500,
-                          right: 500,
-                          top: -500,
-                          bottom: 500,
-                        }}
-                        animate={{ scale: zoom, rotate: rotation }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 30,
-                        }}
-                        className={`w-full h-full flex items-center justify-center p-8 ${!isDesktop ? "touch-auto" : "touch-none"}`}
-                      >
-                        {isPdf ? (
+                      {isPdf ? (
+                        <div className="w-full h-full relative group bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden shadow-2xl">
                           <iframe
                             src={fileUrl}
-                            className="w-full h-[90%] rounded-xl shadow-2xl bg-white pointer-events-none"
+                            className="w-full h-full bg-white"
                             title="Document PDF"
                             onError={() => setImageError(true)}
                           />
-                        ) : imageError ? (
-                          <div className="flex flex-col items-center justify-center p-10 bg-slate-100 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-center shadow-lg">
-                            <FileText size={48} className="mb-4 opacity-50" />
-                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-1">
-                              File Unavailable
-                            </h3>
-                            <p className="text-[10px] font-medium max-w-[200px]">
-                              The source document could not be loaded from the
-                              storage server.
-                            </p>
+                          {/* Fallback button to open PDF in a new tab */}
+                          <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <a
+                              href={fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl hover:bg-amber-500 dark:hover:bg-amber-500 transition-colors"
+                            >
+                              <FileText size={14} />
+                              Open PDF in New Tab
+                            </a>
                           </div>
-                        ) : (
-                          <img
-                            src={fileUrl}
-                            alt="Archived Receipt"
-                            className="max-w-full max-h-full object-contain shadow-2xl rounded-xl pointer-events-none"
-                            onError={() => setImageError(true)}
-                          />
-                        )}
-                      </motion.div>
+                        </div>
+                      ) : imageError ? (
+                        <div className="flex flex-col items-center justify-center p-10 bg-slate-100 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-center shadow-lg">
+                          <ImageOff size={48} className="mb-4 opacity-50" />
+                          <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-1">
+                            File Unavailable
+                          </h3>
+                          <p className="text-[10px] font-medium max-w-[200px]">
+                            The source document could not be loaded from the
+                            storage server.
+                          </p>
+                        </div>
+                      ) : (
+                        <motion.img
+                          drag={isDesktop && !isPdf}
+                          dragConstraints={{
+                            left: -500,
+                            right: 500,
+                            top: -500,
+                            bottom: 500,
+                          }}
+                          animate={{ scale: zoom, rotate: rotation }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 30,
+                          }}
+                          src={fileUrl}
+                          alt="Archived Receipt"
+                          onError={() => setImageError(true)}
+                          className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+                        />
+                      )}
                     </div>
                   </div>
 
