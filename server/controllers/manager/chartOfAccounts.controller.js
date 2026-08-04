@@ -105,6 +105,27 @@ class ChartOfAccountsController {
       return sendError(res, STATUS_CODES.NOT_FOUND, error.message);
     }
   }
+
+  static async getAccountUsage(req, res) {
+    try {
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const usageData = await COAService.getAccountUsage(
+        req.params.id,
+        page,
+        limit,
+      );
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        usageData,
+        "Account usage retrieved successfully.",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.NOT_FOUND, error.message);
+    }
+  }
 }
 
 module.exports = ChartOfAccountsController;

@@ -43,10 +43,7 @@ class ChartOfAccountsService {
   }
 
   static async updateAccount(id, data, activeUser, ipAddress) {
-    if (
-      accountData.parent_id &&
-      parseInt(accountData.parent_id, 10) === parseInt(id, 10)
-    ) {
+    if (data.parent_id && parseInt(data.parent_id, 10) === parseInt(id, 10)) {
       throw new Error(
         "Invalid structure: An account cannot be its own parent.",
       );
@@ -158,6 +155,28 @@ class ChartOfAccountsService {
     const account = await COAModel.findById(id);
     if (!account) throw new Error("Account not found.");
     return account;
+  }
+
+  static async getAccountUsage(id, page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+    const account = await COAModel.findById(id);
+    if (!account) throw new Error("Account not found.");
+
+    const [totalItems, transactions] = await Promise.all([
+      COAModel.countAccountUsage(id),
+      COAModel.getAccountUsage(id, limit, offset),
+    ]);
+
+    return {
+      account,
+      transactions,
+      pagination: {
+        totalItems,
+        totalPages: totalItems > 0 ? Math.ceil(totalItems / limit) : 1,
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
   }
 }
 

@@ -10,10 +10,12 @@ import {
   Filter,
   X,
   Lock,
+  History,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { chartOfAccountsService } from "../../services/manager/chartOfAccounts.service";
 import AccountModal from "../../features/manager/components/AccountModal";
+import AccountUsageDrawer from "../../features/manager/components/AccountUsageDrawer";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
@@ -45,10 +47,13 @@ const ChartOfAccounts = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Modals
+  // Modals & Drawers
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isUsageDrawerOpen, setIsUsageDrawerOpen] = useState(false);
+
   const [selectedAccount, setSelectedAccount] = useState(null);
+  const [usageAccountId, setUsageAccountId] = useState(null);
 
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
@@ -324,9 +329,20 @@ const ChartOfAccounts = () => {
               <div className="flex items-center justify-end gap-1 sm:gap-2">
                 <button
                   onClick={() => {
+                    setUsageAccountId(account.id);
+                    setIsUsageDrawerOpen(true);
+                  }}
+                  title="View Account Usage & Ledger"
+                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                >
+                  <History size={14} className="sm:w-[16px] sm:h-[16px]" />
+                </button>
+                <button
+                  onClick={() => {
                     setSelectedAccount(account);
                     setIsModalOpen(true);
                   }}
+                  title="Edit Account Details"
                   className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
                 >
                   <Edit2 size={14} className="sm:w-[16px] sm:h-[16px]" />
@@ -427,6 +443,12 @@ const ChartOfAccounts = () => {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleModalSubmit}
         initialData={selectedAccount}
+      />
+
+      <AccountUsageDrawer
+        isOpen={isUsageDrawerOpen}
+        onClose={() => setIsUsageDrawerOpen(false)}
+        accountId={usageAccountId}
       />
 
       <ConfirmModal

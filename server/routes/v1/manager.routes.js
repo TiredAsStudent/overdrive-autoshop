@@ -269,6 +269,10 @@ router.get(
   ChartOfAccountsController.getAccounts,
 );
 router.get(
+  "/accounting/accounts/:id/usage",
+  ChartOfAccountsController.getAccountUsage,
+);
+router.get(
   "/accounting/accounts/:id",
   ChartOfAccountsController.getAccountDetails,
 );

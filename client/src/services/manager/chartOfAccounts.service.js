@@ -34,6 +34,22 @@ export const chartOfAccountsService = {
     }
   },
 
+  getAccountUsage: async (id, page = 1, limit = 10) => {
+    try {
+      const response = await api.get(
+        `/manager/accounting/accounts/${id}/usage`,
+        {
+          params: { page, limit },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message || "Failed to load account usage.";
+      throw new Error(message);
+    }
+  },
+
   createAccount: async (accountData) => {
     try {
       const payload = {

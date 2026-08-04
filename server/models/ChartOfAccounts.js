@@ -142,6 +142,50 @@ class ChartOfAccounts {
     const result = await query(sql, values);
     return result.rows;
   }
+
+  static async countAccountUsage(accountId) {
+    try {
+      const sql = `
+        SELECT SUM(cnt) as total FROM (
+          SELECT COUNT(*) as cnt FROM expenses WHERE account_id = $1
+          UNION ALL
+          SELECT COUNT(*) as cnt FROM supplier_bills WHERE account_id = $1
+        ) t
+      `;
+      const result = await query(sql, [accountId]);
+      return parseInt(result.rows[0].total || 0, 10);
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  static async getAccountUsage(accountId, limit, offset) {
+    try {
+      const sql = `
+        SELECT 
+          'EXPENSE' as transaction_type,
+          expense_number as reference,
+          expense_date as transaction_date,
+          total_amount as amount,
+          status
+        FROM expenses WHERE account_id = $1
+        UNION ALL
+        SELECT 
+          'BILL' as transaction_type,
+          bill_number as reference,
+          bill_date as transaction_date,
+          grand_total as amount,
+          status
+        FROM supplier_bills WHERE account_id = $1
+        ORDER BY transaction_date DESC
+        LIMIT $2 OFFSET $3
+      `;
+      const result = await query(sql, [accountId, limit, offset]);
+      return result.rows;
+    } catch (error) {
+      return [];
+    }
+  }
 }
 
 module.exports = ChartOfAccounts;
