@@ -10,6 +10,7 @@ const StockTransferController = require("../../controllers/manager/stockTransfer
 const POApprovalController = require("../../controllers/manager/poApproval.controller");
 const ExpenseApprovalController = require("../../controllers/manager/expenseApproval.controller");
 const ReceiptApprovalController = require("../../controllers/manager/receiptApproval.controller");
+const ChartOfAccountsController = require("../../controllers/manager/chartOfAccounts.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -62,6 +63,12 @@ const {
   approveReceiptSchema,
   rejectReceiptSchema,
 } = require("../../validations/manager/receiptApproval.schema");
+const {
+  createAccountSchema,
+  updateAccountSchema,
+  toggleAccountStatusSchema,
+  getAccountsSchema,
+} = require("../../validations/manager/chartOfAccounts.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -246,6 +253,34 @@ router.patch(
   "/approvals/receipts/:id/reject",
   validate(rejectReceiptSchema),
   ReceiptApprovalController.rejectReceipt,
+);
+
+// ==========================================
+// MODULE: ACCOUNTING - CHART OF ACCOUNTS
+// ==========================================
+router.post(
+  "/accounting/accounts",
+  validate(createAccountSchema),
+  ChartOfAccountsController.createAccount,
+);
+router.get(
+  "/accounting/accounts",
+  validate(getAccountsSchema),
+  ChartOfAccountsController.getAccounts,
+);
+router.get(
+  "/accounting/accounts/:id",
+  ChartOfAccountsController.getAccountDetails,
+);
+router.put(
+  "/accounting/accounts/:id",
+  validate(updateAccountSchema),
+  ChartOfAccountsController.updateAccount,
+);
+router.patch(
+  "/accounting/accounts/:id/status",
+  validate(toggleAccountStatusSchema),
+  ChartOfAccountsController.toggleStatus,
 );
 
 module.exports = router;
