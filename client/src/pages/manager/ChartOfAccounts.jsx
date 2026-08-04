@@ -257,7 +257,9 @@ const ChartOfAccounts = () => {
             className={`group transition-colors ${!account.is_active ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale" : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"}`}
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="min-w-0 max-w-[200px] sm:max-w-[300px] flex items-start gap-3">
+              <div
+                className={`min-w-0 max-w-[200px] sm:max-w-[300px] flex items-start gap-3 ${account.parent_id ? "ml-6 border-l-2 border-slate-200 dark:border-slate-700 pl-3" : ""}`}
+              >
                 <div className="flex flex-col items-start mt-0.5">
                   <span className="inline-flex px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-[10px] font-black text-slate-800 dark:text-white font-mono tracking-wider shadow-sm">
                     {account.account_code}

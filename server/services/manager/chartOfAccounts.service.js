@@ -43,6 +43,15 @@ class ChartOfAccountsService {
   }
 
   static async updateAccount(id, data, activeUser, ipAddress) {
+    if (
+      accountData.parent_id &&
+      parseInt(accountData.parent_id, 10) === parseInt(id, 10)
+    ) {
+      throw new Error(
+        "Invalid structure: An account cannot be its own parent.",
+      );
+    }
+
     const oldAccount = await COAModel.findById(id);
     if (!oldAccount) throw new Error("Account not found.");
 
