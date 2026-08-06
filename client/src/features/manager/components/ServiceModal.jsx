@@ -11,8 +11,10 @@ import {
   Activity,
   Calendar,
   Save,
+  BookOpen,
 } from "lucide-react";
 import { serviceCatalogService } from "../../../services/manager/serviceCatalog.service";
+import { chartOfAccountsService } from "../../../services/manager/chartOfAccounts.service";
 
 const CATEGORIES = [
   "Engine",
@@ -32,6 +34,10 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
 
+  // COA Linkage States
+  const [incomeAccounts, setIncomeAccounts] = useState([]);
+  const [isFetchingAccounts, setIsFetchingAccounts] = useState(false);
+
   // Inventory Linkage States
   const [inventoryList, setInventoryList] = useState([]);
   const [isFetchingParts, setIsFetchingParts] = useState(false);
@@ -45,6 +51,7 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     estimated_minutes: 60,
     commonly_used_parts: [],
     is_vatable: true,
+    income_account_id: "",
   });
 
   useEffect(() => {
@@ -55,10 +62,27 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
         .then((res) => setInventoryList(res.data || []))
         .catch(() => setInventoryList([]))
         .finally(() => setIsFetchingParts(false));
+
+      setIsFetchingAccounts(true);
+      chartOfAccountsService
+        .getAccounts(1, 100, "", "INCOME", "active")
+        .then((res) => {
+          const accounts = res.data?.accounts || res.accounts || [];
+          setIncomeAccounts(accounts);
+
+          if (!initialData && accounts.length > 0) {
+            setFormData((prev) => ({
+              ...prev,
+              income_account_id: accounts[0].id.toString(),
+            }));
+          }
+        })
+        .catch(() => setIncomeAccounts([]))
+        .finally(() => setIsFetchingAccounts(false));
     } else {
       setPartSearchTerm("");
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   useEffect(() => {
     if (initialData) {
@@ -70,9 +94,11 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
         estimated_minutes: initialData.estimated_minutes || 60,
         commonly_used_parts: initialData.commonly_used_parts || [],
         is_vatable: initialData.is_vatable ?? true,
+        income_account_id: initialData.income_account_id?.toString() || "",
       });
     } else {
-      setFormData({
+      setFormData((prev) => ({
+        ...prev,
         service_name: "",
         category: "Preventive Maintenance",
         description: "",
@@ -80,7 +106,7 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
         estimated_minutes: 60,
         commonly_used_parts: [],
         is_vatable: true,
-      });
+      }));
     }
     setValidationError("");
   }, [initialData, isOpen]);
@@ -114,6 +140,10 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       setValidationError("Price cannot be negative.");
       return;
     }
+    if (!formData.income_account_id) {
+      setValidationError("Please select an Income Account for billing.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -134,7 +164,7 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -142,7 +172,7 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-4xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
             {/* MODAL HEADER */}
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <Wrench size={20} />
@@ -280,56 +310,87 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                     </div>
 
                     <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
-                        <DollarSign size={14} /> Financials & Labor
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
+                        <DollarSign size={14} /> Financials & Accounting Link
                       </h3>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                              Labor Price (PHP){" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              required
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              name="price"
+                              value={formData.price}
+                              onChange={handleChange}
+                              placeholder="0.00"
+                              className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                              Duration (Mins){" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              required
+                              type="number"
+                              min="1"
+                              name="estimated_minutes"
+                              value={formData.estimated_minutes}
+                              onChange={handleChange}
+                              className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+
+                        {/* CHART OF ACCOUNTS DYNAMIC LINKAGE */}
                         <div>
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                            Labor Price (PHP){" "}
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                            <BookOpen size={12} className="text-slate-400" />
+                            Revenue Account Mapping{" "}
                             <span className="text-red-500">*</span>
                           </label>
-                          <input
+                          <select
                             required
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            name="price"
-                            value={formData.price}
+                            name="income_account_id"
+                            value={formData.income_account_id}
                             onChange={handleChange}
-                            placeholder="0.00"
-                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                          />
+                            disabled={isFetchingAccounts}
+                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <option value="" disabled>
+                              {isFetchingAccounts
+                                ? "Loading Income Accounts..."
+                                : "-- Select Income Account --"}
+                            </option>
+                            {incomeAccounts.map((acc) => (
+                              <option key={acc.id} value={acc.id}>
+                                {acc.account_code} - {acc.account_name}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                        <div>
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                            Duration (Mins){" "}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            required
-                            type="number"
-                            min="1"
-                            name="estimated_minutes"
-                            value={formData.estimated_minutes}
-                            onChange={handleChange}
-                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                          />
-                        </div>
-                        <div className="col-span-2 mt-2 flex items-center gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
+
+                        <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
                           <input
                             type="checkbox"
                             id="is_vatable"
                             name="is_vatable"
                             checked={formData.is_vatable}
                             onChange={handleChange}
-                            className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                            className="w-4 h-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
                           />
                           <label
                             htmlFor="is_vatable"
                             className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 cursor-pointer select-none"
                           >
-                            Subject to VAT (Value Added Tax)
+                            Subject to VAT
                           </label>
                         </div>
                       </div>
@@ -413,7 +474,7 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             </div>
 
             {/* MODAL FOOTER */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30">
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
               <button
                 type="submit"
                 form="serviceForm"

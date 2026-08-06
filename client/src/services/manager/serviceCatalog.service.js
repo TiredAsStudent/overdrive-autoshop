@@ -30,6 +30,7 @@ export const serviceCatalogService = {
         ...serviceData,
         price: parseFloat(serviceData.price),
         estimated_minutes: parseInt(serviceData.estimated_minutes, 10),
+        income_account_id: parseInt(serviceData.income_account_id, 10),
       };
       const response = await api.post("/manager/services", payload);
       return response.data;
@@ -46,6 +47,7 @@ export const serviceCatalogService = {
         ...serviceData,
         price: parseFloat(serviceData.price),
         estimated_minutes: parseInt(serviceData.estimated_minutes, 10),
+        income_account_id: parseInt(serviceData.income_account_id, 10),
       };
 
       delete payload.service_code;

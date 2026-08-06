@@ -3,8 +3,8 @@ const { query } = require("../config/db");
 class Service {
   static async create(data) {
     const sql = `
-      INSERT INTO services (service_code, service_name, category, description, price, estimated_minutes, commonly_used_parts, is_vatable) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      INSERT INTO services (service_code, service_name, category, description, price, estimated_minutes, commonly_used_parts, is_vatable, income_account_id) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
       RETURNING *
     `;
     const values = [
@@ -16,6 +16,7 @@ class Service {
       data.estimated_minutes,
       data.commonly_used_parts,
       data.is_vatable,
+      data.income_account_id,
     ];
     const result = await query(sql, values);
     return result.rows[0];
@@ -69,10 +70,13 @@ class Service {
 
   static async findPaginatedFiltered(limit, offset, search, category, status) {
     let sql = `
-      SELECT *,
+      SELECT services.*,
+        chart_of_accounts.account_code as income_account_code,
+        chart_of_accounts.account_name as income_account_name,
         (SELECT COUNT(DISTINCT invoice_id) FROM invoice_items WHERE service_id = services.id) AS usage_count,
         (SELECT MAX(i.created_at) FROM invoices i JOIN invoice_items ii ON i.id = ii.invoice_id WHERE ii.service_id = services.id) AS last_used_date
       FROM services
+      LEFT JOIN chart_of_accounts ON services.income_account_id = chart_of_accounts.id
     `;
     const conditions = [];
     const values = [];
@@ -80,22 +84,23 @@ class Service {
 
     if (search) {
       conditions.push(
-        `(service_name ILIKE $${paramIdx} OR service_code ILIKE $${paramIdx})`,
+        `(services.service_name ILIKE $${paramIdx} OR services.service_code ILIKE $${paramIdx})`,
       );
       values.push(`%${search}%`);
       paramIdx++;
     }
     if (category && category !== "all") {
-      conditions.push(`category = $${paramIdx}`);
+      conditions.push(`services.category = $${paramIdx}`);
       values.push(category);
       paramIdx++;
     }
-    if (status === "active") conditions.push(`is_active = TRUE`);
-    else if (status === "archived") conditions.push(`is_active = FALSE`);
+    if (status === "active") conditions.push(`services.is_active = TRUE`);
+    else if (status === "archived")
+      conditions.push(`services.is_active = FALSE`);
 
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
 
-    sql += ` ORDER BY is_active DESC, category ASC, service_name ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    sql += ` ORDER BY services.is_active DESC, services.category ASC, services.service_name ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
     values.push(limit, offset);
 
     const result = await query(sql, values);
@@ -124,8 +129,9 @@ class Service {
         estimated_minutes = COALESCE($5, estimated_minutes),
         commonly_used_parts = COALESCE($6, commonly_used_parts),
         is_vatable = COALESCE($7, is_vatable),
+        income_account_id = COALESCE($8, income_account_id),
         updated_at = NOW()
-      WHERE id = $8
+      WHERE id = $9
       RETURNING *
     `;
     const values = [
@@ -136,6 +142,7 @@ class Service {
       data.estimated_minutes,
       data.commonly_used_parts,
       data.is_vatable,
+      data.income_account_id,
       id,
     ];
     const result = await query(sql, values);

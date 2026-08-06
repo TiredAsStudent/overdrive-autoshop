@@ -32,6 +32,7 @@ const createServiceSchema = z.object({
       .min(1, "Duration must be at least 1 minute"),
     commonly_used_parts: z.array(z.number().int()).optional().default([]),
     is_vatable: z.boolean().optional().default(true),
+    income_account_id: z.number().int().positive("Income account is required"),
   }),
 });
 
@@ -45,6 +46,7 @@ const updateServiceSchema = z.object({
       estimated_minutes: z.number().int().min(1).optional(),
       commonly_used_parts: z.array(z.number().int()).optional(),
       is_vatable: z.boolean().optional(),
+      income_account_id: z.number().int().positive().optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {
       message: "At least one field must be provided for update.",
