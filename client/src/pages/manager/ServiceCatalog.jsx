@@ -7,16 +7,14 @@ import {
   RotateCcw,
   Clock,
   Edit2,
-  Filter,
-  X,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { serviceCatalogService } from "../../services/manager/serviceCatalog.service";
 import ServiceModal from "../../features/manager/components/ServiceModal";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import PageHeader from "../../components/shared/PageHeader";
+import FilterModal from "../../components/shared/FilterModal";
 
 import SearchBar from "../../components/ui/SearchBar";
 import FilterButton from "../../components/ui/FilterButton";
@@ -294,62 +292,28 @@ const ServiceCatalog = () => {
         onPageChange={setCurrentPage}
       />
 
-      {/* FILTER MODAL */}
-      <AnimatePresence>
-        {isFilterModalOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white dark:bg-slate-800 rounded-[24px] w-full max-w-sm shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden"
-            >
-              <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700/50">
-                <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-slate-900 dark:text-white">
-                  <Filter size={16} className="text-amber-500" /> Advanced
-                  Filters
-                </h3>
-                <button
-                  onClick={() => setIsFilterModalOpen(false)}
-                  className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-6">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                  Item Category
-                </label>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c === "all" ? "All Categories" : c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-white/10 flex gap-3">
-                <button
-                  onClick={() => setCategoryFilter("all")}
-                  className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  Clear
-                </button>
-                <button
-                  onClick={() => setIsFilterModalOpen(false)}
-                  className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors bg-amber-500 hover:bg-amber-600 text-slate-900 shadow-sm cursor-pointer"
-                >
-                  Apply
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* UNIVERSAL FILTER MODAL */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={() => setCategoryFilter("all")}
+        title="Advanced Filters"
+      >
+        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+          Item Category
+        </label>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c === "all" ? "All Categories" : c}
+            </option>
+          ))}
+        </select>
+      </FilterModal>
 
       <ServiceModal
         isOpen={isModalOpen}
@@ -357,6 +321,7 @@ const ServiceCatalog = () => {
         onSubmit={handleModalSubmit}
         initialData={selectedService}
       />
+
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
