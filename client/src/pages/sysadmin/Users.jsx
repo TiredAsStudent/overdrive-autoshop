@@ -465,20 +465,29 @@ const UsersTab = () => {
             <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
               <div className="flex items-center justify-end gap-2 sm:gap-4 relative">
                 <StatusBadge
-                  status={user.account_status}
-                  type={
+                  label={user.account_status}
+                  variant={
                     user.account_status === "ACTIVE"
                       ? "success"
                       : user.account_status === "DEACTIVATED"
                         ? "danger"
                         : "warning"
                   }
+                  icon={
+                    user.account_status === "ACTIVE"
+                      ? ShieldCheck
+                      : user.account_status === "DEACTIVATED"
+                        ? UserX
+                        : Clock
+                  }
                 />
 
                 {currentUser?.id === user.id ? (
-                  <span className="text-[8px] sm:text-[9px] font-black bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 px-2 py-1 rounded-lg uppercase whitespace-nowrap ml-2">
-                    Active
-                  </span>
+                  <StatusBadge
+                    label="Active"
+                    variant="success"
+                    className="ml-2"
+                  />
                 ) : (
                   <div ref={menuRef} className="w-8 flex justify-end shrink-0">
                     <button

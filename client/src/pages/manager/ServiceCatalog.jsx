@@ -20,6 +20,7 @@ import SearchBar from "../../components/ui/SearchBar";
 import FilterButton from "../../components/ui/FilterButton";
 import StatusToggle from "../../components/ui/StatusToggle";
 import ActionButton from "../../components/ui/ActionButton";
+import StatusBadge from "../../components/ui/StatusBadge";
 
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -244,13 +245,17 @@ const ServiceCatalog = () => {
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               {!service.is_active ? (
-                <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                  <Archive size={12} /> Archived
-                </span>
+                <StatusBadge
+                  label="Archived"
+                  variant="default"
+                  icon={Archive}
+                />
               ) : (
-                <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-                  <ShieldCheck size={12} /> Operational
-                </span>
+                <StatusBadge
+                  label="Operational"
+                  variant="success"
+                  icon={ShieldCheck}
+                />
               )}
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
