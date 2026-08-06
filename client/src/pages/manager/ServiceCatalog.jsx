@@ -3,12 +3,9 @@ import {
   Plus,
   Archive,
   ShieldCheck,
-  Search,
-  Loader2,
   Wrench,
   RotateCcw,
   Clock,
-  EyeIcon,
   Edit2,
   Filter,
   X,
@@ -20,6 +17,12 @@ import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import PageHeader from "../../components/shared/PageHeader";
+
+import SearchBar from "../../components/ui/SearchBar";
+import FilterButton from "../../components/ui/FilterButton";
+import StatusToggle from "../../components/ui/StatusToggle";
+import ActionButton from "../../components/ui/ActionButton";
+
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -150,59 +153,35 @@ const ServiceCatalog = () => {
         subtitle="Master labor & repair dictionary"
         icon={Wrench}
       >
-        <div className="relative w-full sm:max-w-[200px] flex-1">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            {searchQuery !== debouncedSearchQuery ? (
-              <Loader2 size={16} className="text-amber-500 animate-spin" />
-            ) : (
-              <Search size={16} className="text-slate-400" />
-            )}
-          </div>
-          <input
-            type="text"
-            placeholder="Search code or name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-          />
-        </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search code or name..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-        <button
+        <FilterButton
           onClick={() => setIsFilterModalOpen(true)}
-          className="relative flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] uppercase tracking-widest font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-        >
-          <Filter size={14} /> Filters
-          {activeFilterCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-slate-900 shadow-sm">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
+          activeCount={activeFilterCount}
+        />
 
-        <div className="flex items-center gap-1 bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
-          <button
-            onClick={() => setShowArchived(false)}
-            className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${!showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-          >
-            Active
-          </button>
-          <button
-            onClick={() => setShowArchived(true)}
-            className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-          >
-            Archived
-          </button>
-        </div>
+        <StatusToggle
+          activeValue={showArchived}
+          onToggle={setShowArchived}
+          options={[
+            { label: "Active", value: false },
+            { label: "Archived", value: true },
+          ]}
+        />
 
-        <button
+        <ActionButton
           onClick={() => {
             setSelectedService(null);
             setIsModalOpen(true);
           }}
-          className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer"
-        >
-          <Plus size={16} /> Register Service
-        </button>
+          label="Register Service"
+          icon={Plus}
+        />
       </PageHeader>
 
       {/* UNIVERSAL DATATABLE */}
