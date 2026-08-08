@@ -7,6 +7,7 @@ import {
   Loader2,
   AlertCircle,
   Percent,
+  Save,
 } from "lucide-react";
 import { inventoryService } from "../../../services/manager/inventory.service";
 
@@ -129,17 +130,32 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4">
-              <h2 className="text-xl sm:text-2xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
-                {initialData ? "Update Master Item" : "Register Master Item"}
-              </h2>
+            {/* MODAL HEADER */}
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
+                  <Package size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
+                    {initialData
+                      ? "Update Master Item"
+                      : "Register Master Item"}
+                  </h2>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                    {initialData
+                      ? `SKU: ${initialData.sku}`
+                      : "Stock Catalog Management"}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
@@ -149,23 +165,28 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               </button>
             </div>
 
-            <div className="px-6 sm:px-8 pb-6 sm:pb-8 overflow-y-auto custom-scrollbar">
+            {/* MODAL BODY */}
+            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
-                <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
+                <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
                   <span>{validationError}</span>
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+              <form
+                id="masterItemForm"
+                onSubmit={handleSubmit}
+                className="space-y-6"
+              >
                 {/* Identification */}
-                <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
-                  <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
-                    <Package size={16} /> Item Identification
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                    <Package size={14} /> Item Identification
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Item Name <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -175,11 +196,11 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         value={formData.item_name}
                         onChange={handleChange}
                         placeholder="e.g., Premium DOT 4 Brake Fluid (1L)"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:outline-none focus:border-amber-500 focus:ring-1 text-slate-900 dark:text-white"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Stock Keeping Unit (SKU){" "}
                         <span className="text-red-500">*</span>
                       </label>
@@ -191,11 +212,11 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         onChange={handleChange}
                         disabled={!!initialData}
                         placeholder="e.g., BRK-FLUID-DOT4"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black tracking-widest uppercase disabled:opacity-50 text-slate-900 dark:text-white"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black tracking-widest uppercase disabled:opacity-50 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Category <span className="text-red-500">*</span>
                       </label>
                       <select
@@ -203,7 +224,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         name="category"
                         value={formData.category}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                       >
                         {ITEM_CATEGORIES.map((cat) => (
                           <option key={cat} value={cat}>
@@ -213,7 +234,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Unit of Measure (UOM){" "}
                         <span className="text-red-500">*</span>
                       </label>
@@ -224,11 +245,11 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         value={formData.uom}
                         onChange={handleChange}
                         placeholder="pcs, liters, sets"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Default Reorder Level{" "}
                         <span className="text-red-500">*</span>
                       </label>
@@ -239,11 +260,11 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         name="default_reorder_level"
                         value={formData.default_reorder_level}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Description
                       </label>
                       <textarea
@@ -251,23 +272,23 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         value={formData.description}
                         onChange={handleChange}
                         rows="2"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white resize-none"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Financials with Markup */}
-                <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5 relative overflow-hidden">
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative overflow-hidden">
                   <div className="absolute top-4 right-4 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-lg flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase">
                     <Percent size={12} /> System Markup: {systemMarkup}%
                   </div>
-                  <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
-                    <DollarSign size={16} /> Base Financials
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
+                    <DollarSign size={14} /> Base Financials
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Base Unit Cost (PHP){" "}
                         <span className="text-red-500">*</span>
                       </label>
@@ -280,11 +301,11 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         value={formData.unit_cost}
                         onChange={handleChange}
                         placeholder="0.00"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Default Selling Price (PHP){" "}
                         <span className="text-red-500">*</span>
                       </label>
@@ -297,23 +318,29 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         value={formData.selling_price}
                         onChange={handleChange}
                         placeholder="0.00"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                   </div>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-xs sm:text-sm uppercase tracking-widest transition-all shadow-lg flex justify-center items-center gap-2 cursor-pointer"
-                >
-                  {isSubmitting && (
-                    <Loader2 size={18} className="animate-spin" />
-                  )}
-                  {initialData ? "Update Item Profile" : "Register Master Item"}
-                </button>
               </form>
+            </div>
+
+            {/* MODAL FOOTER */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+              <button
+                type="submit"
+                form="masterItemForm"
+                disabled={isSubmitting}
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Save size={16} />
+                )}
+                {initialData ? "Update Item Profile" : "Register Master Item"}
+              </button>
             </div>
           </motion.div>
         </div>
