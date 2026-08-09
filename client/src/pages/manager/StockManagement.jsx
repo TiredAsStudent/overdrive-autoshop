@@ -340,7 +340,7 @@ const StockManagement = () => {
                   title="View Details & Ledger"
                   className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
                 >
-                  <Network size={14} /> View Details
+                  <Network size={14} /> Details
                 </button>
                 <button
                   onClick={() => {

@@ -14,6 +14,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { inventoryService } from "../../../services/manager/inventory.service";
+import StatusBadge from "../../../components/ui/StatusBadge";
 
 const StockDetailsModal = ({ isOpen, onClose, item }) => {
   const [activeTab, setActiveTab] = useState("breakdown");
@@ -44,26 +45,6 @@ const StockDetailsModal = ({ isOpen, onClose, item }) => {
     fetchData();
   }, [isOpen, item, activeTab]);
 
-  const getStatusDisplay = (status) => {
-    if (status === "In Stock")
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest">
-          <ShieldCheck size={12} /> In Stock
-        </span>
-      );
-    if (status === "Low Stock")
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest">
-          <AlertTriangle size={12} /> Low Stock
-        </span>
-      );
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 text-[10px] font-black uppercase tracking-widest">
-        <XCircle size={12} /> Out of Stock
-      </span>
-    );
-  };
-
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat("en-US", {
@@ -86,7 +67,7 @@ const StockDetailsModal = ({ isOpen, onClose, item }) => {
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-4xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[85vh]"
           >
             {/* Modal Header */}
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4">
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 shrink-0 border-b border-slate-100 dark:border-slate-700/50">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl">
                   <Package className="text-blue-500" size={24} />
@@ -102,23 +83,31 @@ const StockDetailsModal = ({ isOpen, onClose, item }) => {
               </div>
               <button
                 onClick={onClose}
-                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
               >
                 <X size={24} />
               </button>
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex px-6 sm:px-8 border-b border-slate-100 dark:border-slate-700/50">
+            <div className="flex px-6 sm:px-8 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <button
                 onClick={() => setActiveTab("breakdown")}
-                className={`px-4 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${activeTab === "breakdown" ? "border-amber-500 text-amber-600 dark:text-amber-500" : "border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                className={`px-4 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
+                  activeTab === "breakdown"
+                    ? "border-amber-500 text-amber-600 dark:text-amber-500"
+                    : "border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                }`}
               >
                 <Network size={16} /> Branch Extraction
               </button>
               <button
                 onClick={() => setActiveTab("history")}
-                className={`px-4 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${activeTab === "history" ? "border-amber-500 text-amber-600 dark:text-amber-500" : "border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                className={`px-4 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
+                  activeTab === "history"
+                    ? "border-amber-500 text-amber-600 dark:text-amber-500"
+                    : "border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                }`}
               >
                 <History size={16} /> Movement Ledger
               </button>
@@ -177,7 +166,23 @@ const StockDetailsModal = ({ isOpen, onClose, item }) => {
                               </div>
                               <div className="h-10 w-px bg-slate-200 dark:bg-slate-700"></div>
                               <div className="flex-1 text-right">
-                                {getStatusDisplay(branch.stock_status)}
+                                <StatusBadge
+                                  label={branch.stock_status}
+                                  variant={
+                                    branch.stock_status === "In Stock"
+                                      ? "success"
+                                      : branch.stock_status === "Low Stock"
+                                        ? "warning"
+                                        : "danger"
+                                  }
+                                  icon={
+                                    branch.stock_status === "In Stock"
+                                      ? ShieldCheck
+                                      : branch.stock_status === "Low Stock"
+                                        ? AlertTriangle
+                                        : XCircle
+                                  }
+                                />
                               </div>
                             </div>
                           </div>
@@ -229,29 +234,29 @@ const StockDetailsModal = ({ isOpen, onClose, item }) => {
                                       {record.branch_name}
                                     </td>
                                     <td className="px-4 py-3">
-                                      <span
-                                        className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
+                                      <StatusBadge
+                                        label={record.transaction_type.replace(
+                                          /_/g,
+                                          " ",
+                                        )}
+                                        variant={
                                           [
                                             "BILL_RECEIVED",
                                             "TRANSFER_IN",
                                           ].includes(record.transaction_type)
-                                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                                            ? "success"
                                             : [
                                                   "SALES_INVOICE",
                                                   "TRANSFER_OUT",
                                                 ].includes(
                                                   record.transaction_type,
                                                 )
-                                              ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
-                                              : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-                                        }`}
-                                      >
-                                        {record.transaction_type.replace(
-                                          /_/g,
-                                          " ",
-                                        )}
-                                      </span>
-                                      <p className="text-[9px] text-blue-500 uppercase mt-1 tracking-widest">
+                                              ? "danger"
+                                              : "default"
+                                        }
+                                        className="!py-0.5 !px-2"
+                                      />
+                                      <p className="text-[9px] text-blue-500 uppercase mt-1.5 tracking-widest">
                                         {record.transaction_reference}
                                       </p>
                                     </td>

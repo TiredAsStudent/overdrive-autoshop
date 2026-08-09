@@ -24,6 +24,20 @@ const ITEM_CATEGORIES = [
   "Consumables",
 ];
 
+const UOM_OPTIONS = [
+  { value: "pcs", label: "Pieces (pcs)" },
+  { value: "liters", label: "Liters (L)" },
+  { value: "gallons", label: "Gallons (gal)" },
+  { value: "sets", label: "Sets" },
+  { value: "pairs", label: "Pairs" },
+  { value: "bottles", label: "Bottles" },
+  { value: "cans", label: "Cans" },
+  { value: "boxes", label: "Boxes" },
+  { value: "packs", label: "Packs" },
+  { value: "meters", label: "Meters (m)" },
+  { value: "units", label: "Units" },
+];
+
 const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
@@ -238,15 +252,19 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         Unit of Measure (UOM){" "}
                         <span className="text-red-500">*</span>
                       </label>
-                      <input
+                      <select
                         required
-                        type="text"
                         name="uom"
                         value={formData.uom}
                         onChange={handleChange}
-                        placeholder="pcs, liters, sets"
                         className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                      />
+                      >
+                        {UOM_OPTIONS.map((uom) => (
+                          <option key={uom.value} value={uom.value}>
+                            {uom.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
@@ -332,7 +350,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 type="submit"
                 form="masterItemForm"
                 disabled={isSubmitting}
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] shadow-lg shadow-amber-500/20 flex justify-center items-center gap-2 cursor-pointer"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />
