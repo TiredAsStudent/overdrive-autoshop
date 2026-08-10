@@ -26,9 +26,8 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
     }
   }, [isOpen, request]);
 
-  if (!request) return null;
+  if (!request || request.status !== "PENDING") return null;
 
-  const isPending = request.status === "PENDING";
   const isDeduct = request.adjustment_type === "DEDUCT";
 
   // Financial Impact Math
@@ -226,47 +225,41 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
               {/* Manager Resolution Area */}
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                  Manager Resolution Remarks {isPending ? "" : "(Read-Only)"}
+                  Manager Resolution Remarks
                 </label>
                 <textarea
                   value={managerRemarks}
                   onChange={(e) => setManagerRemarks(e.target.value)}
-                  disabled={!isPending}
+                  disabled={isSubmitting}
                   rows="2"
-                  placeholder={
-                    isPending
-                      ? "Optional remarks for approval or rejection..."
-                      : "No remarks provided."
-                  }
+                  placeholder="Optional remarks for approval or rejection..."
                   className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-70 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
 
             {/* Footer Action Buttons */}
-            {isPending && (
-              <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row gap-3 bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
-                <button
-                  onClick={() => handleAction("REJECT")}
-                  disabled={isSubmitting}
-                  className="flex-1 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-500 hover:text-red-500 text-slate-600 dark:text-slate-300 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
-                >
-                  <XCircle size={16} /> Reject Request
-                </button>
-                <button
-                  onClick={() => handleAction("APPROVE")}
-                  disabled={isSubmitting}
-                  className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
-                >
-                  {isSubmitting ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <CheckCircle size={16} />
-                  )}
-                  Approve & Update Ledger
-                </button>
-              </div>
-            )}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row gap-3 bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
+              <button
+                onClick={() => handleAction("REJECT")}
+                disabled={isSubmitting}
+                className="flex-1 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-500 hover:text-red-500 text-slate-600 dark:text-slate-300 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+              >
+                <XCircle size={16} /> Reject Request
+              </button>
+              <button
+                onClick={() => handleAction("APPROVE")}
+                disabled={isSubmitting}
+                className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <CheckCircle size={16} />
+                )}
+                Approve Request
+              </button>
+            </div>
           </motion.div>
         </div>
       )}

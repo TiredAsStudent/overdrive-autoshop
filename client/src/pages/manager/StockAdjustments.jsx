@@ -11,6 +11,7 @@ import {
 import { stockAdjustmentService } from "../../services/manager/stockAdjustment.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 import AdjustmentModal from "../../features/manager/components/AdjustmentModal";
+import AdjustmentDrawer from "../../features/manager/components/AdjustmentDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import PageHeader from "../../components/shared/PageHeader";
@@ -43,8 +44,9 @@ const StockAdjustments = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Modal State
+  // View States
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
 
   const activeFilterCount = branchFilter !== "all" ? 1 : 0;
@@ -96,6 +98,15 @@ const StockAdjustments = () => {
       loadRequests();
     } catch (error) {
       throw error;
+    }
+  };
+
+  const handleOpenView = (req) => {
+    setSelectedRequest(req);
+    if (req.status === "PENDING") {
+      setIsModalOpen(true);
+    } else {
+      setIsDrawerOpen(true);
     }
   };
 
@@ -215,10 +226,7 @@ const StockAdjustments = () => {
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <div className="flex items-center justify-end gap-1 sm:gap-2">
                 <button
-                  onClick={() => {
-                    setSelectedRequest(req);
-                    setIsModalOpen(true);
-                  }}
+                  onClick={() => handleOpenView(req)}
                   title={
                     statusFilter === "PENDING"
                       ? "Review Request"
@@ -273,6 +281,11 @@ const StockAdjustments = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleResolution}
+        request={selectedRequest}
+      />
+      <AdjustmentDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
         request={selectedRequest}
       />
     </div>
