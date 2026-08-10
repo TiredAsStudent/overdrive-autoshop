@@ -59,7 +59,7 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -69,8 +69,8 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
             {/* Header */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
-                  <Scale size={20} />
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500">
+                  <Scale size={24} />
                 </div>
                 <div>
                   <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
@@ -85,13 +85,13 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
               >
                 <X size={24} />
               </button>
             </div>
 
-            {/* Scrollable Body */}
+            {/* Scrollable Body Container */}
             <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
@@ -100,17 +100,17 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                 </div>
               )}
 
-              {/* Item Snapshot */}
-              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-slate-400">
-                    <Package size={20} />
+              {/* Item Snapshot Section */}
+              <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="p-3.5 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-slate-400 shrink-0">
+                    <Package size={22} />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-1 truncate">
                       {request.sku}
                     </p>
-                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase mt-0.5 truncate max-w-[200px] sm:max-w-xs">
+                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[250px]">
                       {request.item_name}
                     </p>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
@@ -118,42 +118,46 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                     </p>
                   </div>
                 </div>
-                <div className="text-left sm:text-right bg-white dark:bg-slate-800 p-3 sm:p-0 sm:bg-transparent rounded-xl sm:rounded-none">
-                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-0.5">
+                <div className="text-left sm:text-right border-t border-slate-200 dark:border-slate-700/50 sm:border-0 pt-4 sm:pt-0 mt-1 sm:mt-0 shrink-0">
+                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">
                     Base Cost
                   </p>
-                  <p className="text-sm font-black text-slate-900 dark:text-white">
+                  <p className="text-sm font-black text-slate-900 dark:text-white font-mono bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 inline-block">
                     ₱
                     {parseFloat(request.unit_cost).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                     })}
                   </p>
                 </div>
-              </div>
+              </section>
 
-              {/* Variance & Reason */}
+              {/* Variance & Reason Stack */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                    Requested Variance
-                  </p>
-                  <div
-                    className={`flex items-center gap-2 text-xl font-black tracking-widest uppercase ${
-                      isDeduct
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-emerald-600 dark:text-emerald-400"
-                    }`}
-                  >
-                    {isDeduct ? (
-                      <ArrowDownRight size={20} />
-                    ) : (
-                      <ArrowUpRight size={20} />
-                    )}
-                    {request.requested_quantity} {request.uom}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      Requested Variance
+                    </p>
+                    <div
+                      className={`flex items-center gap-2 text-2xl font-black tracking-tighter uppercase ${
+                        isDeduct
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      }`}
+                    >
+                      {isDeduct ? (
+                        <ArrowDownRight size={26} />
+                      ) : (
+                        <ArrowUpRight size={26} />
+                      )}
+                      {request.requested_quantity}{" "}
+                      <span className="text-sm ml-1 opacity-70">
+                        {request.uom}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Resulting Stock UI */}
-                  <div className="mt-5 space-y-2.5">
+                  <div className="mt-5 space-y-2.5 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50">
                     <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                       <span>System Stock:</span>
                       <span className="font-mono text-slate-700 dark:text-slate-300">
@@ -163,36 +167,34 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-2">
                       <span>Resulting Stock:</span>
                       <span
-                        className={`font-mono text-sm ${
-                          resultingStock < 0 ? "text-red-500" : ""
-                        }`}
+                        className={`font-mono text-sm ${resultingStock < 0 ? "text-red-500" : ""}`}
                       >
                         {resultingStock} {request.uom}
                       </span>
                     </div>
                   </div>
-                </div>
+                </section>
 
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 flex flex-col">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                     Reason Code
                   </p>
-                  <p className="text-xs font-black text-slate-900 dark:text-white tracking-widest uppercase">
+                  <div className="inline-flex w-fit px-3 py-1.5 bg-white dark:bg-slate-800 rounded-lg text-[10px] font-black tracking-widest uppercase text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-700/50">
                     {request.reason.replace(/_/g, " ")}
-                  </p>
+                  </div>
 
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-5 mb-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-5 mb-2">
                     Staff Remarks
                   </p>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300 italic bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="text-xs font-medium text-slate-600 dark:text-slate-300 italic bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 flex-1 leading-relaxed shadow-sm">
                     {request.staff_remarks || "No remarks provided."}
-                  </p>
-                </div>
+                  </div>
+                </section>
               </div>
 
               {/* ESTIMATED FINANCIAL IMPACT */}
-              <div
-                className={`p-5 rounded-2xl border flex items-center justify-between shadow-sm ${
+              <section
+                className={`p-5 sm:p-6 rounded-[24px] border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm ${
                   isDeduct
                     ? "bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 text-red-800 dark:text-red-400"
                     : "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-400"
@@ -200,30 +202,30 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
               >
                 <div className="flex items-center gap-4">
                   <div
-                    className={`p-2.5 rounded-xl ${
+                    className={`p-3.5 rounded-2xl shadow-inner ${
                       isDeduct
-                        ? "bg-red-100 dark:bg-red-500/20"
-                        : "bg-emerald-100 dark:bg-emerald-500/20"
+                        ? "bg-red-100 dark:bg-red-500/20 text-red-600"
+                        : "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600"
                     }`}
                   >
-                    <Calculator size={20} />
+                    <Calculator size={22} />
                   </div>
                   <div>
-                    <span className="block text-[10px] font-black uppercase tracking-widest opacity-80">
+                    <span className="block text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">
                       Estimated Financial {isDeduct ? "Write-Off" : "Gain"}
                     </span>
-                    <span className="block text-[10px] font-medium opacity-60">
+                    <span className="block text-[9px] font-bold uppercase tracking-widest opacity-50">
                       Quantity × Unit Cost
                     </span>
                   </div>
                 </div>
-                <span className="text-2xl font-black tracking-tight">
+                <span className="text-3xl font-black tracking-tight font-mono text-left sm:text-right">
                   ₱{financialImpact}
                 </span>
-              </div>
+              </section>
 
               {/* Manager Resolution Area */}
-              <div>
+              <section>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                   Manager Resolution Remarks
                 </label>
@@ -231,34 +233,36 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                   value={managerRemarks}
                   onChange={(e) => setManagerRemarks(e.target.value)}
                   disabled={isSubmitting}
-                  rows="2"
-                  placeholder="Optional remarks for approval or rejection..."
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-70 disabled:cursor-not-allowed"
+                  rows="3"
+                  placeholder="Provide optional remarks for approval or rejection..."
+                  className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 shadow-sm rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-70 disabled:cursor-not-allowed leading-relaxed"
                 />
-              </div>
+              </section>
             </div>
 
             {/* Footer Action Buttons */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row gap-3 bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
-              <button
-                onClick={() => handleAction("REJECT")}
-                disabled={isSubmitting}
-                className="flex-1 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-500 hover:text-red-500 text-slate-600 dark:text-slate-300 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
-              >
-                <XCircle size={16} /> Reject Request
-              </button>
-              <button
-                onClick={() => handleAction("APPROVE")}
-                disabled={isSubmitting}
-                className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
-              >
-                {isSubmitting ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <CheckCircle size={16} />
-                )}
-                Approve Request
-              </button>
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => handleAction("REJECT")}
+                  disabled={isSubmitting}
+                  className="flex-1 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-500 hover:text-red-500 text-slate-600 dark:text-slate-300 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+                >
+                  <XCircle size={16} /> Reject Request
+                </button>
+                <button
+                  onClick={() => handleAction("APPROVE")}
+                  disabled={isSubmitting}
+                  className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <CheckCircle size={16} />
+                  )}
+                  Approve Request
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>
