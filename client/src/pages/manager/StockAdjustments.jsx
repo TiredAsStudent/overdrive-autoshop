@@ -213,16 +213,23 @@ const StockAdjustments = () => {
               />
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <button
-                onClick={() => {
-                  setSelectedRequest(req);
-                  setIsModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm shadow-amber-500/20"
-              >
-                <Eye size={14} />{" "}
-                {statusFilter === "PENDING" ? "Review Request" : "View Details"}
-              </button>
+              <div className="flex items-center justify-end gap-1 sm:gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedRequest(req);
+                    setIsModalOpen(true);
+                  }}
+                  title={
+                    statusFilter === "PENDING"
+                      ? "Review Request"
+                      : "View Details"
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+                >
+                  <Eye size={14} />{" "}
+                  {statusFilter === "PENDING" ? "Review" : "Details"}
+                </button>
+              </div>
             </td>
           </tr>
         )}
