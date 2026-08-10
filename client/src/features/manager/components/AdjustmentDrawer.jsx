@@ -49,13 +49,13 @@ const AdjustmentDrawer = ({ isOpen, onClose, request }) => {
             className="fixed inset-y-0 right-0 w-full sm:w-[450px] md:w-[550px] bg-slate-50 dark:bg-slate-900 shadow-2xl z-[80] flex flex-col border-l border-slate-200 dark:border-slate-800"
           >
             {/* Drawer Header */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
-                  <Scale size={20} />
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500">
+                  <Scale size={24} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[250px]">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[280px]">
                     Adjustment Details
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
@@ -66,30 +66,37 @@ const AdjustmentDrawer = ({ isOpen, onClose, request }) => {
               </div>
               <button
                 onClick={onClose}
-                className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-xl bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-500/10 cursor-pointer"
+                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
               >
-                <X size={20} />
+                <X size={24} />
               </button>
             </div>
 
-            {/* Scrollable Body */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-              {/* Status Header */}
-              <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  Resolution Status
-                </span>
+            {/* Scrollable Body Container */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8 space-y-6 bg-slate-50/50 dark:bg-transparent">
+              {/* STATUS BANNER */}
+              <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                    Resolution Status
+                  </span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-widest">
+                    {request.status}
+                  </span>
+                </div>
                 <StatusBadge
-                  label={request.status}
+                  label={
+                    request.status === "APPROVED" ? "Approved" : "Rejected"
+                  }
                   variant={request.status === "APPROVED" ? "success" : "danger"}
                 />
               </div>
 
-              {/* Item Snapshot */}
-              <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+              {/* ITEM SNAPSHOT SECTION */}
+              <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl shadow-sm text-slate-400 border border-slate-100 dark:border-slate-800">
-                    <Package size={20} />
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900 rounded-xl shadow-inner text-slate-400 border border-slate-100 dark:border-slate-800">
+                    <Package size={22} />
                   </div>
                   <div>
                     <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest">
@@ -103,11 +110,11 @@ const AdjustmentDrawer = ({ isOpen, onClose, request }) => {
                     </p>
                   </div>
                 </div>
-                <div className="text-left sm:text-right border-t border-slate-100 dark:border-slate-700/50 sm:border-0 pt-3 sm:pt-0 mt-1 sm:mt-0">
-                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-0.5">
+                <div className="text-left sm:text-right border-t border-slate-100 dark:border-slate-700/50 sm:border-0 pt-4 sm:pt-0 mt-2 sm:mt-0">
+                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">
                     Base Cost
                   </p>
-                  <p className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                  <p className="text-base font-black text-slate-900 dark:text-white font-mono bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800 inline-block">
                     ₱
                     {parseFloat(request.unit_cost).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
@@ -116,41 +123,44 @@ const AdjustmentDrawer = ({ isOpen, onClose, request }) => {
                 </div>
               </div>
 
-              {/* Variance & Stock Math */}
-              <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                    Requested Variance
-                  </p>
-                  <div
-                    className={`flex items-center gap-2 text-2xl font-black tracking-widest uppercase ${
-                      isDeduct
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-emerald-600 dark:text-emerald-400"
-                    }`}
-                  >
-                    {isDeduct ? (
-                      <ArrowDownRight size={24} />
-                    ) : (
-                      <ArrowUpRight size={24} />
-                    )}
-                    {request.requested_quantity} {request.uom}
+              {/* VARIANCE & STOCK MATH SECTION */}
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                      Requested Variance
+                    </p>
+                    <div
+                      className={`flex items-center gap-2 text-3xl font-black tracking-tighter uppercase ${
+                        isDeduct
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      }`}
+                    >
+                      {isDeduct ? (
+                        <ArrowDownRight size={28} />
+                      ) : (
+                        <ArrowUpRight size={28} />
+                      )}
+                      {request.requested_quantity}{" "}
+                      <span className="text-sm ml-1 opacity-70">
+                        {request.uom}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-5 space-y-2.5 bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50">
+                <div className="mt-6 space-y-3 bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-100 dark:border-slate-800/50">
                   <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     <span>System Stock:</span>
                     <span className="font-mono text-slate-700 dark:text-slate-300">
                       {currentStock} {request.uom}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-2">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-3">
                     <span>Resulting Stock:</span>
                     <span
-                      className={`font-mono text-sm ${
-                        resultingStock < 0 ? "text-red-500" : ""
-                      }`}
+                      className={`font-mono text-sm ${resultingStock < 0 ? "text-red-500" : ""}`}
                     >
                       {resultingStock} {request.uom}
                     </span>
@@ -158,26 +168,27 @@ const AdjustmentDrawer = ({ isOpen, onClose, request }) => {
                 </div>
               </div>
 
-              {/* Reason & Remarks Stack */}
-              <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              {/* REASON & REMARKS STACK */}
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
                   Reason Code
                 </p>
-                <div className="inline-flex w-fit px-3 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-lg text-[10px] font-black tracking-widest uppercase text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
+                <div className="inline-flex w-fit px-3 py-1.5 bg-slate-100 dark:bg-slate-900 rounded-lg text-[10px] font-black tracking-widest uppercase text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                   {request.reason.replace(/_/g, " ")}
                 </div>
 
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-5 mb-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-6 mb-3">
                   Staff Remarks
                 </p>
-                <div className="text-xs font-medium text-slate-600 dark:text-slate-300 italic bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50 flex-1">
-                  {request.staff_remarks || "No remarks provided."}
+                <div className="text-xs font-medium text-slate-600 dark:text-slate-300 italic bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50 flex-1 leading-relaxed">
+                  {request.staff_remarks ||
+                    "No remarks provided by the staff member."}
                 </div>
               </div>
 
               {/* ESTIMATED FINANCIAL IMPACT */}
               <div
-                className={`p-5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm ${
+                className={`p-6 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-sm ${
                   isDeduct
                     ? "bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 text-red-800 dark:text-red-400"
                     : "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-400"
@@ -185,39 +196,40 @@ const AdjustmentDrawer = ({ isOpen, onClose, request }) => {
               >
                 <div className="flex items-center gap-4">
                   <div
-                    className={`p-3 rounded-xl ${
+                    className={`p-3.5 rounded-xl shadow-inner ${
                       isDeduct
-                        ? "bg-red-100 dark:bg-red-500/20"
-                        : "bg-emerald-100 dark:bg-emerald-500/20"
+                        ? "bg-red-100 dark:bg-red-500/20 text-red-600"
+                        : "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600"
                     }`}
                   >
-                    <Calculator size={20} />
+                    <Calculator size={22} />
                   </div>
                   <div>
-                    <span className="block text-[10px] font-black uppercase tracking-widest opacity-80">
-                      Estimated Financial {isDeduct ? "Write-Off" : "Gain"}
+                    <span className="block text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">
+                      Estimated {isDeduct ? "Write-Off" : "Gain"}
                     </span>
-                    <span className="block text-[10px] font-medium opacity-60">
-                      Quantity × Unit Cost
+                    <span className="block text-[9px] font-bold uppercase tracking-widest opacity-50">
+                      Quantity × Base Cost
                     </span>
                   </div>
                 </div>
-                <span className="text-2xl font-black tracking-tight font-mono text-left sm:text-right">
+                <span className="text-3xl font-black tracking-tight font-mono text-left sm:text-right">
                   ₱{financialImpact}
                 </span>
               </div>
 
-              {/* Manager Resolution Area (Read-Only) */}
-              <div className="pb-4">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                  Manager Resolution Remarks (Read-Only)
+              {/* MANAGER RESOLUTION AREA (Read-Only) */}
+              <div className="pb-6">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                  Manager Resolution Remarks{" "}
+                  <span className="opacity-50">(Read-Only)</span>
                 </label>
                 <textarea
                   value={request.manager_remarks || ""}
                   disabled={true}
                   rows="3"
-                  placeholder="No remarks provided."
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none disabled:opacity-80 disabled:cursor-not-allowed"
+                  placeholder="No remarks provided during resolution."
+                  className="w-full px-5 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl text-xs font-medium text-slate-900 dark:text-white resize-none disabled:opacity-90 disabled:cursor-not-allowed leading-relaxed"
                 />
               </div>
             </div>
