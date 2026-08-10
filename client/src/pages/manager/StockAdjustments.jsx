@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Search,
-  Loader2,
   Scale,
   Clock,
   ShieldCheck,
@@ -15,6 +13,14 @@ import { inventoryService } from "../../services/manager/inventory.service";
 import AdjustmentModal from "../../features/manager/components/AdjustmentModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
+import PageHeader from "../../components/shared/PageHeader";
+import FilterModal from "../../components/shared/FilterModal";
+
+import SearchBar from "../../components/ui/SearchBar";
+import FilterButton from "../../components/ui/FilterButton";
+import StatusToggle from "../../components/ui/StatusToggle";
+import StatusBadge from "../../components/ui/StatusBadge";
+
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -31,6 +37,7 @@ const StockAdjustments = () => {
 
   const [branches, setBranches] = useState([]);
   const [branchFilter, setBranchFilter] = useState("all");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -39,6 +46,8 @@ const StockAdjustments = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+
+  const activeFilterCount = branchFilter !== "all" ? 1 : 0;
 
   useEffect(() => {
     inventoryService
@@ -90,88 +99,40 @@ const StockAdjustments = () => {
     }
   };
 
-  const renderStatusBadge = (status) => {
-    if (status === "PENDING")
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-500 rounded-lg text-[9px] font-black uppercase tracking-widest border border-amber-200 dark:border-amber-500/20">
-          <Clock size={12} /> Pending
-        </span>
-      );
-    if (status === "APPROVED")
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-200 dark:border-emerald-500/20">
-          <ShieldCheck size={12} /> Approved
-        </span>
-      );
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 rounded-lg text-[9px] font-black uppercase tracking-widest border border-red-200 dark:border-red-500/20">
-        <XCircle size={12} /> Rejected
-      </span>
-    );
+  const resetFilters = () => {
+    setBranchFilter("all");
   };
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Scale className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Stock Adjustments
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Managerial Inbox & Resolution
-            </p>
-          </div>
-        </div>
+      {/* UNIVERSAL PAGE HEADER */}
+      <PageHeader
+        title="Stock Adjustments"
+        subtitle="Managerial Inbox & Resolution"
+        icon={Scale}
+      >
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search item or SKU..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="relative w-full sm:max-w-[250px] flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search item or SKU..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-            />
-          </div>
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
 
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
-          >
-            <option value="all">All Branches</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.branch_name}
-              </option>
-            ))}
-          </select>
-
-          <div className="flex items-center gap-1 bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
-            {["PENDING", "APPROVED", "REJECTED"].map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${statusFilter === status ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+        <StatusToggle
+          activeValue={statusFilter}
+          onToggle={setStatusFilter}
+          options={[
+            { label: "Pending", value: "PENDING" },
+            { label: "Approved", value: "APPROVED" },
+            { label: "Rejected", value: "REJECTED" },
+          ]}
+        />
+      </PageHeader>
 
       {/* DATA TABLE */}
       <DataTable
@@ -212,9 +173,13 @@ const StockAdjustments = () => {
               </span>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-1">
+              <div className="flex flex-col items-start gap-1.5">
                 <div
-                  className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black tracking-widest uppercase ${req.adjustment_type === "ADD" ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400"}`}
+                  className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black tracking-widest uppercase ${
+                    req.adjustment_type === "ADD"
+                      ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                      : "bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400"
+                  }`}
                 >
                   {req.adjustment_type === "ADD" ? (
                     <ArrowUpRight size={12} />
@@ -229,7 +194,23 @@ const StockAdjustments = () => {
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              {renderStatusBadge(req.status)}
+              <StatusBadge
+                label={req.status}
+                variant={
+                  req.status === "APPROVED"
+                    ? "success"
+                    : req.status === "REJECTED"
+                      ? "danger"
+                      : "warning"
+                }
+                icon={
+                  req.status === "APPROVED"
+                    ? ShieldCheck
+                    : req.status === "REJECTED"
+                      ? XCircle
+                      : Clock
+                }
+              />
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <button
@@ -252,6 +233,34 @@ const StockAdjustments = () => {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      {/* UNIVERSAL FILTER MODAL */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={resetFilters}
+        title="Advanced Filters"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Branch Location
+            </label>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+            >
+              <option value="all">All Branches</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.branch_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </FilterModal>
 
       <AdjustmentModal
         isOpen={isModalOpen}

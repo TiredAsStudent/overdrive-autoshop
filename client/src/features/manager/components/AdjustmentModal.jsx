@@ -68,7 +68,7 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <Scale size={20} />
@@ -86,7 +86,7 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
+                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
               >
                 <X size={24} />
               </button>
@@ -119,8 +119,8 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                     </p>
                   </div>
                 </div>
-                <div className="text-left sm:text-right bg-white dark:bg-slate-800 p-2 sm:p-0 sm:bg-transparent rounded-lg sm:rounded-none">
-                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                <div className="text-left sm:text-right bg-white dark:bg-slate-800 p-3 sm:p-0 sm:bg-transparent rounded-xl sm:rounded-none">
+                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-0.5">
                     Base Cost
                   </p>
                   <p className="text-sm font-black text-slate-900 dark:text-white">
@@ -134,12 +134,16 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
 
               {/* Variance & Reason */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">
                     Requested Variance
                   </p>
                   <div
-                    className={`flex items-center gap-2 text-lg font-black tracking-widest uppercase ${isDeduct ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}
+                    className={`flex items-center gap-2 text-xl font-black tracking-widest uppercase ${
+                      isDeduct
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-emerald-600 dark:text-emerald-400"
+                    }`}
                   >
                     {isDeduct ? (
                       <ArrowDownRight size={20} />
@@ -150,17 +154,19 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                   </div>
 
                   {/* Resulting Stock UI */}
-                  <div className="mt-4 space-y-1.5">
+                  <div className="mt-5 space-y-2.5">
                     <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                      <span>Current System Stock:</span>
-                      <span>
+                      <span>System Stock:</span>
+                      <span className="font-mono text-slate-700 dark:text-slate-300">
                         {currentStock} {request.uom}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-700 pt-2">
                       <span>Resulting Stock:</span>
                       <span
-                        className={resultingStock < 0 ? "text-red-500" : ""}
+                        className={`font-mono text-sm ${
+                          resultingStock < 0 ? "text-red-500" : ""
+                        }`}
                       >
                         {resultingStock} {request.uom}
                       </span>
@@ -168,7 +174,7 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                   </div>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
                     Reason Code
                   </p>
@@ -176,10 +182,10 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                     {request.reason.replace(/_/g, " ")}
                   </p>
 
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-3 mb-1">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-5 mb-1">
                     Staff Remarks
                   </p>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300 italic">
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300 italic bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                     {request.staff_remarks || "No remarks provided."}
                   </p>
                 </div>
@@ -187,13 +193,21 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
 
               {/* ESTIMATED FINANCIAL IMPACT */}
               <div
-                className={`p-4 rounded-2xl border flex items-center justify-between ${isDeduct ? "bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 text-red-800 dark:text-red-400" : "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-400"}`}
+                className={`p-5 rounded-2xl border flex items-center justify-between shadow-sm ${
+                  isDeduct
+                    ? "bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 text-red-800 dark:text-red-400"
+                    : "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-400"
+                }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <div
-                    className={`p-2 rounded-xl ${isDeduct ? "bg-red-100 dark:bg-red-500/20" : "bg-emerald-100 dark:bg-emerald-500/20"}`}
+                    className={`p-2.5 rounded-xl ${
+                      isDeduct
+                        ? "bg-red-100 dark:bg-red-500/20"
+                        : "bg-emerald-100 dark:bg-emerald-500/20"
+                    }`}
                   >
-                    <Calculator size={18} />
+                    <Calculator size={20} />
                   </div>
                   <div>
                     <span className="block text-[10px] font-black uppercase tracking-widest opacity-80">
@@ -204,7 +218,7 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                     </span>
                   </div>
                 </div>
-                <span className="text-lg font-black tracking-tight">
+                <span className="text-2xl font-black tracking-tight">
                   ₱{financialImpact}
                 </span>
               </div>
@@ -224,25 +238,25 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                       ? "Optional remarks for approval or rejection..."
                       : "No remarks provided."
                   }
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-70 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
 
             {/* Footer Action Buttons */}
             {isPending && (
-              <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row gap-3 bg-slate-50/50 dark:bg-slate-900/20">
+              <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row gap-3 bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
                 <button
                   onClick={() => handleAction("REJECT")}
                   disabled={isSubmitting}
-                  className="flex-1 py-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-500 hover:text-red-500 text-slate-600 dark:text-slate-300 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm disabled:opacity-50"
+                  className="flex-1 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-500 hover:text-red-500 text-slate-600 dark:text-slate-300 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
                 >
                   <XCircle size={16} /> Reject Request
                 </button>
                 <button
                   onClick={() => handleAction("APPROVE")}
                   disabled={isSubmitting}
-                  className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                  className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <Loader2 size={16} className="animate-spin" />
