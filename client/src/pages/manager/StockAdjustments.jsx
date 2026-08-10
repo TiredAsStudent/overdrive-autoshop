@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import {
   Scale,
   Clock,
-  ShieldCheck,
   XCircle,
   ArrowUpRight,
   ArrowDownRight,
   Eye,
+  CheckCircle,
 } from "lucide-react";
 import { stockAdjustmentService } from "../../services/manager/stockAdjustment.service";
 import { inventoryService } from "../../services/manager/inventory.service";
@@ -216,7 +216,7 @@ const StockAdjustments = () => {
                 }
                 icon={
                   req.status === "APPROVED"
-                    ? ShieldCheck
+                    ? CheckCircle
                     : req.status === "REJECTED"
                       ? XCircle
                       : Clock
