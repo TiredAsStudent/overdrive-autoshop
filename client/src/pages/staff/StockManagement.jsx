@@ -11,9 +11,11 @@ import StockMovementDrawer from "../../features/staff/components/StockMovementDr
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import PageHeader from "../../components/shared/PageHeader";
+import FilterModal from "../../components/shared/FilterModal";
 
 import SearchBar from "../../components/ui/SearchBar";
 import StatusToggle from "../../components/ui/StatusToggle";
+import FilterButton from "../../components/ui/FilterButton";
 import StatusBadge from "../../components/ui/StatusBadge";
 
 import { useApp } from "../../context/AppContext";
@@ -44,6 +46,7 @@ const StockManagement = () => {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [stockStatusFilter, setStockStatusFilter] = useState("all");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -52,6 +55,8 @@ const StockManagement = () => {
   // Drawer State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState(null);
+
+  const activeFilterCount = categoryFilter !== "all" ? 1 : 0;
 
   // Reset to page 1 on filter change
   useEffect(() => {
@@ -86,6 +91,10 @@ const StockManagement = () => {
     setIsDrawerOpen(true);
   };
 
+  const resetFilters = () => {
+    setCategoryFilter("all");
+  };
+
   const getStatusBadgeVariant = (status) => {
     if (status === "In Stock") return "success";
     if (status === "Low Stock") return "warning";
@@ -117,17 +126,10 @@ const StockManagement = () => {
           ]}
         />
 
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-amber-500 shadow-sm transition-all"
-        >
-          {CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat === "all" ? "All Categories" : cat}
-            </option>
-          ))}
-        </select>
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
 
         <SearchBar
           value={searchQuery}
@@ -251,6 +253,33 @@ const StockManagement = () => {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      {/* UNIVERSAL FILTER MODAL */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={resetFilters}
+        title="Advanced Filters"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Category Classification
+            </label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat === "all" ? "All Categories" : cat}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </FilterModal>
 
       {/* Movement Drawer */}
       <StockMovementDrawer
