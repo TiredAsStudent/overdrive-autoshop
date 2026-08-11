@@ -143,7 +143,7 @@ const StockManagement = () => {
       <DataTable
         headers={[
           "Item Profile",
-          "Unit Cost",
+          "Financials",
           "Branch Stock",
           "Asset Valuation",
           "Branch Status",
@@ -180,15 +180,34 @@ const StockManagement = () => {
                 </div>
               </td>
 
-              {/* Unit Cost */}
+              {/* Financials (Stacked Base Cost & Selling Price) */}
               <td className="px-4 sm:px-8 py-4 sm:py-5">
-                <span className="text-xs font-mono font-medium text-slate-600 dark:text-slate-400">
-                  ₱
-                  {parseFloat(item.unit_cost).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 w-10">
+                      Cost:
+                    </span>
+                    <span className="text-xs font-mono font-medium text-slate-600 dark:text-slate-400">
+                      ₱
+                      {parseFloat(item.unit_cost).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 w-10">
+                      Sell:
+                    </span>
+                    <span className="text-xs font-mono font-black text-emerald-700 dark:text-emerald-400">
+                      ₱
+                      {parseFloat(item.selling_price).toLocaleString(
+                        undefined,
+                        { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                      )}
+                    </span>
+                  </div>
+                </div>
               </td>
 
               {/* On-Hand Stock */}
