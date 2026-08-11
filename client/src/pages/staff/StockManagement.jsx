@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Search,
-  Loader2,
   Boxes,
   History,
   AlertTriangle,
@@ -12,10 +10,15 @@ import { inventoryService } from "../../services/staff/inventory.service";
 import StockMovementDrawer from "../../features/staff/components/StockMovementDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
+import PageHeader from "../../components/shared/PageHeader";
+
+import SearchBar from "../../components/ui/SearchBar";
+import StatusToggle from "../../components/ui/StatusToggle";
+import StatusBadge from "../../components/ui/StatusBadge";
+
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
-// Kept identical to Manager for consistent filtering
 const CATEGORIES = [
   "all",
   "Fluids",
@@ -83,97 +86,56 @@ const StockManagement = () => {
     setIsDrawerOpen(true);
   };
 
-  const getStatusDisplay = (status) => {
-    if (status === "In Stock") {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest">
-          <ShieldCheck size={12} /> In Stock
-        </span>
-      );
-    }
-    if (status === "Low Stock") {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-500 text-[9px] font-black uppercase tracking-widest">
-          <AlertTriangle size={12} /> Low Stock
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 text-[9px] font-black uppercase tracking-widest">
-        <XCircle size={12} /> Out of Stock
-      </span>
-    );
+  const getStatusBadgeVariant = (status) => {
+    if (status === "In Stock") return "success";
+    if (status === "Low Stock") return "warning";
+    return "danger";
+  };
+
+  const getStatusIcon = (status) => {
+    if (status === "In Stock") return ShieldCheck;
+    if (status === "Low Stock") return AlertTriangle;
+    return XCircle;
   };
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Boxes className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Stock Management
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Branch Inventory & Valuation
-            </p>
-          </div>
-        </div>
+      {/* UNIVERSAL PAGE HEADER */}
+      <PageHeader
+        title="Stock Management"
+        subtitle="Branch Inventory & Valuation"
+        icon={Boxes}
+      >
+        <StatusToggle
+          activeValue={stockStatusFilter}
+          onToggle={setStockStatusFilter}
+          options={[
+            { label: "All Items", value: "all" },
+            { label: "In Stock", value: "in_stock" },
+            { label: "Low Stock", value: "low_stock" },
+            { label: "Out of Stock", value: "out_of_stock" },
+          ]}
+        />
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          {/* Status Filter */}
-          <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 overflow-x-auto custom-scrollbar">
-            {[
-              { id: "all", label: "All Items" },
-              { id: "in_stock", label: "In Stock" },
-              { id: "low_stock", label: "Low Stock" },
-              { id: "out_of_stock", label: "Out of Stock" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setStockStatusFilter(f.id)}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${stockStatusFilter === f.id ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-amber-500 shadow-sm transition-all"
+        >
+          {CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat === "all" ? "All Categories" : cat}
+            </option>
+          ))}
+        </select>
 
-          {/* Category Dropdown */}
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-amber-500"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat === "all" ? "All Categories" : cat}
-              </option>
-            ))}
-          </select>
-
-          {/* Search Bar */}
-          <div className="relative w-full sm:max-w-[220px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search SKU or Name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-            />
-          </div>
-        </div>
-      </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search SKU or Name..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
+      </PageHeader>
 
       {/* DATA TABLE */}
       <DataTable
@@ -188,9 +150,8 @@ const StockManagement = () => {
         data={items}
         loading={loading}
         emptyTitle="No branch inventory items found"
-        emptySubtitle="Adjust filters or check connection."
+        emptySubtitle="Adjust filters or check your branch assignment connection."
         renderRow={(item) => {
-          // Because branchId was passed to backend, total_company_quantity represents specific branch stock
           const quantity = parseInt(item.total_company_quantity) || 0;
           const reorderPoint = parseInt(item.total_company_reorder) || 0;
           const costValuation = quantity * parseFloat(item.unit_cost);
@@ -207,7 +168,7 @@ const StockManagement = () => {
                     {item.item_name}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 tracking-[0.1em] uppercase bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 tracking-[0.1em] uppercase bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded shadow-sm border border-slate-200 dark:border-slate-700">
                       {item.sku}
                     </span>
                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
@@ -232,7 +193,13 @@ const StockManagement = () => {
               <td className="px-4 sm:px-8 py-4 sm:py-5">
                 <div className="flex flex-col">
                   <span
-                    className={`text-base font-black ${quantity <= 0 ? "text-red-500" : quantity <= reorderPoint ? "text-amber-500" : "text-emerald-500"}`}
+                    className={`text-base font-black ${
+                      quantity <= 0
+                        ? "text-red-500"
+                        : quantity <= reorderPoint
+                          ? "text-amber-500"
+                          : "text-emerald-500"
+                    }`}
                   >
                     {quantity}
                   </span>
@@ -255,18 +222,24 @@ const StockManagement = () => {
 
               {/* Status */}
               <td className="px-4 sm:px-8 py-4 sm:py-5">
-                {getStatusDisplay(item.global_stock_status)}
+                <StatusBadge
+                  label={item.global_stock_status}
+                  variant={getStatusBadgeVariant(item.global_stock_status)}
+                  icon={getStatusIcon(item.global_stock_status)}
+                />
               </td>
 
               {/* Actions */}
               <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
-                <button
-                  onClick={() => openMovementDrawer(item.id)}
-                  title="View Movement Ledger"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
-                >
-                  <History size={14} /> Ledger
-                </button>
+                <div className="flex items-center justify-end gap-1 sm:gap-2">
+                  <button
+                    onClick={() => openMovementDrawer(item.id)}
+                    title="View Movement Ledger"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <History size={16} />
+                  </button>
+                </div>
               </td>
             </tr>
           );
