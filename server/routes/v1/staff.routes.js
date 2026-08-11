@@ -17,7 +17,6 @@ const ReceiptController = require("../../controllers/staff/receipt.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
-const InventoryController = require("../../controllers/manager/inventory.controller");
 const SettingsController = require("../../controllers/sysadmin/settings.controller");
 
 // Middlewares
@@ -144,7 +143,6 @@ router.patch(
 // MODULE: READ-ONLY CATALOGS (For Estimate Form)
 // ==========================================
 router.get("/services", ServiceController.getServices);
-router.get("/inventory", InventoryController.getInventoryCatalog);
 router.get("/settings", SettingsController.getSettings);
 
 // ==========================================
