@@ -1,5 +1,9 @@
 const { query, pool } = require("../config/db");
+
 class Inventory {
+  // =========================================================
+  // MANAGER/ADMIN METHODS (Global Context)
+  // =========================================================
   static async countFilteredItems(
     search,
     category,
@@ -50,7 +54,6 @@ class Inventory {
       }
     }
 
-    // If we used GROUP BY (HAVING), we need to wrap the count
     if (sql.includes("GROUP BY")) {
       const wrapSql = `SELECT COUNT(*) FROM (${sql}) AS subquery`;
       const result = await query(wrapSql, values);
@@ -116,7 +119,6 @@ class Inventory {
 
     sql += ` GROUP BY i.id `;
 
-    // FRS 5.4: Apply the HAVING clause for Stock Status filtering
     if (stockStatus && stockStatus !== "all") {
       if (stockStatus === "out_of_stock") {
         sql += ` HAVING COALESCE(SUM(bi.quantity), 0) = 0 `;
@@ -133,6 +135,108 @@ class Inventory {
     const result = await query(sql, values);
     return result.rows;
   }
+
+  // =========================================================
+  // STRICTLY ISOLATED STAFF METHODS (Local Context)
+  // =========================================================
+  static async countBranchFilteredItems(
+    search,
+    category,
+    branchId,
+    stockStatus,
+  ) {
+    let sql = `
+      SELECT COUNT(i.id)
+      FROM inventory_items i
+      INNER JOIN branch_inventory bi ON i.id = bi.item_id AND bi.branch_id = $1
+      WHERE i.is_active = TRUE
+    `;
+    const values = [branchId];
+    let paramIdx = 2;
+
+    if (search) {
+      sql += ` AND (i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (category && category !== "all") {
+      sql += ` AND i.category = $${paramIdx}`;
+      values.push(category);
+      paramIdx++;
+    }
+
+    if (stockStatus && stockStatus !== "all") {
+      if (stockStatus === "out_of_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) = 0`;
+      } else if (stockStatus === "low_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) > 0 AND COALESCE(bi.quantity, 0) <= COALESCE(bi.reorder_point, i.default_reorder_level)`;
+      } else if (stockStatus === "in_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) > COALESCE(bi.reorder_point, i.default_reorder_level)`;
+      }
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findBranchPaginatedItems(
+    limit,
+    offset,
+    search,
+    category,
+    branchId,
+    stockStatus,
+  ) {
+    let sql = `
+      SELECT 
+        i.*,
+        -- Aliased to match existing frontend architecture without breaking the UI
+        COALESCE(bi.quantity, 0) AS total_company_quantity,
+        COALESCE(bi.reorder_point, i.default_reorder_level) AS total_company_reorder,
+        CASE
+          WHEN COALESCE(bi.quantity, 0) = 0 THEN 'Out of Stock'
+          WHEN COALESCE(bi.quantity, 0) <= COALESCE(bi.reorder_point, i.default_reorder_level) THEN 'Low Stock'
+          ELSE 'In Stock'
+        END AS global_stock_status
+      FROM inventory_items i
+      INNER JOIN branch_inventory bi ON i.id = bi.item_id AND bi.branch_id = $1
+      WHERE i.is_active = TRUE
+    `;
+
+    const values = [branchId];
+    let paramIdx = 2;
+
+    if (search) {
+      sql += ` AND (i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (category && category !== "all") {
+      sql += ` AND i.category = $${paramIdx}`;
+      values.push(category);
+      paramIdx++;
+    }
+
+    if (stockStatus && stockStatus !== "all") {
+      if (stockStatus === "out_of_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) = 0`;
+      } else if (stockStatus === "low_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) > 0 AND COALESCE(bi.quantity, 0) <= COALESCE(bi.reorder_point, i.default_reorder_level)`;
+      } else if (stockStatus === "in_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) > COALESCE(bi.reorder_point, i.default_reorder_level)`;
+      }
+    }
+
+    sql += ` ORDER BY i.item_name ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
+  // =========================================================
+  // SHARED UTILITIES
+  // =========================================================
 
   static async checkSkuExists(sku) {
     const sql = `SELECT id FROM inventory_items WHERE sku = $1`;

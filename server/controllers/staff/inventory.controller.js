@@ -5,7 +5,15 @@ const { STATUS_CODES } = require("../../constants/statusCodes");
 class StaffInventoryController {
   static async getInventory(req, res) {
     try {
-      const branchId = req.branchId;
+      let branchId = req.branchId;
+
+      if (
+        !branchId &&
+        (req.user.role === "MANAGER" || req.user.role === "ADMIN")
+      ) {
+        branchId = 2;
+      }
+
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
       const search = req.query.search || "";
@@ -39,7 +47,15 @@ class StaffInventoryController {
 
   static async getInventoryDetails(req, res) {
     try {
-      const branchId = req.branchId;
+      let branchId = req.branchId;
+
+      if (
+        !branchId &&
+        (req.user.role === "MANAGER" || req.user.role === "ADMIN")
+      ) {
+        branchId = 2;
+      }
+
       const details = await StaffInventoryService.getItemDetails(
         req.params.id,
         branchId,
@@ -62,7 +78,15 @@ class StaffInventoryController {
 
   static async getMovementHistory(req, res) {
     try {
-      const branchId = req.branchId;
+      let branchId = req.branchId;
+
+      if (
+        !branchId &&
+        (req.user.role === "MANAGER" || req.user.role === "ADMIN")
+      ) {
+        branchId = 2;
+      }
+
       const history = await StaffInventoryService.getItemMovementHistory(
         req.params.id,
         branchId,

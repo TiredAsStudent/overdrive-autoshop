@@ -3,8 +3,7 @@ const BranchModel = require("../../models/Branch");
 
 class StaffInventoryService {
   /**
-   * Retrieves paginated, branch-isolated inventory.
-   * Forces system status to "active" so staff only sees operational items.
+   * Retrieves paginated, strictly branch-isolated inventory.
    */
   static async getBranchInventory(
     branchId,
@@ -17,20 +16,18 @@ class StaffInventoryService {
     const offset = (page - 1) * limit;
 
     const [totalItems, items] = await Promise.all([
-      InventoryModel.countFilteredItems(
+      InventoryModel.countBranchFilteredItems(
         search,
         category,
         branchId,
-        "active", // Force active items only
         stockStatus,
       ),
-      InventoryModel.findPaginatedItems(
+      InventoryModel.findBranchPaginatedItems(
         limit,
         offset,
         search,
         category,
         branchId,
-        "active", // Force active items only
         stockStatus,
       ),
     ]);
