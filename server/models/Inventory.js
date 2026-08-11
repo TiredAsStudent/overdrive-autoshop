@@ -1,4 +1,5 @@
 const { query, pool } = require("../config/db");
+
 class Inventory {
   static async countFilteredItems(
     search,
@@ -7,14 +8,18 @@ class Inventory {
     systemStatus,
     stockStatus,
   ) {
-    let sql = `
-      SELECT COUNT(DISTINCT i.id) 
-      FROM inventory_items i
-      LEFT JOIN branch_inventory bi ON i.id = bi.item_id
-    `;
+    let sql = `SELECT COUNT(DISTINCT i.id) FROM inventory_items i`;
     const conditions = [];
     const values = [];
     let paramIdx = 1;
+
+    if (branch && branch !== "all") {
+      sql += ` INNER JOIN branch_inventory bi ON i.id = bi.item_id AND bi.branch_id = $${paramIdx}`;
+      values.push(branch);
+      paramIdx++;
+    } else {
+      sql += ` LEFT JOIN branch_inventory bi ON i.id = bi.item_id`;
+    }
 
     if (search) {
       conditions.push(
@@ -28,11 +33,6 @@ class Inventory {
       values.push(category);
       paramIdx++;
     }
-    if (branch && branch !== "all") {
-      conditions.push(`bi.branch_id = $${paramIdx}`);
-      values.push(branch);
-      paramIdx++;
-    }
     if (systemStatus === "active") conditions.push(`i.is_active = TRUE`);
     else if (systemStatus === "archived")
       conditions.push(`i.is_active = FALSE`);
@@ -44,21 +44,20 @@ class Inventory {
       if (stockStatus === "out_of_stock") {
         sql += ` GROUP BY i.id HAVING COALESCE(SUM(bi.quantity), 0) = 0`;
       } else if (stockStatus === "low_stock") {
-        sql += ` GROUP BY i.id HAVING COALESCE(SUM(bi.quantity), 0) > 0 AND COALESCE(SUM(bi.quantity), 0) <= COALESCE(SUM(bi.reorder_point), 0)`;
+        sql += ` GROUP BY i.id HAVING COALESCE(SUM(bi.quantity), 0) > 0 AND COALESCE(SUM(bi.quantity), 0) <= COALESCE(MAX(bi.reorder_point), i.default_reorder_level)`;
       } else if (stockStatus === "in_stock") {
-        sql += ` GROUP BY i.id HAVING COALESCE(SUM(bi.quantity), 0) > COALESCE(SUM(bi.reorder_point), 0)`;
+        sql += ` GROUP BY i.id HAVING COALESCE(SUM(bi.quantity), 0) > COALESCE(MAX(bi.reorder_point), i.default_reorder_level)`;
       }
     }
 
-    // If we used GROUP BY (HAVING), we need to wrap the count
     if (sql.includes("GROUP BY")) {
       const wrapSql = `SELECT COUNT(*) FROM (${sql}) AS subquery`;
       const result = await query(wrapSql, values);
-      return parseInt(result.rows[0].count, 10);
+      return parseInt(result.rows[0]?.count || 0, 10);
     }
 
     const result = await query(sql, values);
-    return parseInt(result.rows[0].count, 10);
+    return parseInt(result.rows[0]?.count || 0, 10);
   }
 
   static async findPaginatedItems(
@@ -70,26 +69,27 @@ class Inventory {
     systemStatus,
     stockStatus,
   ) {
-    let joinClause = `LEFT JOIN branch_inventory bi ON i.id = bi.item_id`;
+    let joinClause = ``;
     const conditions = [];
     const values = [];
     let paramIdx = 1;
 
     if (branch && branch !== "all") {
-      joinClause += ` AND bi.branch_id = $${paramIdx}`;
-      conditions.push(`bi.branch_id = $${paramIdx}`);
+      joinClause = `INNER JOIN branch_inventory bi ON i.id = bi.item_id AND bi.branch_id = $${paramIdx}`;
       values.push(branch);
       paramIdx++;
+    } else {
+      joinClause = `LEFT JOIN branch_inventory bi ON i.id = bi.item_id`;
     }
 
     let sql = `
       SELECT 
         i.*,
         COALESCE(SUM(bi.quantity), 0) AS total_company_quantity,
-        COALESCE(SUM(bi.reorder_point), 0) AS total_company_reorder,
+        COALESCE(MAX(bi.reorder_point), i.default_reorder_level) AS total_company_reorder,
         CASE
           WHEN COALESCE(SUM(bi.quantity), 0) = 0 THEN 'Out of Stock'
-          WHEN COALESCE(SUM(bi.quantity), 0) <= COALESCE(SUM(bi.reorder_point), 0) THEN 'Low Stock'
+          WHEN COALESCE(SUM(bi.quantity), 0) <= COALESCE(MAX(bi.reorder_point), i.default_reorder_level) THEN 'Low Stock'
           ELSE 'In Stock'
         END AS global_stock_status
       FROM inventory_items i
@@ -116,14 +116,13 @@ class Inventory {
 
     sql += ` GROUP BY i.id `;
 
-    // FRS 5.4: Apply the HAVING clause for Stock Status filtering
     if (stockStatus && stockStatus !== "all") {
       if (stockStatus === "out_of_stock") {
         sql += ` HAVING COALESCE(SUM(bi.quantity), 0) = 0 `;
       } else if (stockStatus === "low_stock") {
-        sql += ` HAVING COALESCE(SUM(bi.quantity), 0) > 0 AND COALESCE(SUM(bi.quantity), 0) <= COALESCE(SUM(bi.reorder_point), 0) `;
+        sql += ` HAVING COALESCE(SUM(bi.quantity), 0) > 0 AND COALESCE(SUM(bi.quantity), 0) <= COALESCE(MAX(bi.reorder_point), i.default_reorder_level) `;
       } else if (stockStatus === "in_stock") {
-        sql += ` HAVING COALESCE(SUM(bi.quantity), 0) > COALESCE(SUM(bi.reorder_point), 0) `;
+        sql += ` HAVING COALESCE(SUM(bi.quantity), 0) > COALESCE(MAX(bi.reorder_point), i.default_reorder_level) `;
       }
     }
 
