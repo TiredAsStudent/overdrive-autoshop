@@ -8,7 +8,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Calculator,
-  Printer,
   Building2,
 } from "lucide-react";
 import { inventoryService } from "../../../services/staff/inventory.service";
@@ -62,6 +61,7 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* 1. Standardized Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -72,6 +72,7 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
             aria-hidden="true"
           />
 
+          {/* 2. Standardized Drawer Panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -86,6 +87,7 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
             role="dialog"
             aria-modal="true"
           >
+            {/* 3. Standardized Fixed Header */}
             <header className="flex justify-between items-center px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
@@ -111,6 +113,7 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
               </button>
             </header>
 
+            {/* 4. Standardized Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
@@ -264,16 +267,6 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
                   </section>
                 </div>
               )}
-            </div>
-
-            {/* Print Footer */}
-            <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-              <button
-                disabled={!details || loading}
-                className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.98]"
-              >
-                <Printer size={16} /> Print Document
-              </button>
             </div>
           </motion.div>
         </div>
