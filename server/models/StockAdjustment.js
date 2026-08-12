@@ -37,19 +37,18 @@ class StockAdjustment {
   static async findPaginated(limit, offset, search, status, branch = "all") {
     let sql = `
       SELECT 
-        sar.id, sar.adjustment_type, sar.quantity AS requested_quantity, sar.reason, 
-        sar.staff_remarks, sar.status, sar.created_at, sar.manager_remarks, sar.resolved_at,
+        sar.id, sar.adjustment_number, sar.adjustment_type, sar.quantity AS requested_quantity, 
+        sar.reason, sar.staff_remarks, sar.status, sar.created_at, 
+        sar.manager_remarks, sar.resolved_at, sar.current_system_quantity, sar.physical_count,
         i.sku, i.item_name, i.category, i.unit_cost, i.uom,
         b.branch_name,
         u.first_name AS requester_first_name, u.last_name AS requester_last_name,
-        r.first_name AS resolver_first_name, r.last_name AS resolver_last_name,
-        COALESCE(bi.quantity, 0) AS current_system_quantity
+        r.first_name AS resolver_first_name, r.last_name AS resolver_last_name
       FROM stock_adjustment_requests sar
       JOIN inventory_items i ON sar.item_id = i.id
       JOIN branches b ON sar.branch_id = b.id
       LEFT JOIN users u ON sar.requested_by = u.id
       LEFT JOIN users r ON sar.resolved_by = r.id
-      LEFT JOIN branch_inventory bi ON sar.item_id = bi.item_id AND sar.branch_id = bi.branch_id
     `;
     const conditions = [];
     const values = [];
