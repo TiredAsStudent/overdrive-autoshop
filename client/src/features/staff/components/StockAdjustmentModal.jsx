@@ -111,10 +111,22 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setValidationError("Image exceeds 5MB size limit.");
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+      if (!allowedTypes.includes(file.type)) {
+        setValidationError(
+          "Invalid file format. Only JPEG, PNG, and WEBP images are allowed.",
+        );
+        removeFile();
         return;
       }
+
+      if (file.size > 5 * 1024 * 1024) {
+        setValidationError("Image exceeds the maximum 5MB size limit.");
+        removeFile();
+        return;
+      }
+
       setEvidenceFile(file);
       const objectUrl = URL.createObjectURL(file);
       setEvidencePreview(objectUrl);

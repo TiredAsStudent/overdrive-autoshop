@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const StaffStockAdjustmentService = require("../../services/staff/stockAdjustment.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
@@ -23,6 +25,13 @@ class StaffStockAdjustmentController {
         `Adjustment request ${request.adjustment_number} submitted for manager review.`,
       );
     } catch (error) {
+      if (req.file && req.file.path) {
+        fs.unlink(path.resolve(req.file.path), (err) => {
+          if (err)
+            console.error("Failed to delete orphaned evidence file:", err);
+        });
+      }
+
       const statusCode = error.message.includes("already exists")
         ? STATUS_CODES.CONFLICT
         : STATUS_CODES.BAD_REQUEST;
