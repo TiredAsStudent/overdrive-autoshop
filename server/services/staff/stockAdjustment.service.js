@@ -4,7 +4,6 @@ const { logSecureAction } = require("../../utils/auditLogger");
 
 class StaffStockAdjustmentService {
   static async createRequest(data, userId, branchId, ipAddress) {
-    // 1. Verify Item Exists and grab real-time current stock
     const itemBreakdowns = await InventoryModel.getBranchBreakdown(
       data.item_id,
     );
@@ -19,7 +18,6 @@ class StaffStockAdjustmentService {
     const currentSystemQuantity = parseInt(branchStock.quantity, 10);
     const physicalCount = parseInt(data.physical_count, 10);
 
-    // 2. Validate Variance (VR-04)
     const difference = physicalCount - currentSystemQuantity;
     if (difference === 0) {
       throw new Error(
@@ -27,7 +25,6 @@ class StaffStockAdjustmentService {
       );
     }
 
-    // 3. Prevent Duplicate Pending Requests (VR-06)
     const existingPending = await StockAdjustmentModel.checkPendingRequest(
       data.item_id,
       branchId,
@@ -38,7 +35,6 @@ class StaffStockAdjustmentService {
       );
     }
 
-    // 4. Calculate Mathematical Payload
     const payload = {
       item_id: data.item_id,
       branch_id: branchId,
@@ -49,12 +45,11 @@ class StaffStockAdjustmentService {
       quantity: Math.abs(difference),
       reason: data.reason,
       staff_remarks: data.staff_remarks,
+      evidence_url: data.evidence_url || null,
     };
 
-    // 5. Insert Record
     const newRequest = await StockAdjustmentModel.createRequest(payload);
 
-    // 6. Log Immutable Audit Action
     await logSecureAction(
       userId,
       branchId,
@@ -69,6 +64,7 @@ class StaffStockAdjustmentService {
         item_id: newRequest.item_id,
         variance: difference,
         reason: newRequest.reason,
+        has_evidence: !!payload.evidence_url,
       },
     );
 
@@ -84,7 +80,6 @@ class StaffStockAdjustmentService {
   ) {
     const offset = (page - 1) * limit;
 
-    // Leverage existing Manager model but force the branch constraint to lock it to the Staff's branch
     const [totalItems, requests] = await Promise.all([
       StockAdjustmentModel.countFiltered(search, status, branchId),
       StockAdjustmentModel.findPaginated(

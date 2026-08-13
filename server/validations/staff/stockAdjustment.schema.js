@@ -2,11 +2,11 @@ const { z } = require("zod");
 
 const createStockAdjustmentSchema = z.object({
   body: z.object({
-    item_id: z
+    item_id: z.coerce
       .number()
       .int()
       .positive("A valid inventory item must be selected."),
-    physical_count: z
+    physical_count: z.coerce
       .number()
       .int()
       .min(0, "Physical count cannot be negative."),

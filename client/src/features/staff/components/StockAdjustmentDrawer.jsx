@@ -28,6 +28,14 @@ const StockAdjustmentDrawer = ({ isOpen, onClose, request }) => {
     ? currentStock - requestedQty
     : currentStock + requestedQty;
 
+  const getEvidenceUrl = (path) => {
+    if (!path) return null;
+    const baseUrl =
+      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+      "http://localhost:5000";
+    return `${baseUrl}/${path}`;
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -186,6 +194,28 @@ const StockAdjustmentDrawer = ({ isOpen, onClose, request }) => {
                   </div>
                 </div>
               </section>
+
+              {/* PHOTO EVIDENCE VIEWER */}
+              {request.evidence_url && (
+                <section className="bg-white dark:bg-slate-800 p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                    Visual Evidence
+                  </p>
+                  <a
+                    href={getEvidenceUrl(request.evidence_url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
+                  >
+                    <img
+                      src={getEvidenceUrl(request.evidence_url)}
+                      alt="Discrepancy Evidence"
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                  </a>
+                </section>
+              )}
 
               {/* REASON & REMARKS CARD */}
               <section className="bg-white dark:bg-slate-800 p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">

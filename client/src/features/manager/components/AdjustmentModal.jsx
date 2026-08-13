@@ -42,6 +42,14 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
     ? currentStock - requestedQty
     : currentStock + requestedQty;
 
+  const getEvidenceUrl = (path) => {
+    if (!path) return null;
+    const baseUrl =
+      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+      "http://localhost:5000";
+    return `${baseUrl}/${path}`;
+  };
+
   const handleAction = async (actionType) => {
     setValidationError("");
     setIsSubmitting(true);
@@ -191,6 +199,32 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                   </div>
                 </section>
               </div>
+
+              {/* PHOTO EVIDENCE VIEWER */}
+              {request.evidence_url && (
+                <section className="bg-white dark:bg-slate-800 p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                    Visual Evidence Attached
+                  </p>
+                  <a
+                    href={getEvidenceUrl(request.evidence_url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
+                  >
+                    <img
+                      src={getEvidenceUrl(request.evidence_url)}
+                      alt="Discrepancy Evidence"
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
+                        Click to enlarge
+                      </span>
+                    </div>
+                  </a>
+                </section>
+              )}
 
               {/* ESTIMATED FINANCIAL IMPACT */}
               <section

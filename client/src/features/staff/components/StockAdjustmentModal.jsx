@@ -9,6 +9,8 @@ import {
   Calculator,
   ArrowRight,
   Search,
+  UploadCloud,
+  ImageIcon,
 } from "lucide-react";
 import { inventoryService } from "../../../services/staff/inventory.service";
 import { useDebounce } from "../../../hooks/useDebounce";
@@ -21,18 +23,23 @@ const REASON_CODES = [
   { id: "PROMOTIONAL_GIVEAWAY", label: "Promotional Use" },
 ];
 
+const REQUIRES_EVIDENCE = ["DAMAGED", "STOLEN_OR_LOST"];
+
 const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
 
-  // Custom Async Dropdown State
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedItemData, setSelectedItemData] = useState(null);
+
+  const [evidenceFile, setEvidenceFile] = useState(null);
+  const [evidencePreview, setEvidencePreview] = useState(null);
 
   const [formData, setFormData] = useState({
     item_id: "",
@@ -41,7 +48,6 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
     staff_remarks: "",
   });
 
-  // Reset state entirely when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -55,10 +61,11 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
       setSearchResults([]);
       setSelectedItemData(null);
       setIsDropdownOpen(false);
+      setEvidenceFile(null);
+      setEvidencePreview(null);
     }
   }, [isOpen]);
 
-  // Handle clicking outside the custom dropdown to close it
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -69,7 +76,6 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Live Async Search Execution
   useEffect(() => {
     if (isOpen && isDropdownOpen) {
       setIsSearching(true);
@@ -91,7 +97,6 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     setIsDropdownOpen(true);
-    // If they start typing again, wipe out the currently selected item mathematically
     if (selectedItemData) {
       setSelectedItemData(null);
       setFormData((prev) => ({ ...prev, item_id: "" }));
@@ -101,6 +106,26 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setValidationError("Image exceeds 5MB size limit.");
+        return;
+      }
+      setEvidenceFile(file);
+      const objectUrl = URL.createObjectURL(file);
+      setEvidencePreview(objectUrl);
+      setValidationError("");
+    }
+  };
+
+  const removeFile = () => {
+    setEvidenceFile(null);
+    setEvidencePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSubmit = async (e) => {
@@ -128,9 +153,15 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
       );
     }
 
+    if (REQUIRES_EVIDENCE.includes(formData.reason) && !evidenceFile) {
+      return setValidationError(
+        `Photo evidence is mandatory for "${formData.reason.replace(/_/g, " ")}" adjustments.`,
+      );
+    }
+
     setIsSubmitting(true);
     try {
-      await onSubmit(formData);
+      await onSubmit(formData, evidenceFile);
     } catch (error) {
       setValidationError(error.message);
     } finally {
@@ -400,6 +431,57 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
                       placeholder="Provide specific details about how/why this discrepancy occurred..."
                       className="w-full px-5 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none leading-relaxed shadow-sm"
                     />
+                  </div>
+
+                  {/* EVIDENCE UPLOAD */}
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+                    <label className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                      <ImageIcon size={14} /> Photo Evidence
+                      {REQUIRES_EVIDENCE.includes(formData.reason) && (
+                        <span className="text-red-500">
+                          *(Required for {formData.reason.replace(/_/g, " ")})
+                        </span>
+                      )}
+                    </label>
+
+                    {!evidencePreview ? (
+                      <div className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 flex flex-col items-center justify-center bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors relative">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                          accept="image/jpeg, image/png, image/webp"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <UploadCloud
+                          size={32}
+                          className="text-slate-400 mb-3"
+                        />
+                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                          Click or drag image to upload
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          JPEG, PNG up to 5MB
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group">
+                        <img
+                          src={evidencePreview}
+                          alt="Evidence"
+                          className="w-full h-48 sm:h-64 object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={removeFile}
+                            className="px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-red-600 transition-colors cursor-pointer"
+                          >
+                            <X size={14} /> Remove Photo
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </section>
               </form>

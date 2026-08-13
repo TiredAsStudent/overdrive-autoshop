@@ -15,16 +15,21 @@ export const stockAdjustmentService = {
     }
   },
 
-  createRequest: async (adjustmentData) => {
+  createRequest: async (adjustmentData, evidenceFile) => {
     try {
-      const payload = {
-        item_id: parseInt(adjustmentData.item_id, 10),
-        physical_count: parseInt(adjustmentData.physical_count, 10),
-        reason: adjustmentData.reason,
-        staff_remarks: adjustmentData.staff_remarks,
-      };
+      const formData = new FormData();
+      formData.append("item_id", adjustmentData.item_id);
+      formData.append("physical_count", adjustmentData.physical_count);
+      formData.append("reason", adjustmentData.reason);
+      formData.append("staff_remarks", adjustmentData.staff_remarks);
 
-      const response = await api.post("/staff/stock-adjustments", payload);
+      if (evidenceFile) {
+        formData.append("evidence", evidenceFile);
+      }
+
+      const response = await api.post("/staff/stock-adjustments", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return response.data;
     } catch (error) {
       throw new Error(

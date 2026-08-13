@@ -40,6 +40,7 @@ class StockAdjustment {
         sar.id, sar.adjustment_number, sar.adjustment_type, sar.quantity AS requested_quantity, 
         sar.reason, sar.staff_remarks, sar.status, sar.created_at, 
         sar.manager_remarks, sar.resolved_at, sar.current_system_quantity, sar.physical_count,
+        sar.evidence_url, -- Retrieves the photo evidence
         i.sku, i.item_name, i.category, i.unit_cost, i.uom,
         b.branch_name,
         u.first_name AS requester_first_name, u.last_name AS requester_last_name,
@@ -80,13 +81,11 @@ class StockAdjustment {
     return result.rows;
   }
 
-  // FRS Concurrency Protection: Approve Transaction
   static async approveTransaction(requestId, managerId, managerRemarks) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // 1. Lock the request row
       const reqRes = await client.query(
         "SELECT * FROM stock_adjustment_requests WHERE id = $1 FOR UPDATE",
         [requestId],
@@ -99,7 +98,6 @@ class StockAdjustment {
           `This request has already been ${request.status.toLowerCase()}.`,
         );
 
-      // 2. Lock the inventory row to get real-time stock
       const invRes = await client.query(
         `
         SELECT bi.quantity, i.unit_cost 
@@ -119,7 +117,6 @@ class StockAdjustment {
         qtyDeducted = 0;
       let newQuantity = currentQuantity;
 
-      // 3. Mathematical check & Concurrency Trap
       if (request.adjustment_type === "ADD") {
         qtyAdded = request.quantity;
         newQuantity += request.quantity;
@@ -133,7 +130,6 @@ class StockAdjustment {
         }
       }
 
-      // 4. Update Inventory
       await client.query(
         `
         UPDATE branch_inventory 
@@ -143,7 +139,6 @@ class StockAdjustment {
         [newQuantity, qtyAdded, request.branch_id, request.item_id],
       );
 
-      // 5. Write to Ledger
       const referenceCode = `ADJ-WF-${Date.now().toString().slice(-6)}`;
       await client.query(
         `
@@ -164,7 +159,6 @@ class StockAdjustment {
         ],
       );
 
-      // 6. Update Request Status
       const updateReq = await client.query(
         `
         UPDATE stock_adjustment_requests 
@@ -184,7 +178,6 @@ class StockAdjustment {
     }
   }
 
-  // FRS: Reject Transaction (Does not touch physical inventory)
   static async rejectRequest(requestId, managerId, managerRemarks) {
     const sql = `
       UPDATE stock_adjustment_requests 
@@ -198,13 +191,6 @@ class StockAdjustment {
     return result.rows[0];
   }
 
-  // ==========================================
-  // STAFF INTAKE METHODS
-  // ==========================================
-
-  /**
-   * Enforces VR-06: Checks if a pending request already exists for this item in this branch.
-   */
   static async checkPendingRequest(itemId, branchId) {
     const sql = `
       SELECT id FROM stock_adjustment_requests 
@@ -214,29 +200,17 @@ class StockAdjustment {
     return result.rows[0];
   }
 
-  /**
-   * Creates the new adjustment request.
-   */
   static async createRequest(data) {
     const sql = `
       INSERT INTO stock_adjustment_requests (
-        adjustment_number,
-        item_id, 
-        branch_id, 
-        requested_by, 
-        adjustment_type, 
-        current_system_quantity,
-        physical_count,
-        quantity, 
-        reason, 
-        staff_remarks, 
-        status
+        adjustment_number, item_id, branch_id, requested_by, adjustment_type, 
+        current_system_quantity, physical_count, quantity, reason, staff_remarks, 
+        status, evidence_url
       ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PENDING')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PENDING', $11)
       RETURNING *
     `;
 
-    // Auto-generate ADJ-YYYYMM-XXXX string
     const datePrefix = new Date().toISOString().slice(0, 7).replace("-", "");
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const adjustmentNumber = `ADJ-${datePrefix}-${randomSuffix}`;
@@ -249,9 +223,10 @@ class StockAdjustment {
       data.adjustment_type,
       data.current_system_quantity,
       data.physical_count,
-      data.quantity, // This is the absolute variance
+      data.quantity,
       data.reason,
       data.staff_remarks,
+      data.evidence_url || null,
     ];
 
     const result = await query(sql, values);

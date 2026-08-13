@@ -5,7 +5,10 @@ const { STATUS_CODES } = require("../../constants/statusCodes");
 class StaffStockAdjustmentController {
   static async createRequest(req, res) {
     try {
-      // req.branchId is guaranteed by the branchGuard middleware
+      if (req.file) {
+        req.body.evidence_url = req.file.path.replace(/\\/g, "/");
+      }
+
       const request = await StaffStockAdjustmentService.createRequest(
         req.body,
         req.user.id,

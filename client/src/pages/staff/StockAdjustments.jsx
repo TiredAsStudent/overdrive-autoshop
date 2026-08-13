@@ -69,9 +69,9 @@ const StockAdjustments = () => {
     loadRequests();
   }, [currentPage, debouncedSearchQuery, statusFilter]);
 
-  const handleModalSubmit = async (formData) => {
+  const handleModalSubmit = async (formData, evidenceFile) => {
     try {
-      await stockAdjustmentService.createRequest(formData);
+      await stockAdjustmentService.createRequest(formData, evidenceFile);
       showToast("Adjustment request submitted successfully.", "success");
       setIsModalOpen(false);
       loadRequests();

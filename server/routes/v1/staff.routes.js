@@ -26,7 +26,10 @@ const {
   verifyToken,
   requireRole,
 } = require("../../middlewares/authMiddleware");
-const { uploadReceipt } = require("../../middlewares/uploadMiddleware");
+const {
+  uploadReceipt,
+  uploadAdjustmentEvidence,
+} = require("../../middlewares/uploadMiddleware");
 const { ROLES } = require("../../constants/roles");
 
 // Validations
@@ -301,6 +304,7 @@ router.get(
 // ==========================================
 router.post(
   "/stock-adjustments",
+  uploadAdjustmentEvidence.single("evidence"),
   validate(createStockAdjustmentSchema),
   StaffStockAdjustmentController.createRequest,
 );
