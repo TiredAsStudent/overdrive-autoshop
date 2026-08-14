@@ -5,13 +5,14 @@ const { STATUS_CODES } = require("../../constants/statusCodes");
 class StaffInventoryController {
   static async getInventory(req, res) {
     try {
-      let branchId = req.branchId;
+      const branchId = req.branchId;
 
-      if (
-        !branchId &&
-        (req.user.role === "MANAGER" || req.user.role === "ADMIN")
-      ) {
-        branchId = 2;
+      if (!branchId) {
+        return sendError(
+          res,
+          STATUS_CODES.BAD_REQUEST,
+          "Branch context is strictly required to access local inventory.",
+        );
       }
 
       const page = parseInt(req.query.page, 10) || 1;
@@ -47,13 +48,14 @@ class StaffInventoryController {
 
   static async getInventoryDetails(req, res) {
     try {
-      let branchId = req.branchId;
+      const branchId = req.branchId;
 
-      if (
-        !branchId &&
-        (req.user.role === "MANAGER" || req.user.role === "ADMIN")
-      ) {
-        branchId = 2;
+      if (!branchId) {
+        return sendError(
+          res,
+          STATUS_CODES.BAD_REQUEST,
+          "Branch context is strictly required to view item details.",
+        );
       }
 
       const details = await StaffInventoryService.getItemDetails(
@@ -78,13 +80,14 @@ class StaffInventoryController {
 
   static async getMovementHistory(req, res) {
     try {
-      let branchId = req.branchId;
+      const branchId = req.branchId;
 
-      if (
-        !branchId &&
-        (req.user.role === "MANAGER" || req.user.role === "ADMIN")
-      ) {
-        branchId = 2;
+      if (!branchId) {
+        return sendError(
+          res,
+          STATUS_CODES.BAD_REQUEST,
+          "Branch context is strictly required to view movement history.",
+        );
       }
 
       const history = await StaffInventoryService.getItemMovementHistory(
