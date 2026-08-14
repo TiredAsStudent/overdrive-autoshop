@@ -182,21 +182,17 @@ const StockTransfers = () => {
             key={req.id}
             className="group transition-colors hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
           >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-1">
-                <span className="inline-flex px-2 py-1 rounded bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[10px] font-black tracking-widest uppercase">
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
+              <div className="flex flex-col">
+                <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">
                   {req.transfer_reference}
                 </span>
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  {new Date(req.created_at).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                  {new Date(req.created_at).toLocaleDateString()}
                 </span>
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="min-w-0 max-w-[200px] sm:max-w-[250px]">
                 <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white italic uppercase truncate">
                   {req.item_name}
@@ -212,7 +208,7 @@ const StockTransfers = () => {
                 </div>
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex flex-col items-start gap-1">
                 <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">
                   Out: {req.source_branch_name}
@@ -222,12 +218,12 @@ const StockTransfers = () => {
                 </span>
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 text-[10px] sm:text-xs font-black tracking-widest uppercase w-max">
                 <ArrowRightLeft size={12} /> {req.quantity} {req.uom}
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
               <span className="text-xs font-black text-slate-900 dark:text-white tracking-widest">
                 ₱
                 {(
@@ -235,7 +231,7 @@ const StockTransfers = () => {
                 ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+            <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
               <button
                 onClick={() => {
                   setSelectedTransfer(req);
