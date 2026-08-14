@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -9,14 +9,24 @@ import {
   MapPin,
   Calculator,
   FileText,
+  Search,
 } from "lucide-react";
 import { inventoryService } from "../../../services/manager/inventory.service";
+import { useDebounce } from "../../../hooks/useDebounce";
 
 const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
 
-  const [catalogItems, setCatalogItems] = useState([]);
+  // Custom Async Dropdown State
+  const dropdownRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedItemData, setSelectedItemData] = useState(null);
+
   const [branchStock, setBranchStock] = useState({});
   const [isLoadingStock, setIsLoadingStock] = useState(false);
 
@@ -39,13 +49,58 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
       });
       setValidationError("");
       setBranchStock({});
-
-      inventoryService
-        .getInventoryCatalog(1, 1000, "", "all", "all", "active")
-        .then((res) => setCatalogItems(res.data || []))
-        .catch((err) => console.error("Failed to load catalog", err));
+      setSearchTerm("");
+      setSearchResults([]);
+      setSelectedItemData(null);
+      setIsDropdownOpen(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && isDropdownOpen) {
+      setIsSearching(true);
+      inventoryService
+        .getInventoryCatalog(
+          1,
+          10,
+          debouncedSearchTerm,
+          "all",
+          "all",
+          "active",
+          "all",
+        )
+        .then((res) => setSearchResults(res.data || []))
+        .catch(() => setSearchResults([]))
+        .finally(() => setIsSearching(false));
+    }
+  }, [isOpen, debouncedSearchTerm, isDropdownOpen]);
+
+  const handleSelectItem = (item) => {
+    setSelectedItemData(item);
+    setFormData((prev) => ({ ...prev, item_id: item.id.toString() }));
+    setSearchTerm(`[${item.sku}] ${item.item_name}`);
+    setIsDropdownOpen(false);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setIsDropdownOpen(true);
+    if (selectedItemData) {
+      setSelectedItemData(null);
+      setFormData((prev) => ({ ...prev, item_id: "" }));
+      setBranchStock({});
+    }
+  };
 
   useEffect(() => {
     if (formData.item_id) {
@@ -72,6 +127,12 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setValidationError("");
+
+    if (!formData.item_id || !selectedItemData) {
+      return setValidationError(
+        "Please search and select a valid master inventory item.",
+      );
+    }
 
     if (
       parseInt(formData.source_branch_id, 10) ===
@@ -105,11 +166,6 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
       setIsSubmitting(false);
     }
   };
-
-  // Pre-calculated values for UI
-  const selectedItemData = catalogItems.find(
-    (i) => i.id === parseInt(formData.item_id),
-  );
 
   const transferQty = parseInt(formData.quantity, 10) || 0;
 
@@ -178,28 +234,74 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
               >
                 {/* SECTION 1: ASSET SELECTION */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
-                    <Package size={14} /> Asset Identification
-                  </h3>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Master Inventory Item{" "}
+                  <div ref={dropdownRef} className="relative z-20">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 flex items-center gap-2">
+                      <Package size={14} /> Master Inventory Item{" "}
                       <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      required
-                      name="item_id"
-                      value={formData.item_id}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-shadow shadow-sm"
-                    >
-                      <option value="">-- Select an Item to Transfer --</option>
-                      {catalogItems.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          [{item.sku}] {item.item_name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        {isSearching ? (
+                          <Loader2
+                            size={18}
+                            className="text-amber-500 animate-spin"
+                          />
+                        ) : (
+                          <Search size={18} className="text-slate-400" />
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        onFocus={() => setIsDropdownOpen(true)}
+                        placeholder="Type SKU or Item Name to search..."
+                        className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
+                      />
+
+                      {/* Custom Search Results Dropdown */}
+                      <AnimatePresence>
+                        {isDropdownOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 5 }}
+                            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-30"
+                          >
+                            {searchResults.length > 0 ? (
+                              searchResults.map((item) => (
+                                <div
+                                  key={item.id}
+                                  onClick={() => handleSelectItem(item)}
+                                  className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                                >
+                                  <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                                    {item.sku}
+                                  </p>
+                                  <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                                    {item.item_name}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase">
+                                    Total Company Stock:{" "}
+                                    <span className="font-black text-slate-700 dark:text-slate-300">
+                                      {item.total_company_quantity} {item.uom}
+                                    </span>
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-8 text-center">
+                                <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+                                  {isSearching
+                                    ? "Searching catalog..."
+                                    : "No matching items found."}
+                                </p>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
                 </section>
 
