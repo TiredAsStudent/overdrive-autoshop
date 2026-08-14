@@ -179,7 +179,7 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                 {/* SECTION 1: ASSET SELECTION */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
-                    <Package size={14} /> 1. Asset Identification
+                    <Package size={14} /> Asset Identification
                   </h3>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
@@ -206,7 +206,7 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                 {/* SECTION 2: LOGISTICS ROUTING */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
-                    <MapPin size={14} /> 2. Logistics Routing
+                    <MapPin size={14} /> Logistics Routing
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 relative">
@@ -333,7 +333,7 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                 {/* SECTION 3: DETAILS & VALUATION */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-4 flex items-center gap-2">
-                    <FileText size={14} /> 3. Transfer Details & Valuation
+                    <FileText size={14} /> Transfer Details & Valuation
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
