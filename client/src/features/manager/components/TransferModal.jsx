@@ -8,6 +8,7 @@ import {
   Package,
   MapPin,
   Calculator,
+  FileText,
 } from "lucide-react";
 import { inventoryService } from "../../../services/manager/inventory.service";
 
@@ -130,14 +131,15 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-3xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+            {/* MODAL HEADER */}
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <ArrowRightLeft size={20} />
@@ -160,6 +162,7 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
               </button>
             </div>
 
+            {/* MODAL BODY */}
             <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
@@ -173,176 +176,203 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                 onSubmit={handleSubmit}
                 className="space-y-6"
               >
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
-                    <Package size={14} /> Master Inventory Item{" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    required
-                    name="item_id"
-                    value={formData.item_id}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1"
-                  >
-                    <option value="">-- Select an Item to Transfer --</option>
-                    {catalogItems.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        [{item.sku}] {item.item_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 p-5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 relative">
-                  <div className="hidden sm:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full items-center justify-center text-amber-500 shadow-sm">
-                    <ArrowRightLeft size={14} />
-                  </div>
-
-                  {/* SOURCE BRANCH AREA */}
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <MapPin size={14} className="text-red-500" /> Source
-                        Branch <span className="text-red-500">*</span>
-                      </span>
-                      {!isLoadingStock &&
-                        formData.item_id &&
-                        formData.source_branch_id && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[9px] font-bold text-slate-500">
-                              Stock:
-                            </span>
-                            <span
-                              className={`text-[9px] px-1.5 py-0.5 rounded font-black ${availableSourceStock > 0 ? "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300" : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"}`}
-                            >
-                              {availableSourceStock}
-                            </span>
-                            {transferQty > 0 &&
-                              availableSourceStock !== "..." && (
-                                <>
-                                  <span className="text-[9px] text-slate-400">
-                                    →
-                                  </span>
-                                  <span
-                                    className={`text-[9px] px-1.5 py-0.5 rounded font-black ${availableSourceStock - transferQty < 0 ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"}`}
-                                  >
-                                    {availableSourceStock - transferQty}
-                                  </span>
-                                </>
-                              )}
-                          </div>
-                        )}
-                    </label>
-                    <select
-                      required
-                      name="source_branch_id"
-                      value={formData.source_branch_id}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                    >
-                      <option value="">-- Origin Location --</option>
-                      {branches.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.branch_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* DESTINATION BRANCH AREA */}
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <MapPin size={14} className="text-emerald-500" />{" "}
-                        Destination Branch{" "}
-                        <span className="text-red-500">*</span>
-                      </span>
-                      {!isLoadingStock &&
-                        formData.item_id &&
-                        formData.destination_branch_id && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[9px] font-bold text-slate-500">
-                              Stock:
-                            </span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                              {availableDestStock}
-                            </span>
-                            {transferQty > 0 &&
-                              availableDestStock !== "..." && (
-                                <>
-                                  <span className="text-[9px] text-slate-400">
-                                    →
-                                  </span>
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-                                    {availableDestStock + transferQty}
-                                  </span>
-                                </>
-                              )}
-                          </div>
-                        )}
-                    </label>
-                    <select
-                      required
-                      name="destination_branch_id"
-                      value={formData.destination_branch_id}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                    >
-                      <option value="">-- Target Location --</option>
-                      {branches.map((b) => (
-                        <option
-                          key={b.id}
-                          value={b.id}
-                          disabled={
-                            b.id.toString() === formData.source_branch_id
-                          }
-                        >
-                          {b.branch_name}{" "}
-                          {b.id.toString() === formData.source_branch_id
-                            ? "(Source)"
-                            : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {/* SECTION 1: ASSET SELECTION */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                    <Package size={14} /> 1. Asset Identification
+                  </h3>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Transfer Quantity <span className="text-red-500">*</span>
+                      Master Inventory Item{" "}
+                      <span className="text-red-500">*</span>
                     </label>
-                    <input
+                    <select
                       required
-                      type="number"
-                      min="1"
-                      step="1"
-                      name="quantity"
-                      value={formData.quantity}
+                      name="item_id"
+                      value={formData.item_id}
                       onChange={handleChange}
-                      placeholder="e.g., 50"
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                    />
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-shadow shadow-sm"
+                    >
+                      <option value="">-- Select an Item to Transfer --</option>
+                      {catalogItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          [{item.sku}] {item.item_name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                </section>
 
-                  <div className="flex flex-col justify-end">
-                    <div className="p-3 rounded-xl border bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-400 flex items-center justify-between h-[46px]">
-                      <div className="flex items-center gap-2">
-                        <Calculator size={14} />
-                        <span className="text-[9px] font-black uppercase tracking-widest">
-                          Asset Value Transferred
+                {/* SECTION 2: LOGISTICS ROUTING */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
+                    <MapPin size={14} /> 2. Logistics Routing
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 relative">
+                    {/* Visual Connector Arrow (Desktop only) */}
+                    <div className="hidden sm:flex absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full items-center justify-center text-emerald-500 shadow-sm">
+                      <ArrowRightLeft size={14} />
+                    </div>
+
+                    {/* SOURCE BRANCH AREA */}
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                          Extract From <span className="text-red-500">*</span>
+                        </span>
+                        {!isLoadingStock &&
+                          formData.item_id &&
+                          formData.source_branch_id && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-bold text-slate-400">
+                                Stock:
+                              </span>
+                              <span
+                                className={`text-[9px] px-1.5 py-0.5 rounded font-black ${
+                                  availableSourceStock > 0
+                                    ? "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                                    : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                                }`}
+                              >
+                                {availableSourceStock}
+                              </span>
+                              {transferQty > 0 &&
+                                availableSourceStock !== "..." && (
+                                  <>
+                                    <span className="text-[9px] text-slate-400">
+                                      →
+                                    </span>
+                                    <span
+                                      className={`text-[9px] px-1.5 py-0.5 rounded font-black ${
+                                        availableSourceStock - transferQty < 0
+                                          ? "bg-red-50 text-red-600"
+                                          : "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                                      }`}
+                                    >
+                                      {availableSourceStock - transferQty}
+                                    </span>
+                                  </>
+                                )}
+                            </div>
+                          )}
+                      </label>
+                      <select
+                        required
+                        name="source_branch_id"
+                        value={formData.source_branch_id}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="">-- Origin Location --</option>
+                        {branches.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.branch_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* DESTINATION BRANCH AREA */}
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                          Deposit To <span className="text-red-500">*</span>
+                        </span>
+                        {!isLoadingStock &&
+                          formData.item_id &&
+                          formData.destination_branch_id && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-bold text-slate-400">
+                                Stock:
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                                {availableDestStock}
+                              </span>
+                              {transferQty > 0 &&
+                                availableDestStock !== "..." && (
+                                  <>
+                                    <span className="text-[9px] text-slate-400">
+                                      →
+                                    </span>
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                                      {availableDestStock + transferQty}
+                                    </span>
+                                  </>
+                                )}
+                            </div>
+                          )}
+                      </label>
+                      <select
+                        required
+                        name="destination_branch_id"
+                        value={formData.destination_branch_id}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="">-- Target Location --</option>
+                        {branches.map((b) => (
+                          <option
+                            key={b.id}
+                            value={b.id}
+                            disabled={
+                              b.id.toString() === formData.source_branch_id
+                            }
+                          >
+                            {b.branch_name}{" "}
+                            {b.id.toString() === formData.source_branch_id
+                              ? "(Source)"
+                              : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                {/* SECTION 3: DETAILS & VALUATION */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-4 flex items-center gap-2">
+                    <FileText size={14} /> 3. Transfer Details & Valuation
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Transfer Quantity{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        required
+                        type="number"
+                        min="1"
+                        step="1"
+                        name="quantity"
+                        value={formData.quantity}
+                        onChange={handleChange}
+                        placeholder="e.g., 50"
+                        className="w-full px-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-sm"
+                      />
+                    </div>
+
+                    <div className="flex flex-col justify-end">
+                      <div className="p-4 rounded-xl border bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 text-blue-800 dark:text-blue-400 flex items-center justify-between h-[46px] sm:h-[48px] shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <Calculator size={14} />
+                          <span className="text-[9px] font-black uppercase tracking-widest opacity-80">
+                            Asset Value Transferred
+                          </span>
+                        </div>
+                        <span className="text-sm font-black font-mono">
+                          ₱{financialImpact}
                         </span>
                       </div>
-                      <span className="text-xs font-black">
-                        ₱{financialImpact}
-                      </span>
                     </div>
                   </div>
 
-                  <div className="sm:col-span-2">
+                  <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Transfer Reason / Logistics Notes{" "}
+                      Logistics Notes / Reason{" "}
                       <span className="text-red-500">*</span>
                     </label>
                     <textarea
@@ -352,26 +382,27 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                       onChange={handleChange}
                       rows="2"
                       placeholder="e.g., Redistributing excess brake pads to cover expected weekend shortage."
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 resize-none shadow-sm"
                     />
                   </div>
-                </div>
+                </section>
               </form>
             </div>
 
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50">
+            {/* MODAL FOOTER */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
               <button
                 type="submit"
                 form="transferForm"
                 disabled={isSubmitting}
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
                   <ArrowRightLeft size={16} />
                 )}
-                Execute Dual-Branch Transfer
+                Execute Transfer
               </button>
             </div>
           </motion.div>
