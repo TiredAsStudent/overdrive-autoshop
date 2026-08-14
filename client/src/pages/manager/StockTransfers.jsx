@@ -20,6 +20,19 @@ import Pagination from "../../components/shared/Pagination";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
+const INVENTORY_CATEGORIES = [
+  "Fluids",
+  "Filters",
+  "Brakes",
+  "Engine Parts",
+  "Transmission",
+  "Suspension",
+  "Electrical",
+  "Air Conditioning",
+  "Tires",
+  "Consumables",
+];
+
 const StockTransfers = () => {
   const { showToast } = useApp();
 
@@ -286,18 +299,25 @@ const StockTransfers = () => {
               ))}
             </select>
           </div>
+
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
               Inventory Category
             </label>
-            <input
-              type="text"
+            <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              placeholder="e.g., Fluids, Brakes..."
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
-            />
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer shadow-sm"
+            >
+              <option value="">All Categories</option>
+              {INVENTORY_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
