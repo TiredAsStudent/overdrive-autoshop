@@ -43,6 +43,9 @@ const getTransfersSchema = z.object({
       search: z.string().optional(),
       source_branch: z.string().optional(),
       dest_branch: z.string().optional(),
+      category: z.string().optional(),
+      start_date: z.string().optional(),
+      end_date: z.string().optional(),
     })
     .optional(),
 });

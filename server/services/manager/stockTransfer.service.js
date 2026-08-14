@@ -8,16 +8,29 @@ class StockTransferService {
     search = "",
     sourceBranch = "all",
     destBranch = "all",
+    category = "all",
+    startDate = null,
+    endDate = null,
   ) {
     const offset = (page - 1) * limit;
     const [totalItems, transfers] = await Promise.all([
-      StockTransferModel.countFiltered(search, sourceBranch, destBranch),
+      StockTransferModel.countFiltered(
+        search,
+        sourceBranch,
+        destBranch,
+        category,
+        startDate,
+        endDate,
+      ),
       StockTransferModel.findPaginated(
         limit,
         offset,
         search,
         sourceBranch,
         destBranch,
+        category,
+        startDate,
+        endDate,
       ),
     ]);
     const totalPages = Math.ceil(totalItems / limit);
@@ -35,14 +48,13 @@ class StockTransferService {
   static async executeTransfer(data, adminUser, ipAddress) {
     const result = await StockTransferModel.executeTransfer(data, adminUser.id);
 
-    // Calculate the Financial Valuation Impact for the Audit Log
     const financialImpact = data.quantity * result.recorded_unit_cost;
 
     await logSecureAction(
       adminUser.id,
-      null, // Global action because it spans two branches
+      null,
       "EXECUTED_STOCK_TRANSFER",
-      "WARNING", // Flagged as warning because it shifts physical assets structurally
+      "WARNING",
       ipAddress,
       "stock_transfers",
       result.id,

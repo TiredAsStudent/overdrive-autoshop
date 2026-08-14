@@ -1,12 +1,14 @@
 const { query, pool } = require("../config/db");
 
 class StockTransfer {
-  static async countFiltered(search, sourceBranch, destBranch) {
-    let sql = `
-      SELECT COUNT(DISTINCT st.id) 
-      FROM stock_transfers st
-      JOIN inventory_items i ON st.item_id = i.id
-    `;
+  static buildConditions(
+    search,
+    sourceBranch,
+    destBranch,
+    category,
+    startDate,
+    endDate,
+  ) {
     const conditions = [];
     const values = [];
     let paramIdx = 1;
@@ -21,6 +23,21 @@ class StockTransfer {
       values.push(destBranch);
       paramIdx++;
     }
+    if (category && category !== "all") {
+      conditions.push(`i.category ILIKE $${paramIdx}`);
+      values.push(`%${category}%`);
+      paramIdx++;
+    }
+    if (startDate) {
+      conditions.push(`st.created_at >= $${paramIdx}`);
+      values.push(`${startDate} 00:00:00`);
+      paramIdx++;
+    }
+    if (endDate) {
+      conditions.push(`st.created_at <= $${paramIdx}`);
+      values.push(`${endDate} 23:59:59`);
+      paramIdx++;
+    }
     if (search) {
       conditions.push(
         `(i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx} OR st.transfer_reference ILIKE $${paramIdx})`,
@@ -29,12 +46,46 @@ class StockTransfer {
       paramIdx++;
     }
 
+    return { conditions, values, paramIdx };
+  }
+
+  static async countFiltered(
+    search,
+    sourceBranch,
+    destBranch,
+    category,
+    startDate,
+    endDate,
+  ) {
+    let sql = `
+      SELECT COUNT(DISTINCT st.id) 
+      FROM stock_transfers st
+      JOIN inventory_items i ON st.item_id = i.id
+    `;
+    const { conditions, values } = this.buildConditions(
+      search,
+      sourceBranch,
+      destBranch,
+      category,
+      startDate,
+      endDate,
+    );
+
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
     const result = await query(sql, values);
     return parseInt(result.rows[0].count, 10);
   }
 
-  static async findPaginated(limit, offset, search, sourceBranch, destBranch) {
+  static async findPaginated(
+    limit,
+    offset,
+    search,
+    sourceBranch,
+    destBranch,
+    category,
+    startDate,
+    endDate,
+  ) {
     let sql = `
       SELECT 
         st.id, st.transfer_reference, st.quantity, st.recorded_unit_cost, st.reason, st.created_at,
@@ -48,27 +99,14 @@ class StockTransfer {
       JOIN branches db ON st.destination_branch_id = db.id
       LEFT JOIN users u ON st.created_by = u.id
     `;
-    const conditions = [];
-    const values = [];
-    let paramIdx = 1;
-
-    if (sourceBranch && sourceBranch !== "all") {
-      conditions.push(`st.source_branch_id = $${paramIdx}`);
-      values.push(sourceBranch);
-      paramIdx++;
-    }
-    if (destBranch && destBranch !== "all") {
-      conditions.push(`st.destination_branch_id = $${paramIdx}`);
-      values.push(destBranch);
-      paramIdx++;
-    }
-    if (search) {
-      conditions.push(
-        `(i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx} OR st.transfer_reference ILIKE $${paramIdx})`,
-      );
-      values.push(`%${search}%`);
-      paramIdx++;
-    }
+    const { conditions, values, paramIdx } = this.buildConditions(
+      search,
+      sourceBranch,
+      destBranch,
+      category,
+      startDate,
+      endDate,
+    );
 
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
     sql += ` ORDER BY st.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
@@ -95,7 +133,7 @@ class StockTransfer {
 
       const lockRes = await client.query(
         `
-        SELECT bi.branch_id, bi.quantity, i.unit_cost 
+        SELECT bi.branch_id, bi.quantity, i.unit_cost, i.is_active 
         FROM branch_inventory bi
         JOIN inventory_items i ON bi.item_id = i.id
         WHERE bi.item_id = $1 AND bi.branch_id IN ($2, $3)
@@ -118,6 +156,10 @@ class StockTransfer {
         throw new Error(
           "Critical: Failed to initialize destination inventory row.",
         );
+
+      if (sourceData.is_active === false) {
+        throw new Error("Only active inventory items may be transferred.");
+      }
 
       if (sourceData.quantity < data.quantity) {
         throw new Error(

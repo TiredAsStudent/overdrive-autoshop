@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Search, Loader2, ArrowRightLeft, Filter, X, Plus } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  ArrowRightLeft,
+  Filter,
+  X,
+  Plus,
+  Eye,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { stockTransferService } from "../../services/manager/stockTransfer.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 import TransferModal from "../../features/manager/components/TransferModal";
+import TransferDrawer from "../../features/manager/components/TransferDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import { useApp } from "../../context/AppContext";
@@ -16,20 +25,31 @@ const StockTransfers = () => {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Filters & State
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [sourceFilter, setSourceFilter] = useState("all");
   const [destFilter, setDestFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
+  // Modals & Drawers
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedTransfer, setSelectedTransfer] = useState(null);
 
   const activeFilterCount =
-    (sourceFilter !== "all" ? 1 : 0) + (destFilter !== "all" ? 1 : 0);
+    (sourceFilter !== "all" ? 1 : 0) +
+    (destFilter !== "all" ? 1 : 0) +
+    (categoryFilter ? 1 : 0) +
+    (startDate ? 1 : 0) +
+    (endDate ? 1 : 0);
 
   useEffect(() => {
     inventoryService
@@ -40,7 +60,14 @@ const StockTransfers = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, sourceFilter, destFilter]);
+  }, [
+    debouncedSearchQuery,
+    sourceFilter,
+    destFilter,
+    categoryFilter,
+    startDate,
+    endDate,
+  ]);
 
   const loadTransfers = async () => {
     try {
@@ -51,6 +78,9 @@ const StockTransfers = () => {
         debouncedSearchQuery,
         sourceFilter,
         destFilter,
+        categoryFilter || "all",
+        startDate,
+        endDate,
       );
       setTransfers(response.data?.transfers || []);
       setTotalPages(response.data?.pagination?.totalPages || 1);
@@ -63,7 +93,15 @@ const StockTransfers = () => {
 
   useEffect(() => {
     loadTransfers();
-  }, [currentPage, debouncedSearchQuery, sourceFilter, destFilter]);
+  }, [
+    currentPage,
+    debouncedSearchQuery,
+    sourceFilter,
+    destFilter,
+    categoryFilter,
+    startDate,
+    endDate,
+  ]);
 
   const handleExecuteTransfer = async (formData) => {
     try {
@@ -79,6 +117,9 @@ const StockTransfers = () => {
   const resetFilters = () => {
     setSourceFilter("all");
     setDestFilter("all");
+    setCategoryFilter("");
+    setStartDate("");
+    setEndDate("");
   };
 
   return (
@@ -146,6 +187,7 @@ const StockTransfers = () => {
           "Logistics Vector",
           "Quantity",
           "Asset Value",
+          "Actions",
         ]}
         data={transfers}
         loading={loading}
@@ -200,13 +242,25 @@ const StockTransfers = () => {
                 <ArrowRightLeft size={12} /> {req.quantity} {req.uom}
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
               <span className="text-xs font-black text-slate-900 dark:text-white tracking-widest">
                 ₱
                 {(
                   req.quantity * parseFloat(req.recorded_unit_cost)
                 ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+              <button
+                onClick={() => {
+                  setSelectedTransfer(req);
+                  setIsDrawerOpen(true);
+                }}
+                title="View Details"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+              >
+                <Eye size={14} /> Details
+              </button>
             </td>
           </tr>
         )}
@@ -275,6 +329,42 @@ const StockTransfers = () => {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                    Inventory Category
+                  </label>
+                  <input
+                    type="text"
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    placeholder="e.g., Fluids, Brakes..."
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full px-3 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full px-3 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+                    />
+                  </div>
+                </div>
               </div>
               <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-white/10 flex gap-3">
                 <button
@@ -300,6 +390,12 @@ const StockTransfers = () => {
         onClose={() => setIsTransferModalOpen(false)}
         onSubmit={handleExecuteTransfer}
         branches={branches}
+      />
+
+      <TransferDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        transfer={selectedTransfer}
       />
     </div>
   );

@@ -7,6 +7,9 @@ export const stockTransferService = {
     search = "",
     sourceBranch = "all",
     destBranch = "all",
+    category = "all",
+    startDate = null,
+    endDate = null,
   ) => {
     try {
       const response = await api.get("/manager/transfers", {
@@ -16,6 +19,9 @@ export const stockTransferService = {
           search,
           source_branch: sourceBranch,
           dest_branch: destBranch,
+          category: category !== "all" ? category : undefined,
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
         },
       });
       return response.data;

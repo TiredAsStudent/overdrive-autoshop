@@ -10,6 +10,9 @@ class StockTransferController {
       const search = req.query.search || "";
       const sourceBranch = req.query.source_branch || "all";
       const destBranch = req.query.dest_branch || "all";
+      const category = req.query.category || "all";
+      const startDate = req.query.start_date || null;
+      const endDate = req.query.end_date || null;
 
       const result = await StockTransferService.getTransfers(
         page,
@@ -17,6 +20,9 @@ class StockTransferController {
         search,
         sourceBranch,
         destBranch,
+        category,
+        startDate,
+        endDate,
       );
       return sendSuccess(
         res,
@@ -48,7 +54,6 @@ class StockTransferController {
         `Transfer executed successfully. Reference: ${transfer.transfer_reference}`,
       );
     } catch (error) {
-      // 409 Conflict if stock ran out concurrently, otherwise 400 Bad Request
       const statusCode = error.message.includes("Insufficient stock")
         ? STATUS_CODES.CONFLICT
         : STATUS_CODES.BAD_REQUEST;
