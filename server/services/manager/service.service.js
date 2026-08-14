@@ -177,6 +177,12 @@ class ServiceCatalogService {
 
     return updatedService;
   }
+
+  static async getServiceUsage(id) {
+    const service = await ServiceModel.findById(id);
+    if (!service) throw new Error("Service not found.");
+    return await ServiceModel.getUsageHistory(id);
+  }
 }
 
 module.exports = ServiceCatalogService;

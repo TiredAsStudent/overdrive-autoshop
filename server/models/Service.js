@@ -154,6 +154,26 @@ class Service {
     const result = await query(sql, [isActive, id]);
     return result.rows[0];
   }
+
+  static async getUsageHistory(serviceId) {
+    const sql = `
+      SELECT 
+        i.invoice_number,
+        i.status,
+        i.created_at,
+        ii.quantity,
+        ii.recorded_selling_price,
+        ii.discount_amount,
+        c.full_name AS customer_name
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      LEFT JOIN customers c ON i.customer_id = c.id
+      WHERE ii.service_id = $1
+      ORDER BY i.created_at DESC
+    `;
+    const result = await query(sql, [serviceId]);
+    return result.rows;
+  }
 }
 
 module.exports = Service;

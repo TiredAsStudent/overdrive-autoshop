@@ -87,4 +87,16 @@ export const serviceCatalogService = {
       return { data: [] };
     }
   },
+
+  getServiceUsage: async (id) => {
+    try {
+      const response = await api.get(`/manager/services/${id}/usage`);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message ||
+        "Failed to load service usage history.";
+      throw new Error(message);
+    }
+  },
 };

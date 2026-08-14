@@ -99,6 +99,26 @@ class ServiceController {
       return sendError(res, code, error.message);
     }
   }
+
+  static async getServiceUsage(req, res) {
+    try {
+      const usageHistory = await ServiceCatalogService.getServiceUsage(
+        req.params.id,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        usageHistory,
+        "Service usage history retrieved successfully.",
+      );
+    } catch (error) {
+      const code =
+        error.message === "Service not found."
+          ? STATUS_CODES.NOT_FOUND
+          : STATUS_CODES.BAD_REQUEST;
+      return sendError(res, code, error.message);
+    }
+  }
 }
 
 module.exports = ServiceController;

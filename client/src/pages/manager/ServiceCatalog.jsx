@@ -7,9 +7,11 @@ import {
   RotateCcw,
   Clock,
   Edit2,
+  Activity,
 } from "lucide-react";
 import { serviceCatalogService } from "../../services/manager/serviceCatalog.service";
 import ServiceModal from "../../features/manager/components/ServiceModal";
+import ServiceUsageDrawer from "../../features/manager/components/ServiceUsageDrawer";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
@@ -56,10 +58,13 @@ const ServiceCatalog = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Modals
+  // Modals & Drawers
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
+
+  const [isUsageDrawerOpen, setIsUsageDrawerOpen] = useState(false);
+  const [usageService, setUsageService] = useState(null);
 
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
@@ -262,6 +267,17 @@ const ServiceCatalog = () => {
               <div className="flex items-center justify-end gap-1 sm:gap-2">
                 <button
                   onClick={() => {
+                    setUsageService(service);
+                    setIsUsageDrawerOpen(true);
+                  }}
+                  title="View Billing Activity"
+                  className="p-1.5 sm:p-2.5 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                >
+                  <Activity size={14} className="sm:w-[16px] sm:h-[16px]" />
+                </button>
+
+                <button
+                  onClick={() => {
                     setSelectedService(service);
                     setIsModalOpen(true);
                   }}
@@ -269,6 +285,7 @@ const ServiceCatalog = () => {
                 >
                   <Edit2 size={14} className="sm:w-[16px] sm:h-[16px]" />
                 </button>
+
                 <button
                   onClick={() =>
                     handleToggleStatus(
@@ -325,6 +342,12 @@ const ServiceCatalog = () => {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleModalSubmit}
         initialData={selectedService}
+      />
+
+      <ServiceUsageDrawer
+        isOpen={isUsageDrawerOpen}
+        onClose={() => setIsUsageDrawerOpen(false)}
+        service={usageService}
       />
 
       <ConfirmModal

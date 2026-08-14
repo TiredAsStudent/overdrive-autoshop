@@ -99,6 +99,7 @@ router.patch(
   validate(toggleServiceStatusSchema),
   ServiceController.toggleServiceStatus,
 );
+router.get("/services/:id/usage", ServiceController.getServiceUsage);
 
 // ==========================================
 // MODULE: INVENTORY MANAGEMENT
