@@ -216,33 +216,39 @@ const Customers = () => {
             </td>
 
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-1.5">
+              <div className="flex items-center justify-end gap-1 sm:gap-2">
                 <button
                   onClick={() => {
                     setSelectedCustomer(customer);
                     setIsDrawerOpen(true);
                   }}
                   title="View Profile"
-                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
                 >
                   <FileText size={16} />
                 </button>
+
                 <button
                   onClick={() => {
                     setSelectedCustomer(customer);
                     setIsModalOpen(true);
                   }}
                   title="Edit Profile"
-                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
                 >
                   <Edit2 size={16} />
                 </button>
+
                 <button
                   onClick={() => handleToggleStatus(customer)}
                   title={
                     customer.is_active ? "Archive Customer" : "Restore Customer"
                   }
-                  className={`p-2 rounded-xl transition-colors cursor-pointer ${customer.is_active ? "text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10" : "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400"}`}
+                  className={`p-1.5 sm:p-2.5 rounded-xl transition-colors cursor-pointer ${
+                    customer.is_active
+                      ? "text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+                      : "text-emerald-500 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                  }`}
                 >
                   {customer.is_active ? (
                     <Archive size={16} />

@@ -53,32 +53,41 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          {/* Backdrop */}
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* 1. Standardized Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer"
+            aria-hidden="true"
           />
 
-          {/* Drawer Slide Panel */}
+          {/* 2. Standardized Drawer Panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 right-0 w-full sm:w-[480px] lg:w-[560px] bg-slate-50 dark:bg-slate-900 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800"
+            transition={{
+              type: "spring",
+              damping: 30,
+              stiffness: 300,
+              mass: 0.8,
+            }}
+            className="relative w-full sm:w-[480px] lg:w-[560px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
+            role="dialog"
+            aria-modal="true"
           >
-            {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
-                  <User size={20} />
+            {/* 3. Standardized Fixed Header */}
+            <header className="flex justify-between items-center px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
+                  <User size={24} />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[280px]">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[280px]">
                     {customer.full_name}
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
@@ -88,16 +97,17 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
               </div>
               <button
                 onClick={onClose}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0"
+                className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
+                aria-label="Close panel"
               >
                 <X size={20} />
               </button>
-            </div>
+            </header>
 
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+            {/* 4. Standardized Scrollable Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {/* Contact Information Card */}
-              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] p-5 shadow-sm space-y-4">
+              <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 border-b border-slate-100 dark:border-slate-700/50 pb-3 mb-2 flex items-center gap-2">
                   <Phone size={14} /> Contact Profile
                 </h3>
@@ -114,10 +124,10 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                     {customer.address}
                   </div>
                 )}
-              </div>
+              </section>
 
               {/* Administrative Details */}
-              <div className="bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-[20px] p-5 shadow-sm space-y-3">
+              <section className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                   <Building2 size={14} className="text-slate-400" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -127,7 +137,7 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                     {customer.branch_name || "Global"}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700/50">
                   <Calendar size={14} className="text-slate-400" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                     Member Since:
@@ -136,18 +146,18 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                     {new Date(customer.created_at).toLocaleDateString()}
                   </span>
                 </div>
-              </div>
+              </section>
 
               {/* Staff Notes */}
               {customer.notes && (
-                <div className="bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] p-5 shadow-sm">
+                <section className="bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2 flex items-center gap-2">
                     <FileText size={14} /> Service Preferences
                   </h3>
                   <p className="text-xs text-amber-900 dark:text-amber-200/80 italic leading-relaxed">
                     "{customer.notes}"
                   </p>
-                </div>
+                </section>
               )}
 
               {/* 360° TRANSACTION LEDGER LOADING STATE */}
@@ -168,12 +178,13 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
               ) : profileData ? (
                 <div className="mt-8 space-y-6">
                   {/* Summary Cards */}
-                  <div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 px-1">
+                  <section>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+                      <FileText size={16} className="text-amber-500" />{" "}
                       Transaction Summary
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center shadow-sm">
+                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] p-4 text-center shadow-sm">
                         <span className="block text-xl font-black text-slate-900 dark:text-white mb-1">
                           {profileData.summary.total_estimates}
                         </span>
@@ -181,7 +192,7 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                           Estimates
                         </span>
                       </div>
-                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center shadow-sm">
+                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] p-4 text-center shadow-sm">
                         <span className="block text-xl font-black text-slate-900 dark:text-white mb-1">
                           {profileData.summary.total_orders}
                         </span>
@@ -189,7 +200,7 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                           Orders
                         </span>
                       </div>
-                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center shadow-sm">
+                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] p-4 text-center shadow-sm">
                         <span className="block text-xl font-black text-slate-900 dark:text-white mb-1">
                           {profileData.summary.total_invoices}
                         </span>
@@ -197,7 +208,7 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                           Invoices
                         </span>
                       </div>
-                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center shadow-sm">
+                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] p-4 text-center shadow-sm">
                         <span className="block text-xl font-black text-slate-900 dark:text-white mb-1">
                           {profileData.summary.total_payments}
                         </span>
@@ -206,10 +217,10 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </section>
 
                   {/* Chronological Ledger Table */}
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] shadow-sm flex flex-col overflow-hidden">
+                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
                     <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                         Historical Ledger
@@ -217,7 +228,7 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                     </div>
 
                     {profileData.history.length === 0 ? (
-                      <div className="p-10 text-center">
+                      <div className="p-10 text-center bg-slate-50 dark:bg-slate-900/50">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                           No transactions found.
                         </p>
@@ -227,10 +238,10 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                         <table className="w-full text-left whitespace-nowrap min-w-[500px]">
                           <thead>
                             <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-700">
-                              <th className="px-5 py-3">Date</th>
-                              <th className="px-5 py-3">Document</th>
-                              <th className="px-5 py-3">Status</th>
-                              <th className="px-5 py-3 text-right">Amount</th>
+                              <th className="px-5 py-4">Date</th>
+                              <th className="px-5 py-4">Document</th>
+                              <th className="px-5 py-4">Status</th>
+                              <th className="px-5 py-4 text-right">Amount</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -239,25 +250,24 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                                 key={`${record.doc_number}-${index}`}
                                 className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors"
                               >
-                                <td className="px-5 py-3 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                <td className="px-5 py-4 text-[11px] font-bold text-slate-700 dark:text-slate-300">
                                   {formatDate(record.transaction_date)}
                                 </td>
-                                <td className="px-5 py-3">
+                                <td className="px-5 py-4">
                                   <StatusBadge
                                     label={record.doc_type.replace(/_/g, " ")}
                                     variant={getDocVariant(record.doc_type)}
-                                    className="!py-0.5 !px-1.5 !text-[8px]"
                                   />
-                                  <p className="text-[10px] font-black text-slate-900 dark:text-white mt-1">
+                                  <p className="text-[10px] font-black text-slate-900 dark:text-white mt-1.5">
                                     {record.doc_number}
                                   </p>
                                 </td>
-                                <td className="px-5 py-3">
+                                <td className="px-5 py-4">
                                   <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                                     {record.status.replace(/_/g, " ")}
                                   </span>
                                 </td>
-                                <td className="px-5 py-3 text-right text-xs font-black text-slate-900 dark:text-white font-mono">
+                                <td className="px-5 py-4 text-right text-xs font-black text-slate-900 dark:text-white font-mono">
                                   ₱
                                   {parseFloat(record.amount).toLocaleString(
                                     undefined,
@@ -270,12 +280,12 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                         </table>
                       </div>
                     )}
-                  </div>
+                  </section>
                 </div>
               ) : null}
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
