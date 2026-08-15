@@ -151,6 +151,54 @@ class Customer {
     const result = await query(sql, values);
     return result.rows[0];
   }
+
+  static async getTransactionHistory(customerId) {
+    const sql = `
+      SELECT 
+        'ESTIMATE' as doc_type,
+        estimate_number as doc_number,
+        created_at as transaction_date,
+        grand_total as amount,
+        status::text as status
+      FROM estimates WHERE customer_id = $1
+      
+      UNION ALL
+      
+      SELECT 
+        'SALES_ORDER' as doc_type,
+        sales_order_number as doc_number,
+        created_at as transaction_date,
+        grand_total as amount,
+        status::text as status
+      FROM sales_orders WHERE customer_id = $1
+      
+      UNION ALL
+      
+      SELECT 
+        'INVOICE' as doc_type,
+        invoice_number as doc_number,
+        created_at as transaction_date,
+        grand_total as amount,
+        status::text as status
+      FROM invoices WHERE customer_id = $1
+      
+      UNION ALL
+      
+      SELECT 
+        'PAYMENT' as doc_type,
+        p.payment_number as doc_number,
+        p.created_at as transaction_date,
+        p.amount_received as amount,
+        p.status::text as status
+      FROM payments p
+      JOIN invoices i ON p.invoice_id = i.id
+      WHERE i.customer_id = $1
+
+      ORDER BY transaction_date DESC
+    `;
+    const result = await query(sql, [customerId]);
+    return result.rows;
+  }
 }
 
 module.exports = Customer;

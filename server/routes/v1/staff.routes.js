@@ -111,6 +111,7 @@ router.get(
   validate(getCustomersSchema),
   CustomerController.getCustomers,
 );
+router.get("/customers/:id", CustomerController.getCustomerProfile);
 router.put(
   "/customers/:id",
   validate(updateCustomerSchema),

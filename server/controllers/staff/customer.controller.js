@@ -77,6 +77,23 @@ class CustomerController {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
+
+  static async getCustomerProfile(req, res) {
+    try {
+      const data = await CustomerService.getCustomerProfile(req.params.id);
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        data,
+        "Customer profile retrieved.",
+      );
+    } catch (error) {
+      const code = error.message.includes("not found")
+        ? STATUS_CODES.NOT_FOUND
+        : STATUS_CODES.BAD_REQUEST;
+      return sendError(res, code, error.message);
+    }
+  }
 }
 
 module.exports = CustomerController;

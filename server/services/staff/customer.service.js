@@ -141,6 +141,26 @@ class CustomerService {
       },
     };
   }
+
+  static async getCustomerProfile(id) {
+    const customer = await CustomerModel.findById(id);
+    if (!customer) throw new Error("Customer record not found.");
+
+    const history = await CustomerModel.getTransactionHistory(id);
+
+    return {
+      profile: customer,
+      history: history,
+      summary: {
+        total_estimates: history.filter((h) => h.doc_type === "ESTIMATE")
+          .length,
+        total_orders: history.filter((h) => h.doc_type === "SALES_ORDER")
+          .length,
+        total_invoices: history.filter((h) => h.doc_type === "INVOICE").length,
+        total_payments: history.filter((h) => h.doc_type === "PAYMENT").length,
+      },
+    };
+  }
 }
 
 module.exports = CustomerService;

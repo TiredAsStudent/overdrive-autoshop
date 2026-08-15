@@ -22,6 +22,19 @@ export const customerService = {
     }
   },
 
+  getCustomerProfile: async (id) => {
+    try {
+      const response = await api.get(`/staff/customers/${id}`);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to load customer profile.";
+      throw new Error(message);
+    }
+  },
+
   registerCustomer: async (customerData) => {
     try {
       const response = await api.post("/staff/customers", customerData);
