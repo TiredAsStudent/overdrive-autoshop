@@ -8,6 +8,7 @@ import {
   User,
   Printer,
   Loader2,
+  BadgeCheck,
 } from "lucide-react";
 import { estimateService } from "../../../services/staff/estimate.service";
 
@@ -64,21 +65,32 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
             className="fixed inset-y-0 right-0 w-full sm:w-[500px] md:w-[600px] bg-slate-50 dark:bg-slate-900 shadow-2xl z-[110] flex flex-col border-l border-slate-200 dark:border-slate-800"
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
-                  <FileText size={20} />
+            <div className="flex justify-between items-start p-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500">
+                  <FileText size={24} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
                     {estimate?.estimate_number || "Loading..."}
                   </h2>
+
                   {estimate && (
-                    <span
-                      className={`inline-flex px-2 py-0.5 mt-1 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusColor(estimate.status)}`}
-                    >
-                      {estimate.status.replace("_", " ")}
-                    </span>
+                    <div className="flex flex-col items-start gap-1.5 mt-1">
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusColor(estimate.status)}`}
+                      >
+                        {estimate.status.replace("_", " ")}
+                      </span>
+
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
+                        <BadgeCheck size={12} className="text-amber-500" />
+                        Prepared by:{" "}
+                        <span className="text-slate-600 dark:text-slate-300">
+                          {estimate.created_by_name || "System"}
+                        </span>
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>

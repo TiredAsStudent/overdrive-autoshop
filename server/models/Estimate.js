@@ -153,7 +153,8 @@ class Estimate {
           WHEN e.status IN ('DRAFT', 'PENDING_APPROVAL') AND e.valid_until < CURRENT_DATE THEN 'EXPIRED' 
           ELSE e.status 
         END as status,
-        c.full_name as customer_name, c.contact_number, c.email, b.branch_name, u.first_name as created_by_name
+        c.full_name as customer_name, c.contact_number, c.email, b.branch_name, 
+        CONCAT(u.first_name, ' ', u.last_name) as created_by_name
       FROM estimates e
       JOIN customers c ON e.customer_id = c.id
       JOIN branches b ON e.branch_id = b.id
