@@ -54,17 +54,17 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100]"
           />
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 right-0 w-full sm:w-[500px] md:w-[600px] bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800"
+            className="fixed inset-y-0 right-0 w-full sm:w-[500px] md:w-[600px] bg-slate-50 dark:bg-slate-900 shadow-2xl z-[110] flex flex-col border-l border-slate-200 dark:border-slate-800"
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <FileText size={20} />
@@ -91,7 +91,7 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 bg-slate-50/50 dark:bg-transparent">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
@@ -107,10 +107,10 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
               )}
 
               {estimate && !loading && (
-                <div className="space-y-8">
+                <div className="space-y-6">
                   {/* Meta Cards */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="p-5 sm:p-6 bg-white dark:bg-slate-800/50 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-sm">
                       <User size={14} className="text-slate-400 mb-2" />
                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
                         Customer
@@ -122,7 +122,7 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
                         {estimate.contact_number}
                       </p>
                     </div>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="p-5 sm:p-6 bg-white dark:bg-slate-800/50 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-sm">
                       <Calendar size={14} className="text-slate-400 mb-2" />
                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
                         Valid Until
@@ -137,11 +137,13 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
                   </div>
 
                   {/* Line Items Table */}
-                  <div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 px-1 border-b border-slate-200 dark:border-slate-800 pb-2">
-                      Itemized Breakdown
-                    </h3>
-                    <div className="space-y-3">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                    <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        Itemized Breakdown
+                      </h3>
+                    </div>
+                    <div className="p-5 sm:p-6 space-y-3">
                       {estimate.items.map((item) => {
                         const isService = item.line_type === "SERVICE";
                         const gross =
@@ -152,7 +154,7 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
                         return (
                           <div
                             key={item.id}
-                            className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between"
+                            className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-[16px] sm:rounded-[20px] flex items-center justify-between"
                           >
                             <div className="flex flex-col min-w-0 flex-1 pr-4">
                               <p className="text-xs font-black text-slate-900 dark:text-white truncate uppercase italic">
@@ -183,7 +185,7 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
                   </div>
 
                   {/* Totals */}
-                  <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 text-white shadow-xl">
+                  <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl">
                     <div className="space-y-1.5 mb-4 text-sm font-medium text-slate-400">
                       <div className="flex justify-between">
                         <span>Subtotal</span>
@@ -222,7 +224,7 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
 
                   {/* Notes */}
                   {estimate.notes && (
-                    <div className="p-4 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-2xl">
+                    <div className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
                       <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-1">
                         Staff Notes
                       </p>
@@ -236,7 +238,7 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
             </div>
 
             {/* Print Footer Stub */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-800">
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
               <button
                 disabled={!estimate || loading}
                 className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"

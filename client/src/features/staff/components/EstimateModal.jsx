@@ -269,7 +269,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -323,7 +323,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                   className="space-y-8"
                 >
                   {/* Document Header Metadata */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50/50 dark:bg-black/10 p-5 rounded-2xl border border-slate-100 dark:border-white/5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-100 dark:border-white/5">
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Target Customer <span className="text-red-500">*</span>
@@ -370,7 +370,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                       {formData.items.map((item) => (
                         <div
                           key={item.id}
-                          className="flex flex-col lg:flex-row gap-3 p-3 sm:p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl relative group"
+                          className="flex flex-col lg:flex-row gap-3 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] relative group"
                         >
                           {/* Item Type Selector */}
                           <div className="w-full lg:w-32 shrink-0">
@@ -529,7 +529,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                     </div>
 
                     {/* Financial Summary Preview */}
-                    <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 sm:p-6 text-white shadow-xl">
+                    <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl">
                       <div className="flex justify-between items-center mb-1 text-sm font-medium text-slate-400">
                         <span>Subtotal</span>
                         <span>
@@ -568,7 +568,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                         <span className="text-sm font-black uppercase tracking-widest text-slate-300">
                           Grand Total
                         </span>
-                        <span className="text-2xl sm:text-3xl font-black text-white">
+                        <span className="text-2xl sm:text-3xl font-black text-amber-500">
                           ₱
                           {preview.grandTotal.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
