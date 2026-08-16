@@ -63,6 +63,7 @@ const Customers = () => {
     try {
       setLoading(true);
       const statusParam = showArchived ? "archived" : "active";
+
       const response = await customerService.getCustomers(
         currentPage,
         ITEMS_PER_PAGE,
@@ -105,7 +106,7 @@ const Customers = () => {
     setConfirmConfig({
       isOpen: true,
       title: `${action} Customer Record`,
-      message: `Are you sure you want to ${action.toLowerCase()} ${customerData.full_name}? Inactive customers remain preserved in existing invoices.`,
+      message: `Are you sure you want to ${action.toLowerCase()} ${customerData.full_name}? Inactive customers remain preserved in existing transactions.`,
       confirmText: `Yes, ${action}`,
       variant: variant,
       onConfirm: async () => {
@@ -130,7 +131,7 @@ const Customers = () => {
       {/* UNIVERSAL PAGE HEADER */}
       <PageHeader
         title="Customers"
-        subtitle="Sales Account Masterfile"
+        subtitle="Global Sales Account Masterfile"
         icon={Users}
       >
         <StatusToggle

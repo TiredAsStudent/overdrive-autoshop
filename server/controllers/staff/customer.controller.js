@@ -31,10 +31,7 @@ class CustomerController {
       const search = req.query.search || "";
       const status = req.query.status || "all";
 
-      let branch = req.query.branch || "all";
-      if (req.user.role === "STAFF") {
-        branch = req.user.branchId;
-      }
+      const branch = req.query.branch || "all";
 
       const result = await CustomerService.getCustomers(
         page,
@@ -43,11 +40,12 @@ class CustomerController {
         status,
         branch,
       );
+
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
         result,
-        "Customer directory retrieved.",
+        "Global Customer directory retrieved.",
       );
     } catch (error) {
       return sendError(
