@@ -333,8 +333,9 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
       const lineDisc = parseFloat(item.discount) || 0;
       const lineNet = lineGross - lineDisc > 0 ? lineGross - lineDisc : 0;
 
-      subtotal += lineNet;
+      subtotal += lineGross;
       discountTotal += lineDisc;
+
       if (isVatable) vatableSubtotal += lineNet;
     });
 
@@ -343,7 +344,8 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
       subtotal,
       discountTotal,
       vatAmount,
-      grandTotal: subtotal + vatAmount,
+
+      grandTotal: subtotal - discountTotal + vatAmount,
     };
   };
 
@@ -643,7 +645,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                           name="notes"
                           value={formData.notes}
                           onChange={handleHeaderChange}
-                          rows="2"
+                          rows="3"
                           className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none focus:outline-none focus:border-amber-500"
                           placeholder="Hidden from customer..."
                         />
@@ -656,7 +658,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                           name="terms_conditions"
                           value={formData.terms_conditions}
                           onChange={handleHeaderChange}
-                          rows="2"
+                          rows="3"
                           className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none focus:outline-none focus:border-amber-500"
                         />
                       </div>
@@ -666,8 +668,8 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                     <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl flex flex-col justify-center">
                       <div className="space-y-2 mb-4 text-sm font-medium text-slate-400">
                         <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
-                          <span>Subtotal</span>
-                          <span className="font-bold text-slate-200">
+                          <span>Subtotal (Gross)</span>
+                          <span className="font-bold text-slate-200 font-mono">
                             ₱
                             {preview.subtotal.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
@@ -678,7 +680,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                         {preview.discountTotal > 0 && (
                           <div className="flex justify-between items-center bg-amber-500/10 p-3 sm:p-4 rounded-xl text-amber-500">
                             <span className="font-bold">Total Discounts</span>
-                            <span className="font-black">
+                            <span className="font-black font-mono">
                               - ₱
                               {preview.discountTotal.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
@@ -694,7 +696,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                               {(vatRate * 100).toFixed(0)}%
                             </span>
                           </span>
-                          <span className="font-bold text-slate-200">
+                          <span className="font-bold text-slate-200 font-mono">
                             ₱
                             {preview.vatAmount.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
@@ -707,7 +709,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                         <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
                           Grand Total
                         </span>
-                        <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight">
+                        <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight font-mono">
                           ₱
                           {preview.grandTotal.toLocaleString(undefined, {
                             minimumFractionDigits: 2,

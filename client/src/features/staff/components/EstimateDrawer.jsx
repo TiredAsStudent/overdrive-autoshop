@@ -240,7 +240,7 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
                   <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl">
                     <div className="space-y-2 mb-5 text-sm font-medium text-slate-400">
                       <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
-                        <span>Subtotal</span>
+                        <span>Subtotal (Gross)</span>
                         <span className="font-bold text-slate-200 font-mono">
                           ₱
                           {parseFloat(estimate.subtotal).toLocaleString(

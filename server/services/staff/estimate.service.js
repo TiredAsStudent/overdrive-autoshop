@@ -44,8 +44,10 @@ class EstimateService {
         throw new Error("Discount amount cannot exceed line item value.");
 
       const lineNet = lineGross - lineDiscount;
-      subtotal += lineNet;
+
+      subtotal += lineGross;
       totalDiscount += lineDiscount;
+
       if (isVatable) vatableSubtotal += lineNet;
 
       computedItems.push({
@@ -60,7 +62,8 @@ class EstimateService {
     }
 
     const vatAmount = vatableSubtotal * vatRate;
-    const grandTotal = subtotal + vatAmount;
+
+    const grandTotal = subtotal - totalDiscount + vatAmount;
 
     return {
       subtotal: parseFloat(subtotal.toFixed(2)),
