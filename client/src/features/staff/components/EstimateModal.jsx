@@ -8,6 +8,9 @@ import {
   Calculator,
   AlertCircle,
   Loader2,
+  User,
+  Calendar,
+  ClipboardList,
 } from "lucide-react";
 import { customerService } from "../../../services/staff/customer.service";
 import api from "../../../services/api";
@@ -320,57 +323,63 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                 <form
                   id="estimateForm"
                   onSubmit={handleSubmit}
-                  className="space-y-8"
+                  className="space-y-6"
                 >
-                  {/* Document Header Metadata */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-100 dark:border-white/5">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Target Customer <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        required
-                        name="customer_id"
-                        value={formData.customer_id}
-                        onChange={handleHeaderChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
-                      >
-                        <option value="">-- Select Active Customer --</option>
-                        {customers.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.full_name}
-                          </option>
-                        ))}
-                      </select>
+                  {/* SECTION 1: Document Header Metadata */}
+                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                      <User size={14} /> Document Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Target Customer{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          name="customer_id"
+                          value={formData.customer_id}
+                          onChange={handleHeaderChange}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                        >
+                          <option value="">-- Select Active Customer --</option>
+                          {customers.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.full_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Quotation Valid Until{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="date"
+                          name="valid_until"
+                          value={formData.valid_until}
+                          onChange={handleHeaderChange}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Quotation Valid Until{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        required
-                        type="date"
-                        name="valid_until"
-                        value={formData.valid_until}
-                        onChange={handleHeaderChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
-                      />
-                    </div>
-                  </div>
+                  </section>
 
-                  {/* Line Items Matrix */}
-                  <div>
+                  {/* SECTION 2: Line Items Matrix */}
+                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
                     <div className="flex justify-between items-end mb-4">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
-                        <Calculator size={16} /> Itemized Breakdown
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                        <Calculator size={14} /> Itemized Breakdown
                       </h3>
                     </div>
                     <div className="space-y-3">
                       {formData.items.map((item) => (
                         <div
                           key={item.id}
-                          className="flex flex-col lg:flex-row gap-3 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] relative group"
+                          className="flex flex-col lg:flex-row gap-3 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] relative group shadow-sm"
                         >
                           {/* Item Type Selector */}
                           <div className="w-full lg:w-32 shrink-0">
@@ -383,14 +392,14 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                                   e.target.value,
                                 )
                               }
-                              className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300"
+                              className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-amber-500"
                             >
                               <option value="SERVICE">Labor / Service</option>
                               <option value="PART">Physical Part</option>
                             </select>
                           </div>
 
-                          {/* Dynamic Catalog Search/Select */}
+                          {/* Dynamic Catalog Select */}
                           <div className="flex-1 min-w-0">
                             {item.line_type === "SERVICE" ? (
                               <select
@@ -403,7 +412,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-900 dark:text-white"
+                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                               >
                                 <option value="">-- Select Service --</option>
                                 {services.map((s) => (
@@ -424,7 +433,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-900 dark:text-white"
+                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                               >
                                 <option value="">
                                   -- Select Inventory Part --
@@ -454,7 +463,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-slate-900 dark:text-white"
+                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                               />
                             </div>
                             <div className="w-28 relative">
@@ -474,7 +483,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full pl-6 p-2.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-400"
+                                className="w-full pl-6 p-2.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500"
                               />
                             </div>
                             <button
@@ -492,15 +501,18 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                     <button
                       type="button"
                       onClick={addLineItem}
-                      className="mt-3 text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 flex items-center gap-1.5 hover:bg-blue-50 dark:hover:bg-blue-500/10 px-3 py-2 rounded-lg transition-colors"
+                      className="mt-4 text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 flex items-center justify-center w-full sm:w-auto gap-1.5 hover:bg-blue-50 dark:hover:bg-blue-500/10 px-4 py-2.5 rounded-xl transition-colors border border-dashed border-blue-200 dark:border-blue-500/30"
                     >
                       <Plus size={14} /> Add Another Row
                     </button>
-                  </div>
+                  </section>
 
-                  {/* Document Footer (Notes & Math) */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-700">
-                    <div className="space-y-4">
+                  {/* SECTION 3: Document Footer (Notes & Summary) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 space-y-4">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-2 flex items-center gap-2">
+                        <ClipboardList size={14} /> Terms & Notes
+                      </h3>
                       <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                           Internal Notes
@@ -510,7 +522,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                           value={formData.notes}
                           onChange={handleHeaderChange}
                           rows="2"
-                          className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none focus:outline-none focus:border-amber-500"
                           placeholder="Hidden from customer..."
                         />
                       </div>
@@ -523,71 +535,76 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                           value={formData.terms_conditions}
                           onChange={handleHeaderChange}
                           rows="2"
-                          className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none focus:outline-none focus:border-amber-500"
                         />
                       </div>
-                    </div>
+                    </section>
 
                     {/* Financial Summary Preview */}
-                    <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl">
-                      <div className="flex justify-between items-center mb-1 text-sm font-medium text-slate-400">
-                        <span>Subtotal</span>
-                        <span>
-                          ₱
-                          {preview.subtotal.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-                      {preview.discountTotal > 0 && (
-                        <div className="flex justify-between items-center mb-1 text-sm font-bold text-amber-500">
-                          <span>Discounts</span>
-                          <span>
-                            - ₱
-                            {preview.discountTotal.toLocaleString(undefined, {
+                    <section className="bg-slate-900 dark:bg-black rounded-[24px] p-5 sm:p-6 text-white shadow-xl flex flex-col justify-center">
+                      <div className="space-y-2 mb-4 text-sm font-medium text-slate-400">
+                        <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 rounded-lg">
+                          <span>Subtotal</span>
+                          <span className="font-bold text-slate-200">
+                            ₱
+                            {preview.subtotal.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
                             })}
                           </span>
                         </div>
-                      )}
-                      <div className="flex justify-between items-center mb-4 text-sm font-medium text-slate-400">
-                        <span className="flex items-center gap-1.5">
-                          VAT{" "}
-                          <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded">
-                            {(vatRate * 100).toFixed(0)}%
+
+                        {preview.discountTotal > 0 && (
+                          <div className="flex justify-between items-center bg-amber-500/10 p-3 rounded-lg text-amber-500">
+                            <span className="font-bold">Total Discounts</span>
+                            <span className="font-black">
+                              - ₱
+                              {preview.discountTotal.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 rounded-lg">
+                          <span className="flex items-center gap-1.5">
+                            VAT Segment{" "}
+                            <span className="text-[10px] font-black bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded">
+                              {(vatRate * 100).toFixed(0)}%
+                            </span>
                           </span>
-                        </span>
-                        <span>
-                          ₱
-                          {preview.vatAmount.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
+                          <span className="font-bold text-slate-200">
+                            ₱
+                            {preview.vatAmount.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+
+                      <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-700/50">
                         <span className="text-sm font-black uppercase tracking-widest text-slate-300">
                           Grand Total
                         </span>
-                        <span className="text-2xl sm:text-3xl font-black text-amber-500">
+                        <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight">
                           ₱
                           {preview.grandTotal.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                           })}
                         </span>
                       </div>
-                    </div>
+                    </section>
                   </div>
                 </form>
               )}
             </div>
 
-            {/* Footer */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50">
+            {/* MODAL FOOTER */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
               <button
                 type="submit"
                 form="estimateForm"
                 disabled={isSubmitting || isLoadingCatalogs}
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />
