@@ -21,10 +21,18 @@ const SearchableSelect = ({
   onChange,
   placeholder,
   disabled,
+  size = "medium",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const wrapperRef = useRef(null);
+
+  const inputPadding =
+    size === "large" ? "py-3.5 sm:py-4 pl-11" : "py-2.5 pl-9";
+  const iconLeft = size === "large" ? "left-4" : "left-3";
+  const iconSize = size === "large" ? 16 : 14;
+  const listPadding = size === "large" ? "p-4" : "p-3";
+  const roundedBox = size === "large" ? "rounded-2xl" : "rounded-xl";
 
   useEffect(() => {
     if (value) {
@@ -61,12 +69,14 @@ const SearchableSelect = ({
   return (
     <div ref={wrapperRef} className="relative w-full">
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search size={14} className="text-slate-400" />
+        <div
+          className={`absolute inset-y-0 ${iconLeft} flex items-center pointer-events-none`}
+        >
+          <Search size={iconSize} className="text-slate-400" />
         </div>
         <input
           type="text"
-          className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm disabled:opacity-50"
+          className={`w-full pr-4 ${inputPadding} bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm disabled:opacity-50`}
           placeholder={placeholder}
           value={isOpen ? searchTerm : value ? searchTerm : ""}
           onChange={(e) => {
@@ -84,7 +94,7 @@ const SearchableSelect = ({
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 5 }}
-            className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto custom-scrollbar z-50"
+            className={`absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 ${roundedBox} shadow-2xl max-h-64 overflow-y-auto custom-scrollbar z-50`}
           >
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => (
@@ -95,7 +105,7 @@ const SearchableSelect = ({
                     setSearchTerm(opt.label);
                     setIsOpen(false);
                   }}
-                  className="p-3 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0"
+                  className={`${listPadding} hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors`}
                 >
                   <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                     {opt.label}
@@ -108,7 +118,7 @@ const SearchableSelect = ({
                 </div>
               ))
             ) : (
-              <div className="p-4 text-center text-xs font-medium text-slate-500">
+              <div className="p-5 text-center text-xs font-medium text-slate-500 uppercase tracking-widest">
                 No matching records found.
               </div>
             )}
@@ -411,7 +421,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-4xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
+            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-5xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
           >
             {/* Header */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
@@ -460,18 +470,18 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                   className="space-y-6"
                 >
                   {/* SECTION 1: Document Header Metadata */}
-                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                  <section className="relative z-[60] bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                       <User size={14} /> Document Details
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 z-20 relative">
-                      <div className="relative z-30">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative">
+                      <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                           Target Customer{" "}
                           <span className="text-red-500">*</span>
                         </label>
-                        {/* Searchable Dropdown */}
                         <SearchableSelect
+                          size="large"
                           value={formData.customer_id}
                           options={customerOptions}
                           onChange={(val) =>
@@ -494,20 +504,19 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                           name="valid_until"
                           value={formData.valid_until}
                           onChange={handleHeaderChange}
-                          className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all"
+                          className="w-full px-4 py-3.5 sm:py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-2xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all"
                         />
                       </div>
                     </div>
                   </section>
 
                   {/* SECTION 2: Line Items Matrix */}
-                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                  <section className="relative z-[50] bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
                     <div className="flex justify-between items-end mb-4">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
                         <Calculator size={14} /> Itemized Breakdown
                       </h3>
                     </div>
-
                     <div className="space-y-3">
                       {formData.items.map((item, index) => (
                         <div
@@ -515,8 +524,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                           style={{ zIndex: 50 - index }}
                           className="flex flex-col lg:flex-row gap-3 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] relative group shadow-sm"
                         >
-                          {/* Item Type Selector */}
-                          <div className="w-full lg:w-32 shrink-0">
+                          <div className="w-full lg:w-36 shrink-0">
                             <select
                               value={item.line_type}
                               onChange={(e) =>
@@ -526,17 +534,17 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                                   e.target.value,
                                 )
                               }
-                              className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-amber-500"
+                              className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg sm:rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-amber-500"
                             >
                               <option value="SERVICE">Labor / Service</option>
                               <option value="PART">Physical Part</option>
                             </select>
                           </div>
 
-                          {/* Dynamic Catalog Search/Select */}
                           <div className="flex-1 min-w-0 relative">
                             {item.line_type === "SERVICE" ? (
                               <SearchableSelect
+                                size="medium"
                                 value={item.service_id}
                                 options={serviceOptions}
                                 onChange={(val) =>
@@ -546,6 +554,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                               />
                             ) : (
                               <SearchableSelect
+                                size="medium"
                                 value={item.item_id}
                                 options={partOptions}
                                 onChange={(val) =>
@@ -556,7 +565,6 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                             )}
                           </div>
 
-                          {/* Quantity & Discount */}
                           <div className="flex items-center gap-3 w-full lg:w-auto shrink-0">
                             <div className="w-24">
                               <input
@@ -572,7 +580,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                                className="w-full p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg sm:rounded-xl text-xs font-bold text-center text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                               />
                             </div>
                             <div className="w-28 relative">
@@ -592,14 +600,14 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full pl-6 p-2.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500"
+                                className="w-full pl-6 p-2.5 sm:p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg sm:rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500"
                               />
                             </div>
                             <button
                               type="button"
                               onClick={() => removeLineItem(item.id)}
                               disabled={formData.items.length === 1}
-                              className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-30"
+                              className="p-2.5 sm:p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg sm:rounded-xl transition-colors disabled:opacity-30"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -618,7 +626,8 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                   </section>
 
                   {/* SECTION 3: Document Footer (Notes & Summary) */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-[40]">
                     <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 space-y-4">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-2 flex items-center gap-2">
                         <ClipboardList size={14} /> Terms & Notes
