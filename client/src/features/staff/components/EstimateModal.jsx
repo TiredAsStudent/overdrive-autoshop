@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -9,11 +9,115 @@ import {
   AlertCircle,
   Loader2,
   User,
-  Calendar,
+  Search,
   ClipboardList,
 } from "lucide-react";
 import { customerService } from "../../../services/staff/customer.service";
 import api from "../../../services/api";
+
+const SearchableSelect = ({
+  value,
+  options,
+  onChange,
+  placeholder,
+  disabled,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (value) {
+      const selected = options.find(
+        (o) => o.id.toString() === value.toString(),
+      );
+      if (selected) setSearchTerm(selected.label);
+    } else {
+      setSearchTerm("");
+    }
+  }, [value, options]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setIsOpen(false);
+        const selected = options.find(
+          (o) => o.id.toString() === value?.toString(),
+        );
+        setSearchTerm(selected ? selected.label : "");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value, options]);
+
+  const filteredOptions = options.filter(
+    (o) =>
+      o.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (o.sublabel &&
+        o.sublabel.toLowerCase().includes(searchTerm.toLowerCase())),
+  );
+
+  return (
+    <div ref={wrapperRef} className="relative w-full">
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search size={14} className="text-slate-400" />
+        </div>
+        <input
+          type="text"
+          className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm disabled:opacity-50"
+          placeholder={placeholder}
+          value={isOpen ? searchTerm : value ? searchTerm : ""}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsOpen(true);
+            if (value) onChange("");
+          }}
+          onFocus={() => setIsOpen(true)}
+          disabled={disabled}
+        />
+      </div>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto custom-scrollbar z-50"
+          >
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((opt) => (
+                <div
+                  key={opt.id}
+                  onClick={() => {
+                    onChange(opt.id);
+                    setSearchTerm(opt.label);
+                    setIsOpen(false);
+                  }}
+                  className="p-3 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0"
+                >
+                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {opt.label}
+                  </p>
+                  {opt.sublabel && (
+                    <p className="text-[9px] font-black text-amber-500 tracking-widest uppercase mt-0.5 truncate">
+                      {opt.sublabel}
+                    </p>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-xs font-medium text-slate-500">
+                No matching records found.
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,12 +157,12 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
         setIsLoadingCatalogs(true);
         try {
           const [custRes, servRes, partRes, setRes] = await Promise.all([
-            customerService.getCustomers(1, 200, "", "active", "all"),
+            customerService.getCustomers(1, 1000, "", "active", "all"),
             api.get("/staff/services", {
-              params: { page: 1, limit: 200, status: "active" },
+              params: { page: 1, limit: 1000, status: "active" },
             }),
             api.get("/staff/inventory", {
-              params: { page: 1, limit: 200, status: "active" },
+              params: { page: 1, limit: 1000, status: "active" },
             }),
             api.get("/staff/settings"),
           ]);
@@ -244,6 +348,18 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
     if (formData.items.length === 0)
       return setValidationError("At least one line item is required.");
 
+    const invalidItems = formData.items.filter(
+      (i) =>
+        (i.line_type === "SERVICE" && !i.service_id) ||
+        (i.line_type === "PART" && !i.item_id),
+    );
+
+    if (invalidItems.length > 0) {
+      return setValidationError(
+        "Please ensure all line items have a specific Service or Part selected.",
+      );
+    }
+
     const payload = {
       customer_id: parseInt(formData.customer_id, 10),
       valid_until: formData.valid_until,
@@ -268,6 +384,24 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
       setIsSubmitting(false);
     }
   };
+
+  const customerOptions = customers.map((c) => ({
+    id: c.id,
+    label: c.full_name,
+    sublabel: `Code: ${c.customer_code} | Contact: ${c.contact_number}`,
+  }));
+
+  const serviceOptions = services.map((s) => ({
+    id: s.id,
+    label: s.service_name,
+    sublabel: `[${s.service_code}] ₱${s.price}`,
+  }));
+
+  const partOptions = parts.map((p) => ({
+    id: p.id,
+    label: p.item_name,
+    sublabel: `[${p.sku}] ₱${p.selling_price} | Stock: ${p.total_company_quantity}`,
+  }));
 
   return (
     <AnimatePresence>
@@ -330,26 +464,24 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                       <User size={14} /> Document Details
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 z-20 relative">
+                      <div className="relative z-30">
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                           Target Customer{" "}
                           <span className="text-red-500">*</span>
                         </label>
-                        <select
-                          required
-                          name="customer_id"
+                        {/* Searchable Dropdown */}
+                        <SearchableSelect
                           value={formData.customer_id}
-                          onChange={handleHeaderChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                        >
-                          <option value="">-- Select Active Customer --</option>
-                          {customers.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.full_name}
-                            </option>
-                          ))}
-                        </select>
+                          options={customerOptions}
+                          onChange={(val) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              customer_id: val,
+                            }))
+                          }
+                          placeholder="Search customer by name or phone..."
+                        />
                       </div>
                       <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
@@ -362,7 +494,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                           name="valid_until"
                           value={formData.valid_until}
                           onChange={handleHeaderChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all"
                         />
                       </div>
                     </div>
@@ -375,10 +507,12 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                         <Calculator size={14} /> Itemized Breakdown
                       </h3>
                     </div>
+
                     <div className="space-y-3">
-                      {formData.items.map((item) => (
+                      {formData.items.map((item, index) => (
                         <div
                           key={item.id}
+                          style={{ zIndex: 50 - index }}
                           className="flex flex-col lg:flex-row gap-3 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] relative group shadow-sm"
                         >
                           {/* Item Type Selector */}
@@ -399,51 +533,26 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                             </select>
                           </div>
 
-                          {/* Dynamic Catalog Select */}
-                          <div className="flex-1 min-w-0">
+                          {/* Dynamic Catalog Search/Select */}
+                          <div className="flex-1 min-w-0 relative">
                             {item.line_type === "SERVICE" ? (
-                              <select
-                                required
+                              <SearchableSelect
                                 value={item.service_id}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    item.id,
-                                    "service_id",
-                                    e.target.value,
-                                  )
+                                options={serviceOptions}
+                                onChange={(val) =>
+                                  handleItemChange(item.id, "service_id", val)
                                 }
-                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                              >
-                                <option value="">-- Select Service --</option>
-                                {services.map((s) => (
-                                  <option key={s.id} value={s.id}>
-                                    [{s.service_code}] {s.service_name} - ₱
-                                    {s.price}
-                                  </option>
-                                ))}
-                              </select>
+                                placeholder="Search labor or service..."
+                              />
                             ) : (
-                              <select
-                                required
+                              <SearchableSelect
                                 value={item.item_id}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    item.id,
-                                    "item_id",
-                                    e.target.value,
-                                  )
+                                options={partOptions}
+                                onChange={(val) =>
+                                  handleItemChange(item.id, "item_id", val)
                                 }
-                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                              >
-                                <option value="">
-                                  -- Select Inventory Part --
-                                </option>
-                                {parts.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    [{p.sku}] {p.item_name} - ₱{p.selling_price}
-                                  </option>
-                                ))}
-                              </select>
+                                placeholder="Search inventory parts..."
+                              />
                             )}
                           </div>
 
@@ -498,6 +607,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                         </div>
                       ))}
                     </div>
+
                     <button
                       type="button"
                       onClick={addLineItem}
