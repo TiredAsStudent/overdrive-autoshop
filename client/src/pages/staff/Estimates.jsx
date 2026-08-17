@@ -121,19 +121,11 @@ const Estimates = () => {
     });
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "PENDING_APPROVAL":
-        return "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
-      case "APPROVED":
-      case "CONVERTED":
-        return "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
-      case "REJECTED":
-      case "EXPIRED":
-        return "text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20";
-      default:
-        return "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
-    }
+  const getStatusVariant = (status) => {
+    if (status === "PENDING_APPROVAL") return "warning";
+    if (status === "APPROVED" || status === "CONVERTED") return "success";
+    if (status === "REJECTED" || status === "EXPIRED") return "danger";
+    return "default"; // DRAFT
   };
 
   return (
@@ -217,11 +209,10 @@ const Estimates = () => {
               </span>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span
-                className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusBadge(estimate.status)}`}
-              >
-                {estimate.status.replace("_", " ")}
-              </span>
+              <StatusBadge
+                label={estimate.status.replace("_", " ")}
+                variant={getStatusVariant(estimate.status)}
+              />
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <div className="flex items-center justify-end gap-1 sm:gap-2">

@@ -11,6 +11,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import { estimateService } from "../../../services/staff/estimate.service";
+import StatusBadge from "../../../components/ui/StatusBadge";
 
 const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
   const [estimate, setEstimate] = useState(null);
@@ -31,19 +32,11 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
     }
   }, [isOpen, estimateId]);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "PENDING_APPROVAL":
-        return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
-      case "APPROVED":
-      case "CONVERTED":
-        return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
-      case "REJECTED":
-      case "EXPIRED":
-        return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
-      default:
-        return "text-slate-600 bg-slate-50 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
-    }
+  const getStatusVariant = (status) => {
+    if (status === "PENDING_APPROVAL") return "warning";
+    if (status === "APPROVED" || status === "CONVERTED") return "success";
+    if (status === "REJECTED" || status === "EXPIRED") return "danger";
+    return "default";
   };
 
   return (
@@ -77,11 +70,10 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
 
                   {estimate && (
                     <div className="flex flex-col items-start gap-1.5 mt-1">
-                      <span
-                        className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusColor(estimate.status)}`}
-                      >
-                        {estimate.status.replace("_", " ")}
-                      </span>
+                      <StatusBadge
+                        label={estimate.status.replace("_", " ")}
+                        variant={getStatusVariant(estimate.status)}
+                      />
 
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
                         <BadgeCheck size={12} className="text-amber-500" />
