@@ -10,6 +10,9 @@ import {
   FileSearch,
   ArrowRight,
   Edit2,
+  Clock,
+  AlertCircle,
+  FileCheck,
 } from "lucide-react";
 import { estimateService } from "../../services/staff/estimate.service";
 import EstimateModal from "../../features/staff/components/EstimateModal";
@@ -128,6 +131,23 @@ const Estimates = () => {
     return "default"; // DRAFT
   };
 
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "PENDING_APPROVAL":
+        return Clock;
+      case "APPROVED":
+        return CheckCircle;
+      case "CONVERTED":
+        return FileCheck;
+      case "REJECTED":
+        return XCircle;
+      case "EXPIRED":
+        return AlertCircle;
+      default:
+        return FileText; // DRAFT
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
       {/* UNIVERSAL PAGE HEADER */}
@@ -212,6 +232,7 @@ const Estimates = () => {
               <StatusBadge
                 label={estimate.status.replace("_", " ")}
                 variant={getStatusVariant(estimate.status)}
+                icon={getStatusIcon(estimate.status)}
               />
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
