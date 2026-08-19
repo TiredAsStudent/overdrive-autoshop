@@ -262,15 +262,59 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
       let newItems = [...prev.items];
       const itemIndex = newItems.findIndex((i) => i.id === id);
 
-      if (itemIndex > -1) {
-        newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
+      if (itemIndex === -1) return prev;
 
-        if (field === "line_type") {
-          newItems[itemIndex].service_id = "";
-          newItems[itemIndex].item_id = "";
+      const currentItem = newItems[itemIndex];
+
+      if (field === "line_type") {
+        newItems[itemIndex] = {
+          ...currentItem,
+          line_type: value,
+          service_id: "",
+          item_id: "",
+        };
+        return { ...prev, items: newItems };
+      }
+
+      if (field === "service_id" || field === "item_id") {
+        const isService = field === "service_id";
+        const lineType = isService ? "SERVICE" : "PART";
+
+        const duplicateIndex = newItems.findIndex(
+          (i) =>
+            i.id !== id &&
+            i.line_type === lineType &&
+            i[field]?.toString() === value.toString(),
+        );
+
+        if (duplicateIndex > -1 && value) {
+          const existingQty = Number(newItems[duplicateIndex].quantity) || 0;
+          const addedQty = Number(currentItem.quantity) || 1;
+
+          newItems[duplicateIndex] = {
+            ...newItems[duplicateIndex],
+            quantity: existingQty + addedQty,
+          };
+
+          if (itemIndex === newItems.length - 1) {
+            newItems[itemIndex] = {
+              id: currentItem.id,
+              line_type: currentItem.line_type,
+              service_id: "",
+              item_id: "",
+              quantity: 1,
+              discount: 0,
+            };
+          } else {
+            newItems.splice(itemIndex, 1);
+          }
+
+          return { ...prev, items: newItems };
         }
 
-        if (field === "service_id" && value) {
+        newItems[itemIndex] = { ...currentItem, [field]: value };
+
+        if (isService && value) {
           const selectedService = services.find(
             (s) => s.id.toString() === value.toString(),
           );
@@ -284,20 +328,43 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
               .map((partId) => parts.find((p) => p.id === partId))
               .filter(Boolean);
 
-            const newRows = partsToAdd.map((p, idx) => ({
-              id: Date.now() + idx + 1,
-              line_type: "PART",
-              service_id: "",
-              item_id: p.id.toString(),
-              quantity: 1,
-              discount: 0,
-            }));
+            const injectedParts = [];
 
-            newItems.splice(itemIndex + 1, 0, ...newRows);
+            partsToAdd.forEach((p, idx) => {
+              const existingPartIndex = newItems.findIndex(
+                (i) =>
+                  i.line_type === "PART" &&
+                  i.item_id?.toString() === p.id.toString(),
+              );
+
+              if (existingPartIndex > -1) {
+                newItems[existingPartIndex] = {
+                  ...newItems[existingPartIndex],
+                  quantity: Number(newItems[existingPartIndex].quantity) + 1,
+                };
+              } else {
+                injectedParts.push({
+                  id: Date.now() + Math.random() + idx,
+                  line_type: "PART",
+                  service_id: "",
+                  item_id: p.id.toString(),
+                  quantity: 1,
+                  discount: 0,
+                });
+              }
+            });
+
+            if (injectedParts.length > 0) {
+              const currentIndex = newItems.findIndex((i) => i.id === id);
+              newItems.splice(currentIndex + 1, 0, ...injectedParts);
+            }
           }
         }
+
+        return { ...prev, items: newItems };
       }
 
+      newItems[itemIndex] = { ...currentItem, [field]: value };
       return { ...prev, items: newItems };
     });
   };
@@ -344,7 +411,6 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
       subtotal,
       discountTotal,
       vatAmount,
-
       grandTotal: subtotal - discountTotal + vatAmount,
     };
   };
@@ -570,7 +636,6 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                           </div>
 
                           {/* Quantity & Discount */}
-
                           <div className="flex items-center justify-between gap-2 sm:gap-3 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t border-slate-100 dark:border-slate-700/50 lg:border-none mt-1 lg:mt-0">
                             <div className="flex-1 lg:flex-none lg:w-20">
                               <input
