@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  Search,
-  Loader2,
   ClipboardList,
   Plus,
   Play,
@@ -16,19 +14,26 @@ import {
 import { salesOrderService } from "../../services/staff/salesOrder.service";
 import SalesOrderModal from "../../features/staff/components/SalesOrderModal";
 import SalesOrderDrawer from "../../features/staff/components/SalesOrderDrawer";
+
+// Universal Components
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import StatusBadge from "../../components/ui/StatusBadge";
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import StatusToggle from "../../components/ui/StatusToggle";
+import ActionButton from "../../components/ui/ActionButton";
+
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
 const STATUS_FILTERS = [
-  { id: "all", label: "All Orders" },
-  { id: "PENDING_SERVICE", label: "Pending" },
-  { id: "IN_PROGRESS", label: "In Progress" },
-  { id: "COMPLETED", label: "Completed" },
-  { id: "CANCELLED", label: "Cancelled" },
+  { value: "all", label: "All Orders" },
+  { value: "PENDING_SERVICE", label: "Pending" },
+  { value: "IN_PROGRESS", label: "In Progress" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "CANCELLED", label: "Cancelled" },
 ];
 
 const SalesOrders = () => {
@@ -159,70 +164,32 @@ const SalesOrders = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <ClipboardList className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Sales Orders
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Operational Work Hub
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          {/* Status Filter */}
-          <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 overflow-x-auto custom-scrollbar">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setStatusFilter(f.id)}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${
-                  statusFilter === f.id
-                    ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative w-full sm:max-w-[200px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search Order..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-            />
-          </div>
-
-          <button
-            onClick={() => {
-              setModalMode("CREATE");
-              setSelectedOrderData(null);
-              setIsModalOpen(true);
-            }}
-            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-amber-500/20 shrink-0 transition-all active:scale-[0.98]"
-          >
-            <Plus size={16} /> Convert Order
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Sales Orders"
+        subtitle="Operational Work Hub"
+        icon={ClipboardList}
+      >
+        <StatusToggle
+          activeValue={statusFilter}
+          onToggle={setStatusFilter}
+          options={STATUS_FILTERS}
+        />
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          isSearching={searchQuery !== debouncedSearchQuery}
+          placeholder="Search Order..."
+        />
+        <ActionButton
+          label="Convert Order"
+          icon={Plus}
+          onClick={() => {
+            setModalMode("CREATE");
+            setSelectedOrderData(null);
+            setIsModalOpen(true);
+          }}
+        />
+      </PageHeader>
 
       {/* DATA TABLE */}
       <DataTable
