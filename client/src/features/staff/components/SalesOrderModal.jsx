@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -10,8 +10,10 @@ import {
   FileText,
   Lock,
   Calendar,
+  Search,
 } from "lucide-react";
 import { estimateService } from "../../../services/staff/estimate.service";
+import { useDebounce } from "../../../hooks/useDebounce";
 
 const SalesOrderModal = ({
   isOpen,
@@ -22,9 +24,13 @@ const SalesOrderModal = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
-  const [isLoadingEstimates, setIsLoadingEstimates] = useState(false);
 
-  const [approvedEstimates, setApprovedEstimates] = useState([]);
+  const dropdownRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedEstimatePreview, setSelectedEstimatePreview] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -36,32 +42,15 @@ const SalesOrderModal = ({
   useEffect(() => {
     if (isOpen) {
       if (mode === "CREATE") {
-        const fetchApprovedEstimates = async () => {
-          setIsLoadingEstimates(true);
-          try {
-            const res = await estimateService.getEstimates(
-              1,
-              100,
-              "",
-              "APPROVED",
-              "all",
-            );
-            setApprovedEstimates(res.data?.estimates || []);
-          } catch (error) {
-            setValidationError(
-              "Failed to load approved estimates. Please refresh.",
-            );
-          } finally {
-            setIsLoadingEstimates(false);
-          }
-        };
-        fetchApprovedEstimates();
         setFormData({
           estimate_id: "",
           estimated_completion_date: "",
           notes: "",
         });
         setSelectedEstimatePreview(null);
+        setSearchTerm("");
+        setSearchResults([]);
+        setIsDropdownOpen(false);
       } else if (mode === "EDIT" && initialData) {
         setFormData({
           estimated_completion_date:
@@ -73,17 +62,42 @@ const SalesOrderModal = ({
     }
   }, [isOpen, mode, initialData]);
 
-  const handleEstimateSelect = (e) => {
-    const estId = e.target.value;
-    setFormData({ ...formData, estimate_id: estId });
-    if (estId) {
-      const preview = approvedEstimates.find(
-        (est) => est.id.toString() === estId.toString(),
-      );
-      setSelectedEstimatePreview(preview || null);
-    } else {
-      setSelectedEstimatePreview(null);
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && isDropdownOpen && mode === "CREATE") {
+      setIsSearching(true);
+      estimateService
+        .getEstimates(1, 10, debouncedSearchTerm, "APPROVED", "all")
+        .then((res) => setSearchResults(res.data?.estimates || []))
+        .catch(() => setSearchResults([]))
+        .finally(() => setIsSearching(false));
     }
+  }, [isOpen, debouncedSearchTerm, isDropdownOpen, mode]);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setIsDropdownOpen(true);
+
+    if (selectedEstimatePreview) {
+      setSelectedEstimatePreview(null);
+      setFormData((prev) => ({ ...prev, estimate_id: "" }));
+    }
+  };
+
+  const handleSelectEstimate = (est) => {
+    setSelectedEstimatePreview(est);
+    setFormData((prev) => ({ ...prev, estimate_id: est.id.toString() }));
+    setSearchTerm(`[${est.estimate_number}] ${est.customer_name}`);
+    setIsDropdownOpen(false);
   };
 
   const handleChange = (e) => {
@@ -97,9 +111,9 @@ const SalesOrderModal = ({
 
     let payload = {};
     if (mode === "CREATE") {
-      if (!formData.estimate_id)
+      if (!formData.estimate_id || !selectedEstimatePreview)
         return setValidationError(
-          "You must select an approved estimate to convert.",
+          "You must search and select an approved estimate to convert.",
         );
       payload = {
         estimate_id: parseInt(formData.estimate_id, 10),
@@ -174,128 +188,172 @@ const SalesOrderModal = ({
                 </div>
               )}
 
-              {isLoadingEstimates ? (
-                <div className="flex flex-col items-center justify-center py-10 opacity-50">
-                  <Loader2 className="w-8 h-8 text-amber-500 animate-spin mb-3" />
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Scanning Authorized Quotes...
-                  </p>
-                </div>
-              ) : (
-                <form
-                  id="salesOrderForm"
-                  onSubmit={handleSubmit}
-                  className="space-y-6"
-                >
-                  {mode === "CREATE" && (
-                    <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
-                        <FileText size={14} /> Source Document
-                      </h3>
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Approved Estimate Reference{" "}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          required
-                          name="estimate_id"
-                          value={formData.estimate_id}
-                          onChange={handleEstimateSelect}
-                          className="w-full px-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all cursor-pointer"
-                        >
-                          <option value="">
-                            -- Select an Approved Estimate --
-                          </option>
-                          {approvedEstimates.map((est) => (
-                            <option key={est.id} value={est.id}>
-                              [{est.estimate_number}] {est.customer_name} - ₱
-                              {parseFloat(est.grand_total).toLocaleString()}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <AnimatePresence>
-                        {selectedEstimatePreview && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0, y: -10 }}
-                            animate={{ opacity: 1, height: "auto", y: 0 }}
-                            exit={{ opacity: 0, height: 0, y: -10 }}
-                            className="mt-4 p-4 sm:p-5 bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/20 rounded-2xl flex items-center justify-between overflow-hidden shadow-sm"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="p-2.5 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl">
-                                <Lock size={16} />
-                              </div>
-                              <div>
-                                <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 dark:text-blue-400/80 mb-0.5">
-                                  Financial Lock Active
-                                </p>
-                                <p className="text-sm font-black text-blue-900 dark:text-blue-200 uppercase truncate max-w-[150px] sm:max-w-[200px]">
-                                  {selectedEstimatePreview.customer_name}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 dark:text-blue-400/80 mb-0.5">
-                                Grand Total
-                              </p>
-                              <span className="text-lg font-black text-slate-900 dark:text-white font-mono">
-                                ₱
-                                {parseFloat(
-                                  selectedEstimatePreview.grand_total,
-                                ).toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                })}
-                              </span>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </section>
-                  )}
-
+              <form
+                id="salesOrderForm"
+                onSubmit={handleSubmit}
+                className="space-y-6"
+              >
+                {mode === "CREATE" && (
                   <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
-                      <Calendar size={14} /> Scheduling & Logistics
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                      <FileText size={14} /> Source Document
                     </h3>
-                    <div className="grid grid-cols-1 gap-5">
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Estimated Completion Date{" "}
-                          <span className="text-slate-400 font-medium lowercase">
-                            (Optional)
-                          </span>
-                        </label>
+
+                    <div ref={dropdownRef} className="relative z-20">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Approved Estimate Reference{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          {isSearching ? (
+                            <Loader2
+                              size={18}
+                              className="text-amber-500 animate-spin"
+                            />
+                          ) : (
+                            <Search size={18} className="text-slate-400" />
+                          )}
+                        </div>
                         <input
-                          type="date"
-                          name="estimated_completion_date"
-                          value={formData.estimated_completion_date}
-                          onChange={handleChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all cursor-pointer"
+                          type="text"
+                          value={searchTerm}
+                          onChange={handleSearchChange}
+                          onFocus={() => setIsDropdownOpen(true)}
+                          placeholder="Type Estimate Number or Customer Name..."
+                          className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all"
                         />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Operational / Logistics Notes{" "}
-                          <span className="text-slate-400 font-medium lowercase">
-                            (Optional)
-                          </span>
-                        </label>
-                        <textarea
-                          name="notes"
-                          value={formData.notes}
-                          onChange={handleChange}
-                          rows="3"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
-                          placeholder="e.g., Prioritize engine bay work; customer needs car by weekend."
-                        />
+
+                        {/* Dropdown Menu Container */}
+                        <AnimatePresence>
+                          {isDropdownOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 5 }}
+                              className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-30"
+                            >
+                              {searchResults.length > 0 ? (
+                                searchResults.map((est) => (
+                                  <div
+                                    key={est.id}
+                                    onClick={() => handleSelectEstimate(est)}
+                                    className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                                  >
+                                    <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                                      {est.estimate_number}
+                                    </p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                                      {est.customer_name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase">
+                                      Grand Total:{" "}
+                                      <span className="font-black text-slate-700 dark:text-slate-300">
+                                        ₱
+                                        {parseFloat(
+                                          est.grand_total,
+                                        ).toLocaleString(undefined, {
+                                          minimumFractionDigits: 2,
+                                        })}
+                                      </span>
+                                    </p>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="p-8 text-center">
+                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+                                    {isSearching
+                                      ? "Searching approved estimates..."
+                                      : "No matching estimates found."}
+                                  </p>
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
+
+                    {/* Financial Lock Preview */}
+                    <AnimatePresence>
+                      {selectedEstimatePreview && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0, y: -10 }}
+                          animate={{ opacity: 1, height: "auto", y: 0 }}
+                          exit={{ opacity: 0, height: 0, y: -10 }}
+                          className="mt-5 p-4 sm:p-5 bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/20 rounded-2xl flex items-center justify-between overflow-hidden shadow-sm relative z-10"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl">
+                              <Lock size={16} />
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 dark:text-blue-400/80 mb-0.5">
+                                Financial Lock Active
+                              </p>
+                              <p className="text-sm font-black text-blue-900 dark:text-blue-200 uppercase truncate max-w-[150px] sm:max-w-[200px]">
+                                {selectedEstimatePreview.customer_name}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 dark:text-blue-400/80 mb-0.5">
+                              Grand Total
+                            </p>
+                            <span className="text-lg font-black text-slate-900 dark:text-white font-mono">
+                              ₱
+                              {parseFloat(
+                                selectedEstimatePreview.grand_total,
+                              ).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </section>
-                </form>
-              )}
+                )}
+
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
+                    <Calendar size={14} /> Scheduling & Logistics
+                  </h3>
+                  <div className="grid grid-cols-1 gap-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Estimated Completion Date{" "}
+                        <span className="text-slate-400 font-medium lowercase">
+                          (Optional)
+                        </span>
+                      </label>
+                      <input
+                        type="date"
+                        name="estimated_completion_date"
+                        value={formData.estimated_completion_date}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Operational / Logistics Notes{" "}
+                        <span className="text-slate-400 font-medium lowercase">
+                          (Optional)
+                        </span>
+                      </label>
+                      <textarea
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleChange}
+                        rows="3"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
+                        placeholder="e.g., Prioritize engine bay work; customer needs car by weekend."
+                      />
+                    </div>
+                  </div>
+                </section>
+              </form>
             </div>
 
             {/* MODAL FOOTER */}
@@ -305,8 +363,7 @@ const SalesOrderModal = ({
                 form="salesOrderForm"
                 disabled={
                   isSubmitting ||
-                  (mode === "CREATE" &&
-                    (isLoadingEstimates || approvedEstimates.length === 0))
+                  (mode === "CREATE" && !selectedEstimatePreview)
                 }
                 className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
               >
