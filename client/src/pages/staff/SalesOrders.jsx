@@ -232,7 +232,7 @@ const SalesOrders = () => {
                 </p>
               </td>
               <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                <span className="text-sm font-black text-slate-900 dark:text-white">
                   ₱
                   {parseFloat(order.grand_total).toLocaleString(undefined, {
                     minimumFractionDigits: 2,
@@ -247,14 +247,14 @@ const SalesOrders = () => {
                 />
               </td>
               <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-                <div className="flex items-center justify-end gap-1.5">
+                <div className="flex items-center justify-end gap-1 sm:gap-2">
                   <button
                     onClick={() => {
                       setSelectedOrderId(order.id);
                       setIsDrawerOpen(true);
                     }}
                     title="View Document"
-                    className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
                   >
                     <FileSearch size={16} />
                   </button>
@@ -268,7 +268,7 @@ const SalesOrders = () => {
                         setIsModalOpen(true);
                       }}
                       title="Edit Dates & Notes"
-                      className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
                     >
                       <Edit2 size={16} />
                     </button>
@@ -282,7 +282,7 @@ const SalesOrders = () => {
                         })
                       }
                       title="Convert to Invoice"
-                      className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 dark:text-indigo-400 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors cursor-pointer"
                     >
                       <Receipt size={16} />
                     </button>
@@ -293,14 +293,14 @@ const SalesOrders = () => {
                       <button
                         onClick={() => handleStatusChange(order, "IN_PROGRESS")}
                         title="Start Service"
-                        className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 dark:text-amber-400 rounded-xl transition-colors cursor-pointer"
+                        className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
                       >
                         <Play size={16} />
                       </button>
                       <button
                         onClick={() => handleStatusChange(order, "CANCELLED")}
                         title="Cancel"
-                        className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-xl transition-colors cursor-pointer"
+                        className="p-1.5 sm:p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
                       >
                         <XCircle size={16} />
                       </button>
@@ -310,7 +310,7 @@ const SalesOrders = () => {
                     <button
                       onClick={() => handleStatusChange(order, "COMPLETED")}
                       title="Mark Completed"
-                      className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:text-emerald-400 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer"
                     >
                       <CheckCircle size={16} />
                     </button>
