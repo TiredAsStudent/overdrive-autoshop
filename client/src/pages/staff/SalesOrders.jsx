@@ -11,6 +11,7 @@ import {
   FileSearch,
   Receipt,
   Edit2,
+  Clock,
 } from "lucide-react";
 import { salesOrderService } from "../../services/staff/salesOrder.service";
 import SalesOrderModal from "../../features/staff/components/SalesOrderModal";
@@ -18,6 +19,7 @@ import SalesOrderDrawer from "../../features/staff/components/SalesOrderDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import ConfirmModal from "../../components/shared/ConfirmModal";
+import StatusBadge from "../../components/ui/StatusBadge";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -63,7 +65,6 @@ const SalesOrders = () => {
   useEffect(() => {
     if (location.state?.estimateId) {
       setModalMode("CREATE");
-
       setSelectedOrderData({ estimate_id: location.state.estimateId });
       setIsModalOpen(true);
       window.history.replaceState({}, document.title);
@@ -140,19 +141,19 @@ const SalesOrders = () => {
     });
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusConfig = (status) => {
     switch (status) {
       case "PENDING_SERVICE":
-        return "text-slate-600 bg-slate-100 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+        return { variant: "default", icon: Clock };
       case "IN_PROGRESS":
-        return "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+        return { variant: "warning", icon: Play };
       case "COMPLETED":
       case "INVOICED":
-        return "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+        return { variant: "success", icon: CheckCircle };
       case "CANCELLED":
-        return "text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20";
+        return { variant: "danger", icon: XCircle };
       default:
-        return "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+        return { variant: "default", icon: ClipboardList };
     }
   };
 
@@ -181,13 +182,18 @@ const SalesOrders = () => {
               <button
                 key={f.id}
                 onClick={() => setStatusFilter(f.id)}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${statusFilter === f.id ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${
+                  statusFilter === f.id
+                    ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                }`}
               >
                 {f.label}
               </button>
             ))}
           </div>
 
+          {/* Search Bar */}
           <div className="relative w-full sm:max-w-[200px]">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               {searchQuery !== debouncedSearchQuery ? (
@@ -231,118 +237,122 @@ const SalesOrders = () => {
         data={orders}
         loading={loading}
         emptyTitle="No Sales Orders Found"
-        renderRow={(order) => (
-          <tr
-            key={order.id}
-            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
-          >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
-                {order.sales_order_number}
-              </span>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
-                {order.customer_name}
-              </p>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                {order.estimated_completion_date
-                  ? new Date(
-                      order.estimated_completion_date,
-                    ).toLocaleDateString()
-                  : "TBD"}
-              </p>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black text-slate-900 dark:text-white">
-                ₱
-                {parseFloat(order.grand_total).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span
-                className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusBadge(order.status)}`}
-              >
-                {order.status.replace("_", " ")}
-              </span>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-1.5">
-                <button
-                  onClick={() => {
-                    setSelectedOrderId(order.id);
-                    setIsDrawerOpen(true);
-                  }}
-                  title="View Document"
-                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
-                >
-                  <FileSearch size={16} />
-                </button>
+        renderRow={(order) => {
+          const statusConfig = getStatusConfig(order.status);
 
-                {(order.status === "PENDING_SERVICE" ||
-                  order.status === "IN_PROGRESS") && (
+          return (
+            <tr
+              key={order.id}
+              className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+            >
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
+                  {order.sales_order_number}
+                </span>
+              </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
+                  {order.customer_name}
+                </p>
+              </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                  {order.estimated_completion_date
+                    ? new Date(
+                        order.estimated_completion_date,
+                      ).toLocaleDateString()
+                    : "TBD"}
+                </p>
+              </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                  ₱
+                  {parseFloat(order.grand_total).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                  })}
+                </span>
+              </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <StatusBadge
+                  label={order.status.replace("_", " ")}
+                  variant={statusConfig.variant}
+                  icon={statusConfig.icon}
+                />
+              </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+                <div className="flex items-center justify-end gap-1.5">
                   <button
                     onClick={() => {
-                      setModalMode("EDIT");
-                      setSelectedOrderData(order);
-                      setIsModalOpen(true);
+                      setSelectedOrderId(order.id);
+                      setIsDrawerOpen(true);
                     }}
-                    title="Edit Dates & Notes"
+                    title="View Document"
                     className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
                   >
-                    <Edit2 size={16} />
+                    <FileSearch size={16} />
                   </button>
-                )}
 
-                {order.status === "COMPLETED" && (
-                  <button
-                    onClick={() =>
-                      navigate("/staff/sales/invoices", {
-                        state: { salesOrderId: order.id },
-                      })
-                    }
-                    title="Convert to Invoice"
-                    className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 dark:text-indigo-400 rounded-xl transition-colors cursor-pointer"
-                  >
-                    <Receipt size={16} />
-                  </button>
-                )}
+                  {(order.status === "PENDING_SERVICE" ||
+                    order.status === "IN_PROGRESS") && (
+                    <button
+                      onClick={() => {
+                        setModalMode("EDIT");
+                        setSelectedOrderData(order);
+                        setIsModalOpen(true);
+                      }}
+                      title="Edit Dates & Notes"
+                      className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  )}
 
-                {order.status === "PENDING_SERVICE" && (
-                  <>
+                  {order.status === "COMPLETED" && (
                     <button
-                      onClick={() => handleStatusChange(order, "IN_PROGRESS")}
-                      title="Start Service"
-                      className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 dark:text-amber-400 rounded-xl transition-colors cursor-pointer"
+                      onClick={() =>
+                        navigate("/staff/sales/invoices", {
+                          state: { salesOrderId: order.id },
+                        })
+                      }
+                      title="Convert to Invoice"
+                      className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 dark:text-indigo-400 rounded-xl transition-colors cursor-pointer"
                     >
-                      <Play size={16} />
+                      <Receipt size={16} />
                     </button>
+                  )}
+
+                  {order.status === "PENDING_SERVICE" && (
+                    <>
+                      <button
+                        onClick={() => handleStatusChange(order, "IN_PROGRESS")}
+                        title="Start Service"
+                        className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 dark:text-amber-400 rounded-xl transition-colors cursor-pointer"
+                      >
+                        <Play size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(order, "CANCELLED")}
+                        title="Cancel"
+                        className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-xl transition-colors cursor-pointer"
+                      >
+                        <XCircle size={16} />
+                      </button>
+                    </>
+                  )}
+                  {order.status === "IN_PROGRESS" && (
                     <button
-                      onClick={() => handleStatusChange(order, "CANCELLED")}
-                      title="Cancel"
-                      className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-xl transition-colors cursor-pointer"
+                      onClick={() => handleStatusChange(order, "COMPLETED")}
+                      title="Mark Completed"
+                      className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:text-emerald-400 rounded-xl transition-colors cursor-pointer"
                     >
-                      <XCircle size={16} />
+                      <CheckCircle size={16} />
                     </button>
-                  </>
-                )}
-                {order.status === "IN_PROGRESS" && (
-                  <button
-                    onClick={() => handleStatusChange(order, "COMPLETED")}
-                    title="Mark Completed"
-                    className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:text-emerald-400 rounded-xl transition-colors cursor-pointer"
-                  >
-                    <CheckCircle size={16} />
-                  </button>
-                )}
-              </div>
-            </td>
-          </tr>
-        )}
+                  )}
+                </div>
+              </td>
+            </tr>
+          );
+        }}
       />
 
       <Pagination
