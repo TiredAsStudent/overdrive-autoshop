@@ -150,23 +150,6 @@ class SalesOrderService {
       if (newStatus === "IN_PROGRESS") {
         const parts = so.items.filter((item) => item.line_type === "PART");
 
-        for (const part of parts) {
-          const stockSql = `SELECT quantity FROM branch_inventory WHERE branch_id = $1 AND item_id = $2`;
-          const stockResult = await query(stockSql, [
-            so.branch_id,
-            part.item_id,
-          ]);
-
-          const availableStock =
-            stockResult.rows.length > 0 ? stockResult.rows[0].quantity : 0;
-
-          if (availableStock < part.quantity) {
-            throw new Error(
-              `Stock Shortage: Cannot start service. Insufficient inventory for "${part.item_name}". Required: ${part.quantity}, Available: ${availableStock}.`,
-            );
-          }
-        }
-
         updated = await SalesOrderModel.transitionToInProgress(
           id,
           data,

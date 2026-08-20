@@ -101,6 +101,23 @@ class SalesOrder {
       const updatedSO = soRes.rows[0];
 
       for (const part of partsArray) {
+        const checkSql = `
+          SELECT quantity 
+          FROM branch_inventory 
+          WHERE branch_id = $1 AND item_id = $2 
+          FOR UPDATE
+        `;
+        const checkRes = await client.query(checkSql, [branchId, part.item_id]);
+
+        const availableStock =
+          checkRes.rows.length > 0 ? checkRes.rows[0].quantity : 0;
+
+        if (availableStock < part.quantity) {
+          throw new Error(
+            `Stock Shortage: Cannot start service. Insufficient inventory for "${part.item_name}". Required: ${part.quantity}, Available: ${availableStock}.`,
+          );
+        }
+
         const invSql = `UPDATE branch_inventory SET quantity = quantity - $1 WHERE branch_id = $2 AND item_id = $3 RETURNING quantity`;
         const invRes = await client.query(invSql, [
           part.quantity,
