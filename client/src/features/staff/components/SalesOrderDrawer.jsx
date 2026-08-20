@@ -13,6 +13,7 @@ import {
   Play,
   CheckCircle,
   XCircle,
+  BadgeCheck,
 } from "lucide-react";
 import { salesOrderService } from "../../../services/staff/salesOrder.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -92,13 +93,21 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                   <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
                     {order?.sales_order_number || "Loading..."}
                   </h2>
+
                   {order && (
-                    <div className="mt-1.5 flex items-center">
+                    <div className="flex flex-col items-start gap-1.5 mt-1.5">
                       <StatusBadge
                         label={order.status.replace("_", " ")}
                         variant={getStatusConfig(order.status).variant}
                         icon={getStatusConfig(order.status).icon}
                       />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
+                        <BadgeCheck size={12} className="text-amber-500" />
+                        Created by:{" "}
+                        <span className="text-slate-600 dark:text-slate-300">
+                          {order.created_by_name || "System"}
+                        </span>
+                      </span>
                     </div>
                   )}
                 </div>
@@ -131,8 +140,8 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
               {order && !loading && (
                 <div className="space-y-6 sm:space-y-8">
                   {/* Meta Source & Client Link */}
-                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
-                    <div className="flex-1 p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                  <div className="grid grid-cols-2 gap-4 sm:gap-5">
+                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
                       <User size={16} className="text-slate-400 mb-3" />
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
@@ -141,12 +150,19 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                         <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
                           {order.customer_name}
                         </p>
-                        <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 truncate font-medium">
-                          <Building2 size={10} /> {order.branch_name}
-                        </p>
+
+                        <div className="flex flex-col gap-1 mt-1">
+                          <p className="text-[10px] text-slate-500 truncate font-medium">
+                            {order.contact_number}
+                          </p>
+                          <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate font-medium">
+                            <Building2 size={10} /> {order.branch_name}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex-1 p-5 sm:p-6 bg-blue-50 dark:bg-blue-500/5 rounded-[20px] sm:rounded-[24px] border border-blue-100 dark:border-blue-500/20 shadow-sm flex flex-col justify-between">
+                    </section>
+
+                    <section className="p-5 sm:p-6 bg-blue-50 dark:bg-blue-500/5 rounded-[20px] sm:rounded-[24px] border border-blue-100 dark:border-blue-500/20 shadow-sm flex flex-col justify-between">
                       <Link size={16} className="text-blue-400 mb-3" />
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">
@@ -159,11 +175,11 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                           Financial Snapshot Frozen
                         </p>
                       </div>
-                    </div>
+                    </section>
                   </div>
 
                   {/* Target Completion Date */}
-                  <div className="flex items-center gap-4 p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm">
+                  <section className="flex items-center gap-4 p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm">
                     <Calendar size={20} className="text-amber-500 shrink-0" />
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
@@ -177,10 +193,10 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                           : "Not Scheduled"}
                       </p>
                     </div>
-                  </div>
+                  </section>
 
                   {/* Line Items Table (Checklist Mode for Shop Floor) */}
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
                     <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                         Approved Work Order Checklist
@@ -189,10 +205,12 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                     <div className="p-5 sm:p-6 space-y-3">
                       {order.items.map((item) => {
                         const isService = item.line_type === "SERVICE";
-                        const net =
+
+                        const gross =
                           parseFloat(item.recorded_selling_price) *
-                            item.quantity -
-                          parseFloat(item.discount_amount);
+                          item.quantity;
+                        const net = gross - parseFloat(item.discount_amount);
+
                         return (
                           <div
                             key={item.id}
@@ -208,6 +226,7 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                                     ? item.service_name
                                     : item.item_name}
                                 </p>
+
                                 <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-widest mt-0.5">
                                   {item.quantity}x @ ₱
                                   {parseFloat(
@@ -215,6 +234,17 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                                   ).toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                   })}
+                                  {parseFloat(item.discount_amount) > 0 && (
+                                    <span className="text-amber-500 ml-1.5 font-bold">
+                                      (Disc: -₱
+                                      {parseFloat(
+                                        item.discount_amount,
+                                      ).toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                      )
+                                    </span>
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -228,10 +258,10 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                         );
                       })}
                     </div>
-                  </div>
+                  </section>
 
                   {/* Totals Lock */}
-                  <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
+                  <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
                     <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3">
                       Locked Financials
                     </p>
@@ -283,18 +313,18 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                         )}
                       </span>
                     </div>
-                  </div>
+                  </section>
 
                   {/* Notes */}
                   {order.notes && (
-                    <div className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
+                    <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
                       <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
                         Operational Notes
                       </p>
                       <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200/80 italic leading-relaxed">
                         "{order.notes}"
                       </p>
-                    </div>
+                    </section>
                   )}
                 </div>
               )}
