@@ -7,6 +7,9 @@ import {
   Loader2,
   ArrowRightLeft,
   Edit,
+  FileText,
+  Lock,
+  Calendar,
 } from "lucide-react";
 import { estimateService } from "../../../services/staff/estimate.service";
 
@@ -131,7 +134,7 @@ const SalesOrderModal = ({
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   {mode === "CREATE" ? (
@@ -156,14 +159,14 @@ const SalesOrderModal = ({
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
+                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <X size={24} />
               </button>
             </div>
 
             {/* Body */}
-            <div className="px-6 sm:px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -185,7 +188,10 @@ const SalesOrderModal = ({
                   className="space-y-6"
                 >
                   {mode === "CREATE" && (
-                    <>
+                    <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                        <FileText size={14} /> Source Document
+                      </h3>
                       <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                           Approved Estimate Reference{" "}
@@ -196,7 +202,7 @@ const SalesOrderModal = ({
                           name="estimate_id"
                           value={formData.estimate_id}
                           onChange={handleEstimateSelect}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
+                          className="w-full px-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all cursor-pointer"
                         >
                           <option value="">
                             -- Select an Approved Estimate --
@@ -210,73 +216,90 @@ const SalesOrderModal = ({
                         </select>
                       </div>
 
-                      {selectedEstimatePreview && (
-                        <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-between">
-                          <div>
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                              Financial Lock
-                            </p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
-                              {selectedEstimatePreview.customer_name}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                              Grand Total
-                            </p>
-                            <span className="text-lg font-black text-amber-600 dark:text-amber-500">
-                              ₱
-                              {parseFloat(
-                                selectedEstimatePreview.grand_total,
-                              ).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </>
+                      <AnimatePresence>
+                        {selectedEstimatePreview && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0, y: -10 }}
+                            animate={{ opacity: 1, height: "auto", y: 0 }}
+                            exit={{ opacity: 0, height: 0, y: -10 }}
+                            className="mt-4 p-4 sm:p-5 bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/20 rounded-2xl flex items-center justify-between overflow-hidden shadow-sm"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="p-2.5 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl">
+                                <Lock size={16} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 dark:text-blue-400/80 mb-0.5">
+                                  Financial Lock Active
+                                </p>
+                                <p className="text-sm font-black text-blue-900 dark:text-blue-200 uppercase truncate max-w-[150px] sm:max-w-[200px]">
+                                  {selectedEstimatePreview.customer_name}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 dark:text-blue-400/80 mb-0.5">
+                                Grand Total
+                              </p>
+                              <span className="text-lg font-black text-slate-900 dark:text-white font-mono">
+                                ₱
+                                {parseFloat(
+                                  selectedEstimatePreview.grand_total,
+                                ).toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                })}
+                              </span>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </section>
                   )}
 
-                  <div className="grid grid-cols-1 gap-5">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Estimated Completion Date{" "}
-                        <span className="text-slate-400 font-medium lowercase">
-                          (Optional)
-                        </span>
-                      </label>
-                      <input
-                        type="date"
-                        name="estimated_completion_date"
-                        value={formData.estimated_completion_date}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
-                      />
+                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
+                      <Calendar size={14} /> Scheduling & Logistics
+                    </h3>
+                    <div className="grid grid-cols-1 gap-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Estimated Completion Date{" "}
+                          <span className="text-slate-400 font-medium lowercase">
+                            (Optional)
+                          </span>
+                        </label>
+                        <input
+                          type="date"
+                          name="estimated_completion_date"
+                          value={formData.estimated_completion_date}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Operational / Logistics Notes{" "}
+                          <span className="text-slate-400 font-medium lowercase">
+                            (Optional)
+                          </span>
+                        </label>
+                        <textarea
+                          name="notes"
+                          value={formData.notes}
+                          onChange={handleChange}
+                          rows="3"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
+                          placeholder="e.g., Prioritize engine bay work; customer needs car by weekend."
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Operational / Logistics Notes{" "}
-                        <span className="text-slate-400 font-medium lowercase">
-                          (Optional)
-                        </span>
-                      </label>
-                      <textarea
-                        name="notes"
-                        value={formData.notes}
-                        onChange={handleChange}
-                        rows="2"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none"
-                        placeholder="e.g., Prioritize engine bay work; customer needs car by weekend."
-                      />
-                    </div>
-                  </div>
+                  </section>
                 </form>
               )}
             </div>
 
-            {/* Footer */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50">
+            {/* MODAL FOOTER */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
               <button
                 type="submit"
                 form="salesOrderForm"
@@ -285,7 +308,7 @@ const SalesOrderModal = ({
                   (mode === "CREATE" &&
                     (isLoadingEstimates || approvedEstimates.length === 0))
                 }
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />
