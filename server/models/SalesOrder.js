@@ -152,6 +152,64 @@ class SalesOrder {
     }
   }
 
+  static async transitionToCancelledAndRestock(
+    id,
+    partsArray,
+    branchId,
+    userId,
+  ) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const updateSql = `
+        UPDATE sales_orders
+        SET status = 'CANCELLED', updated_at = NOW()
+        WHERE id = $1 RETURNING *
+      `;
+      const soRes = await client.query(updateSql, [id]);
+      const cancelledSO = soRes.rows[0];
+
+      for (const part of partsArray) {
+        const invSql = `
+          UPDATE branch_inventory 
+          SET quantity = quantity + $1 
+          WHERE branch_id = $2 AND item_id = $3 
+          RETURNING quantity
+        `;
+        const invRes = await client.query(invSql, [
+          part.quantity,
+          branchId,
+          part.item_id,
+        ]);
+
+        const movSql = `
+          INSERT INTO inventory_movements 
+          (item_id, branch_id, transaction_type, transaction_reference, quantity_added, remaining_quantity, remarks, created_by) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `;
+        await client.query(movSql, [
+          part.item_id,
+          branchId,
+          "MANUAL_ADJUSTMENT",
+          `SO: ${cancelledSO.sales_order_number}`,
+          part.quantity,
+          invRes.rows[0].quantity,
+          "Automated Restock: Requisition reversed from cancelled Sales Order.",
+          userId,
+        ]);
+      }
+
+      await client.query("COMMIT");
+      return cancelledSO;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   static async update(id, data) {
     const sql = `
       UPDATE sales_orders 

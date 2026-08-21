@@ -126,10 +126,19 @@ const SalesOrders = () => {
     const isProgress = newStatus === "IN_PROGRESS";
     const isCompleted = newStatus === "COMPLETED";
 
+    const isCancellingFromProgress =
+      order.status === "IN_PROGRESS" && newStatus === "CANCELLED";
+
+    let message = `Are you sure you want to mark ${order.sales_order_number} as ${newStatus}?`;
+
+    if (isCancellingFromProgress) {
+      message = `Are you sure you want to cancel ${order.sales_order_number}? Cancelling this in-progress order will automatically return all issued parts back to physical inventory.`;
+    }
+
     setConfirmConfig({
       isOpen: true,
       title: `${isCompleted ? "Complete" : isProgress ? "Start" : "Cancel"} Work Order`,
-      message: `Are you sure you want to mark ${order.sales_order_number} as ${newStatus}?`,
+      message: message,
       confirmText: `Yes, Mark ${newStatus}`,
       variant: isCompleted ? "info" : isProgress ? "warning" : "danger",
       onConfirm: async () => {
@@ -137,7 +146,16 @@ const SalesOrders = () => {
           await salesOrderService.updateSalesOrder(order.id, {
             status: newStatus,
           });
-          showToast(`Work order marked as ${newStatus}.`, "success");
+
+          if (isCancellingFromProgress) {
+            showToast(
+              `Order Cancelled. Parts have been restocked to inventory.`,
+              "success",
+            );
+          } else {
+            showToast(`Work order marked as ${newStatus}.`, "success");
+          }
+
           loadOrders();
         } catch (error) {
           showToast(error.message, "error");
@@ -146,19 +164,27 @@ const SalesOrders = () => {
     });
   };
 
-  const getStatusConfig = (status) => {
+  const getStatusVariant = (status) => {
+    if (status === "PENDING_SERVICE") return "default";
+    if (status === "IN_PROGRESS") return "warning";
+    if (status === "COMPLETED" || status === "INVOICED") return "success";
+    if (status === "CANCELLED") return "danger";
+    return "default";
+  };
+
+  const getStatusIcon = (status) => {
     switch (status) {
       case "PENDING_SERVICE":
-        return { variant: "default", icon: Clock };
+        return Clock;
       case "IN_PROGRESS":
-        return { variant: "warning", icon: Play };
+        return Play;
       case "COMPLETED":
       case "INVOICED":
-        return { variant: "success", icon: CheckCircle };
+        return CheckCircle;
       case "CANCELLED":
-        return { variant: "danger", icon: XCircle };
+        return XCircle;
       default:
-        return { variant: "default", icon: ClipboardList };
+        return ClipboardList;
     }
   };
 
@@ -204,122 +230,126 @@ const SalesOrders = () => {
         data={orders}
         loading={loading}
         emptyTitle="No Sales Orders Found"
-        renderRow={(order) => {
-          const statusConfig = getStatusConfig(order.status);
+        renderRow={(order) => (
+          <tr
+            key={order.id}
+            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+          >
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
+                {order.sales_order_number}
+              </span>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
+                {order.customer_name}
+              </p>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                {order.estimated_completion_date
+                  ? new Date(
+                      order.estimated_completion_date,
+                    ).toLocaleDateString()
+                  : "TBD"}
+              </p>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <span className="text-sm font-black text-slate-900 dark:text-white">
+                ₱
+                {parseFloat(order.grand_total).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <StatusBadge
+                label={order.status.replace("_", " ")}
+                variant={getStatusVariant(order.status)}
+                icon={getStatusIcon(order.status)}
+              />
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+              <div className="flex items-center justify-end gap-1 sm:gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedOrderId(order.id);
+                    setIsDrawerOpen(true);
+                  }}
+                  title="View Document"
+                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                >
+                  <FileSearch size={16} />
+                </button>
 
-          return (
-            <tr
-              key={order.id}
-              className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
-            >
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
-                  {order.sales_order_number}
-                </span>
-              </td>
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
-                  {order.customer_name}
-                </p>
-              </td>
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                  {order.estimated_completion_date
-                    ? new Date(
-                        order.estimated_completion_date,
-                      ).toLocaleDateString()
-                    : "TBD"}
-                </p>
-              </td>
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <span className="text-sm font-black text-slate-900 dark:text-white">
-                  ₱
-                  {parseFloat(order.grand_total).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
-              </td>
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <StatusBadge
-                  label={order.status.replace("_", " ")}
-                  variant={statusConfig.variant}
-                  icon={statusConfig.icon}
-                />
-              </td>
-              <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-                <div className="flex items-center justify-end gap-1 sm:gap-2">
+                {/* Edit Dates & Notes */}
+                {(order.status === "PENDING_SERVICE" ||
+                  order.status === "IN_PROGRESS") && (
                   <button
                     onClick={() => {
-                      setSelectedOrderId(order.id);
-                      setIsDrawerOpen(true);
+                      setModalMode("EDIT");
+                      setSelectedOrderData(order);
+                      setIsModalOpen(true);
                     }}
-                    title="View Document"
+                    title="Edit Dates & Notes"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                )}
+
+                {/* Convert to Invoice */}
+                {order.status === "COMPLETED" && (
+                  <button
+                    onClick={() =>
+                      navigate("/staff/sales/invoices", {
+                        state: { salesOrderId: order.id },
+                      })
+                    }
+                    title="Convert to Invoice"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Receipt size={16} />
+                  </button>
+                )}
+
+                {/* Start Service */}
+                {order.status === "PENDING_SERVICE" && (
+                  <button
+                    onClick={() => handleStatusChange(order, "IN_PROGRESS")}
+                    title="Start Service"
                     className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
                   >
-                    <FileSearch size={16} />
+                    <Play size={16} />
                   </button>
+                )}
 
-                  {(order.status === "PENDING_SERVICE" ||
-                    order.status === "IN_PROGRESS") && (
-                    <button
-                      onClick={() => {
-                        setModalMode("EDIT");
-                        setSelectedOrderData(order);
-                        setIsModalOpen(true);
-                      }}
-                      title="Edit Dates & Notes"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                  )}
+                {/* Mark Completed */}
+                {order.status === "IN_PROGRESS" && (
+                  <button
+                    onClick={() => handleStatusChange(order, "COMPLETED")}
+                    title="Mark Completed"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <CheckCircle size={16} />
+                  </button>
+                )}
 
-                  {order.status === "COMPLETED" && (
-                    <button
-                      onClick={() =>
-                        navigate("/staff/sales/invoices", {
-                          state: { salesOrderId: order.id },
-                        })
-                      }
-                      title="Convert to Invoice"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors cursor-pointer"
-                    >
-                      <Receipt size={16} />
-                    </button>
-                  )}
-
-                  {order.status === "PENDING_SERVICE" && (
-                    <>
-                      <button
-                        onClick={() => handleStatusChange(order, "IN_PROGRESS")}
-                        title="Start Service"
-                        className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
-                      >
-                        <Play size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(order, "CANCELLED")}
-                        title="Cancel"
-                        className="p-1.5 sm:p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
-                      >
-                        <XCircle size={16} />
-                      </button>
-                    </>
-                  )}
-                  {order.status === "IN_PROGRESS" && (
-                    <button
-                      onClick={() => handleStatusChange(order, "COMPLETED")}
-                      title="Mark Completed"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer"
-                    >
-                      <CheckCircle size={16} />
-                    </button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          );
-        }}
+                {/* Cancel Action */}
+                {(order.status === "PENDING_SERVICE" ||
+                  order.status === "IN_PROGRESS") && (
+                  <button
+                    onClick={() => handleStatusChange(order, "CANCELLED")}
+                    title="Cancel Order"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <XCircle size={16} />
+                  </button>
+                )}
+              </div>
+            </td>
+          </tr>
+        )}
       />
 
       <Pagination

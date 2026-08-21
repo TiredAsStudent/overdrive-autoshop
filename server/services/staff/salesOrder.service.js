@@ -149,10 +149,17 @@ class SalesOrderService {
 
       if (newStatus === "IN_PROGRESS") {
         const parts = so.items.filter((item) => item.line_type === "PART");
-
         updated = await SalesOrderModel.transitionToInProgress(
           id,
           data,
+          parts,
+          so.branch_id,
+          activeUser.id,
+        );
+      } else if (currentStatus === "IN_PROGRESS" && newStatus === "CANCELLED") {
+        const parts = so.items.filter((item) => item.line_type === "PART");
+        updated = await SalesOrderModel.transitionToCancelledAndRestock(
+          id,
           parts,
           so.branch_id,
           activeUser.id,
