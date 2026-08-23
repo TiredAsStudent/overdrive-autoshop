@@ -14,6 +14,7 @@ import {
   History,
 } from "lucide-react";
 import { invoiceService } from "../../../services/staff/invoice.service";
+import StatusBadge from "../../../components/ui/StatusBadge";
 
 const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
   const [invoice, setInvoice] = useState(null);
@@ -35,20 +36,18 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
     }
   }, [isOpen, invoiceId]);
 
-  const getStatusColor = (status) => {
+  const getStatusVariant = (status) => {
     switch (status) {
-      case "UNPAID":
-        return "text-slate-600 bg-slate-100 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
-      case "PARTIALLY_PAID":
-        return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
       case "PAID":
-        return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
+        return "success";
+      case "PARTIALLY_PAID":
+        return "warning";
       case "OVERDUE":
-        return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
+        return "danger";
       case "VOID":
-        return "text-slate-400 bg-slate-100 dark:bg-slate-800 dark:text-slate-500 border-slate-200 dark:border-slate-700 line-through";
+      case "UNPAID":
       default:
-        return "text-slate-600 bg-slate-50 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
+        return "default";
     }
   };
 
@@ -80,11 +79,17 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                     {invoice?.invoice_number || "Loading..."}
                   </h2>
                   {invoice && (
-                    <span
-                      className={`inline-flex px-2 py-0.5 mt-1 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusColor(invoice.status)}`}
-                    >
-                      {invoice.status.replace("_", " ")}
-                    </span>
+                    <div className="mt-1">
+                      <StatusBadge
+                        label={invoice.status.replace("_", " ")}
+                        variant={getStatusVariant(invoice.status)}
+                        className={
+                          invoice.status === "VOID"
+                            ? "line-through opacity-70"
+                            : ""
+                        }
+                      />
+                    </div>
                   )}
                 </div>
               </div>

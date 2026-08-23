@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  Search,
-  Loader2,
   Receipt,
   Plus,
   FileSearch,
@@ -10,22 +8,33 @@ import {
   Ban,
   Edit2,
 } from "lucide-react";
+
+// Services & Hooks
 import { invoiceService } from "../../services/staff/invoice.service";
-import InvoiceModal from "../../features/staff/components/InvoiceModal";
-import InvoiceDrawer from "../../features/staff/components/InvoiceDrawer";
-import DataTable from "../../components/shared/DataTable";
-import Pagination from "../../components/shared/Pagination";
-import ConfirmModal from "../../components/shared/ConfirmModal";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
+// Universal Components
+import PageHeader from "../../components/shared/PageHeader";
+import StatusToggle from "../../components/ui/StatusToggle";
+import SearchBar from "../../components/ui/SearchBar";
+import ActionButton from "../../components/ui/ActionButton";
+import StatusBadge from "../../components/ui/StatusBadge";
+import DataTable from "../../components/shared/DataTable";
+import Pagination from "../../components/shared/Pagination";
+import ConfirmModal from "../../components/shared/ConfirmModal";
+
+// Features
+import InvoiceModal from "../../features/staff/components/InvoiceModal";
+import InvoiceDrawer from "../../features/staff/components/InvoiceDrawer";
+
 const STATUS_FILTERS = [
-  { id: "all", label: "All Invoices" },
-  { id: "UNPAID", label: "Unpaid" },
-  { id: "PARTIALLY_PAID", label: "Partial" },
-  { id: "PAID", label: "Paid" },
-  { id: "OVERDUE", label: "Overdue" },
-  { id: "VOID", label: "Void" },
+  { value: "all", label: "All Invoices" },
+  { value: "UNPAID", label: "Unpaid" },
+  { value: "PARTIALLY_PAID", label: "Partial" },
+  { value: "PAID", label: "Paid" },
+  { value: "OVERDUE", label: "Overdue" },
+  { value: "VOID", label: "Void" },
 ];
 
 const Invoices = () => {
@@ -50,7 +59,6 @@ const Invoices = () => {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // Confirm Modal State
   const [voidConfig, setVoidConfig] = useState({
     isOpen: false,
     invoiceId: null,
@@ -127,84 +135,49 @@ const Invoices = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusVariant = (status) => {
     switch (status) {
-      case "UNPAID":
-        return "text-slate-600 bg-slate-100 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
-      case "PARTIALLY_PAID":
-        return "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
       case "PAID":
-        return "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+        return "success";
+      case "PARTIALLY_PAID":
+        return "warning";
       case "OVERDUE":
-        return "text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20";
+        return "danger";
       case "VOID":
-        return "text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700 line-through";
+      case "UNPAID":
       default:
-        return "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+        return "default";
     }
   };
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Receipt className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Invoices
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Official Billing & Receivables
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          {/* Status Filter */}
-          <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 overflow-x-auto custom-scrollbar">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setStatusFilter(f.id)}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${statusFilter === f.id ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative w-full sm:max-w-[200px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search Invoice..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-            />
-          </div>
-
-          <button
-            onClick={() => {
-              setModalMode("CREATE");
-              setSelectedInvoiceData(null);
-              setIsModalOpen(true);
-            }}
-            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-amber-500/20 shrink-0 transition-all active:scale-[0.98]"
-          >
-            <Plus size={16} /> Bill Order
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Invoices"
+        subtitle="Official Billing & Receivables"
+        icon={Receipt}
+      >
+        <StatusToggle
+          activeValue={statusFilter}
+          onToggle={setStatusFilter}
+          options={STATUS_FILTERS}
+        />
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          isSearching={searchQuery !== debouncedSearchQuery}
+          placeholder="Search Invoice..."
+        />
+        <ActionButton
+          label="Bill Order"
+          icon={Plus}
+          onClick={() => {
+            setModalMode("CREATE");
+            setSelectedInvoiceData(null);
+            setIsModalOpen(true);
+          }}
+        />
+      </PageHeader>
 
       <DataTable
         headers={[
@@ -258,11 +231,13 @@ const Invoices = () => {
                 </p>
               </td>
               <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <span
-                  className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusBadge(inv.status)}`}
-                >
-                  {inv.status.replace("_", " ")}
-                </span>
+                <StatusBadge
+                  label={inv.status.replace("_", " ")}
+                  variant={getStatusVariant(inv.status)}
+                  className={
+                    inv.status === "VOID" ? "line-through opacity-70" : ""
+                  }
+                />
               </td>
               <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
                 <div className="flex items-center justify-end gap-1.5">
