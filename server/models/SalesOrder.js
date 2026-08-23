@@ -291,7 +291,7 @@ class SalesOrder {
 
   static async findPaginatedFiltered(limit, offset, search, status, branchId) {
     let sql = `
-      SELECT so.id, so.sales_order_number, so.grand_total, so.status, 
+      SELECT so.id, so.sales_order_number, so.grand_total, so.status, so.notes, 
              TO_CHAR(so.estimated_completion_date, 'YYYY-MM-DD') as estimated_completion_date, 
              so.created_at, c.full_name as customer_name, b.branch_name
       FROM sales_orders so

@@ -10,6 +10,7 @@ import {
   Receipt,
   Edit2,
   Clock,
+  Loader2,
 } from "lucide-react";
 import { salesOrderService } from "../../services/staff/salesOrder.service";
 import SalesOrderModal from "../../features/staff/components/SalesOrderModal";
@@ -43,6 +44,7 @@ const SalesOrders = () => {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isEditingRow, setIsEditingRow] = useState(null);
 
   // Filters & State
   const [searchQuery, setSearchQuery] = useState("");
@@ -162,6 +164,20 @@ const SalesOrders = () => {
         }
       },
     });
+  };
+
+  const handleEditClick = async (orderId) => {
+    try {
+      setIsEditingRow(orderId);
+      const res = await salesOrderService.getSalesOrderDetails(orderId);
+      setModalMode("EDIT");
+      setSelectedOrderData(res.data);
+      setIsModalOpen(true);
+    } catch (err) {
+      showToast(err.message || "Failed to load order details.", "error");
+    } finally {
+      setIsEditingRow(null);
+    }
   };
 
   const getStatusVariant = (status) => {
@@ -286,15 +302,19 @@ const SalesOrders = () => {
                 {(order.status === "PENDING_SERVICE" ||
                   order.status === "IN_PROGRESS") && (
                   <button
-                    onClick={() => {
-                      setModalMode("EDIT");
-                      setSelectedOrderData(order);
-                      setIsModalOpen(true);
-                    }}
+                    onClick={() => handleEditClick(order.id)}
+                    disabled={isEditingRow === order.id}
                     title="Edit Dates & Notes"
-                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    <Edit2 size={16} />
+                    {isEditingRow === order.id ? (
+                      <Loader2
+                        size={16}
+                        className="animate-spin text-amber-500"
+                      />
+                    ) : (
+                      <Edit2 size={16} />
+                    )}
                   </button>
                 )}
 
