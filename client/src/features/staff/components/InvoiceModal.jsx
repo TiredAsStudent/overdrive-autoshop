@@ -8,6 +8,8 @@ import {
   FileCheck2,
   Edit,
   Search,
+  FileText,
+  Calendar,
 } from "lucide-react";
 import { salesOrderService } from "../../../services/staff/salesOrder.service";
 
@@ -209,13 +211,13 @@ const InvoiceModal = ({
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
+                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
               >
                 <X size={24} />
               </button>
             </div>
 
-            <div className="px-6 sm:px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -234,10 +236,15 @@ const InvoiceModal = ({
                 <form
                   id="invoiceForm"
                   onSubmit={handleSubmit}
-                  className="space-y-6"
+                  className="space-y-6 sm:space-y-8"
                 >
+                  {/* SECTION 1: SOURCE DOCUMENT */}
                   {mode === "CREATE" && (
-                    <>
+                    <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                        <FileText size={14} /> Source Document Linkage
+                      </h3>
+
                       <div ref={dropdownRef} className="relative z-20">
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                           Completed Sales Order Reference{" "}
@@ -253,7 +260,7 @@ const InvoiceModal = ({
                             onChange={handleSearchChange}
                             onFocus={() => setIsDropdownOpen(true)}
                             placeholder="Search by SO Number or Customer Name..."
-                            className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all"
+                            className="w-full pl-12 pr-4 py-3.5 sm:py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all"
                           />
 
                           {/* Animated Dropdown Menu Container */}
@@ -307,7 +314,7 @@ const InvoiceModal = ({
                       </div>
 
                       {selectedOrderPreview && (
-                        <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-between">
+                        <div className="mt-5 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-between shadow-sm relative z-10">
                           <div>
                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
                               Billing Customer
@@ -331,53 +338,61 @@ const InvoiceModal = ({
                           </div>
                         </div>
                       )}
-                    </>
+                    </section>
                   )}
 
-                  <div className="grid grid-cols-1 gap-5">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Payment Due Date <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        required
-                        type="date"
-                        name="due_date"
-                        value={formData.due_date}
-                        onChange={handleChange}
-                        min={new Date().toISOString().split("T")[0]}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
-                      />
+                  {/* SECTION 2: BILLING & LOGISTICS DETAILS */}
+                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                      <Calendar size={14} /> Billing Details
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Payment Due Date{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="date"
+                          name="due_date"
+                          value={formData.due_date}
+                          onChange={handleChange}
+                          min={new Date().toISOString().split("T")[0]}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Customer Facing Notes{" "}
+                          <span className="text-slate-400 font-medium lowercase">
+                            (Optional)
+                          </span>
+                        </label>
+                        <textarea
+                          name="notes"
+                          value={formData.notes}
+                          onChange={handleChange}
+                          rows="2"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Customer Facing Notes{" "}
-                        <span className="text-slate-400 font-medium lowercase">
-                          (Optional)
-                        </span>
-                      </label>
-                      <textarea
-                        name="notes"
-                        value={formData.notes}
-                        onChange={handleChange}
-                        rows="2"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
-                      />
-                    </div>
-                  </div>
+                  </section>
 
+                  {/* SECTION 3: ACCOUNTING NOTICE */}
                   {mode === "CREATE" && (
-                    <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4 rounded-xl">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500 flex items-center gap-2">
+                    <section className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-5 sm:p-6 rounded-[24px] relative z-10 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500 flex items-center gap-2 mb-2">
                         <AlertCircle size={14} /> Accounting Notice
                       </p>
-                      <p className="text-xs text-amber-900 dark:text-amber-200/80 mt-1">
+                      <p className="text-xs text-amber-900 dark:text-amber-200/80 leading-relaxed font-medium">
                         Generating this invoice will officially post the
                         transaction to Accounts Receivable and lock the
                         financial totals. Physical inventory has already been
                         deducted.
                       </p>
-                    </div>
+                    </section>
                   )}
                 </form>
               )}
