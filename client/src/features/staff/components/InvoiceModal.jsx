@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -7,6 +7,7 @@ import {
   Loader2,
   FileCheck2,
   Edit,
+  Search,
 } from "lucide-react";
 import { salesOrderService } from "../../../services/staff/salesOrder.service";
 
@@ -20,6 +21,11 @@ const InvoiceModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+
+  // Search & Dropdown State
+  const dropdownRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const [completedOrders, setCompletedOrders] = useState([]);
   const [selectedOrderPreview, setSelectedOrderPreview] = useState(null);
@@ -63,6 +69,9 @@ const InvoiceModal = ({
               );
               if (preview) {
                 setSelectedOrderPreview(preview);
+                setSearchTerm(
+                  `[${preview.sales_order_number}] ${preview.customer_name}`,
+                );
               }
             } else {
               setFormData({
@@ -72,6 +81,7 @@ const InvoiceModal = ({
                   "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
               });
               setSelectedOrderPreview(null);
+              setSearchTerm("");
             }
           } catch (error) {
             setValidationError(
@@ -89,20 +99,35 @@ const InvoiceModal = ({
         });
       }
       setValidationError("");
+      setIsDropdownOpen(false);
     }
   }, [isOpen, mode, initialData]);
 
-  const handleOrderSelect = (e) => {
-    const soId = e.target.value;
-    setFormData({ ...formData, sales_order_id: soId });
-    if (soId) {
-      const preview = completedOrders.find(
-        (so) => so.id.toString() === soId.toString(),
-      );
-      setSelectedOrderPreview(preview || null);
-    } else {
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setIsDropdownOpen(true);
+
+    if (selectedOrderPreview) {
       setSelectedOrderPreview(null);
+      setFormData((prev) => ({ ...prev, sales_order_id: "" }));
     }
+  };
+
+  const handleSelectOrder = (so) => {
+    setSelectedOrderPreview(so);
+    setFormData((prev) => ({ ...prev, sales_order_id: so.id.toString() }));
+    setSearchTerm(`[${so.sales_order_number}] ${so.customer_name}`);
+    setIsDropdownOpen(false);
   };
 
   const handleChange = (e) => {
@@ -116,9 +141,9 @@ const InvoiceModal = ({
 
     let payload = {};
     if (mode === "CREATE") {
-      if (!formData.sales_order_id)
+      if (!formData.sales_order_id || !selectedOrderPreview)
         return setValidationError(
-          "You must select a completed work order to bill.",
+          "You must search and select a completed work order to bill.",
         );
       payload = {
         sales_order_id: parseInt(formData.sales_order_id, 10),
@@ -141,6 +166,12 @@ const InvoiceModal = ({
       setIsSubmitting(false);
     }
   };
+
+  const filteredOrders = completedOrders.filter(
+    (so) =>
+      so.sales_order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      so.customer_name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
 
   return (
     <AnimatePresence>
@@ -207,36 +238,72 @@ const InvoiceModal = ({
                 >
                   {mode === "CREATE" && (
                     <>
-                      <div>
+                      <div ref={dropdownRef} className="relative z-20">
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                           Completed Sales Order Reference{" "}
                           <span className="text-red-500">*</span>
                         </label>
-                        <select
-                          required
-                          name="sales_order_id"
-                          value={formData.sales_order_id}
-                          onChange={handleOrderSelect}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
-                        >
-                          <option value="">
-                            -- Select a Completed Order --
-                          </option>
-                          {completedOrders.map((so) => (
-                            <option key={so.id} value={so.id}>
-                              [{so.sales_order_number}] {so.customer_name} - ₱
-                              {parseFloat(so.grand_total).toLocaleString(
-                                undefined,
-                                { minimumFractionDigits: 2 },
-                              )}
-                            </option>
-                          ))}
-                        </select>
-                        {completedOrders.length === 0 && (
-                          <p className="text-[10px] text-red-500 mt-2 font-bold">
-                            No unbilled completed orders found.
-                          </p>
-                        )}
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Search size={18} className="text-slate-400" />
+                          </div>
+                          <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={handleSearchChange}
+                            onFocus={() => setIsDropdownOpen(true)}
+                            placeholder="Search by SO Number or Customer Name..."
+                            className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all"
+                          />
+
+                          {/* Animated Dropdown Menu Container */}
+                          <AnimatePresence>
+                            {isDropdownOpen && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-30"
+                              >
+                                {filteredOrders.length > 0 ? (
+                                  filteredOrders.map((so) => (
+                                    <div
+                                      key={so.id}
+                                      onClick={() => handleSelectOrder(so)}
+                                      className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                                    >
+                                      <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                                        {so.sales_order_number}
+                                      </p>
+                                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                                        {so.customer_name}
+                                      </p>
+                                      <p className="text-[10px] text-slate-500 mt-2 font-medium tracking-widest uppercase">
+                                        Receivable:{" "}
+                                        <span className="font-black text-slate-700 dark:text-slate-300">
+                                          ₱
+                                          {parseFloat(
+                                            so.grand_total,
+                                          ).toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                          })}
+                                        </span>
+                                      </p>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="p-8 text-center">
+                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+                                      {completedOrders.length === 0
+                                        ? "No unbilled completed orders found."
+                                        : "No matching orders found."}
+                                    </p>
+                                  </div>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       </div>
 
                       {selectedOrderPreview && (
