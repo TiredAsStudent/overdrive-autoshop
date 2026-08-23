@@ -46,7 +46,33 @@ const InvoiceModal = ({
               "COMPLETED",
               "all",
             );
-            setCompletedOrders(res.data?.salesOrders || []);
+            const ordersList = res.data?.salesOrders || [];
+            setCompletedOrders(ordersList);
+
+            if (initialData && initialData.sales_order_id) {
+              const targetId = initialData.sales_order_id.toString();
+              setFormData({
+                sales_order_id: targetId,
+                due_date: defaultDueDate.toISOString().split("T")[0],
+                notes:
+                  "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
+              });
+
+              const preview = ordersList.find(
+                (so) => so.id.toString() === targetId,
+              );
+              if (preview) {
+                setSelectedOrderPreview(preview);
+              }
+            } else {
+              setFormData({
+                sales_order_id: "",
+                due_date: defaultDueDate.toISOString().split("T")[0],
+                notes:
+                  "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
+              });
+              setSelectedOrderPreview(null);
+            }
           } catch (error) {
             setValidationError(
               "Failed to load completed sales orders. Please refresh.",
@@ -56,14 +82,6 @@ const InvoiceModal = ({
           }
         };
         fetchCompletedOrders();
-
-        setFormData({
-          sales_order_id: "",
-          due_date: defaultDueDate.toISOString().split("T")[0],
-          notes:
-            "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
-        });
-        setSelectedOrderPreview(null);
       } else if (mode === "EDIT" && initialData) {
         setFormData({
           due_date: initialData.due_date || "",
@@ -199,7 +217,7 @@ const InvoiceModal = ({
                           name="sales_order_id"
                           value={formData.sales_order_id}
                           onChange={handleOrderSelect}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
                         >
                           <option value="">
                             -- Select a Completed Order --
@@ -207,7 +225,10 @@ const InvoiceModal = ({
                           {completedOrders.map((so) => (
                             <option key={so.id} value={so.id}>
                               [{so.sales_order_number}] {so.customer_name} - ₱
-                              {parseFloat(so.grand_total).toLocaleString()}
+                              {parseFloat(so.grand_total).toLocaleString(
+                                undefined,
+                                { minimumFractionDigits: 2 },
+                              )}
                             </option>
                           ))}
                         </select>
@@ -232,7 +253,7 @@ const InvoiceModal = ({
                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
                               Receivable Amount
                             </p>
-                            <span className="text-lg font-black text-amber-600 dark:text-amber-500">
+                            <span className="text-lg font-black text-amber-600 dark:text-amber-500 font-mono">
                               ₱
                               {parseFloat(
                                 selectedOrderPreview.grand_total,
@@ -257,7 +278,8 @@ const InvoiceModal = ({
                         name="due_date"
                         value={formData.due_date}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
+                        min={new Date().toISOString().split("T")[0]}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
                       />
                     </div>
                     <div>
@@ -272,7 +294,7 @@ const InvoiceModal = ({
                         value={formData.notes}
                         onChange={handleChange}
                         rows="2"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
                       />
                     </div>
                   </div>
@@ -294,16 +316,18 @@ const InvoiceModal = ({
               )}
             </div>
 
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50">
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
               <button
                 type="submit"
                 form="invoiceForm"
                 disabled={
                   isSubmitting ||
                   (mode === "CREATE" &&
-                    (isLoadingOrders || completedOrders.length === 0))
+                    (isLoadingOrders ||
+                      completedOrders.length === 0 ||
+                      !selectedOrderPreview))
                 }
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />

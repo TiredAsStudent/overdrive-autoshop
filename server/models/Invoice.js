@@ -31,7 +31,6 @@ class Invoice {
     try {
       await client.query("BEGIN");
 
-      // 1. Insert Invoice Header
       const headerSql = `
         INSERT INTO invoices (
           invoice_number, sales_order_id, customer_id, branch_id, 
@@ -75,7 +74,6 @@ class Invoice {
         ]);
       }
 
-      // 3. Lock Upstream Sales Order
       const updateSOSql = `UPDATE sales_orders SET status = 'INVOICED', updated_at = NOW() WHERE id = $1`;
       await client.query(updateSOSql, [salesOrderId]);
 
@@ -118,6 +116,16 @@ class Invoice {
     `;
     const itemsResult = await query(itemsSql, [id]);
     invoice.items = itemsResult.rows;
+
+    const paymentsSql = `
+      SELECT id, payment_number, amount_received, payment_method, reference_number, status, TO_CHAR(created_at, 'YYYY-MM-DD HH:MI AM') as payment_date
+      FROM payments 
+      WHERE invoice_id = $1 
+      ORDER BY created_at DESC
+    `;
+    const paymentsResult = await query(paymentsSql, [id]);
+    invoice.payments = paymentsResult.rows;
+
     return invoice;
   }
 
