@@ -42,15 +42,37 @@ const SalesOrderModal = ({
   useEffect(() => {
     if (isOpen) {
       if (mode === "CREATE") {
-        setFormData({
-          estimate_id: "",
-          estimated_completion_date: "",
-          notes: "",
-        });
-        setSelectedEstimatePreview(null);
-        setSearchTerm("");
-        setSearchResults([]);
-        setIsDropdownOpen(false);
+        if (initialData && initialData.estimate_id) {
+          setFormData({
+            estimate_id: initialData.estimate_id.toString(),
+            estimated_completion_date: "",
+            notes: "",
+          });
+
+          setIsSearching(true);
+          estimateService
+            .getEstimateDetails(initialData.estimate_id)
+            .then((res) => {
+              const est = res.data;
+              setSelectedEstimatePreview(est);
+              setSearchTerm(`[${est.estimate_number}] ${est.customer_name}`);
+              setIsDropdownOpen(false);
+            })
+            .catch(() => {
+              setValidationError("Failed to auto-load the selected Estimate.");
+            })
+            .finally(() => setIsSearching(false));
+        } else {
+          setFormData({
+            estimate_id: "",
+            estimated_completion_date: "",
+            notes: "",
+          });
+          setSelectedEstimatePreview(null);
+          setSearchTerm("");
+          setSearchResults([]);
+          setIsDropdownOpen(false);
+        }
       } else if (mode === "EDIT" && initialData) {
         setFormData({
           estimated_completion_date:
