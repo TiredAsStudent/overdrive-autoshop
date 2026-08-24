@@ -12,6 +12,12 @@ import {
   Link,
   CreditCard,
   History,
+  BadgeCheck,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Ban,
+  FileText,
 } from "lucide-react";
 import { invoiceService } from "../../../services/staff/invoice.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -48,6 +54,22 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
       case "UNPAID":
       default:
         return "default";
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "PAID":
+        return CheckCircle;
+      case "PARTIALLY_PAID":
+        return Clock;
+      case "OVERDUE":
+        return AlertCircle;
+      case "VOID":
+        return Ban;
+      case "UNPAID":
+      default:
+        return FileText;
     }
   };
 
@@ -97,12 +119,21 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                       <StatusBadge
                         label={invoice.status.replace("_", " ")}
                         variant={getStatusVariant(invoice.status)}
+                        icon={getStatusIcon(invoice.status)}
                         className={
                           invoice.status === "VOID"
                             ? "line-through opacity-70"
                             : ""
                         }
                       />
+
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
+                        <BadgeCheck size={12} className="text-amber-500" />
+                        Created by:{" "}
+                        <span className="text-slate-600 dark:text-slate-300">
+                          {invoice.created_by_name || "System"}
+                        </span>
+                      </span>
                     </div>
                   )}
                 </div>
