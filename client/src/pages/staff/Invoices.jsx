@@ -261,18 +261,20 @@ const Invoices = () => {
                 />
               </td>
               <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-                <div className="flex items-center justify-end gap-1.5">
+                <div className="flex items-center justify-end gap-1 sm:gap-2">
+                  {/* View Invoice */}
                   <button
                     onClick={() => {
                       setSelectedInvoiceId(inv.id);
                       setIsDrawerOpen(true);
                     }}
                     title="View Invoice"
-                    className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
                   >
                     <FileSearch size={16} />
                   </button>
 
+                  {/* Edit Due Date & Notes */}
                   {inv.status !== "PAID" && inv.status !== "VOID" && (
                     <button
                       onClick={() => {
@@ -281,12 +283,13 @@ const Invoices = () => {
                         setIsModalOpen(true);
                       }}
                       title="Edit Due Date & Notes"
-                      className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
                     >
                       <Edit2 size={16} />
                     </button>
                   )}
 
+                  {/* Void Invoice */}
                   {inv.status === "UNPAID" && (
                     <button
                       onClick={() => {
@@ -297,12 +300,13 @@ const Invoices = () => {
                         });
                       }}
                       title="Void Invoice"
-                      className="p-2 bg-slate-50 hover:bg-rose-100 text-slate-400 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-500/20 dark:text-slate-500 dark:hover:text-rose-400 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
                     >
                       <Ban size={16} />
                     </button>
                   )}
 
+                  {/* Record Payment */}
                   {inv.status !== "PAID" && inv.status !== "VOID" && (
                     <button
                       onClick={() =>
@@ -311,7 +315,7 @@ const Invoices = () => {
                         })
                       }
                       title="Record Payment"
-                      className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:text-emerald-400 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer"
                     >
                       <CreditCard size={16} />
                     </button>
