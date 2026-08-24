@@ -300,7 +300,7 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                       )}
 
                       <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
-                        <span>VAT (12%)</span>
+                        <span>VAT Amount</span>
                         <span className="font-bold text-slate-200 font-mono">
                           ₱
                           {parseFloat(invoice.vat_amount).toLocaleString(

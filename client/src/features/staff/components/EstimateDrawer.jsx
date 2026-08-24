@@ -265,7 +265,7 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
 
                       <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
                         <span className="flex items-center gap-1.5">
-                          VAT Segment
+                          VAT Amount
                         </span>
                         <span className="font-bold text-slate-200 font-mono">
                           ₱

@@ -291,7 +291,7 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                       )}
 
                       <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
-                        <span>VAT Segment</span>
+                        <span>VAT Amount</span>
                         <span className="font-bold text-slate-200 font-mono">
                           ₱
                           {parseFloat(order.vat_amount).toLocaleString(

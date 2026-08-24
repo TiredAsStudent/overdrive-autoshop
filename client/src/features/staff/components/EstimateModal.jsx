@@ -756,7 +756,7 @@ const EstimateModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
 
                         <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
                           <span className="flex items-center gap-1.5">
-                            VAT Segment{" "}
+                            VAT Amount{" "}
                             <span className="text-[10px] font-black bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded">
                               {(vatRate * 100).toFixed(0)}%
                             </span>
