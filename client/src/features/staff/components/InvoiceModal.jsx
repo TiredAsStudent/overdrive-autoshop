@@ -364,20 +364,6 @@ const InvoiceModal = ({
                     </div>
                   </div>
                 </section>
-
-                {/* SECTION 3: ACCOUNTING NOTICE */}
-                {mode === "CREATE" && (
-                  <section className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-5 sm:p-6 rounded-[24px] relative z-10 shadow-sm">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500 flex items-center gap-2 mb-2">
-                      <AlertCircle size={14} /> Accounting Notice
-                    </p>
-                    <p className="text-xs text-amber-900 dark:text-amber-200/80 leading-relaxed font-medium">
-                      Generating this invoice will officially post the
-                      transaction to Accounts Receivable and lock the financial
-                      totals. Physical inventory has already been deducted.
-                    </p>
-                  </section>
-                )}
               </form>
             </div>
 
