@@ -11,6 +11,7 @@ import {
   Clock,
   AlertCircle,
   FileText,
+  Loader2,
 } from "lucide-react";
 
 // Services & Hooks
@@ -48,6 +49,8 @@ const Invoices = () => {
 
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [isEditingRow, setIsEditingRow] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -104,6 +107,20 @@ const Invoices = () => {
   useEffect(() => {
     loadInvoices();
   }, [currentPage, debouncedSearchQuery, statusFilter]);
+
+  const handleEditClick = async (invoiceId) => {
+    try {
+      setIsEditingRow(invoiceId);
+      const res = await invoiceService.getInvoiceDetails(invoiceId);
+      setModalMode("EDIT");
+      setSelectedInvoiceData(res.data);
+      setIsModalOpen(true);
+    } catch (err) {
+      showToast(err.message || "Failed to load invoice details.", "error");
+    } finally {
+      setIsEditingRow(null);
+    }
+  };
 
   const handleModalSubmit = async (formData) => {
     try {
@@ -170,7 +187,6 @@ const Invoices = () => {
     }
   };
 
-  // Timezone-Safe Formatters
   const formatCalendarDate = (dateString) => {
     if (!dateString) return "N/A";
     const [year, month, day] = dateString.split("T")[0].split("-");
@@ -181,7 +197,6 @@ const Invoices = () => {
     if (status === "PAID" || status === "VOID") return false;
     if (!dateString) return false;
 
-    // Get local date string YYYY-MM-DD
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
@@ -294,15 +309,19 @@ const Invoices = () => {
 
                   {inv.status !== "PAID" && inv.status !== "VOID" && (
                     <button
-                      onClick={() => {
-                        setModalMode("EDIT");
-                        setSelectedInvoiceData(inv);
-                        setIsModalOpen(true);
-                      }}
+                      onClick={() => handleEditClick(inv.id)}
+                      disabled={isEditingRow === inv.id}
                       title="Edit Due Date & Notes"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
                     >
-                      <Edit2 size={16} />
+                      {isEditingRow === inv.id ? (
+                        <Loader2
+                          size={16}
+                          className="animate-spin text-amber-500"
+                        />
+                      ) : (
+                        <Edit2 size={16} />
+                      )}
                     </button>
                   )}
 
