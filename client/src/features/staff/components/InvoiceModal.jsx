@@ -332,7 +332,8 @@ const InvoiceModal = ({
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <Calendar size={14} /> Billing Details
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                  <div className="grid grid-cols-1 gap-5">
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Payment Due Date <span className="text-red-500">*</span>
