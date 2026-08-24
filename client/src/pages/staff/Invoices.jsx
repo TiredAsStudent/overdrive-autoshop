@@ -7,6 +7,10 @@ import {
   CreditCard,
   Ban,
   Edit2,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  FileText,
 } from "lucide-react";
 
 // Services & Hooks
@@ -150,6 +154,22 @@ const Invoices = () => {
     }
   };
 
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "PAID":
+        return CheckCircle;
+      case "PARTIALLY_PAID":
+        return Clock;
+      case "OVERDUE":
+        return AlertCircle;
+      case "VOID":
+        return Ban;
+      case "UNPAID":
+      default:
+        return FileText;
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
       <PageHeader
@@ -234,6 +254,7 @@ const Invoices = () => {
                 <StatusBadge
                   label={inv.status.replace("_", " ")}
                   variant={getStatusVariant(inv.status)}
+                  icon={getStatusIcon(inv.status)}
                   className={
                     inv.status === "VOID" ? "line-through opacity-70" : ""
                   }
