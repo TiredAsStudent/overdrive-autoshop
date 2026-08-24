@@ -12,6 +12,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { salesOrderService } from "../../../services/staff/salesOrder.service";
+import { useDebounce } from "../../../hooks/useDebounce";
 
 const InvoiceModal = ({
   isOpen,
@@ -22,14 +23,14 @@ const InvoiceModal = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
-  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
-  // Search & Dropdown State
   const dropdownRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const [completedOrders, setCompletedOrders] = useState([]);
   const [selectedOrderPreview, setSelectedOrderPreview] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -44,56 +45,38 @@ const InvoiceModal = ({
         const defaultDueDate = new Date();
         defaultDueDate.setDate(defaultDueDate.getDate() + 30);
 
-        const fetchCompletedOrders = async () => {
-          setIsLoadingOrders(true);
-          try {
-            const res = await salesOrderService.getSalesOrders(
-              1,
-              100,
-              "",
-              "COMPLETED",
-              "all",
-            );
-            const ordersList = res.data?.salesOrders || [];
-            setCompletedOrders(ordersList);
+        setFormData({
+          sales_order_id: "",
+          due_date: defaultDueDate.toISOString().split("T")[0],
+          notes:
+            "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
+        });
+        setSearchTerm("");
+        setSearchResults([]);
+        setSelectedOrderPreview(null);
+        setIsDropdownOpen(false);
 
-            if (initialData && initialData.sales_order_id) {
-              const targetId = initialData.sales_order_id.toString();
-              setFormData({
-                sales_order_id: targetId,
-                due_date: defaultDueDate.toISOString().split("T")[0],
-                notes:
-                  "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
-              });
+        if (initialData && initialData.sales_order_id) {
+          const targetId = initialData.sales_order_id.toString();
+          setFormData((prev) => ({ ...prev, sales_order_id: targetId }));
 
-              const preview = ordersList.find(
-                (so) => so.id.toString() === targetId,
-              );
-              if (preview) {
-                setSelectedOrderPreview(preview);
-                setSearchTerm(
-                  `[${preview.sales_order_number}] ${preview.customer_name}`,
-                );
+          setIsSearching(true);
+          salesOrderService
+            .getSalesOrderDetails(targetId)
+            .then((res) => {
+              const so = res.data;
+              if (so) {
+                setSelectedOrderPreview(so);
+                setSearchTerm(`[${so.sales_order_number}] ${so.customer_name}`);
               }
-            } else {
-              setFormData({
-                sales_order_id: "",
-                due_date: defaultDueDate.toISOString().split("T")[0],
-                notes:
-                  "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
-              });
-              setSelectedOrderPreview(null);
-              setSearchTerm("");
-            }
-          } catch (error) {
-            setValidationError(
-              "Failed to load completed sales orders. Please refresh.",
-            );
-          } finally {
-            setIsLoadingOrders(false);
-          }
-        };
-        fetchCompletedOrders();
+            })
+            .catch(() => {
+              setValidationError(
+                "Failed to auto-load the selected Work Order.",
+              );
+            })
+            .finally(() => setIsSearching(false));
+        }
       } else if (mode === "EDIT" && initialData) {
         setFormData({
           due_date: initialData.due_date || "",
@@ -101,7 +84,6 @@ const InvoiceModal = ({
         });
       }
       setValidationError("");
-      setIsDropdownOpen(false);
     }
   }, [isOpen, mode, initialData]);
 
@@ -114,6 +96,17 @@ const InvoiceModal = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && isDropdownOpen && mode === "CREATE") {
+      setIsSearching(true);
+      salesOrderService
+        .getSalesOrders(1, 10, debouncedSearchTerm, "COMPLETED", "all")
+        .then((res) => setSearchResults(res.data?.salesOrders || []))
+        .catch(() => setSearchResults([]))
+        .finally(() => setIsSearching(false));
+    }
+  }, [isOpen, debouncedSearchTerm, isDropdownOpen, mode]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -169,16 +162,10 @@ const InvoiceModal = ({
     }
   };
 
-  const filteredOrders = completedOrders.filter(
-    (so) =>
-      so.sales_order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      so.customer_name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -186,7 +173,7 @@ const InvoiceModal = ({
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   {mode === "CREATE" ? (
@@ -225,177 +212,173 @@ const InvoiceModal = ({
                 </div>
               )}
 
-              {isLoadingOrders ? (
-                <div className="flex flex-col items-center justify-center py-10 opacity-50">
-                  <Loader2 className="w-8 h-8 text-amber-500 animate-spin mb-3" />
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Scanning Completed Work Orders...
-                  </p>
-                </div>
-              ) : (
-                <form
-                  id="invoiceForm"
-                  onSubmit={handleSubmit}
-                  className="space-y-6 sm:space-y-8"
-                >
-                  {/* SECTION 1: SOURCE DOCUMENT */}
-                  {mode === "CREATE" && (
-                    <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
-                        <FileText size={14} /> Source Document Linkage
-                      </h3>
+              <form
+                id="invoiceForm"
+                onSubmit={handleSubmit}
+                className="space-y-6 sm:space-y-8"
+              >
+                {/* SECTION 1: SOURCE DOCUMENT */}
+                {mode === "CREATE" && (
+                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                      <FileText size={14} /> Source Document
+                    </h3>
 
-                      <div ref={dropdownRef} className="relative z-20">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Completed Sales Order Reference{" "}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <div ref={dropdownRef} className="relative z-20">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Completed Sales Order Reference{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          {isSearching ? (
+                            <Loader2
+                              size={18}
+                              className="text-amber-500 animate-spin"
+                            />
+                          ) : (
                             <Search size={18} className="text-slate-400" />
-                          </div>
-                          <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={handleSearchChange}
-                            onFocus={() => setIsDropdownOpen(true)}
-                            placeholder="Search by SO Number or Customer Name..."
-                            className="w-full pl-12 pr-4 py-3.5 sm:py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all"
-                          />
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={searchTerm}
+                          onChange={handleSearchChange}
+                          onFocus={() => setIsDropdownOpen(true)}
+                          placeholder="Type SO Number or Customer Name to search..."
+                          className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
+                        />
 
-                          {/* Animated Dropdown Menu Container */}
-                          <AnimatePresence>
-                            {isDropdownOpen && (
-                              <motion.div
-                                initial={{ opacity: 0, y: 5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 5 }}
-                                className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-30"
-                              >
-                                {filteredOrders.length > 0 ? (
-                                  filteredOrders.map((so) => (
-                                    <div
-                                      key={so.id}
-                                      onClick={() => handleSelectOrder(so)}
-                                      className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
-                                    >
-                                      <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
-                                        {so.sales_order_number}
-                                      </p>
-                                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
-                                        {so.customer_name}
-                                      </p>
-                                      <p className="text-[10px] text-slate-500 mt-2 font-medium tracking-widest uppercase">
-                                        Receivable:{" "}
-                                        <span className="font-black text-slate-700 dark:text-slate-300">
-                                          ₱
-                                          {parseFloat(
-                                            so.grand_total,
-                                          ).toLocaleString(undefined, {
-                                            minimumFractionDigits: 2,
-                                          })}
-                                        </span>
-                                      </p>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="p-8 text-center">
-                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
-                                      {completedOrders.length === 0
-                                        ? "No unbilled completed orders found."
-                                        : "No matching orders found."}
+                        {/* Dropdown Menu Container */}
+                        <AnimatePresence>
+                          {isDropdownOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 5 }}
+                              className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-30"
+                            >
+                              {searchResults.length > 0 ? (
+                                searchResults.map((so) => (
+                                  <div
+                                    key={so.id}
+                                    onClick={() => handleSelectOrder(so)}
+                                    className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                                  >
+                                    <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                                      {so.sales_order_number}
+                                    </p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                                      {so.customer_name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 mt-2 font-medium tracking-widest uppercase">
+                                      Receivable:{" "}
+                                      <span className="font-black text-slate-700 dark:text-slate-300">
+                                        ₱
+                                        {parseFloat(
+                                          so.grand_total,
+                                        ).toLocaleString(undefined, {
+                                          minimumFractionDigits: 2,
+                                        })}
+                                      </span>
                                     </p>
                                   </div>
-                                )}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      </div>
-
-                      {selectedOrderPreview && (
-                        <div className="mt-5 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-between shadow-sm relative z-10">
-                          <div>
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                              Billing Customer
-                            </p>
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
-                              {selectedOrderPreview.customer_name}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                              Receivable Amount
-                            </p>
-                            <span className="text-lg font-black text-amber-600 dark:text-amber-500 font-mono">
-                              ₱
-                              {parseFloat(
-                                selectedOrderPreview.grand_total,
-                              ).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </section>
-                  )}
-
-                  {/* SECTION 2: BILLING & LOGISTICS DETAILS */}
-                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
-                      <Calendar size={14} /> Billing Details
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Payment Due Date{" "}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          required
-                          type="date"
-                          name="due_date"
-                          value={formData.due_date}
-                          onChange={handleChange}
-                          min={new Date().toISOString().split("T")[0]}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Customer Facing Notes{" "}
-                          <span className="text-slate-400 font-medium lowercase">
-                            (Optional)
-                          </span>
-                        </label>
-                        <textarea
-                          name="notes"
-                          value={formData.notes}
-                          onChange={handleChange}
-                          rows="2"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
-                        />
+                                ))
+                              ) : (
+                                <div className="p-8 text-center">
+                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+                                    {isSearching
+                                      ? "Searching orders..."
+                                      : "No matching orders found."}
+                                  </p>
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
-                  </section>
 
-                  {/* SECTION 3: ACCOUNTING NOTICE */}
-                  {mode === "CREATE" && (
-                    <section className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-5 sm:p-6 rounded-[24px] relative z-10 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500 flex items-center gap-2 mb-2">
-                        <AlertCircle size={14} /> Accounting Notice
-                      </p>
-                      <p className="text-xs text-amber-900 dark:text-amber-200/80 leading-relaxed font-medium">
-                        Generating this invoice will officially post the
-                        transaction to Accounts Receivable and lock the
-                        financial totals. Physical inventory has already been
-                        deducted.
-                      </p>
-                    </section>
-                  )}
-                </form>
-              )}
+                    {selectedOrderPreview && (
+                      <div className="mt-5 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-between shadow-sm relative z-10">
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                            Billing Customer
+                          </p>
+                          <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
+                            {selectedOrderPreview.customer_name}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                            Receivable Amount
+                          </p>
+                          <span className="text-lg font-black text-amber-600 dark:text-amber-500 font-mono">
+                            ₱
+                            {parseFloat(
+                              selectedOrderPreview.grand_total,
+                            ).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {/* SECTION 2: BILLING & LOGISTICS DETAILS */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                    <Calendar size={14} /> Billing Details
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Payment Due Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        required
+                        type="date"
+                        name="due_date"
+                        value={formData.due_date}
+                        onChange={handleChange}
+                        min={new Date().toISOString().split("T")[0]}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Customer Facing Notes{" "}
+                        <span className="text-slate-400 font-medium lowercase">
+                          (Optional)
+                        </span>
+                      </label>
+                      <textarea
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleChange}
+                        rows="3"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                {/* SECTION 3: ACCOUNTING NOTICE */}
+                {mode === "CREATE" && (
+                  <section className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-5 sm:p-6 rounded-[24px] relative z-10 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500 flex items-center gap-2 mb-2">
+                      <AlertCircle size={14} /> Accounting Notice
+                    </p>
+                    <p className="text-xs text-amber-900 dark:text-amber-200/80 leading-relaxed font-medium">
+                      Generating this invoice will officially post the
+                      transaction to Accounts Receivable and lock the financial
+                      totals. Physical inventory has already been deducted.
+                    </p>
+                  </section>
+                )}
+              </form>
             </div>
 
             <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
@@ -403,11 +386,7 @@ const InvoiceModal = ({
                 type="submit"
                 form="invoiceForm"
                 disabled={
-                  isSubmitting ||
-                  (mode === "CREATE" &&
-                    (isLoadingOrders ||
-                      completedOrders.length === 0 ||
-                      !selectedOrderPreview))
+                  isSubmitting || (mode === "CREATE" && !selectedOrderPreview)
                 }
                 className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
               >
