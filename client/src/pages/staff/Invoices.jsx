@@ -170,6 +170,25 @@ const Invoices = () => {
     }
   };
 
+  // Timezone-Safe Formatters
+  const formatCalendarDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const [year, month, day] = dateString.split("T")[0].split("-");
+    return `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+  };
+
+  const checkIsOverdue = (dateString, status) => {
+    if (status === "PAID" || status === "VOID") return false;
+    if (!dateString) return false;
+
+    // Get local date string YYYY-MM-DD
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    const targetStr = dateString.split("T")[0];
+    return targetStr < todayStr;
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
       <PageHeader
@@ -231,9 +250,9 @@ const Invoices = () => {
               </td>
               <td className="px-4 sm:px-8 py-4 sm:py-6">
                 <p
-                  className={`text-xs font-bold ${new Date(inv.due_date) < new Date() && inv.status !== "PAID" ? "text-rose-500" : "text-slate-600 dark:text-slate-400"}`}
+                  className={`text-xs font-bold ${checkIsOverdue(inv.due_date, inv.status) ? "text-rose-500" : "text-slate-600 dark:text-slate-400"}`}
                 >
-                  {new Date(inv.due_date).toLocaleDateString()}
+                  {formatCalendarDate(inv.due_date)}
                 </p>
               </td>
               <td className="px-4 sm:px-8 py-4 sm:py-6">
@@ -262,7 +281,6 @@ const Invoices = () => {
               </td>
               <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
                 <div className="flex items-center justify-end gap-1 sm:gap-2">
-                  {/* View Invoice */}
                   <button
                     onClick={() => {
                       setSelectedInvoiceId(inv.id);
@@ -274,7 +292,6 @@ const Invoices = () => {
                     <FileSearch size={16} />
                   </button>
 
-                  {/* Edit Due Date & Notes */}
                   {inv.status !== "PAID" && inv.status !== "VOID" && (
                     <button
                       onClick={() => {
@@ -289,7 +306,6 @@ const Invoices = () => {
                     </button>
                   )}
 
-                  {/* Void Invoice */}
                   {inv.status === "UNPAID" && (
                     <button
                       onClick={() => {
@@ -306,7 +322,6 @@ const Invoices = () => {
                     </button>
                   )}
 
-                  {/* Record Payment */}
                   {inv.status !== "PAID" && inv.status !== "VOID" && (
                     <button
                       onClick={() =>

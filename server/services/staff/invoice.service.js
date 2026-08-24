@@ -19,12 +19,18 @@ class InvoiceService {
       );
     }
 
-    const targetDueDate = data.due_date ? new Date(data.due_date) : new Date();
-    targetDueDate.setHours(0, 0, 0, 0);
-
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (targetDueDate < today) {
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    let targetDueDateStr = data.due_date;
+
+    if (!targetDueDateStr) {
+      const future = new Date();
+      future.setDate(future.getDate() + 30);
+      targetDueDateStr = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, "0")}-${String(future.getDate()).padStart(2, "0")}`;
+    }
+
+    if (targetDueDateStr < todayStr) {
       throw new Error("The Due Date cannot be in the past.");
     }
 
@@ -35,7 +41,7 @@ class InvoiceService {
       total_discount: so.total_discount,
       vat_amount: so.vat_amount,
       grand_total: so.grand_total,
-      due_date: targetDueDate.toISOString().split("T")[0],
+      due_date: targetDueDateStr,
       notes: data.notes || null,
       created_by: activeUser.id,
     };

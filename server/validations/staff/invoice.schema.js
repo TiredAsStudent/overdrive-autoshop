@@ -8,7 +8,7 @@ const createInvoiceSchema = z.object({
       .positive("A valid COMPLETED Sales Order ID is required."),
     due_date: z
       .string()
-      .refine((val) => !isNaN(Date.parse(val)), "Invalid date format")
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)")
       .optional(),
     notes: z.string().trim().optional(),
   }),
@@ -19,7 +19,7 @@ const updateInvoiceSchema = z.object({
     .object({
       due_date: z
         .string()
-        .refine((val) => !isNaN(Date.parse(val)), "Invalid date format")
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)")
         .optional(),
       notes: z.string().trim().optional(),
       status: z.enum(["VOID"]).optional(),

@@ -73,11 +73,17 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
     }
   };
 
+  // Timezone-Safe Formatter
+  const formatCalendarDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const [year, month, day] = dateString.split("T")[0].split("-");
+    return `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          {/* 1. Standardized Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -88,7 +94,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
             aria-hidden="true"
           />
 
-          {/* 2. Standardized Drawer Panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -103,7 +108,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
             role="dialog"
             aria-modal="true"
           >
-            {/* 3. Standardized Fixed Header */}
             <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
@@ -147,7 +151,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
               </button>
             </header>
 
-            {/* 4. Standardized Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 opacity-70">
@@ -165,7 +168,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
 
               {invoice && !loading && (
                 <div className="space-y-6 sm:space-y-8">
-                  {/* Meta Link Cards */}
                   <div className="grid grid-cols-2 gap-4 sm:gap-5">
                     <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
                       <User size={16} className="text-slate-400 mb-3" />
@@ -197,7 +199,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                     </section>
                   </div>
 
-                  {/* Due Date Indicator */}
                   <section className="flex items-center gap-4 p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm">
                     <Calendar size={20} className="text-amber-500 shrink-0" />
                     <div>
@@ -205,12 +206,11 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                         Payment Due Date
                       </p>
                       <p className="text-sm font-bold text-slate-900 dark:text-white">
-                        {new Date(invoice.due_date).toLocaleDateString()}
+                        {formatCalendarDate(invoice.due_date)}
                       </p>
                     </div>
                   </section>
 
-                  {/* Billing Table */}
                   <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
                     <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -270,7 +270,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                     </div>
                   </section>
 
-                  {/* Financial Locking Container */}
                   <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
                     <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3">
                       Receivable Lock
@@ -349,7 +348,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                     </div>
                   </section>
 
-                  {/* Payment Ledger */}
                   {invoice.payments && invoice.payments.length > 0 && (
                     <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
                       <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex items-center gap-2">
@@ -414,7 +412,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                     </section>
                   )}
 
-                  {/* Notes */}
                   {invoice.notes && (
                     <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
                       <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
@@ -429,7 +426,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
               )}
             </div>
 
-            {/* 5. Standardized Footer */}
             <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex gap-3 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
               <button
                 disabled={!invoice || loading}

@@ -39,15 +39,19 @@ const InvoiceModal = ({
     notes: "",
   });
 
+  // Timezone-Safe Defaults
+  const getLocalDateString = (daysOffset = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() + daysOffset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
   useEffect(() => {
     if (isOpen) {
       if (mode === "CREATE") {
-        const defaultDueDate = new Date();
-        defaultDueDate.setDate(defaultDueDate.getDate() + 30);
-
         setFormData({
           sales_order_id: "",
-          due_date: defaultDueDate.toISOString().split("T")[0],
+          due_date: getLocalDateString(30),
           notes:
             "Thank you for choosing Overdrive Auto Shop. Please pay within 30 days.",
         });
@@ -79,7 +83,9 @@ const InvoiceModal = ({
         }
       } else if (mode === "EDIT" && initialData) {
         setFormData({
-          due_date: initialData.due_date || "",
+          due_date: initialData.due_date
+            ? initialData.due_date.split("T")[0]
+            : "",
           notes: initialData.notes || "",
         });
       }
@@ -332,7 +338,6 @@ const InvoiceModal = ({
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <Calendar size={14} /> Billing Details
                   </h3>
-
                   <div className="grid grid-cols-1 gap-5">
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
@@ -344,7 +349,7 @@ const InvoiceModal = ({
                         name="due_date"
                         value={formData.due_date}
                         onChange={handleChange}
-                        min={new Date().toISOString().split("T")[0]}
+                        min={getLocalDateString(0)}
                         className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all cursor-pointer"
                       />
                     </div>
