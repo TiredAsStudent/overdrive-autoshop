@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -9,6 +9,8 @@ import {
   Wallet,
   Banknote,
   Landmark,
+  Search,
+  FileText,
 } from "lucide-react";
 import { invoiceService } from "../../../services/staff/invoice.service";
 
@@ -32,6 +34,10 @@ const PaymentModal = ({
   const [unresolvedInvoices, setUnresolvedInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
+  const dropdownRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   const getLocalDateString = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -45,6 +51,16 @@ const PaymentModal = ({
     reference_number: "",
     notes: "",
   });
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -74,6 +90,10 @@ const PaymentModal = ({
             if (preSelected) {
               setFormData((prev) => ({ ...prev, invoice_id: preSelected.id }));
               setSelectedInvoice(preSelected);
+
+              setSearchTerm(
+                `[${preSelected.invoice_number}] ${preSelected.customer_name}`,
+              );
             }
           }
         } catch (error) {
@@ -94,22 +114,36 @@ const PaymentModal = ({
         notes: "",
       });
       setSelectedInvoice(null);
+      setSearchTerm("");
+      setIsDropdownOpen(false);
       setValidationError("");
       fetchInvoices();
     }
   }, [isOpen, initialInvoiceId]);
 
-  const handleInvoiceSelect = (e) => {
-    const invId = e.target.value;
-    setFormData({ ...formData, invoice_id: invId });
-    if (invId) {
-      const preview = unresolvedInvoices.find(
-        (inv) => inv.id.toString() === invId.toString(),
-      );
-      setSelectedInvoice(preview || null);
-    } else {
+  const searchResults = useMemo(() => {
+    if (!searchTerm) return unresolvedInvoices;
+    return unresolvedInvoices.filter(
+      (inv) =>
+        inv.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inv.customer_name.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [searchTerm, unresolvedInvoices]);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setIsDropdownOpen(true);
+    if (selectedInvoice) {
       setSelectedInvoice(null);
+      setFormData((prev) => ({ ...prev, invoice_id: "" }));
     }
+  };
+
+  const handleSelectInvoice = (inv) => {
+    setSelectedInvoice(inv);
+    setFormData((prev) => ({ ...prev, invoice_id: inv.id.toString() }));
+    setSearchTerm(`[${inv.invoice_number}] ${inv.customer_name}`);
+    setIsDropdownOpen(false);
   };
 
   const handleChange = (e) => {
@@ -137,7 +171,7 @@ const PaymentModal = ({
     setValidationError("");
 
     if (!formData.invoice_id)
-      return setValidationError("You must select an invoice.");
+      return setValidationError("You must search and select an invoice.");
     if (amountToApply <= 0)
       return setValidationError("Payment amount must be greater than zero.");
 
@@ -188,7 +222,7 @@ const PaymentModal = ({
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <CreditCard size={20} />
@@ -231,210 +265,274 @@ const PaymentModal = ({
                 <form
                   id="paymentForm"
                   onSubmit={handleSubmit}
-                  className="space-y-6"
+                  className="space-y-6 sm:space-y-8"
                 >
-                  {/* Target Invoice */}
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Target Invoice <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      required
-                      name="invoice_id"
-                      value={formData.invoice_id}
-                      onChange={handleInvoiceSelect}
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
-                    >
-                      <option value="">-- Select an Unpaid Invoice --</option>
-                      {unresolvedInvoices.map((inv) => (
-                        <option key={inv.id} value={inv.id}>
-                          [{inv.invoice_number}] {inv.customer_name} - Bal: ₱
-                          {(
-                            parseFloat(inv.grand_total) -
-                            parseFloat(inv.amount_paid)
-                          ).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* SECTION 1 - SOURCE DOCUMENT */}
+                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                      <FileText size={14} /> Source Document
+                    </h3>
 
-                  {/* Financial Matrix Preview */}
-                  {selectedInvoice && (
-                    <div className="p-5 bg-slate-900 dark:bg-black rounded-2xl text-white shadow-xl">
-                      <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-2">
-                        <span>Original Invoice Total</span>
-                        <span>
-                          ₱
-                          {grandTotal.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-4 pb-4 border-b border-white/10">
-                        <span>Previously Paid</span>
-                        <span>
-                          - ₱
-                          {previouslyPaid.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-black uppercase tracking-widest text-slate-300">
-                          Remaining Balance
-                        </span>
-                        <span className="text-xl font-black text-rose-500">
-                          ₱
-                          {currentBalance.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-
-                      {amountToApply > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="flex justify-between items-center pt-4 mt-4 border-t border-white/10"
-                        >
-                          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
-                            Projected Balance
-                          </span>
-                          <span
-                            className={`text-lg font-black ${projectedBalance < 0 ? "text-red-500" : projectedBalance === 0 ? "text-emerald-500" : "text-amber-500"}`}
-                          >
-                            ₱
-                            {projectedBalance.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </span>
-                        </motion.div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Operational Data */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
+                    {/* Custom Searchable Dropdown */}
+                    <div ref={dropdownRef} className="relative z-20 mb-5">
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Amount Received <span className="text-red-500">*</span>
+                        Target Invoice <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
-                          ₱
-                        </span>
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Search size={18} className="text-slate-400" />
+                        </div>
                         <input
-                          required
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          name="amount_received"
-                          value={formData.amount_received}
-                          onChange={handleChange}
-                          className="w-full pl-8 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:border-amber-500"
-                          placeholder="0.00"
+                          type="text"
+                          value={searchTerm}
+                          onChange={handleSearchChange}
+                          onFocus={() => setIsDropdownOpen(true)}
+                          placeholder="Type Invoice Number or Customer Name..."
+                          className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
                         />
+
+                        {/* Dropdown Results */}
+                        <AnimatePresence>
+                          {isDropdownOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 5 }}
+                              className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-30"
+                            >
+                              {searchResults.length > 0 ? (
+                                searchResults.map((inv) => (
+                                  <div
+                                    key={inv.id}
+                                    onClick={() => handleSelectInvoice(inv)}
+                                    className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                                  >
+                                    <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                                      {inv.invoice_number}
+                                    </p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                                      {inv.customer_name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 mt-2 font-medium tracking-widest uppercase">
+                                      Current Balance:{" "}
+                                      <span className="font-black text-slate-700 dark:text-slate-300">
+                                        ₱
+                                        {(
+                                          parseFloat(inv.grand_total) -
+                                          parseFloat(inv.amount_paid)
+                                        ).toLocaleString(undefined, {
+                                          minimumFractionDigits: 2,
+                                        })}
+                                      </span>
+                                    </p>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="p-8 text-center">
+                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+                                    No matching unpaid invoices found.
+                                  </p>
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
+                    </div>
+
+                    {/* Financial Matrix Preview */}
+                    <AnimatePresence>
                       {selectedInvoice && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFormData({
-                              ...formData,
-                              amount_received: currentBalance.toFixed(2),
-                            })
-                          }
-                          className="mt-1.5 text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors"
+                        <motion.div
+                          initial={{ opacity: 0, height: 0, y: -10 }}
+                          animate={{ opacity: 1, height: "auto", y: 0 }}
+                          exit={{ opacity: 0, height: 0, y: -10 }}
+                          className="p-5 bg-slate-900 dark:bg-black rounded-2xl text-white shadow-xl overflow-hidden"
                         >
-                          Apply Full Balance
-                        </button>
+                          <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-2">
+                            <span>Original Invoice Total</span>
+                            <span>
+                              ₱
+                              {grandTotal.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-4 pb-4 border-b border-white/10">
+                            <span>Previously Paid</span>
+                            <span>
+                              - ₱
+                              {previouslyPaid.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-black uppercase tracking-widest text-slate-300">
+                              Remaining Balance
+                            </span>
+                            <span className="text-xl font-black text-rose-500 font-mono">
+                              ₱
+                              {currentBalance.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+
+                          <AnimatePresence>
+                            {amountToApply > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -5 }}
+                                className="flex justify-between items-center pt-4 mt-4 border-t border-white/10"
+                              >
+                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                                  Projected Balance
+                                </span>
+                                <span
+                                  className={`text-lg font-black font-mono ${projectedBalance < 0 ? "text-red-500" : projectedBalance === 0 ? "text-emerald-500" : "text-amber-500"}`}
+                                >
+                                  ₱
+                                  {projectedBalance.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </span>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
                       )}
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Payment Method <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        required
-                        name="payment_method"
-                        value={formData.payment_method}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
-                      >
-                        {PAYMENT_METHODS.map((method) => (
-                          <option key={method.id} value={method.id}>
-                            {method.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    </AnimatePresence>
+                  </section>
 
-                    <div className="md:col-span-2">
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Payment Date <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        required
-                        type="date"
-                        name="payment_date"
-                        max={getLocalDateString()}
-                        value={formData.payment_date}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
-                      />
-                    </div>
+                  {/*  SECTION 2 - PAYMENT DETAILS */}
+                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
+                      <Wallet size={14} /> Collection Details
+                    </h3>
 
-                    {requiresReference && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Amount Received{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
+                            ₱
+                          </span>
+                          <input
+                            required
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            name="amount_received"
+                            value={formData.amount_received}
+                            onChange={handleChange}
+                            className="w-full pl-8 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
+                            placeholder="0.00"
+                          />
+                        </div>
+                        {selectedInvoice && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData({
+                                ...formData,
+                                amount_received: currentBalance.toFixed(2),
+                              })
+                            }
+                            className="mt-2 text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors"
+                          >
+                            Apply Full Balance
+                          </button>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Payment Method <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          name="payment_method"
+                          value={formData.payment_method}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
+                        >
+                          {PAYMENT_METHODS.map((method) => (
+                            <option key={method.id} value={method.id}>
+                              {method.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
                       <div className="md:col-span-2">
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Transaction Reference Number{" "}
-                          <span className="text-red-500">*</span>
+                          Payment Date <span className="text-red-500">*</span>
                         </label>
                         <input
                           required
-                          type="text"
-                          name="reference_number"
-                          value={formData.reference_number || ""}
+                          type="date"
+                          name="payment_date"
+                          max={getLocalDateString()}
+                          value={formData.payment_date}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"
-                          placeholder="e.g., Bank Ref or GCash Ref No."
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all cursor-pointer"
                         />
                       </div>
-                    )}
 
-                    <div className="md:col-span-2">
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Collection Notes{" "}
-                        <span className="text-slate-400 font-medium lowercase">
-                          (Optional)
-                        </span>
-                      </label>
-                      <textarea
-                        name="notes"
-                        value={formData.notes || ""}
-                        onChange={handleChange}
-                        rows="2"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none"
-                        placeholder="e.g., Downpayment or Cash handed to cashier."
-                      />
+                      {requiresReference && (
+                        <div className="md:col-span-2">
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                            Transaction Reference Number{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            required
+                            type="text"
+                            name="reference_number"
+                            value={formData.reference_number || ""}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
+                            placeholder="e.g., Bank Ref or GCash Ref No."
+                          />
+                        </div>
+                      )}
+
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Collection Notes{" "}
+                          <span className="text-slate-400 font-medium lowercase">
+                            (Optional)
+                          </span>
+                        </label>
+                        <textarea
+                          name="notes"
+                          value={formData.notes || ""}
+                          onChange={handleChange}
+                          rows="2"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none focus:outline-none focus:border-amber-500 shadow-sm transition-all"
+                          placeholder="e.g., Downpayment or Cash handed to cashier."
+                        />
+                      </div>
                     </div>
-                  </div>
+                  </section>
                 </form>
               )}
             </div>
 
             {/* Footer */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50">
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
               <button
                 type="submit"
                 form="paymentForm"
                 disabled={
                   isSubmitting || isLoadingInvoices || !formData.invoice_id
                 }
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />
