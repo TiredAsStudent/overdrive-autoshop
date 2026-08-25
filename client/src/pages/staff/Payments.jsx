@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import {
-  Search,
-  Loader2,
-  CreditCard,
-  FileSearch,
-  Ban,
-  Plus,
-} from "lucide-react";
+import { CreditCard, FileSearch, Ban, Plus } from "lucide-react";
 import { paymentService } from "../../services/staff/payment.service";
 import PaymentModal from "../../features/staff/components/PaymentModal";
 import PaymentDrawer from "../../features/staff/components/PaymentDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import ConfirmModal from "../../components/shared/ConfirmModal";
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import ActionButton from "../../components/ui/ActionButton";
+import StatusToggle from "../../components/ui/StatusToggle";
+import StatusBadge from "../../components/ui/StatusBadge";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -128,29 +126,13 @@ const Payments = () => {
   const renderMethodBadge = (method) => {
     switch (method) {
       case "CASH":
-        return (
-          <span className="text-slate-600 bg-slate-100 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border">
-            CASH
-          </span>
-        );
+        return <StatusBadge label="CASH" variant="default" />;
       case "GCASH":
-        return (
-          <span className="text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border">
-            GCASH
-          </span>
-        );
+        return <StatusBadge label="GCASH" variant="info" />;
       case "MAYA":
-        return (
-          <span className="text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border">
-            MAYA
-          </span>
-        );
+        return <StatusBadge label="MAYA" variant="success" />;
       case "BANK_TRANSFER":
-        return (
-          <span className="text-indigo-600 bg-indigo-50 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border">
-            BANK
-          </span>
-        );
+        return <StatusBadge label="BANK" variant="info" />;
       default:
         return null;
     }
@@ -158,61 +140,31 @@ const Payments = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <CreditCard className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Payments
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Cash Collections Directory
-            </p>
-          </div>
-        </div>
+      <PageHeader
+        title="Payments"
+        subtitle="Cash Collections Directory"
+        icon={CreditCard}
+      >
+        <StatusToggle
+          activeValue={methodFilter}
+          onToggle={setMethodFilter}
+          options={METHOD_FILTERS.map((f) => ({ label: f.label, value: f.id }))}
+          className="overflow-x-auto custom-scrollbar"
+        />
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          {/* Method Filter */}
-          <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 overflow-x-auto custom-scrollbar">
-            {METHOD_FILTERS.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setMethodFilter(f.id)}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${methodFilter === f.id ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search Receipt..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-          <div className="relative w-full sm:max-w-[200px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search Receipt..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-            />
-          </div>
-
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm flex justify-center items-center gap-2 whitespace-nowrap"
-          >
-            <Plus size={16} /> Record Payment
-          </button>
-        </div>
-      </div>
+        <ActionButton
+          label="Record Payment"
+          icon={Plus}
+          onClick={() => setIsModalOpen(true)}
+        />
+      </PageHeader>
 
       {/* DATA TABLE */}
       <DataTable
@@ -241,9 +193,7 @@ const Payments = () => {
                     {pay.payment_number}
                   </span>
                   {pay.status === "VOID" && (
-                    <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">
-                      VOID
-                    </span>
+                    <StatusBadge label="VOID" variant="danger" />
                   )}
                 </div>
                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1.5">

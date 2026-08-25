@@ -13,6 +13,7 @@ import {
   Landmark,
 } from "lucide-react";
 import { paymentService } from "../../../services/staff/payment.service";
+import StatusBadge from "../../../components/ui/StatusBadge";
 
 const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
   const [payment, setPayment] = useState(null);
@@ -42,29 +43,13 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
   const renderMethodBadge = (method) => {
     switch (method) {
       case "CASH":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px] font-black tracking-widest uppercase">
-            <Banknote size={12} /> CASH
-          </span>
-        );
+        return <StatusBadge label="CASH" variant="default" icon={Banknote} />;
       case "GCASH":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 text-[10px] font-black tracking-widest uppercase">
-            <Wallet size={12} /> GCASH
-          </span>
-        );
+        return <StatusBadge label="GCASH" variant="info" icon={Wallet} />;
       case "MAYA":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 text-[10px] font-black tracking-widest uppercase">
-            <Wallet size={12} /> MAYA
-          </span>
-        );
+        return <StatusBadge label="MAYA" variant="success" icon={Wallet} />;
       case "BANK_TRANSFER":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 text-[10px] font-black tracking-widest uppercase">
-            <Landmark size={12} /> BANK
-          </span>
-        );
+        return <StatusBadge label="BANK" variant="info" icon={Landmark} />;
       default:
         return null;
     }
@@ -103,9 +88,7 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                       Official Payment Receipt
                     </p>
                     {payment?.status === "VOID" && (
-                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
-                        VOIDED
-                      </span>
+                      <StatusBadge label="VOIDED" variant="danger" />
                     )}
                   </div>
                 </div>
