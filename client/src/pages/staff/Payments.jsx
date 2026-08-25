@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { CreditCard, FileSearch, Ban, Plus } from "lucide-react";
+import {
+  CreditCard,
+  FileSearch,
+  Ban,
+  Plus,
+  Banknote,
+  Wallet,
+  Landmark,
+} from "lucide-react";
 import { paymentService } from "../../services/staff/payment.service";
 import PaymentModal from "../../features/staff/components/PaymentModal";
 import PaymentDrawer from "../../features/staff/components/PaymentDrawer";
@@ -126,13 +134,13 @@ const Payments = () => {
   const renderMethodBadge = (method) => {
     switch (method) {
       case "CASH":
-        return <StatusBadge label="CASH" variant="default" />;
+        return <StatusBadge label="CASH" variant="default" icon={Banknote} />;
       case "GCASH":
-        return <StatusBadge label="GCASH" variant="info" />;
+        return <StatusBadge label="GCASH" variant="info" icon={Wallet} />;
       case "MAYA":
-        return <StatusBadge label="MAYA" variant="success" />;
+        return <StatusBadge label="MAYA" variant="success" icon={Wallet} />;
       case "BANK_TRANSFER":
-        return <StatusBadge label="BANK" variant="info" />;
+        return <StatusBadge label="BANK" variant="info" icon={Landmark} />;
       default:
         return null;
     }
@@ -140,6 +148,7 @@ const Payments = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+      {/* ACTION BAR */}
       <PageHeader
         title="Payments"
         subtitle="Cash Collections Directory"
@@ -235,14 +244,14 @@ const Payments = () => {
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-1.5">
+              <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                 <button
                   onClick={() => {
                     setSelectedPaymentId(pay.id);
                     setIsDrawerOpen(true);
                   }}
                   title="View Receipt"
-                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
                 >
                   <FileSearch size={16} />
                 </button>
@@ -257,7 +266,7 @@ const Payments = () => {
                       });
                     }}
                     title="Void Receipt"
-                    className="p-2 bg-slate-50 hover:bg-rose-100 text-slate-400 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-500/20 dark:text-slate-500 dark:hover:text-rose-400 rounded-xl transition-colors cursor-pointer"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
                   >
                     <Ban size={16} />
                   </button>
