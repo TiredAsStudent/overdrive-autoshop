@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -53,11 +53,12 @@ const PaymentModal = ({
         try {
           const res = await invoiceService.getInvoices(
             1,
-            200,
+            1000,
             "",
             "all",
             "all",
           );
+
           const pending = (res.data?.invoices || []).filter(
             (inv) =>
               inv.status !== "PAID" &&
@@ -116,14 +117,13 @@ const PaymentModal = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const grandTotal = selectedInvoice
-    ? parseFloat(selectedInvoice.grand_total)
-    : 0;
-  const previouslyPaid = selectedInvoice
-    ? parseFloat(selectedInvoice.amount_paid)
-    : 0;
+  const { grandTotal, previouslyPaid, currentBalance } = useMemo(() => {
+    const gt = selectedInvoice ? parseFloat(selectedInvoice.grand_total) : 0;
+    const pp = selectedInvoice ? parseFloat(selectedInvoice.amount_paid) : 0;
+    const cb = Math.round((gt - pp) * 100) / 100;
+    return { grandTotal: gt, previouslyPaid: pp, currentBalance: cb };
+  }, [selectedInvoice]);
 
-  const currentBalance = Math.round((grandTotal - previouslyPaid) * 100) / 100;
   const amountToApply = parseFloat(formData.amount_received) || 0;
   const projectedBalance =
     Math.round((currentBalance - amountToApply) * 100) / 100;
