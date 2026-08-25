@@ -32,11 +32,16 @@ const PaymentModal = ({
   const [unresolvedInvoices, setUnresolvedInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
+  const getLocalDateString = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
   const [formData, setFormData] = useState({
     invoice_id: "",
     amount_received: "",
     payment_method: "CASH",
-    payment_date: new Date().toISOString().split("T")[0],
+    payment_date: "",
     reference_number: "",
     notes: "",
   });
@@ -83,7 +88,7 @@ const PaymentModal = ({
         invoice_id: initialInvoiceId || "",
         amount_received: "",
         payment_method: "CASH",
-        payment_date: new Date().toISOString().split("T")[0],
+        payment_date: getLocalDateString(),
         reference_number: "",
         notes: "",
       });
@@ -375,7 +380,7 @@ const PaymentModal = ({
                         required
                         type="date"
                         name="payment_date"
-                        max={new Date().toISOString().split("T")[0]}
+                        max={getLocalDateString()}
                         value={formData.payment_date}
                         onChange={handleChange}
                         className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500"

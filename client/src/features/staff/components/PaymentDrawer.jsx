@@ -33,6 +33,12 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
     }
   }, [isOpen, paymentId]);
 
+  const formatCalendarDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const [year, month, day] = dateString.split("T")[0].split("-");
+    return `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+  };
+
   const renderMethodBadge = (method) => {
     switch (method) {
       case "CASH":
@@ -174,9 +180,9 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                           Payment Date
                         </p>
                         <p className="text-xs font-bold text-slate-900 dark:text-white mt-1.5">
-                          {new Date(
+                          {formatCalendarDate(
                             payment.payment_date || payment.created_at,
-                          ).toLocaleDateString()}
+                          )}
                         </p>
                       </div>
                     </div>

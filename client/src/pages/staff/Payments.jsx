@@ -119,6 +119,12 @@ const Payments = () => {
     }
   };
 
+  const formatCalendarDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const [year, month, day] = dateString.split("T")[0].split("-");
+    return `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+  };
+
   const renderMethodBadge = (method) => {
     switch (method) {
       case "CASH":
@@ -241,9 +247,7 @@ const Payments = () => {
                   )}
                 </div>
                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1.5">
-                  {new Date(
-                    pay.payment_date || pay.created_at,
-                  ).toLocaleDateString()}
+                  {formatCalendarDate(pay.payment_date || pay.created_at)}
                 </span>
               </div>
             </td>

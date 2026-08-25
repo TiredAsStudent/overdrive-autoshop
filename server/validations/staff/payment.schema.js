@@ -15,11 +15,12 @@ const createPaymentSchema = z.object({
       }),
       payment_date: z
         .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)")
         .refine((val) => {
-          const inputDate = new Date(val);
-          const endOfToday = new Date();
-          endOfToday.setHours(23, 59, 59, 999);
-          return inputDate <= endOfToday;
+          const today = new Date();
+          const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+          return val <= todayStr;
         }, "Payment Date cannot be in the future.")
         .optional(),
       reference_number: z.string().trim().max(100).optional().nullable(),
