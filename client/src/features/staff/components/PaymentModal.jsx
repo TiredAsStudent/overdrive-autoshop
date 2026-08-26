@@ -43,6 +43,7 @@ const PaymentModal = ({
   const fileInputRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [searchResults, setSearchResults] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -88,7 +89,6 @@ const PaymentModal = ({
       setSearchResults([]);
       setIsDropdownOpen(false);
       setValidationError("");
-
       setProofFile(null);
       setProofPreview(null);
 
@@ -483,6 +483,7 @@ const PaymentModal = ({
                         </button>
                       )}
                     </div>
+
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Payment Method <span className="text-red-500">*</span>
@@ -550,7 +551,7 @@ const PaymentModal = ({
                       </label>
 
                       {!proofPreview ? (
-                        <div className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 flex flex-col items-center justify-center bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors relative">
+                        <div className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 flex flex-col items-center justify-center bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors relative cursor-pointer">
                           <input
                             type="file"
                             ref={fileInputRef}
