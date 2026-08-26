@@ -3,11 +3,11 @@ const { z } = require("zod");
 const createPaymentSchema = z.object({
   body: z
     .object({
-      invoice_id: z
+      invoice_id: z.coerce
         .number()
         .int()
         .positive("A valid Invoice ID is required to record a payment."),
-      amount_received: z
+      amount_received: z.coerce
         .number()
         .positive("Payment amount must be greater than zero."),
       payment_method: z.enum(["CASH", "GCASH", "MAYA", "BANK_TRANSFER"], {
@@ -19,7 +19,6 @@ const createPaymentSchema = z.object({
         .refine((val) => {
           const today = new Date();
           const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
           return val <= todayStr;
         }, "Payment Date cannot be in the future.")
         .optional(),
@@ -28,7 +27,6 @@ const createPaymentSchema = z.object({
     })
     .refine(
       (data) => {
-        // VR-07: Require reference number for digital payments
         if (["GCASH", "MAYA", "BANK_TRANSFER"].includes(data.payment_method)) {
           return !!data.reference_number && data.reference_number.length > 0;
         }

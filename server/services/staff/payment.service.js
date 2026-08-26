@@ -1,15 +1,19 @@
 const PaymentModel = require("../../models/Payment");
 const InvoiceModel = require("../../models/Invoice");
 const { logSecureAction } = require("../../utils/auditLogger");
+const fs = require("fs").promises;
 
 class PaymentService {
-  static async recordPayment(data, activeUser, ipAddress) {
-    // 1. Initial Validation & Security (BR-09)
+  static async recordPayment(data, file, activeUser, ipAddress) {
     const invoice = await InvoiceModel.findById(data.invoice_id);
-    if (!invoice) throw new Error("Target Invoice not found.");
 
-    // SAFETY CHECK: Pre-Voided Upstream Check
+    if (!invoice) {
+      if (file) await fs.unlink(file.path).catch(console.error);
+      throw new Error("Target Invoice not found.");
+    }
+
     if (invoice.status === "VOID") {
+      if (file) await fs.unlink(file.path).catch(console.error);
       throw new Error(
         "Cannot process payment. The target invoice has been voided.",
       );
@@ -19,9 +23,23 @@ class PaymentService {
       activeUser.role === "STAFF" &&
       invoice.branch_id !== activeUser.branchId
     ) {
+      if (file) await fs.unlink(file.path).catch(console.error);
       throw new Error(
         "Unauthorized: You cannot process payments for documents outside your assigned branch.",
       );
+    }
+
+    const requiresProof = ["GCASH", "MAYA", "BANK_TRANSFER"].includes(
+      data.payment_method,
+    );
+    if (requiresProof && !file) {
+      throw new Error(
+        `Photo evidence (screenshot/deposit slip) is mandatory for ${data.payment_method} transactions.`,
+      );
+    }
+
+    if (file) {
+      data.proof_of_payment_url = file.path.replace(/\\/g, "/");
     }
 
     // 2. Execute Atomic Payment Collection
@@ -41,17 +59,19 @@ class PaymentService {
           error.constraint === "payments_payment_number_key"
         ) {
           retries--;
-          if (retries === 0)
+          if (retries === 0) {
+            if (file) await fs.unlink(file.path).catch(console.error);
             throw new Error(
               "High system traffic. Failed to generate a unique Payment receipt code.",
             );
+          }
         } else {
+          if (file) await fs.unlink(file.path).catch(console.error);
           throw error;
         }
       }
     }
 
-    // 3. Issue the Financial Audit Log (BR-10)
     await logSecureAction(
       activeUser.id,
       invoice.branch_id,
@@ -66,6 +86,7 @@ class PaymentService {
         amount_received: result.payment.amount_received,
         new_invoice_status: result.updatedInvoice.status,
         total_amount_paid: result.updatedInvoice.amount_paid,
+        has_proof: !!result.payment.proof_of_payment_url,
       },
     );
 
@@ -85,7 +106,6 @@ class PaymentService {
 
     const result = await PaymentModel.voidPaymentTransaction(paymentId);
 
-    // Audit Log for financial reversal
     await logSecureAction(
       activeUser.id,
       payment.branch_id,

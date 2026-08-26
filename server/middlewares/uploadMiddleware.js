@@ -6,8 +6,9 @@ const fs = require("fs");
 const brandingDir = "uploads/branding/";
 const receiptDir = "uploads/receipts/";
 const adjustmentDir = "uploads/adjustments/";
+const paymentDir = "uploads/payments/";
 
-[brandingDir, receiptDir, adjustmentDir].forEach((dir) => {
+[brandingDir, receiptDir, adjustmentDir, paymentDir].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -97,4 +98,25 @@ const uploadReceipt = multer({
   fileFilter: documentFileFilter,
 });
 
-module.exports = { uploadLogo, uploadReceipt, uploadAdjustmentEvidence };
+// Proof of Payment Upload Configuration
+const uploadPaymentProof = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, paymentDir),
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(
+        null,
+        `proof_${uniqueSuffix}${path.extname(file.originalname).toLowerCase()}`,
+      );
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: imageFileFilter,
+});
+
+module.exports = {
+  uploadLogo,
+  uploadReceipt,
+  uploadAdjustmentEvidence,
+  uploadPaymentProof,
+};

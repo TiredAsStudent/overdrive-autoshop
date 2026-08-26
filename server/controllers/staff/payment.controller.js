@@ -7,6 +7,7 @@ class PaymentController {
     try {
       const result = await PaymentService.recordPayment(
         req.body,
+        req.file,
         req.user,
         req.ip,
       );
@@ -50,9 +51,8 @@ class PaymentController {
     try {
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
-      let { search, method, branch } = req.query; // Changed to let
+      let { search, method, branch } = req.query;
 
-      // SECURITY PATCH: Strict Branch Isolation (BR-09)
       if (req.user.role === "STAFF") {
         branch = req.user.branchId;
       }

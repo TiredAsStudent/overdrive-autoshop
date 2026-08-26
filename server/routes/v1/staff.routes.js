@@ -29,6 +29,7 @@ const {
 const {
   uploadReceipt,
   uploadAdjustmentEvidence,
+  uploadPaymentProof,
 } = require("../../middlewares/uploadMiddleware");
 const { ROLES } = require("../../constants/roles");
 
@@ -194,6 +195,7 @@ router.patch(
 // ==========================================
 router.post(
   "/payments",
+  uploadPaymentProof.single("proof"),
   validate(createPaymentSchema),
   PaymentController.recordPayment,
 );

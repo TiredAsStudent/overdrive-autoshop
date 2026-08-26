@@ -27,7 +27,6 @@ class Payment {
     try {
       await client.query("BEGIN");
 
-      // 1. Lock the Target Invoice (Prevents Concurrent Over-Payment Race Conditions)
       const lockSql = `SELECT grand_total, amount_paid, branch_id FROM invoices WHERE id = $1 FOR UPDATE`;
       const lockRes = await client.query(lockSql, [paymentData.invoice_id]);
 
@@ -51,18 +50,15 @@ class Payment {
         );
       }
 
-      // 2. Generate Payment Sequence & Insert Record
       paymentData.payment_number = await this.generatePaymentCode();
-
-      // Default to current date if payment_date wasn't provided
       const targetDate =
         paymentData.payment_date || new Date().toISOString().split("T")[0];
 
       const insertSql = `
         INSERT INTO payments (
           payment_number, invoice_id, branch_id, amount_received, 
-          payment_method, reference_number, notes, created_by, payment_date
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          payment_method, reference_number, notes, created_by, payment_date, proof_of_payment_url
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
       `;
       const insertValues = [
@@ -75,11 +71,11 @@ class Payment {
         paymentData.notes,
         userId,
         targetDate,
+        paymentData.proof_of_payment_url || null,
       ];
       const insertRes = await client.query(insertSql, insertValues);
       const newPayment = insertRes.rows[0];
 
-      // 3. Increment Invoice amount_paid and Compute New Status natively in PostgreSQL
       const updateInvoiceSql = `
         UPDATE invoices 
         SET 
@@ -131,7 +127,6 @@ class Payment {
       const updatePaySql = `UPDATE payments SET status = 'VOID' WHERE id = $1 RETURNING *`;
       const updatedPay = await client.query(updatePaySql, [paymentId]);
 
-      // 4. Reverse Invoice Math natively in PostgreSQL
       const updateInvSql = `
         UPDATE invoices
         SET amount_paid = amount_paid - $1,
@@ -213,19 +208,21 @@ class Payment {
   }
 
   static async findPaginatedFiltered(limit, offset, search, method, branchId) {
-    let sql = `
+    const sqlParts = [];
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    sqlParts.push(`
       SELECT p.id, p.payment_number, p.amount_received, p.payment_method, 
              TO_CHAR(p.payment_date, 'YYYY-MM-DD') as payment_date, 
-             p.created_at, p.reference_number, p.status,
+             p.created_at, p.reference_number, p.status, p.proof_of_payment_url,
              i.invoice_number, i.status as current_invoice_status, c.full_name as customer_name, b.branch_name
       FROM payments p
       JOIN invoices i ON p.invoice_id = i.id
       JOIN customers c ON i.customer_id = c.id
       JOIN branches b ON p.branch_id = b.id
-    `;
-    const conditions = [];
-    const values = [];
-    let paramIdx = 1;
+    `);
 
     if (search) {
       conditions.push(
@@ -245,11 +242,16 @@ class Payment {
       paramIdx++;
     }
 
-    if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
-    sql += ` ORDER BY p.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    if (conditions.length > 0) {
+      sqlParts.push(` WHERE ` + conditions.join(" AND "));
+    }
+
+    sqlParts.push(
+      ` ORDER BY p.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+    );
     values.push(limit, offset);
 
-    const result = await query(sql, values);
+    const result = await query(sqlParts.join(""), values);
     return result.rows;
   }
 }
