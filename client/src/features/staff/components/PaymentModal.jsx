@@ -13,6 +13,7 @@ import {
   FileText,
 } from "lucide-react";
 import { invoiceService } from "../../../services/staff/invoice.service";
+import { useDebounce } from "../../../hooks/useDebounce";
 
 const PAYMENT_METHODS = [
   { id: "CASH", label: "Cash", icon: Banknote },
@@ -29,13 +30,14 @@ const PaymentModal = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
-  const [isLoadingInvoices, setIsLoadingInvoices] = useState(true);
 
-  const [unresolvedInvoices, setUnresolvedInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   const dropdownRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const getLocalDateString = () => {
@@ -64,49 +66,8 @@ const PaymentModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      const fetchInvoices = async () => {
-        setIsLoadingInvoices(true);
-        try {
-          const res = await invoiceService.getInvoices(
-            1,
-            1000,
-            "",
-            "all",
-            "all",
-          );
-
-          const pending = (res.data?.invoices || []).filter(
-            (inv) =>
-              inv.status !== "PAID" &&
-              inv.status !== "CANCELLED" &&
-              inv.status !== "VOID",
-          );
-          setUnresolvedInvoices(pending);
-
-          if (initialInvoiceId) {
-            const preSelected = pending.find(
-              (i) => i.id.toString() === initialInvoiceId.toString(),
-            );
-            if (preSelected) {
-              setFormData((prev) => ({ ...prev, invoice_id: preSelected.id }));
-              setSelectedInvoice(preSelected);
-
-              setSearchTerm(
-                `[${preSelected.invoice_number}] ${preSelected.customer_name}`,
-              );
-            }
-          }
-        } catch (error) {
-          setValidationError(
-            "Failed to load invoice registry. Please refresh.",
-          );
-        } finally {
-          setIsLoadingInvoices(false);
-        }
-      };
-
       setFormData({
-        invoice_id: initialInvoiceId || "",
+        invoice_id: "",
         amount_received: "",
         payment_method: "CASH",
         payment_date: getLocalDateString(),
@@ -115,20 +76,51 @@ const PaymentModal = ({
       });
       setSelectedInvoice(null);
       setSearchTerm("");
+      setSearchResults([]);
       setIsDropdownOpen(false);
       setValidationError("");
-      fetchInvoices();
+
+      if (initialInvoiceId) {
+        setIsSearching(true);
+        invoiceService
+          .getInvoiceDetails(initialInvoiceId)
+          .then((res) => {
+            const inv = res.data;
+            if (inv) {
+              setSelectedInvoice(inv);
+              setFormData((prev) => ({
+                ...prev,
+                invoice_id: inv.id.toString(),
+              }));
+              setSearchTerm(`[${inv.invoice_number}] ${inv.customer_name}`);
+            }
+          })
+          .catch(() => {
+            setValidationError("Failed to auto-load the target invoice.");
+          })
+          .finally(() => setIsSearching(false));
+      }
     }
   }, [isOpen, initialInvoiceId]);
 
-  const searchResults = useMemo(() => {
-    if (!searchTerm) return unresolvedInvoices;
-    return unresolvedInvoices.filter(
-      (inv) =>
-        inv.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        inv.customer_name.toLowerCase().includes(searchTerm.toLowerCase()),
-    );
-  }, [searchTerm, unresolvedInvoices]);
+  useEffect(() => {
+    if (isOpen && isDropdownOpen) {
+      setIsSearching(true);
+      invoiceService
+        .getInvoices(1, 20, debouncedSearchTerm, "all", "all")
+        .then((res) => {
+          const pending = (res.data?.invoices || []).filter(
+            (inv) =>
+              inv.status !== "PAID" &&
+              inv.status !== "CANCELLED" &&
+              inv.status !== "VOID",
+          );
+          setSearchResults(pending);
+        })
+        .catch(() => setSearchResults([]))
+        .finally(() => setIsSearching(false));
+    }
+  }, [isOpen, debouncedSearchTerm, isDropdownOpen]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -170,7 +162,7 @@ const PaymentModal = ({
     e.preventDefault();
     setValidationError("");
 
-    if (!formData.invoice_id)
+    if (!formData.invoice_id || !selectedInvoice)
       return setValidationError("You must search and select an invoice.");
     if (amountToApply <= 0)
       return setValidationError("Payment amount must be greater than zero.");
@@ -254,274 +246,273 @@ const PaymentModal = ({
                 </div>
               )}
 
-              {isLoadingInvoices ? (
-                <div className="flex flex-col items-center justify-center py-10 opacity-50">
-                  <Loader2 className="w-8 h-8 text-amber-500 animate-spin mb-3" />
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Scanning Outstanding Ledgers...
-                  </p>
-                </div>
-              ) : (
-                <form
-                  id="paymentForm"
-                  onSubmit={handleSubmit}
-                  className="space-y-6 sm:space-y-8"
-                >
-                  {/* SECTION 1 - SOURCE DOCUMENT */}
-                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
-                      <FileText size={14} /> Source Document
-                    </h3>
+              <form
+                id="paymentForm"
+                onSubmit={handleSubmit}
+                className="space-y-6 sm:space-y-8"
+              >
+                {/* SECTION 1 - SOURCE DOCUMENT */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                    <FileText size={14} /> Source Document
+                  </h3>
 
-                    {/* Custom Searchable Dropdown */}
-                    <div ref={dropdownRef} className="relative z-20 mb-5">
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Target Invoice <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  {/* Async Searchable Dropdown */}
+                  <div ref={dropdownRef} className="relative z-20 mb-5">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      Target Invoice <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        {isSearching ? (
+                          <Loader2
+                            size={18}
+                            className="text-amber-500 animate-spin"
+                          />
+                        ) : (
                           <Search size={18} className="text-slate-400" />
-                        </div>
-                        <input
-                          type="text"
-                          value={searchTerm}
-                          onChange={handleSearchChange}
-                          onFocus={() => setIsDropdownOpen(true)}
-                          placeholder="Type Invoice Number or Customer Name..."
-                          className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
-                        />
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        onFocus={() => setIsDropdownOpen(true)}
+                        placeholder="Type Invoice Number or Customer Name..."
+                        className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
+                      />
 
-                        {/* Dropdown Results */}
-                        <AnimatePresence>
-                          {isDropdownOpen && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 5 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 5 }}
-                              className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-30"
-                            >
-                              {searchResults.length > 0 ? (
-                                searchResults.map((inv) => (
-                                  <div
-                                    key={inv.id}
-                                    onClick={() => handleSelectInvoice(inv)}
-                                    className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
-                                  >
-                                    <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
-                                      {inv.invoice_number}
-                                    </p>
-                                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
-                                      {inv.customer_name}
-                                    </p>
-                                    <p className="text-[10px] text-slate-500 mt-2 font-medium tracking-widest uppercase">
-                                      Current Balance:{" "}
-                                      <span className="font-black text-slate-700 dark:text-slate-300">
-                                        ₱
-                                        {(
-                                          parseFloat(inv.grand_total) -
-                                          parseFloat(inv.amount_paid)
-                                        ).toLocaleString(undefined, {
-                                          minimumFractionDigits: 2,
-                                        })}
-                                      </span>
-                                    </p>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="p-8 text-center">
-                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
-                                    No matching unpaid invoices found.
+                      {/* Dropdown Results */}
+                      <AnimatePresence>
+                        {isDropdownOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 5 }}
+                            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-30"
+                          >
+                            {searchResults.length > 0 ? (
+                              searchResults.map((inv) => (
+                                <div
+                                  key={inv.id}
+                                  onClick={() => handleSelectInvoice(inv)}
+                                  className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                                >
+                                  <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                                    {inv.invoice_number}
+                                  </p>
+                                  <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                                    {inv.customer_name}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500 mt-2 font-medium tracking-widest uppercase">
+                                    Current Balance:{" "}
+                                    <span className="font-black text-slate-700 dark:text-slate-300">
+                                      ₱
+                                      {(
+                                        parseFloat(inv.grand_total) -
+                                        parseFloat(inv.amount_paid)
+                                      ).toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                    </span>
                                   </p>
                                 </div>
-                              )}
+                              ))
+                            ) : (
+                              <div className="p-8 text-center">
+                                <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+                                  {isSearching
+                                    ? "Searching unpaid invoices..."
+                                    : "No matching unpaid invoices found."}
+                                </p>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
+                  {/* Financial Matrix Preview */}
+                  <AnimatePresence>
+                    {selectedInvoice && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0, y: -10 }}
+                        animate={{ opacity: 1, height: "auto", y: 0 }}
+                        exit={{ opacity: 0, height: 0, y: -10 }}
+                        className="p-5 bg-slate-900 dark:bg-black rounded-2xl text-white shadow-xl overflow-hidden"
+                      >
+                        <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-2">
+                          <span>Original Invoice Total</span>
+                          <span>
+                            ₱
+                            {grandTotal.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-4 pb-4 border-b border-white/10">
+                          <span>Previously Paid</span>
+                          <span>
+                            - ₱
+                            {previouslyPaid.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-black uppercase tracking-widest text-slate-300">
+                            Remaining Balance
+                          </span>
+                          <span className="text-xl font-black text-rose-500 font-mono">
+                            ₱
+                            {currentBalance.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+
+                        <AnimatePresence>
+                          {amountToApply > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -5 }}
+                              className="flex justify-between items-center pt-4 mt-4 border-t border-white/10"
+                            >
+                              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                                Projected Balance
+                              </span>
+                              <span
+                                className={`text-lg font-black font-mono ${projectedBalance < 0 ? "text-red-500" : projectedBalance === 0 ? "text-emerald-500" : "text-amber-500"}`}
+                              >
+                                ₱
+                                {projectedBalance.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                })}
+                              </span>
                             </motion.div>
                           )}
                         </AnimatePresence>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </section>
+
+                {/* SECTION 2 - PAYMENT DETAILS */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
+                    <Wallet size={14} /> Collection Details
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Amount Received <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
+                          ₱
+                        </span>
+                        <input
+                          required
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          name="amount_received"
+                          value={formData.amount_received}
+                          onChange={handleChange}
+                          className="w-full pl-8 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
+                          placeholder="0.00"
+                        />
                       </div>
+                      {selectedInvoice && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              amount_received: currentBalance.toFixed(2),
+                            })
+                          }
+                          className="mt-2 text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors"
+                        >
+                          Apply Full Balance
+                        </button>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Payment Method <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        name="payment_method"
+                        value={formData.payment_method}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
+                      >
+                        {PAYMENT_METHODS.map((method) => (
+                          <option key={method.id} value={method.id}>
+                            {method.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    {/* Financial Matrix Preview */}
-                    <AnimatePresence>
-                      {selectedInvoice && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0, y: -10 }}
-                          animate={{ opacity: 1, height: "auto", y: 0 }}
-                          exit={{ opacity: 0, height: 0, y: -10 }}
-                          className="p-5 bg-slate-900 dark:bg-black rounded-2xl text-white shadow-xl overflow-hidden"
-                        >
-                          <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-2">
-                            <span>Original Invoice Total</span>
-                            <span>
-                              ₱
-                              {grandTotal.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                              })}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-4 pb-4 border-b border-white/10">
-                            <span>Previously Paid</span>
-                            <span>
-                              - ₱
-                              {previouslyPaid.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                              })}
-                            </span>
-                          </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Payment Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        required
+                        type="date"
+                        name="payment_date"
+                        max={getLocalDateString()}
+                        value={formData.payment_date}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all cursor-pointer"
+                      />
+                    </div>
 
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-black uppercase tracking-widest text-slate-300">
-                              Remaining Balance
-                            </span>
-                            <span className="text-xl font-black text-rose-500 font-mono">
-                              ₱
-                              {currentBalance.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                              })}
-                            </span>
-                          </div>
-
-                          <AnimatePresence>
-                            {amountToApply > 0 && (
-                              <motion.div
-                                initial={{ opacity: 0, y: -5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -5 }}
-                                className="flex justify-between items-center pt-4 mt-4 border-t border-white/10"
-                              >
-                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
-                                  Projected Balance
-                                </span>
-                                <span
-                                  className={`text-lg font-black font-mono ${projectedBalance < 0 ? "text-red-500" : projectedBalance === 0 ? "text-emerald-500" : "text-amber-500"}`}
-                                >
-                                  ₱
-                                  {projectedBalance.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                  })}
-                                </span>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </section>
-
-                  {/*  SECTION 2 - PAYMENT DETAILS */}
-                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
-                      <Wallet size={14} /> Collection Details
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Amount Received{" "}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
-                            ₱
-                          </span>
-                          <input
-                            required
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            name="amount_received"
-                            value={formData.amount_received}
-                            onChange={handleChange}
-                            className="w-full pl-8 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
-                            placeholder="0.00"
-                          />
-                        </div>
-                        {selectedInvoice && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData({
-                                ...formData,
-                                amount_received: currentBalance.toFixed(2),
-                              })
-                            }
-                            className="mt-2 text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors"
-                          >
-                            Apply Full Balance
-                          </button>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Payment Method <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          required
-                          name="payment_method"
-                          value={formData.payment_method}
-                          onChange={handleChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
-                        >
-                          {PAYMENT_METHODS.map((method) => (
-                            <option key={method.id} value={method.id}>
-                              {method.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
+                    {requiresReference && (
                       <div className="md:col-span-2">
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Payment Date <span className="text-red-500">*</span>
+                          Transaction Reference Number{" "}
+                          <span className="text-red-500">*</span>
                         </label>
                         <input
                           required
-                          type="date"
-                          name="payment_date"
-                          max={getLocalDateString()}
-                          value={formData.payment_date}
+                          type="text"
+                          name="reference_number"
+                          value={formData.reference_number || ""}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all cursor-pointer"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
+                          placeholder="e.g., Bank Ref or GCash Ref No."
                         />
                       </div>
+                    )}
 
-                      {requiresReference && (
-                        <div className="md:col-span-2">
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                            Transaction Reference Number{" "}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            required
-                            type="text"
-                            name="reference_number"
-                            value={formData.reference_number || ""}
-                            onChange={handleChange}
-                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all"
-                            placeholder="e.g., Bank Ref or GCash Ref No."
-                          />
-                        </div>
-                      )}
-
-                      <div className="md:col-span-2">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Collection Notes{" "}
-                          <span className="text-slate-400 font-medium lowercase">
-                            (Optional)
-                          </span>
-                        </label>
-                        <textarea
-                          name="notes"
-                          value={formData.notes || ""}
-                          onChange={handleChange}
-                          rows="2"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none focus:outline-none focus:border-amber-500 shadow-sm transition-all"
-                          placeholder="e.g., Downpayment or Cash handed to cashier."
-                        />
-                      </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Collection Notes{" "}
+                        <span className="text-slate-400 font-medium lowercase">
+                          (Optional)
+                        </span>
+                      </label>
+                      <textarea
+                        name="notes"
+                        value={formData.notes || ""}
+                        onChange={handleChange}
+                        rows="2"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white resize-none focus:outline-none focus:border-amber-500 shadow-sm transition-all"
+                        placeholder="e.g., Downpayment or Cash handed to cashier."
+                      />
                     </div>
-                  </section>
-                </form>
-              )}
+                  </div>
+                </section>
+              </form>
             </div>
 
             {/* Footer */}
@@ -529,9 +520,7 @@ const PaymentModal = ({
               <button
                 type="submit"
                 form="paymentForm"
-                disabled={
-                  isSubmitting || isLoadingInvoices || !formData.invoice_id
-                }
+                disabled={isSubmitting || !selectedInvoice}
                 className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? (
