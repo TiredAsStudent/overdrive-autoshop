@@ -11,6 +11,8 @@ import {
   Landmark,
   Search,
   FileText,
+  UploadCloud,
+  ImageIcon,
 } from "lucide-react";
 import { invoiceService } from "../../../services/staff/invoice.service";
 import { useDebounce } from "../../../hooks/useDebounce";
@@ -22,6 +24,8 @@ const PAYMENT_METHODS = [
   { id: "BANK_TRANSFER", label: "Bank Transfer", icon: Landmark },
 ];
 
+const REQUIRES_EVIDENCE = ["GCASH", "MAYA", "BANK_TRANSFER"];
+
 const PaymentModal = ({
   isOpen,
   onClose,
@@ -30,15 +34,20 @@ const PaymentModal = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(true);
 
+  const [unresolvedInvoices, setUnresolvedInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const [proofFile, setProofFile] = useState(null);
+  const [proofPreview, setProofPreview] = useState(null);
 
   const getLocalDateString = () => {
     const d = new Date();
@@ -79,6 +88,9 @@ const PaymentModal = ({
       setSearchResults([]);
       setIsDropdownOpen(false);
       setValidationError("");
+
+      setProofFile(null);
+      setProofPreview(null);
 
       if (initialInvoiceId) {
         setIsSearching(true);
@@ -143,6 +155,37 @@ const PaymentModal = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+      if (!allowedTypes.includes(file.type)) {
+        setValidationError(
+          "Invalid format. Only JPEG, PNG, and WEBP images are allowed.",
+        );
+        removeFile();
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        setValidationError("Image exceeds the maximum 5MB size limit.");
+        removeFile();
+        return;
+      }
+
+      setProofFile(file);
+      setProofPreview(URL.createObjectURL(file));
+      setValidationError("");
+    }
+  };
+
+  const removeFile = () => {
+    setProofFile(null);
+    setProofPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const { grandTotal, previouslyPaid, currentBalance } = useMemo(() => {
     const gt = selectedInvoice ? parseFloat(selectedInvoice.grand_total) : 0;
     const pp = selectedInvoice ? parseFloat(selectedInvoice.amount_paid) : 0;
@@ -153,10 +196,7 @@ const PaymentModal = ({
   const amountToApply = parseFloat(formData.amount_received) || 0;
   const projectedBalance =
     Math.round((currentBalance - amountToApply) * 100) / 100;
-
-  const requiresReference = ["GCASH", "MAYA", "BANK_TRANSFER"].includes(
-    formData.payment_method,
-  );
+  const requiresReference = REQUIRES_EVIDENCE.includes(formData.payment_method);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -173,13 +213,17 @@ const PaymentModal = ({
       );
     }
 
-    if (
-      requiresReference &&
-      (!formData.reference_number || !formData.reference_number.trim())
-    ) {
-      return setValidationError(
-        `A Transaction Reference is required for ${formData.payment_method} payments.`,
-      );
+    if (requiresReference) {
+      if (!formData.reference_number || !formData.reference_number.trim()) {
+        return setValidationError(
+          `A Transaction Reference is required for ${formData.payment_method} payments.`,
+        );
+      }
+      if (!proofFile) {
+        return setValidationError(
+          `Photo evidence (Screenshot/Slip) is mandatory for ${formData.payment_method} payments.`,
+        );
+      }
     }
 
     const payload = {
@@ -195,7 +239,7 @@ const PaymentModal = ({
 
     setIsSubmitting(true);
     try {
-      await onSubmit(payload);
+      await onSubmit(payload, proofFile);
     } catch (error) {
       setValidationError(error.message);
     } finally {
@@ -206,7 +250,7 @@ const PaymentModal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -257,7 +301,6 @@ const PaymentModal = ({
                     <FileText size={14} /> Source Document
                   </h3>
 
-                  {/* Async Searchable Dropdown */}
                   <div ref={dropdownRef} className="relative z-20 mb-5">
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                       Target Invoice <span className="text-red-500">*</span>
@@ -282,7 +325,6 @@ const PaymentModal = ({
                         className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
                       />
 
-                      {/* Dropdown Results */}
                       <AnimatePresence>
                         {isDropdownOpen && (
                           <motion.div
@@ -333,7 +375,6 @@ const PaymentModal = ({
                     </div>
                   </div>
 
-                  {/* Financial Matrix Preview */}
                   <AnimatePresence>
                     {selectedInvoice && (
                       <motion.div
@@ -493,6 +534,60 @@ const PaymentModal = ({
                         />
                       </div>
                     )}
+
+                    <div className="md:col-span-2 border-t border-slate-200 dark:border-slate-700 pt-5">
+                      <label className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                        <ImageIcon size={14} /> Proof of Payment
+                        {requiresReference ? (
+                          <span className="text-red-500">
+                            *(Required for {formData.payment_method})
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-medium lowercase">
+                            (Optional)
+                          </span>
+                        )}
+                      </label>
+
+                      {!proofPreview ? (
+                        <div className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 flex flex-col items-center justify-center bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors relative">
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept="image/jpeg, image/png, image/webp"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <UploadCloud
+                            size={32}
+                            className="text-slate-400 mb-3"
+                          />
+                          <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                            Click or drag screenshot to upload
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            JPEG, PNG up to 5MB
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group">
+                          <img
+                            src={proofPreview}
+                            alt="Payment Proof"
+                            className="w-full h-48 sm:h-64 object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={removeFile}
+                              className="px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-red-600 transition-colors cursor-pointer"
+                            >
+                              <X size={14} /> Remove Photo
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     <div className="md:col-span-2">
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">

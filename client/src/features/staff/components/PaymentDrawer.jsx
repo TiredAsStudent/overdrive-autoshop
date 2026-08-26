@@ -13,6 +13,7 @@ import {
   Landmark,
   Calendar,
   BadgeCheck,
+  ImageIcon,
 } from "lucide-react";
 import { paymentService } from "../../../services/staff/payment.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -57,11 +58,18 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
     }
   };
 
+  const getEvidenceUrl = (path) => {
+    if (!path) return null;
+    const baseUrl =
+      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+      "http://localhost:5000";
+    return `${baseUrl}/${path}`;
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          {/* 1. Standardized Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -72,7 +80,6 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
             aria-hidden="true"
           />
 
-          {/* 2. Standardized Drawer Panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -87,7 +94,7 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
             role="dialog"
             aria-modal="true"
           >
-            {/* 3. Standardized Fixed Header */}
+            {/* Header */}
             <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
@@ -130,7 +137,7 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
               </button>
             </header>
 
-            {/* 4. Standardized Scrollable Body */}
+            {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 opacity-70">
@@ -214,6 +221,32 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                       </div>
                     )}
                   </section>
+
+                  {/* PHOTO EVIDENCE VIEWER */}
+                  {payment.proof_of_payment_url && (
+                    <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                        <ImageIcon size={14} /> Attached Proof of Payment
+                      </p>
+                      <a
+                        href={getEvidenceUrl(payment.proof_of_payment_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
+                      >
+                        <img
+                          src={getEvidenceUrl(payment.proof_of_payment_url)}
+                          alt="Proof of Payment"
+                          className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
+                            Click to enlarge
+                          </span>
+                        </div>
+                      </a>
+                    </section>
+                  )}
 
                   {/* Receipt Math */}
                   <section

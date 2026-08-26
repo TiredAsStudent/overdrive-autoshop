@@ -33,13 +33,25 @@ export const paymentService = {
     }
   },
 
-  recordPayment: async (data) => {
+  recordPayment: async (data, proofFile = null) => {
     try {
-      const payload = {
-        ...data,
-        amount_received: parseFloat(data.amount_received),
-      };
-      const response = await api.post("/staff/payments", payload);
+      const formData = new FormData();
+      formData.append("invoice_id", data.invoice_id);
+      formData.append("amount_received", data.amount_received);
+      formData.append("payment_method", data.payment_method);
+      formData.append("payment_date", data.payment_date);
+
+      if (data.reference_number)
+        formData.append("reference_number", data.reference_number);
+      if (data.notes) formData.append("notes", data.notes);
+
+      if (proofFile) {
+        formData.append("proof", proofFile);
+      }
+
+      const response = await api.post("/staff/payments", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return response.data;
     } catch (error) {
       throw new Error(

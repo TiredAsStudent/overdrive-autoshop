@@ -94,9 +94,9 @@ const Payments = () => {
     loadPayments();
   }, [currentPage, debouncedSearchQuery, methodFilter]);
 
-  const handleModalSubmit = async (formData) => {
+  const handleModalSubmit = async (formData, proofFile) => {
     try {
-      const res = await paymentService.recordPayment(formData);
+      const res = await paymentService.recordPayment(formData, proofFile);
       const isFullyPaid = res.data?.updatedInvoice?.status === "PAID";
       showToast(
         isFullyPaid
