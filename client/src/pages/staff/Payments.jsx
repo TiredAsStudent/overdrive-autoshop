@@ -8,6 +8,7 @@ import {
   Banknote,
   Wallet,
   Landmark,
+  Paperclip,
 } from "lucide-react";
 import { paymentService } from "../../services/staff/payment.service";
 import PaymentModal from "../../features/staff/components/PaymentModal";
@@ -236,11 +237,21 @@ const Payments = () => {
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col items-start gap-1">
                 {renderMethodBadge(pay.payment_method)}
-                {pay.reference_number && (
-                  <span className="text-[8px] text-slate-400 font-mono tracking-wider truncate max-w-[120px]">
-                    {pay.reference_number}
-                  </span>
-                )}
+
+                <div className="flex items-center gap-1.5">
+                  {pay.reference_number && (
+                    <span className="text-[8px] text-slate-400 font-mono tracking-wider truncate max-w-[120px]">
+                      {pay.reference_number}
+                    </span>
+                  )}
+                  {pay.proof_of_payment_url && (
+                    <Paperclip
+                      size={12}
+                      className="text-amber-500"
+                      title="Proof of Payment Attached"
+                    />
+                  )}
+                </div>
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">

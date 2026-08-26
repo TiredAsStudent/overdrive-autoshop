@@ -14,6 +14,7 @@ import {
   Calendar,
   BadgeCheck,
   ImageIcon,
+  ImageOff,
 } from "lucide-react";
 import { paymentService } from "../../../services/staff/payment.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -22,11 +23,13 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
   const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (isOpen && paymentId) {
       setLoading(true);
       setError("");
+      setImageError(false);
       paymentService
         .getPaymentDetails(paymentId)
         .then((res) => setPayment(res.data))
@@ -228,23 +231,41 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
                         <ImageIcon size={14} /> Attached Proof of Payment
                       </p>
-                      <a
-                        href={getEvidenceUrl(payment.proof_of_payment_url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
-                      >
-                        <img
-                          src={getEvidenceUrl(payment.proof_of_payment_url)}
-                          alt="Proof of Payment"
-                          className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                          <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
-                            Click to enlarge
+
+                      {imageError ? (
+                        <div className="w-full h-48 sm:h-56 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700">
+                          <ImageOff
+                            size={32}
+                            className="text-slate-400 mb-3 opacity-50"
+                          />
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            Image File Unavailable
+                          </span>
+                          <span className="text-[9px] text-slate-400 text-center max-w-[200px] mt-1">
+                            The file may have been moved or deleted from the
+                            server.
                           </span>
                         </div>
-                      </a>
+                      ) : (
+                        <a
+                          href={getEvidenceUrl(payment.proof_of_payment_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
+                        >
+                          <img
+                            src={getEvidenceUrl(payment.proof_of_payment_url)}
+                            alt="Proof of Payment"
+                            onError={() => setImageError(true)}
+                            className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                            <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
+                              Click to enlarge
+                            </span>
+                          </div>
+                        </a>
+                      )}
                     </section>
                   )}
 

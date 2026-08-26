@@ -65,6 +65,14 @@ const PaymentModal = ({
   });
 
   useEffect(() => {
+    return () => {
+      if (proofPreview) {
+        URL.revokeObjectURL(proofPreview);
+      }
+    };
+  }, [proofPreview]);
+
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
@@ -89,6 +97,8 @@ const PaymentModal = ({
       setSearchResults([]);
       setIsDropdownOpen(false);
       setValidationError("");
+
+      if (proofPreview) URL.revokeObjectURL(proofPreview);
       setProofFile(null);
       setProofPreview(null);
 
@@ -174,6 +184,7 @@ const PaymentModal = ({
         return;
       }
 
+      if (proofPreview) URL.revokeObjectURL(proofPreview);
       setProofFile(file);
       setProofPreview(URL.createObjectURL(file));
       setValidationError("");
@@ -181,6 +192,7 @@ const PaymentModal = ({
   };
 
   const removeFile = () => {
+    if (proofPreview) URL.revokeObjectURL(proofPreview);
     setProofFile(null);
     setProofPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -441,7 +453,7 @@ const PaymentModal = ({
                   </AnimatePresence>
                 </section>
 
-                {/* SECTION 2 - PAYMENT DETAILS */}
+                {/* COLLECTION DETAILS SECTION */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
                     <Wallet size={14} /> Collection Details
@@ -536,6 +548,7 @@ const PaymentModal = ({
                       </div>
                     )}
 
+                    {/* IMAGE UPLOAD UI */}
                     <div className="md:col-span-2 border-t border-slate-200 dark:border-slate-700 pt-5">
                       <label className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
                         <ImageIcon size={14} /> Proof of Payment
