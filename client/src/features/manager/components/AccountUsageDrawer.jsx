@@ -51,12 +51,33 @@ const AccountUsageDrawer = ({ isOpen, onClose, accountId }) => {
     if (
       status.includes("APPROVED") ||
       status.includes("RECEIVED") ||
-      status.includes("PAID")
+      status.includes("PAID") ||
+      status.includes("TRANSFER_IN")
     )
       return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
     if (status.includes("PENDING") || status.includes("DRAFT"))
       return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
     return "text-slate-600 bg-slate-100 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
+  };
+
+  const formatAccountingNumber = (amount) => {
+    const num = parseFloat(amount) || 0;
+    const isNegative = num < 0;
+    const formatted = Math.abs(num).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    if (isNegative) {
+      return {
+        text: `(₱${formatted})`,
+        color: "text-red-500 dark:text-red-400",
+      };
+    }
+    return {
+      text: `₱${formatted}`,
+      color: "text-slate-900 dark:text-white",
+    };
   };
 
   return (
@@ -149,48 +170,52 @@ const AccountUsageDrawer = ({ isOpen, onClose, accountId }) => {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {data.transactions.map((txn, idx) => (
-                        <div
-                          key={idx}
-                          className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center group"
-                        >
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                                {txn.transaction_type}
+                      {data.transactions.map((txn, idx) => {
+                        const { text, color } = formatAccountingNumber(
+                          txn.amount,
+                        );
+
+                        return (
+                          <div
+                            key={idx}
+                            className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center group"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                                  {txn.transaction_type}
+                                </span>
+                                <span className="text-xs font-black text-slate-900 dark:text-white uppercase truncate flex items-center gap-1">
+                                  {txn.reference}{" "}
+                                  <ArrowUpRight
+                                    size={12}
+                                    className="text-slate-400 group-hover:text-blue-500 transition-colors"
+                                  />
+                                </span>
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-500">
+                                {new Date(
+                                  txn.transaction_date,
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="text-right flex flex-col items-end">
+                              <span
+                                className={`text-sm font-black font-mono ${color}`}
+                              >
+                                {text}
                               </span>
-                              <span className="text-xs font-black text-slate-900 dark:text-white uppercase truncate flex items-center gap-1">
-                                {txn.reference}{" "}
-                                <ArrowUpRight
-                                  size={12}
-                                  className="text-slate-400 group-hover:text-blue-500 transition-colors"
-                                />
+                              <span
+                                className={`mt-1 inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${getStatusColor(txn.status)}`}
+                              >
+                                {txn.status
+                                  ? txn.status.replace(/_/g, " ")
+                                  : "N/A"}
                               </span>
                             </div>
-                            <p className="text-[10px] font-bold text-slate-500">
-                              {new Date(
-                                txn.transaction_date,
-                              ).toLocaleDateString()}
-                            </p>
                           </div>
-                          <div className="text-right flex flex-col items-end">
-                            <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                              ₱
-                              {parseFloat(txn.amount).toLocaleString(
-                                undefined,
-                                { minimumFractionDigits: 2 },
-                              )}
-                            </span>
-                            <span
-                              className={`mt-1 inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${getStatusColor(txn.status)}`}
-                            >
-                              {txn.status
-                                ? txn.status.replace("_", " ")
-                                : "N/A"}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 

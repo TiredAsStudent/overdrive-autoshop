@@ -219,42 +219,49 @@ class ChartOfAccounts {
       `);
 
       queries.push(`
-        SELECT 'EXPENSE' as transaction_type, e.expense_number as reference, e.expense_date as transaction_date, e.total_amount as amount, e.status::text as status
+        SELECT 'EXPENSE' as transaction_type, e.expense_number as reference, e.expense_date as transaction_date, 
+        e.total_amount as amount, e.status::text as status
         FROM expenses e
         WHERE e.category = $2
       `);
 
       if (account_code === "1100") {
         queries.push(`
-           SELECT 'A/R (Invoice)' as transaction_type, invoice_number as reference, created_at as transaction_date, grand_total as amount, status::text as status
+           SELECT 'A/R (Invoice)' as transaction_type, invoice_number as reference, created_at as transaction_date, 
+           grand_total as amount, status::text as status
            FROM invoices
          `);
       }
 
       if (account_code === "1200") {
         queries.push(`
-           SELECT 'INVENTORY' as transaction_type, transaction_reference as reference, created_at as transaction_date, 0.00 as amount, transaction_type::text as status
+           SELECT 'INVENTORY' as transaction_type, transaction_reference as reference, created_at as transaction_date, 
+           ((quantity_added - quantity_deducted) * recorded_unit_cost) as amount, 
+           transaction_type::text as status
            FROM inventory_movements
          `);
       }
 
       if (account_code === "2020") {
         queries.push(`
-           SELECT 'OUTPUT VAT' as transaction_type, invoice_number as reference, created_at as transaction_date, vat_amount as amount, status::text as status
+           SELECT 'OUTPUT VAT' as transaction_type, invoice_number as reference, created_at as transaction_date, 
+           vat_amount as amount, status::text as status
            FROM invoices WHERE vat_amount > 0
          `);
       }
 
       if (account_code === "1010") {
         queries.push(`
-           SELECT 'PAYMENT (Cash)' as transaction_type, payment_number as reference, payment_date as transaction_date, amount_received as amount, status::text as status
+           SELECT 'PAYMENT (Cash)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
+           amount_received as amount, status::text as status
            FROM payments WHERE payment_method = 'CASH'
          `);
       }
 
       if (account_code === "1020") {
         queries.push(`
-           SELECT 'PAYMENT (Bank/E-Wallet)' as transaction_type, payment_number as reference, payment_date as transaction_date, amount_received as amount, status::text as status
+           SELECT 'PAYMENT (Bank/E-Wallet)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
+           amount_received as amount, status::text as status
            FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER')
          `);
       }
