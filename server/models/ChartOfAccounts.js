@@ -145,44 +145,129 @@ class ChartOfAccounts {
 
   static async countAccountUsage(accountId) {
     try {
-      const sql = `
-        SELECT SUM(cnt) as total FROM (
-          SELECT COUNT(*) as cnt FROM expenses WHERE account_id = $1
-          UNION ALL
-          SELECT COUNT(*) as cnt FROM supplier_bills WHERE account_id = $1
-        ) t
-      `;
-      const result = await query(sql, [accountId]);
+      const accRes = await query(
+        `SELECT account_code, account_name FROM chart_of_accounts WHERE id = $1`,
+        [accountId],
+      );
+      if (!accRes.rows[0]) return 0;
+      const { account_code, account_name } = accRes.rows[0];
+
+      const queries = [];
+
+      queries.push(`
+        SELECT COUNT(DISTINCT i.id) as cnt
+        FROM invoices i
+        JOIN invoice_items ii ON i.id = ii.invoice_id
+        JOIN services s ON ii.service_id = s.id
+        WHERE s.income_account_id = $1
+      `);
+
+      queries.push(`
+        SELECT COUNT(*) as cnt
+        FROM expenses e
+        WHERE e.category = $2
+      `);
+
+      if (account_code === "1100")
+        queries.push(`SELECT COUNT(*) as cnt FROM invoices`);
+      if (account_code === "1200")
+        queries.push(`SELECT COUNT(*) as cnt FROM inventory_movements`);
+      if (account_code === "2020")
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM invoices WHERE vat_amount > 0`,
+        );
+      if (account_code === "1010")
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM payments WHERE payment_method = 'CASH'`,
+        );
+      if (account_code === "1020")
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER')`,
+        );
+
+      const sql =
+        `SELECT SUM(cnt) as total FROM (` + queries.join(" UNION ALL ") + `) t`;
+      const result = await query(sql, [accountId, account_name]);
+
       return parseInt(result.rows[0].total || 0, 10);
     } catch (error) {
+      console.error("Account Usage Count Error:", error.message);
       return 0;
     }
   }
 
   static async getAccountUsage(accountId, limit, offset) {
     try {
-      const sql = `
-        SELECT 
-          'EXPENSE' as transaction_type,
-          expense_number as reference,
-          expense_date as transaction_date,
-          total_amount as amount,
-          status
-        FROM expenses WHERE account_id = $1
-        UNION ALL
-        SELECT 
-          'BILL' as transaction_type,
-          bill_number as reference,
-          bill_date as transaction_date,
-          grand_total as amount,
-          status
-        FROM supplier_bills WHERE account_id = $1
-        ORDER BY transaction_date DESC
-        LIMIT $2 OFFSET $3
-      `;
-      const result = await query(sql, [accountId, limit, offset]);
+      const accRes = await query(
+        `SELECT account_code, account_name FROM chart_of_accounts WHERE id = $1`,
+        [accountId],
+      );
+      if (!accRes.rows[0]) return [];
+      const { account_code, account_name } = accRes.rows[0];
+
+      const queries = [];
+      const params = [accountId, account_name];
+
+      queries.push(`
+        SELECT 'INVOICE (Revenue)' as transaction_type, i.invoice_number as reference, i.created_at as transaction_date, 
+        SUM(ii.recorded_selling_price * ii.quantity - ii.discount_amount) as amount, i.status::text as status
+        FROM invoices i
+        JOIN invoice_items ii ON i.id = ii.invoice_id
+        JOIN services s ON ii.service_id = s.id
+        WHERE s.income_account_id = $1
+        GROUP BY i.id, i.invoice_number, i.created_at, i.status
+      `);
+
+      queries.push(`
+        SELECT 'EXPENSE' as transaction_type, e.expense_number as reference, e.expense_date as transaction_date, e.total_amount as amount, e.status::text as status
+        FROM expenses e
+        WHERE e.category = $2
+      `);
+
+      if (account_code === "1100") {
+        queries.push(`
+           SELECT 'A/R (Invoice)' as transaction_type, invoice_number as reference, created_at as transaction_date, grand_total as amount, status::text as status
+           FROM invoices
+         `);
+      }
+
+      if (account_code === "1200") {
+        queries.push(`
+           SELECT 'INVENTORY' as transaction_type, transaction_reference as reference, created_at as transaction_date, 0.00 as amount, transaction_type::text as status
+           FROM inventory_movements
+         `);
+      }
+
+      if (account_code === "2020") {
+        queries.push(`
+           SELECT 'OUTPUT VAT' as transaction_type, invoice_number as reference, created_at as transaction_date, vat_amount as amount, status::text as status
+           FROM invoices WHERE vat_amount > 0
+         `);
+      }
+
+      if (account_code === "1010") {
+        queries.push(`
+           SELECT 'PAYMENT (Cash)' as transaction_type, payment_number as reference, payment_date as transaction_date, amount_received as amount, status::text as status
+           FROM payments WHERE payment_method = 'CASH'
+         `);
+      }
+
+      if (account_code === "1020") {
+        queries.push(`
+           SELECT 'PAYMENT (Bank/E-Wallet)' as transaction_type, payment_number as reference, payment_date as transaction_date, amount_received as amount, status::text as status
+           FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER')
+         `);
+      }
+
+      const sql =
+        queries.join(" UNION ALL ") +
+        ` ORDER BY transaction_date DESC LIMIT $3 OFFSET $4`;
+      params.push(limit, offset);
+
+      const result = await query(sql, params);
       return result.rows;
     } catch (error) {
+      console.error("Account Usage Fetch Error:", error.message);
       return [];
     }
   }
