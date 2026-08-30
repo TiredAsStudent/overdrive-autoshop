@@ -7,6 +7,7 @@ import {
   Lock,
   History,
   Plus,
+  CheckCircle,
 } from "lucide-react";
 import { chartOfAccountsService } from "../../services/manager/chartOfAccounts.service";
 import AccountModal from "../../features/manager/components/AccountModal";
@@ -291,7 +292,11 @@ const ChartOfAccounts = () => {
                   icon={Archive}
                 />
               ) : (
-                <StatusBadge variant="success" label="Active" />
+                <StatusBadge
+                  variant="success"
+                  label="Active"
+                  icon={CheckCircle}
+                />
               )}
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
