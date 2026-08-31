@@ -226,13 +226,16 @@ class PurchaseOrder {
       values.push(branchId);
       paramIdx++;
     }
+
     if (startDate) {
-      conditions.push(`DATE(po.created_at) >= $${paramIdx}`);
+      conditions.push(`po.created_at >= $${paramIdx}::timestamp`);
       values.push(startDate);
       paramIdx++;
     }
     if (endDate) {
-      conditions.push(`DATE(po.created_at) <= $${paramIdx}`);
+      conditions.push(
+        `po.created_at < $${paramIdx}::timestamp + interval '1 day'`,
+      );
       values.push(endDate);
       paramIdx++;
     }
@@ -286,13 +289,16 @@ class PurchaseOrder {
       values.push(branchId);
       paramIdx++;
     }
+
     if (startDate) {
-      conditions.push(`DATE(po.created_at) >= $${paramIdx}`);
+      conditions.push(`po.created_at >= $${paramIdx}::timestamp`);
       values.push(startDate);
       paramIdx++;
     }
     if (endDate) {
-      conditions.push(`DATE(po.created_at) <= $${paramIdx}`);
+      conditions.push(
+        `po.created_at < $${paramIdx}::timestamp + interval '1 day'`,
+      );
       values.push(endDate);
       paramIdx++;
     }

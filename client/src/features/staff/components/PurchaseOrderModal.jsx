@@ -335,6 +335,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         type="date"
                         name="expected_delivery_date"
                         value={formData.expected_delivery_date}
+                        min={new Date().toISOString().split("T")[0]}
                         onChange={handleChange}
                         className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                       />
