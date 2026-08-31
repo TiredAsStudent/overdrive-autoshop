@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Search,
-  Loader2,
   Store,
   Plus,
   FileText,
@@ -13,9 +11,17 @@ import {
 import { vendorService } from "../../services/staff/vendor.service";
 import VendorModal from "../../features/staff/components/VendorModal";
 import VendorDrawer from "../../features/staff/components/VendorDrawer";
+
+// --- REUSABLE SHARED COMPONENTS ---
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import StatusToggle from "../../components/ui/StatusToggle";
+import ActionButton from "../../components/ui/ActionButton";
+import StatusBadge from "../../components/ui/StatusBadge";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import ConfirmModal from "../../components/shared/ConfirmModal";
+
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -121,85 +127,56 @@ const Vendors = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Store className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Vendors
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Supplier Master Data
-            </p>
-          </div>
+      {/* Page Header and Controls */}
+      <PageHeader title="Vendors" subtitle="Supplier Master Data" icon={Store}>
+        {/* VAT Inline Segment Control */}
+        <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 overflow-x-auto custom-scrollbar">
+          {[
+            { id: "all", label: "All" },
+            { id: "vat", label: "VAT Reg." },
+            { id: "non_vat", label: "Non-VAT" },
+          ].map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setVatFilter(f.id)}
+              className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                vatFilter === f.id
+                  ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          {/* VAT Filter */}
-          <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 overflow-x-auto custom-scrollbar">
-            {[
-              { id: "all", label: "All" },
-              { id: "vat", label: "VAT Reg." },
-              { id: "non_vat", label: "Non-VAT" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setVatFilter(f.id)}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${vatFilter === f.id ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search Supplier..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-          <div className="relative w-full sm:max-w-[200px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search Supplier..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-            />
-          </div>
+        <StatusToggle
+          activeValue={showArchived}
+          onToggle={setShowArchived}
+          options={[
+            { label: "Active", value: false },
+            { label: "Archived", value: true },
+          ]}
+        />
 
-          <div className="flex items-center gap-1 bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
-            <button
-              onClick={() => setShowArchived(false)}
-              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${!showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => setShowArchived(true)}
-              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-            >
-              Archived
-            </button>
-          </div>
+        <ActionButton
+          onClick={() => {
+            setSelectedVendor(null);
+            setIsModalOpen(true);
+          }}
+          label="Register Supplier"
+          icon={Plus}
+        />
+      </PageHeader>
 
-          <button
-            onClick={() => {
-              setSelectedVendor(null);
-              setIsModalOpen(true);
-            }}
-            className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-amber-500/20 active:scale-95 transition-all"
-          >
-            <Plus size={16} /> Register Supplier
-          </button>
-        </div>
-      </div>
-
-      {/* DATA TABLE */}
+      {/* Data Table */}
       <DataTable
         headers={[
           "Supplier ID",
@@ -214,10 +191,14 @@ const Vendors = () => {
         renderRow={(vendor) => (
           <tr
             key={vendor.id}
-            className={`group transition-colors ${!vendor.is_active ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale" : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"}`}
+            className={`group transition-colors ${
+              !vendor.is_active
+                ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale"
+                : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
+            }`}
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="inline-flex px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 text-[10px] font-black tracking-widest uppercase">
+              <span className="inline-flex px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 text-[10px] font-black tracking-widest uppercase font-mono">
                 {vendor.vendor_code}
               </span>
             </td>
@@ -243,13 +224,13 @@ const Vendors = () => {
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               {vendor.is_vat_registered ? (
-                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest border bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
-                  <ShieldCheck size={12} /> VAT
-                </span>
+                <StatusBadge
+                  label="VAT Registered"
+                  variant="success"
+                  icon={ShieldCheck}
+                />
               ) : (
-                <span className="inline-flex px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest border bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
-                  NON-VAT
-                </span>
+                <StatusBadge label="Non-VAT" variant="default" />
               )}
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
@@ -277,7 +258,11 @@ const Vendors = () => {
                 <button
                   onClick={() => handleToggleStatus(vendor)}
                   title={vendor.is_active ? "Archive Vendor" : "Restore Vendor"}
-                  className={`p-2 rounded-xl transition-colors cursor-pointer ${vendor.is_active ? "text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10" : "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400"}`}
+                  className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                    vendor.is_active
+                      ? "text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+                      : "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400"
+                  }`}
                 >
                   {vendor.is_active ? (
                     <Archive size={16} />

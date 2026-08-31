@@ -98,7 +98,11 @@ class Vendor {
     branchId,
   ) {
     let sql = `
-      SELECT v.*, b.branch_name 
+      SELECT v.*, b.branch_name,
+        (SELECT COUNT(*) FROM purchase_orders po WHERE po.vendor_id = v.id) AS total_pos,
+        (SELECT COUNT(*) FROM bills bi WHERE bi.vendor_id = v.id) AS total_bills,
+        (SELECT COALESCE(SUM(bi.grand_total), 0) FROM bills bi WHERE bi.vendor_id = v.id) AS total_procurement_value,
+        (SELECT MAX(bi.created_at) FROM bills bi WHERE bi.vendor_id = v.id) AS latest_procurement_date
       FROM vendors v
       LEFT JOIN branches b ON v.branch_id = b.id
     `;
@@ -136,7 +140,11 @@ class Vendor {
 
   static async findById(id) {
     const sql = `
-      SELECT v.*, b.branch_name 
+      SELECT v.*, b.branch_name,
+        (SELECT COUNT(*) FROM purchase_orders po WHERE po.vendor_id = v.id) AS total_pos,
+        (SELECT COUNT(*) FROM bills bi WHERE bi.vendor_id = v.id) AS total_bills,
+        (SELECT COALESCE(SUM(bi.grand_total), 0) FROM bills bi WHERE bi.vendor_id = v.id) AS total_procurement_value,
+        (SELECT MAX(bi.created_at) FROM bills bi WHERE bi.vendor_id = v.id) AS latest_procurement_date
       FROM vendors v 
       LEFT JOIN branches b ON v.branch_id = b.id 
       WHERE v.id = $1
@@ -176,7 +184,6 @@ class Vendor {
     }
 
     setClauses.push(`updated_at = NOW()`);
-
     values.push(id);
 
     const sql = `
