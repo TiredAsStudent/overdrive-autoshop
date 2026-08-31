@@ -130,26 +130,15 @@ const Vendors = () => {
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
       {/* Page Header and Controls */}
       <PageHeader title="Vendors" subtitle="Supplier Master Data" icon={Store}>
-        {/* VAT Inline Segment Control */}
-        <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 overflow-x-auto custom-scrollbar">
-          {[
-            { id: "all", label: "All" },
-            { id: "vat", label: "VAT Reg." },
-            { id: "non_vat", label: "Non-VAT" },
-          ].map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setVatFilter(f.id)}
-              className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                vatFilter === f.id
-                  ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <StatusToggle
+          activeValue={vatFilter}
+          onToggle={setVatFilter}
+          options={[
+            { label: "All", value: "all" },
+            { label: "VAT Reg.", value: "vat" },
+            { label: "Non-VAT", value: "non_vat" },
+          ]}
+        />
 
         <SearchBar
           value={searchQuery}
@@ -199,7 +188,7 @@ const Vendors = () => {
             }`}
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="inline-flex px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-black tracking-widest uppercase font-mono">
+              <span className="text-sm font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {vendor.vendor_code}
               </span>
             </td>
