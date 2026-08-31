@@ -18,6 +18,9 @@ import {
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
 
+// ==========================================
+// REUSABLE SUB-COMPONENT: Vendor Searchable Dropdown
+// ==========================================
 const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -71,7 +74,7 @@ const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
           }}
           onFocus={() => setIsOpen(true)}
           placeholder="Type Vendor Name or ID to search..."
-          className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm disabled:opacity-60"
+          className="w-full pl-12 pr-4 py-3 sm:py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm disabled:opacity-60"
         />
       </div>
       <AnimatePresence>
@@ -99,8 +102,8 @@ const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
                   <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
                     {v.business_name}
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase">
-                    Contact:{" "}
+                  <p className="text-[10px] text-slate-500 mt-2 flex flex-wrap items-center gap-1 font-medium tracking-widest uppercase">
+                    <span>Contact:</span>
                     <span className="font-black text-slate-700 dark:text-slate-300">
                       {v.contact_person} ({v.contact_number})
                     </span>
@@ -121,6 +124,9 @@ const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
   );
 };
 
+// ==========================================
+// REUSABLE SUB-COMPONENT: Item Searchable Dropdown
+// ==========================================
 const ItemSearchableSelect = ({ value, inventory, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -175,7 +181,7 @@ const ItemSearchableSelect = ({ value, inventory, onChange }) => {
           }}
           onFocus={() => setIsOpen(true)}
           placeholder="Search parts by name or SKU..."
-          className="w-full pl-9 pr-3 py-3 lg:py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg sm:rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
+          className="w-full pl-9 pr-3 py-3 lg:py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl lg:rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
         />
       </div>
       <AnimatePresence>
@@ -184,7 +190,7 @@ const ItemSearchableSelect = ({ value, inventory, onChange }) => {
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 5 }}
-            className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl max-h-64 overflow-y-auto custom-scrollbar z-[100]"
+            className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl max-h-60 sm:max-h-64 overflow-y-auto custom-scrollbar z-[100]"
           >
             {filtered.length > 0 ? (
               filtered.map((item) => (
@@ -197,14 +203,14 @@ const ItemSearchableSelect = ({ value, inventory, onChange }) => {
                   }}
                   className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
                 >
-                  <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                  <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase truncate">
                     {item.sku}
                   </p>
-                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mt-0.5 leading-snug">
                     {item.item_name}
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase">
-                    System Stock Snapshot:{" "}
+                  <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase truncate">
+                    Stock Snapshot:{" "}
                     <span className="font-black text-slate-700 dark:text-slate-300">
                       {item.total_company_quantity} {item.uom}
                     </span>
@@ -225,6 +231,9 @@ const ItemSearchableSelect = ({ value, inventory, onChange }) => {
   );
 };
 
+// ==========================================
+// MAIN MODAL COMPONENT
+// ==========================================
 const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
@@ -459,7 +468,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-5xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+            <div className="flex justify-between items-center p-5 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   {initialData ? (
@@ -469,10 +478,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   )}
                 </div>
                 <div>
-                  <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-none">
                     {initialData ? "Update Document" : "Draft Purchase Order"}
                   </h2>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                     Physical Parts Procurement
                   </p>
                 </div>
@@ -480,14 +489,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
+                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0"
               >
                 <X size={24} />
               </button>
             </div>
 
             {/* Body */}
-            <div className="px-6 sm:px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+            <div className="px-5 sm:px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -503,7 +512,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   </p>
                 </div>
               ) : (
-                <form id="poForm" className="space-y-6 sm:space-y-8">
+                <form id="poForm" className="space-y-6 sm:space-y-8 pb-4">
                   {/* Top Meta Data */}
                   <section className="relative z-[60] bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
@@ -515,6 +524,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           Target Vendor <span className="text-red-500">*</span>
                         </label>
 
+                        {/* 1. Custom Vendor Searchable Select */}
                         <VendorSearchableSelect
                           value={formData.vendor_id}
                           vendors={vendors}
@@ -548,7 +558,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.expected_delivery_date}
                           min={new Date().toISOString().split("T")[0]}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-all shadow-sm"
+                          className="w-full px-4 py-3 sm:py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-all shadow-sm"
                         />
                       </div>
                     </div>
@@ -556,14 +566,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
 
                   {/* Procurement Line Items */}
                   <section className="relative z-[50] bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4">
                       <h3 className="text-xs font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
                         <Calculator size={16} /> Itemized Parts Breakdown
                       </h3>
                       <button
                         type="button"
                         onClick={addPartRow}
-                        className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 w-full sm:w-auto"
+                        className="px-4 sm:px-3 py-2.5 sm:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 w-full sm:w-auto shadow-sm sm:shadow-none"
                       >
                         <Plus size={12} /> Add Part
                       </button>
@@ -574,8 +584,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         <div
                           key={item.id}
                           style={{ zIndex: 50 - index }}
-                          className="flex flex-col lg:flex-row gap-3 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] relative group shadow-sm"
+                          className="flex flex-col lg:flex-row gap-4 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] relative group shadow-sm"
                         >
+                          {/* 2. Custom Item Searchable Select */}
                           <div className="flex-1 min-w-0 relative">
                             <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
                               Master Inventory Item
@@ -589,14 +600,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                             />
                           </div>
 
-                          <div className="flex items-center justify-between gap-2 sm:gap-3 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t border-slate-100 dark:border-slate-700/50 lg:border-none mt-1 lg:mt-0">
+                          <div className="grid grid-cols-2 sm:flex sm:items-end gap-3 w-full lg:w-auto shrink-0 pt-4 lg:pt-0 border-t border-slate-100 dark:border-slate-700/50 lg:border-none mt-2 lg:mt-0">
                             {/* Cost Input */}
-                            <div className="flex-1 lg:flex-none lg:w-28 relative">
+                            <div className="col-span-1 sm:w-28 relative">
                               <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
                                 Unit Cost
                               </label>
                               <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
+                                <span className="absolute left-3 lg:left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
                                   ₱
                                 </span>
                                 <input
@@ -612,14 +623,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                       e.target.value,
                                     )
                                   }
-                                  className="w-full pl-6 py-3 lg:py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg sm:rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                                  className="w-full pl-7 px-3 py-3 lg:py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl lg:rounded-lg text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                                 />
                               </div>
                             </div>
 
                             {/* Qty Input */}
-                            <div className="flex-1 lg:flex-none lg:w-20">
-                              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5 text-center">
+                            <div className="col-span-1 sm:w-20">
+                              <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5 text-center sm:text-left">
                                 Qty
                               </label>
                               <input
@@ -635,17 +646,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full py-3 lg:py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg sm:rounded-xl text-xs font-mono text-center text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                                className="w-full py-3 lg:py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl lg:rounded-lg text-xs font-mono text-center sm:text-left text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                               />
                             </div>
 
                             {/* Discount Input */}
-                            <div className="flex-1 lg:flex-none lg:w-28 relative">
+                            <div className="col-span-1 sm:w-28 relative">
                               <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
                                 Discount
                               </label>
                               <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
+                                <span className="absolute left-3 lg:left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
                                   ₱
                                 </span>
                                 <input
@@ -661,18 +672,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                       e.target.value,
                                     )
                                   }
-                                  className="w-full pl-7 py-3 lg:py-2.5 px-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg sm:rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500"
+                                  className="w-full pl-7 py-3 lg:py-2.5 px-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl lg:rounded-lg text-xs font-bold text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500"
                                 />
                               </div>
                             </div>
 
                             {/* Delete Action */}
-                            <div className="pt-[18px]">
+                            <div className="col-span-1 sm:w-auto flex justify-end sm:pt-[18px]">
                               <button
                                 type="button"
                                 onClick={() => removeRow(item.id)}
                                 disabled={formData.items.length === 1}
-                                className="p-3 shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-30"
+                                className="w-full sm:w-auto p-3 flex items-center justify-center bg-slate-50 dark:bg-slate-900 sm:bg-transparent border border-slate-200 dark:border-slate-600 sm:border-none text-slate-400 hover:text-red-500 hover:bg-red-50 hover:border-red-200 dark:hover:bg-red-500/10 rounded-xl lg:rounded-lg transition-colors disabled:opacity-30 lg:mb-0.5"
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -708,7 +719,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                     </section>
 
                     {/* Financial Summary Preview */}
-                    <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl">
+                    <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl flex flex-col justify-center">
                       <div className="space-y-2 mb-5 text-sm font-medium text-slate-400">
                         <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
                           <span>Subtotal (Gross)</span>
@@ -747,7 +758,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           </span>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/50">
+                      <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/50 mt-auto">
                         <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
                           Grand Total
                         </span>
