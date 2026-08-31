@@ -11,8 +11,15 @@ import {
   Store,
   Package,
   AlertCircle,
+  BadgeCheck,
+  CheckCircle,
+  Clock,
+  FileCheck,
+  XCircle,
+  FileText,
 } from "lucide-react";
 import { purchaseOrderService } from "../../../services/staff/purchaseOrder.service";
+import StatusBadge from "../../../components/ui/StatusBadge";
 
 const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
   const [po, setPo] = useState(null);
@@ -33,21 +40,26 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
     }
   }, [isOpen, poId]);
 
-  const getStatusColor = (status) => {
+  const getStatusVariant = (status) => {
+    if (status === "PENDING_APPROVAL") return "warning";
+    if (status === "APPROVED" || status === "CLOSED") return "success";
+    if (status === "REJECTED" || status === "CANCELLED") return "danger";
+    return "default";
+  };
+
+  const getStatusIcon = (status) => {
     switch (status) {
-      case "DRAFT":
-        return "text-slate-600 bg-slate-100 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
       case "PENDING_APPROVAL":
-        return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
+        return Clock;
       case "APPROVED":
-        return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
+        return CheckCircle;
+      case "CLOSED":
+        return FileCheck;
       case "REJECTED":
       case "CANCELLED":
-        return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
-      case "CLOSED":
-        return "text-sky-600 bg-sky-50 dark:bg-sky-500/10 dark:text-sky-400 border-sky-200 dark:border-sky-500/20";
+        return XCircle;
       default:
-        return "text-slate-600 bg-slate-50 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
+        return FileText; // DRAFT
     }
   };
 
@@ -55,6 +67,7 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* 1. Standardized Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -64,6 +77,8 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer"
             aria-hidden="true"
           />
+
+          {/* 2. Standardized Drawer Panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -74,56 +89,66 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
               stiffness: 300,
               mass: 0.8,
             }}
-            className="relative w-full sm:w-[500px] lg:w-[600px] bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
+            className="relative w-full sm:w-[500px] lg:w-[600px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
             role="dialog"
             aria-modal="true"
           >
-            {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 shrink-0 z-10">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
-                  <ShoppingCart size={20} />
+            {/* 3. Standardized Fixed Header */}
+            <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
+                  <ShoppingCart size={24} />
                 </div>
-                <div>
-                  <h2 className="text-lg font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
                     {po?.purchase_order_number || "Loading..."}
                   </h2>
+
                   {po && (
-                    <span
-                      className={`inline-flex px-2 py-0.5 mt-1 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusColor(po.status)}`}
-                    >
-                      {po.status.replace("_", " ")}
-                    </span>
+                    <div className="flex flex-col items-start gap-1.5 mt-1.5">
+                      <StatusBadge
+                        label={po.status.replace("_", " ")}
+                        variant={getStatusVariant(po.status)}
+                        icon={getStatusIcon(po.status)}
+                      />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
+                        <BadgeCheck size={12} className="text-amber-500" />
+                        Prepared by:{" "}
+                        <span className="text-slate-600 dark:text-slate-300">
+                          {po.created_by_name || "System"}
+                        </span>
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
-                aria-label="Close"
+                className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
+                aria-label="Close panel"
               >
                 <X size={20} />
               </button>
-            </div>
+            </header>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+            {/* 4. Standardized Scrollable Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading && (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <div className="flex flex-col items-center justify-center py-20 opacity-70">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                     Retrieving Document...
                   </p>
                 </div>
               )}
               {error && (
-                <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-200">
+                <div className="p-4 text-center bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-200">
                   {error}
                 </div>
               )}
 
               {po && !loading && (
-                <div className="space-y-8">
+                <div className="space-y-6 sm:space-y-8">
                   {/* Rejection / Approval Remarks */}
                   {po.approval_remarks && (
                     <div
@@ -141,70 +166,88 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                     </div>
                   )}
 
-                  {/* Meta Linkages */}
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                      <Store size={14} className="text-slate-400 mb-2" />
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                        Target Vendor
-                      </p>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                        {po.vendor_name}
-                      </p>
-                      <p className="text-[10px] text-slate-500 truncate mt-0.5 flex items-center gap-1">
-                        <Building2 size={10} /> {po.branch_name}
-                      </p>
+                  {/* Meta Cards */}
+                  <div className="grid grid-cols-2 gap-4 sm:gap-5">
+                    <div className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                      <Store size={16} className="text-slate-400 mb-3" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Target Vendor
+                        </p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                          {po.vendor_name}
+                        </p>
+                        <p className="text-[10px] text-slate-500 truncate mt-0.5 flex items-center gap-1 font-medium">
+                          <Building2 size={10} /> {po.branch_name}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 p-4 bg-amber-50 dark:bg-amber-500/5 rounded-2xl border border-amber-100 dark:border-amber-500/20">
-                      <Calendar size={14} className="text-amber-400 mb-2" />
-                      <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-1">
-                        Delivery Target
-                      </p>
-                      <p className="text-xs font-bold text-amber-900 dark:text-amber-400 truncate">
-                        {new Date(
-                          po.expected_delivery_date,
-                        ).toLocaleDateString()}
-                      </p>
-                      <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70 truncate mt-0.5 flex items-center gap-1">
-                        <User size={10} /> By: {po.created_by_name}
-                      </p>
+                    <div className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                      <Calendar size={16} className="text-slate-400 mb-3" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Delivery Target
+                        </p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                          {new Date(
+                            po.expected_delivery_date,
+                          ).toLocaleDateString()}
+                        </p>
+                        <p className="text-[10px] text-slate-500 truncate mt-0.5 flex items-center gap-1 font-medium">
+                          <User size={10} /> By: {po.created_by_name}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Line Items Detail */}
-                  <div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 px-1 border-b border-slate-200 dark:border-slate-800 pb-2">
-                      Parts List
-                    </h3>
-                    <div className="space-y-3">
+                  {/* Line Items Table */}
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                    <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        Itemized Parts Breakdown
+                      </h3>
+                    </div>
+                    <div className="p-5 sm:p-6 space-y-3">
                       {po.items.map((item) => {
                         const net =
                           parseFloat(item.recorded_unit_cost) * item.quantity -
                           parseFloat(item.discount_amount);
+
                         return (
                           <div
                             key={item.id}
-                            className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between"
+                            className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-[16px] sm:rounded-[20px] flex items-center justify-between transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-800"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
                               <div className="p-1.5 rounded-md shrink-0 bg-amber-100 text-amber-600 dark:bg-amber-500/20">
                                 <Package size={14} />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <p className="text-xs font-black text-slate-900 dark:text-white truncate uppercase italic">
+                                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate uppercase italic">
                                   [{item.sku}] {item.item_name}
                                 </p>
-                                <p className="text-[9px] font-bold text-slate-500 tracking-widest mt-0.5">
+                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-widest mt-0.5">
                                   {item.quantity}x @ ₱
                                   {parseFloat(
                                     item.recorded_unit_cost,
-                                  ).toLocaleString()}{" "}
-                                  {parseFloat(item.discount_amount) > 0 &&
-                                    `(Less: ₱${item.discount_amount})`}
+                                  ).toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                  {parseFloat(item.discount_amount) > 0 && (
+                                    <span className="text-amber-500 ml-1.5">
+                                      (Disc: -₱
+                                      {parseFloat(
+                                        item.discount_amount,
+                                      ).toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                      )
+                                    </span>
+                                  )}
                                 </p>
                               </div>
                             </div>
-                            <span className="text-xs font-black text-slate-900 dark:text-white">
+                            <span className="text-sm font-black text-slate-900 dark:text-white font-mono shrink-0">
                               ₱
                               {net.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
@@ -216,24 +259,24 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                     </div>
                   </div>
 
-                  {/* Financials */}
-                  <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 text-white shadow-xl">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-amber-500 mb-3 border-b border-white/10 pb-2">
-                      Financial Lock
-                    </p>
-                    <div className="space-y-1.5 mb-4 text-sm font-medium text-slate-400">
-                      <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>
+                  {/* Totals */}
+                  <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl">
+                    <div className="space-y-2 mb-5 text-sm font-medium text-slate-400">
+                      <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                        <span>Subtotal (Gross)</span>
+                        <span className="font-bold text-slate-200 font-mono">
                           ₱
                           {parseFloat(po.subtotal).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                           })}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>VAT Allocation</span>
-                        <span>
+
+                      <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                        <span className="flex items-center gap-1.5">
+                          VAT Allocation
+                        </span>
+                        <span className="font-bold text-slate-200 font-mono">
                           ₱
                           {parseFloat(po.vat_amount).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
@@ -241,11 +284,11 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                         </span>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center pt-3 border-t border-slate-800">
-                      <span className="text-sm font-black uppercase tracking-widest text-slate-300">
+                    <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/50">
+                      <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
                         Grand Total
                       </span>
-                      <span className="text-2xl font-black text-amber-500">
+                      <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight font-mono">
                         ₱
                         {parseFloat(po.grand_total).toLocaleString(undefined, {
                           minimumFractionDigits: 2,
@@ -256,11 +299,11 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
 
                   {/* Notes */}
                   {po.notes && (
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                    <div className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
                         Logistics Notes
                       </p>
-                      <p className="text-xs text-slate-700 dark:text-slate-300 italic">
+                      <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200/80 italic leading-relaxed">
                         "{po.notes}"
                       </p>
                     </div>
@@ -270,10 +313,10 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
             </div>
 
             {/* Print Footer */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+            <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
               <button
                 disabled={!po || loading}
-                className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Printer size={16} /> Print Document
               </button>

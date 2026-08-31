@@ -259,7 +259,7 @@ const PurchaseOrders = () => {
               className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
             >
               <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <span className="text-sm font-black text-slate-900 dark:text-white font-mono tracking-tight">
+                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
                   {order.purchase_order_number}
                 </span>
               </td>
@@ -289,14 +289,14 @@ const PurchaseOrders = () => {
                 />
               </td>
               <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-                <div className="flex items-center justify-end gap-1.5">
+                <div className="flex items-center justify-end gap-1 sm:gap-2">
                   <button
                     onClick={() => {
                       setSelectedOrder(order);
                       setIsDrawerOpen(true);
                     }}
                     title="View Document"
-                    className="p-2.5 bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-500/10 text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-xl transition-all cursor-pointer"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
                   >
                     <FileSearch size={16} />
                   </button>
@@ -317,7 +317,7 @@ const PurchaseOrders = () => {
                           }
                         }}
                         title="Edit Draft"
-                        className="p-2.5 bg-slate-100 hover:bg-amber-50 dark:bg-slate-800 dark:hover:bg-amber-500/10 text-slate-600 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 rounded-xl transition-all cursor-pointer"
+                        className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
                       >
                         <Edit2 size={16} />
                       </button>
@@ -326,14 +326,14 @@ const PurchaseOrders = () => {
                           handleStatusChange(order, "PENDING_APPROVAL")
                         }
                         title="Submit for Approval"
-                        className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:text-emerald-400 rounded-xl transition-colors cursor-pointer"
+                        className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer"
                       >
                         <Send size={16} />
                       </button>
                       <button
                         onClick={() => handleStatusChange(order, "CANCELLED")}
                         title="Cancel Document"
-                        className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-xl transition-colors cursor-pointer"
+                        className="p-1.5 sm:p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
                       >
                         <XCircle size={16} />
                       </button>

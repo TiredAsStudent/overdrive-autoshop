@@ -11,6 +11,8 @@ import {
   Send,
   Save,
   Calculator,
+  User,
+  ClipboardList,
 } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
@@ -293,57 +295,62 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   </p>
                 </div>
               ) : (
-                <form id="poForm" className="space-y-8">
+                <form id="poForm" className="space-y-6 sm:space-y-8">
                   {/* Top Meta Data */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50/50 dark:bg-black/10 p-5 rounded-2xl border border-slate-100 dark:border-white/5">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Target Vendor <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        required
-                        name="vendor_id"
-                        value={formData.vendor_id}
-                        onChange={handleChange}
-                        disabled={!!initialData}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
-                      >
-                        <option value="">-- Select Active Vendor --</option>
-                        {vendors.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            [{v.vendor_code}] {v.business_name}
-                          </option>
-                        ))}
-                      </select>
-                      {formData.vendor_id && (
-                        <p
-                          className={`text-[9px] font-bold tracking-widest uppercase mt-2 ${preview.isVatRegistered ? "text-emerald-500" : "text-slate-400"}`}
+                  <section className="relative z-[60] bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                      <User size={14} /> Document Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 relative">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Target Vendor <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          name="vendor_id"
+                          value={formData.vendor_id}
+                          onChange={handleChange}
+                          disabled={!!initialData}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
                         >
-                          {preview.isVatRegistered
-                            ? `VAT Registered (System Rate: ${(systemVatRate * 100).toFixed(0)}%)`
-                            : "Non-VAT Entity"}
-                        </p>
-                      )}
+                          <option value="">-- Select Active Vendor --</option>
+                          {vendors.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              [{v.vendor_code}] {v.business_name}
+                            </option>
+                          ))}
+                        </select>
+                        {formData.vendor_id && (
+                          <p
+                            className={`text-[9px] font-bold tracking-widest uppercase mt-2 ${preview.isVatRegistered ? "text-emerald-500" : "text-slate-400"}`}
+                          >
+                            {preview.isVatRegistered
+                              ? `VAT Registered (System Rate: ${(systemVatRate * 100).toFixed(0)}%)`
+                              : "Non-VAT Entity"}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Expected Delivery Date{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="date"
+                          name="expected_delivery_date"
+                          value={formData.expected_delivery_date}
+                          min={new Date().toISOString().split("T")[0]}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Expected Delivery Date{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        required
-                        type="date"
-                        name="expected_delivery_date"
-                        value={formData.expected_delivery_date}
-                        min={new Date().toISOString().split("T")[0]}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                  </div>
+                  </section>
 
                   {/* Procurement Line Items */}
-                  <div>
+                  <section className="relative z-[50] bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                       <h3 className="text-xs font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
                         <Calculator size={16} /> Itemized Parts Breakdown
@@ -357,14 +364,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       </button>
                     </div>
 
-                    <div className="space-y-3">
-                      {formData.items.map((item) => (
+                    <div className="space-y-4 sm:space-y-3">
+                      {formData.items.map((item, index) => (
                         <div
                           key={item.id}
-                          className="flex flex-col lg:flex-row gap-3 p-3 sm:p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl relative group"
+                          style={{ zIndex: 50 - index }}
+                          className="flex flex-col lg:flex-row gap-3 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] relative group shadow-sm"
                         >
                           {/* Item/Description Input */}
-                          <div className="w-full lg:w-[45%] shrink-0">
+                          <div className="flex-1 min-w-0 relative">
                             <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
                               Master Inventory Item
                             </label>
@@ -389,9 +397,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                             </select>
                           </div>
 
-                          <div className="flex flex-wrap lg:flex-nowrap items-end gap-3 flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 sm:gap-3 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t border-slate-100 dark:border-slate-700/50 lg:border-none mt-1 lg:mt-0">
                             {/* Cost Input */}
-                            <div className="flex-1 min-w-[100px]">
+                            <div className="flex-1 lg:flex-none lg:w-28 relative">
                               <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
                                 Unit Cost
                               </label>
@@ -412,13 +420,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                       e.target.value,
                                     )
                                   }
-                                  className="w-full pl-6 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                                  className="w-full pl-6 py-3 lg:py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg sm:rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                                 />
                               </div>
                             </div>
 
                             {/* Qty Input */}
-                            <div className="w-20 shrink-0">
+                            <div className="flex-1 lg:flex-none lg:w-20">
                               <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5 text-center">
                                 Qty
                               </label>
@@ -435,12 +443,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-mono text-center text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                                className="w-full py-3 lg:py-2.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg sm:rounded-xl text-xs font-mono text-center text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                               />
                             </div>
 
                             {/* Discount Input */}
-                            <div className="w-28 shrink-0">
+                            <div className="flex-1 lg:flex-none lg:w-28 relative">
                               <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
                                 Discount
                               </label>
@@ -461,32 +469,37 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                       e.target.value,
                                     )
                                   }
-                                  className="w-full pl-6 px-3 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-xs font-mono text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500"
+                                  className="w-full pl-7 py-3 lg:py-2.5 px-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg sm:rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500"
                                 />
                               </div>
                             </div>
 
                             {/* Delete Action */}
-                            <button
-                              type="button"
-                              onClick={() => removeRow(item.id)}
-                              disabled={formData.items.length === 1}
-                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-30 mb-0.5"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            <div className="pt-[18px]">
+                              <button
+                                type="button"
+                                onClick={() => removeRow(item.id)}
+                                disabled={formData.items.length === 1}
+                                className="p-3 shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-30"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </section>
 
                   {/* Document Footer (Notes & Math) */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-700">
-                    <div className="space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-700 relative z-[40]">
+                    <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 space-y-4">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-2 flex items-center gap-2">
+                        <ClipboardList size={14} /> Shipping Notes
+                      </h3>
                       <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Shipping Notes / Instructions{" "}
+                          Internal Notes{" "}
                           <span className="text-slate-400 font-medium lowercase">
                             (Optional)
                           </span>
@@ -497,54 +510,56 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           onChange={handleChange}
                           rows="3"
                           placeholder="e.g., Urgent delivery required for weekend repair job."
-                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
                         />
                       </div>
-                    </div>
+                    </section>
 
                     {/* Financial Summary Preview */}
-                    <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 sm:p-6 text-white shadow-xl">
-                      <div className="flex justify-between items-center mb-1 text-sm font-medium text-slate-400">
-                        <span>Subtotal</span>
-                        <span>
-                          ₱
-                          {preview.grossSubtotal.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-                      {preview.discountTotal > 0 && (
-                        <div className="flex justify-between items-center mb-1 text-sm font-bold text-amber-500">
-                          <span>Discounts</span>
-                          <span>
-                            - ₱
-                            {preview.discountTotal.toLocaleString(undefined, {
+                    <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl">
+                      <div className="space-y-2 mb-5 text-sm font-medium text-slate-400">
+                        <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                          <span>Subtotal (Gross)</span>
+                          <span className="font-bold text-slate-200 font-mono">
+                            ₱
+                            {preview.grossSubtotal.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
                             })}
                           </span>
                         </div>
-                      )}
-                      <div className="flex justify-between items-center mb-4 text-sm font-medium text-slate-400">
-                        <span className="flex items-center gap-1.5">
-                          VAT{" "}
-                          <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded">
-                            {preview.isVatRegistered
-                              ? `${(systemVatRate * 100).toFixed(0)}%`
-                              : "Exempt"}
+                        {preview.discountTotal > 0 && (
+                          <div className="flex justify-between items-center bg-amber-500/10 p-3 sm:p-4 rounded-xl text-amber-500">
+                            <span className="font-bold">Total Discounts</span>
+                            <span className="font-black font-mono">
+                              - ₱
+                              {preview.discountTotal.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                          <span className="flex items-center gap-1.5">
+                            VAT Allocation{" "}
+                            <span className="text-[10px] font-black bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded">
+                              {preview.isVatRegistered
+                                ? `${(systemVatRate * 100).toFixed(0)}%`
+                                : "Exempt"}
+                            </span>
                           </span>
-                        </span>
-                        <span>
-                          ₱
-                          {preview.vatAmount.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
+                          <span className="font-bold text-slate-200 font-mono">
+                            ₱
+                            {preview.vatAmount.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center pt-4 border-t border-slate-800">
-                        <span className="text-sm font-black uppercase tracking-widest text-slate-300">
+                      <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/50">
+                        <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
                           Grand Total
                         </span>
-                        <span className="text-2xl sm:text-3xl font-black text-amber-500">
+                        <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight font-mono">
                           ₱
                           {preview.grandTotal.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
@@ -558,12 +573,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             </div>
 
             {/* Footer with Dual Submission Paths */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row gap-3">
+            <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0 flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={(e) => handleFormSubmit(e, false)}
                 disabled={isSubmitting || loadingLookups}
-                className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-50"
+                className="flex-1 py-3.5 sm:py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -576,7 +591,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 type="button"
                 onClick={(e) => handleFormSubmit(e, true)}
                 disabled={isSubmitting || loadingLookups}
-                className="flex-1 py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                className="flex-1 py-3.5 sm:py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />
