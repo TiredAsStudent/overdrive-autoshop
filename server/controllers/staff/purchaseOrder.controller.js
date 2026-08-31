@@ -23,7 +23,7 @@ class PurchaseOrderController {
     try {
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
-      let { search, status, vendor, branch } = req.query;
+      let { search, status, vendor, branch, start_date, end_date } = req.query;
 
       if (req.user.role === "STAFF") {
         branch = req.user.branchId;
@@ -36,6 +36,8 @@ class PurchaseOrderController {
         status,
         vendor,
         branch,
+        start_date,
+        end_date,
       );
       return sendSuccess(
         res,

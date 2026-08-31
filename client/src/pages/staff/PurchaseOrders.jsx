@@ -8,10 +8,25 @@ import {
   Edit2,
   Send,
   XCircle,
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Ban,
 } from "lucide-react";
 import { purchaseOrderService } from "../../services/staff/purchaseOrder.service";
+import { vendorService } from "../../services/staff/vendor.service";
 import PurchaseOrderModal from "../../features/staff/components/PurchaseOrderModal";
 import PurchaseOrderDrawer from "../../features/staff/components/PurchaseOrderDrawer";
+
+// --- REUSABLE SHARED COMPONENTS ---
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import StatusToggle from "../../components/ui/StatusToggle";
+import ActionButton from "../../components/ui/ActionButton";
+import StatusBadge from "../../components/ui/StatusBadge";
+import FilterButton from "../../components/ui/FilterButton";
+import FilterModal from "../../components/shared/FilterModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import ConfirmModal from "../../components/shared/ConfirmModal";
@@ -19,11 +34,11 @@ import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
 const STATUS_FILTERS = [
-  { id: "all", label: "All POs" },
-  { id: "DRAFT", label: "Drafts" },
-  { id: "PENDING_APPROVAL", label: "Pending" },
-  { id: "APPROVED", label: "Approved" },
-  { id: "REJECTED", label: "Rejected" },
+  { label: "All POs", value: "all" },
+  { label: "Drafts", value: "DRAFT" },
+  { label: "Pending", value: "PENDING_APPROVAL" },
+  { label: "Approved", value: "APPROVED" },
+  { label: "Rejected", value: "REJECTED" },
 ];
 
 const PurchaseOrders = () => {
@@ -31,14 +46,32 @@ const PurchaseOrders = () => {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [vendorList, setVendorList] = useState([]);
 
-  // Filters
+  // Base Filters
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
+
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [tempFilters, setTempFilters] = useState({
+    vendorId: "all",
+    startDate: "",
+    endDate: "",
+  });
+  const [activeFilters, setActiveFilters] = useState({
+    vendorId: "all",
+    startDate: "",
+    endDate: "",
+  });
+
+  const activeFilterCount =
+    (activeFilters.vendorId !== "all" ? 1 : 0) +
+    (activeFilters.startDate ? 1 : 0) +
+    (activeFilters.endDate ? 1 : 0);
 
   // UI State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,7 +88,15 @@ const PurchaseOrders = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter]);
+  }, [debouncedSearchQuery, statusFilter, activeFilters]);
+
+  // Load Vendor Dictionary for the Filter
+  useEffect(() => {
+    vendorService
+      .getVendors(1, 500, "", "active", "all", "all")
+      .then((res) => setVendorList(res.data?.vendors || []))
+      .catch(() => setVendorList([]));
+  }, []);
 
   const loadOrders = async () => {
     try {
@@ -65,6 +106,10 @@ const PurchaseOrders = () => {
         ITEMS_PER_PAGE,
         debouncedSearchQuery,
         statusFilter,
+        activeFilters.vendorId,
+        "all",
+        activeFilters.startDate,
+        activeFilters.endDate,
       );
       setOrders(response.data?.purchaseOrders || []);
       setTotalPages(response.data?.pagination?.totalPages || 1);
@@ -77,7 +122,7 @@ const PurchaseOrders = () => {
 
   useEffect(() => {
     loadOrders();
-  }, [currentPage, debouncedSearchQuery, statusFilter]);
+  }, [currentPage, debouncedSearchQuery, statusFilter, activeFilters]);
 
   const handleModalSubmit = async (formData) => {
     try {
@@ -131,85 +176,69 @@ const PurchaseOrders = () => {
     });
   };
 
-  const getStatusBadge = (status) => {
+  const applyFilters = () => {
+    setActiveFilters(tempFilters);
+    setIsFilterModalOpen(false);
+  };
+
+  const clearFilters = () => {
+    const reset = { vendorId: "all", startDate: "", endDate: "" };
+    setTempFilters(reset);
+    setActiveFilters(reset);
+    setIsFilterModalOpen(false);
+  };
+
+  const getBadgeDetails = (status) => {
     switch (status) {
-      case "DRAFT":
-        return "text-slate-600 bg-slate-100 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
-      case "PENDING_APPROVAL":
-        return "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
       case "APPROVED":
-        return "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+        return { variant: "success", icon: CheckCircle };
+      case "PENDING_APPROVAL":
+        return { variant: "warning", icon: Clock };
       case "REJECTED":
       case "CANCELLED":
-        return "text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20";
+        return { variant: "danger", icon: AlertCircle };
       case "CLOSED":
-        return "text-sky-600 bg-sky-50 border-sky-200 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20";
+        return { variant: "info", icon: CheckCircle };
       default:
-        return "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+        return { variant: "default", icon: FileText };
     }
   };
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <ShoppingCart className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Purchase Orders
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Procurement Control
-            </p>
-          </div>
-        </div>
+      <PageHeader
+        title="Purchase Orders"
+        subtitle="Procurement Control"
+        icon={ShoppingCart}
+      >
+        <StatusToggle
+          activeValue={statusFilter}
+          onToggle={setStatusFilter}
+          options={STATUS_FILTERS}
+        />
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 overflow-x-auto custom-scrollbar">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setStatusFilter(f.id)}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${statusFilter === f.id ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search PO or Vendor..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-          <div className="relative w-full sm:max-w-[200px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search PO or Vendor..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-            />
-          </div>
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
 
-          <button
-            onClick={() => {
-              setSelectedOrder(null);
-              setIsModalOpen(true);
-            }}
-            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-amber-500/20 shrink-0 transition-all active:scale-[0.98]"
-          >
-            <Plus size={16} /> Draft Document
-          </button>
-        </div>
-      </div>
+        <ActionButton
+          onClick={() => {
+            setSelectedOrder(null);
+            setIsModalOpen(true);
+          }}
+          label="Draft Document"
+          icon={Plus}
+        />
+      </PageHeader>
 
-      {/* DATA TABLE */}
       <DataTable
         headers={[
           "Document Ref",
@@ -222,96 +251,99 @@ const PurchaseOrders = () => {
         data={orders}
         loading={loading}
         emptyTitle="No Purchase Orders Found"
-        renderRow={(order) => (
-          <tr
-            key={order.id}
-            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
-          >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
-                {order.purchase_order_number}
-              </span>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
-                {order.vendor_name}
-              </p>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                {new Date(order.expected_delivery_date).toLocaleDateString()}
-              </p>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black text-slate-900 dark:text-white">
-                ₱
-                {parseFloat(order.grand_total).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span
-                className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusBadge(order.status)}`}
-              >
-                {order.status.replace("_", " ")}
-              </span>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-1.5">
-                <button
-                  onClick={() => {
-                    setSelectedOrder(order);
-                    setIsDrawerOpen(true);
-                  }}
-                  title="View Document"
-                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
-                >
-                  <FileSearch size={16} />
-                </button>
-                {/* Draft / Rejected Records allow Editing & Submission */}
-                {["DRAFT", "REJECTED"].includes(order.status) && (
-                  <>
-                    <button
-                      onClick={async () => {
-                        try {
-                          const res =
-                            await purchaseOrderService.getPurchaseOrderDetails(
-                              order.id,
-                            );
-                          setSelectedOrder(res.data);
-                          setIsModalOpen(true);
-                        } catch (e) {
-                          showToast("Failed to load details", "error");
+        renderRow={(order) => {
+          const badge = getBadgeDetails(order.status);
+          return (
+            <tr
+              key={order.id}
+              className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+            >
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <span className="text-sm font-black text-slate-900 dark:text-white font-mono tracking-tight">
+                  {order.purchase_order_number}
+                </span>
+              </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
+                  {order.vendor_name}
+                </p>
+              </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                  {new Date(order.expected_delivery_date).toLocaleDateString()}
+                </p>
+              </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <span className="text-sm font-black text-slate-900 dark:text-white font-mono tracking-tight">
+                  ₱
+                  {parseFloat(order.grand_total).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                  })}
+                </span>
+              </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <StatusBadge
+                  label={order.status.replace("_", " ")}
+                  variant={badge.variant}
+                  icon={badge.icon}
+                />
+              </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+                <div className="flex items-center justify-end gap-1.5">
+                  <button
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      setIsDrawerOpen(true);
+                    }}
+                    title="View Document"
+                    className="p-2.5 bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-500/10 text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-xl transition-all cursor-pointer"
+                  >
+                    <FileSearch size={16} />
+                  </button>
+                  {/* Draft / Rejected Records allow Editing & Submission */}
+                  {["DRAFT", "REJECTED"].includes(order.status) && (
+                    <>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res =
+                              await purchaseOrderService.getPurchaseOrderDetails(
+                                order.id,
+                              );
+                            setSelectedOrder(res.data);
+                            setIsModalOpen(true);
+                          } catch (e) {
+                            showToast("Failed to load details", "error");
+                          }
+                        }}
+                        title="Edit Draft"
+                        className="p-2.5 bg-slate-100 hover:bg-amber-50 dark:bg-slate-800 dark:hover:bg-amber-500/10 text-slate-600 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 rounded-xl transition-all cursor-pointer"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleStatusChange(order, "PENDING_APPROVAL")
                         }
-                      }}
-                      title="Edit Draft"
-                      className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleStatusChange(order, "PENDING_APPROVAL")
-                      }
-                      title="Submit for Approval"
-                      className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 dark:text-blue-400 rounded-xl transition-colors cursor-pointer"
-                    >
-                      <Send size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange(order, "CANCELLED")}
-                      title="Cancel Document"
-                      className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-xl transition-colors cursor-pointer"
-                    >
-                      <XCircle size={16} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </td>
-          </tr>
-        )}
+                        title="Submit for Approval"
+                        className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:text-emerald-400 rounded-xl transition-colors cursor-pointer"
+                      >
+                        <Send size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(order, "CANCELLED")}
+                        title="Cancel Document"
+                        className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 rounded-xl transition-colors cursor-pointer"
+                      >
+                        <XCircle size={16} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </td>
+            </tr>
+          );
+        }}
       />
 
       <Pagination
@@ -319,6 +351,64 @@ const PurchaseOrders = () => {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      {/* Advanced Filters Modal */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={clearFilters}
+        onApply={applyFilters}
+        title="Advanced Document Filters"
+      >
+        <div className="space-y-6">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Filter by Vendor
+            </label>
+            <select
+              value={tempFilters.vendorId}
+              onChange={(e) =>
+                setTempFilters({ ...tempFilters, vendorId: e.target.value })
+              }
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+            >
+              <option value="all">All Vendors</option>
+              {vendorList.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.business_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Date Created (From)
+            </label>
+            <input
+              type="date"
+              value={tempFilters.startDate}
+              onChange={(e) =>
+                setTempFilters({ ...tempFilters, startDate: e.target.value })
+              }
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Date Created (To)
+            </label>
+            <input
+              type="date"
+              value={tempFilters.endDate}
+              min={tempFilters.startDate}
+              onChange={(e) =>
+                setTempFilters({ ...tempFilters, endDate: e.target.value })
+              }
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+            />
+          </div>
+        </div>
+      </FilterModal>
 
       <PurchaseOrderModal
         isOpen={isModalOpen}

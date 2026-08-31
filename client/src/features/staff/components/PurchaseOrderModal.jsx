@@ -67,7 +67,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       if (initialData) {
         setFormData({
           vendor_id: initialData.vendor_id || "",
-
           expected_delivery_date: initialData.expected_delivery_date
             ? (() => {
                 const d = new Date(initialData.expected_delivery_date);
@@ -242,7 +241,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

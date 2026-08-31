@@ -52,6 +52,8 @@ const getPurchaseOrdersSchema = z.object({
       status: z.string().optional(),
       vendor: z.string().optional(),
       branch: z.string().optional(),
+      start_date: z.string().optional(),
+      end_date: z.string().optional(),
     })
     .optional(),
 });

@@ -191,7 +191,14 @@ class PurchaseOrder {
     return result.rows[0];
   }
 
-  static async countFiltered(search, status, vendorId, branchId) {
+  static async countFiltered(
+    search,
+    status,
+    vendorId,
+    branchId,
+    startDate,
+    endDate,
+  ) {
     let sql = `SELECT COUNT(DISTINCT po.id) FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id`;
     const conditions = [];
     const values = [];
@@ -219,6 +226,16 @@ class PurchaseOrder {
       values.push(branchId);
       paramIdx++;
     }
+    if (startDate) {
+      conditions.push(`DATE(po.created_at) >= $${paramIdx}`);
+      values.push(startDate);
+      paramIdx++;
+    }
+    if (endDate) {
+      conditions.push(`DATE(po.created_at) <= $${paramIdx}`);
+      values.push(endDate);
+      paramIdx++;
+    }
 
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
     const result = await query(sql, values);
@@ -232,6 +249,8 @@ class PurchaseOrder {
     status,
     vendorId,
     branchId,
+    startDate,
+    endDate,
   ) {
     let sql = `
       SELECT po.id, po.purchase_order_number, po.grand_total, po.status, po.expected_delivery_date, po.created_at, po.updated_at,
@@ -265,6 +284,16 @@ class PurchaseOrder {
     if (branchId && branchId !== "all") {
       conditions.push(`po.branch_id = $${paramIdx}`);
       values.push(branchId);
+      paramIdx++;
+    }
+    if (startDate) {
+      conditions.push(`DATE(po.created_at) >= $${paramIdx}`);
+      values.push(startDate);
+      paramIdx++;
+    }
+    if (endDate) {
+      conditions.push(`DATE(po.created_at) <= $${paramIdx}`);
+      values.push(endDate);
       paramIdx++;
     }
 
