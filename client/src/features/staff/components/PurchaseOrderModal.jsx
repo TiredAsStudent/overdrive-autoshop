@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -13,9 +13,217 @@ import {
   Calculator,
   User,
   ClipboardList,
+  Search,
 } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
+
+const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (value) {
+      const selected = vendors.find(
+        (v) => v.id.toString() === value.toString(),
+      );
+      if (selected) setSearchTerm(selected.business_name);
+    } else {
+      setSearchTerm("");
+    }
+  }, [value, vendors]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setIsOpen(false);
+        const selected = vendors.find(
+          (v) => v.id.toString() === value?.toString(),
+        );
+        setSearchTerm(selected ? selected.business_name : "");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value, vendors]);
+
+  const filtered = vendors.filter(
+    (v) =>
+      v.business_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.vendor_code.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  return (
+    <div ref={wrapperRef} className="relative z-50">
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search size={18} className="text-slate-400" />
+        </div>
+        <input
+          type="text"
+          disabled={disabled}
+          value={isOpen ? searchTerm : value ? searchTerm : ""}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsOpen(true);
+            if (value) onChange("");
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="Type Vendor Name or ID to search..."
+          className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm disabled:opacity-60"
+        />
+      </div>
+      <AnimatePresence>
+        {isOpen && !disabled && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-[100]"
+          >
+            {filtered.length > 0 ? (
+              filtered.map((v) => (
+                <div
+                  key={v.id}
+                  onClick={() => {
+                    onChange(v.id);
+                    setSearchTerm(v.business_name);
+                    setIsOpen(false);
+                  }}
+                  className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                >
+                  <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                    {v.vendor_code}
+                  </p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                    {v.business_name}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase">
+                    Contact:{" "}
+                    <span className="font-black text-slate-700 dark:text-slate-300">
+                      {v.contact_person} ({v.contact_number})
+                    </span>
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+                  No matching vendors found.
+                </p>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const ItemSearchableSelect = ({ value, inventory, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (value) {
+      const selected = inventory.find(
+        (i) => i.id.toString() === value.toString(),
+      );
+      if (selected) setSearchTerm(`[${selected.sku}] ${selected.item_name}`);
+    } else {
+      setSearchTerm("");
+    }
+  }, [value, inventory]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setIsOpen(false);
+        const selected = inventory.find(
+          (i) => i.id.toString() === value?.toString(),
+        );
+        setSearchTerm(
+          selected ? `[${selected.sku}] ${selected.item_name}` : "",
+        );
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value, inventory]);
+
+  const filtered = inventory.filter(
+    (i) =>
+      i.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      i.sku.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  return (
+    <div ref={wrapperRef} className="relative z-50 w-full">
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search size={14} className="text-slate-400" />
+        </div>
+        <input
+          type="text"
+          value={isOpen ? searchTerm : value ? searchTerm : ""}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsOpen(true);
+            if (value) onChange("");
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="Search parts by name or SKU..."
+          className="w-full pl-9 pr-3 py-3 lg:py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg sm:rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
+        />
+      </div>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl max-h-64 overflow-y-auto custom-scrollbar z-[100]"
+          >
+            {filtered.length > 0 ? (
+              filtered.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => {
+                    onChange(item.id);
+                    setSearchTerm(`[${item.sku}] ${item.item_name}`);
+                    setIsOpen(false);
+                  }}
+                  className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                >
+                  <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                    {item.sku}
+                  </p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                    {item.item_name}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase">
+                    System Stock Snapshot:{" "}
+                    <span className="font-black text-slate-700 dark:text-slate-300">
+                      {item.total_company_quantity} {item.uom}
+                    </span>
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="p-4 sm:p-6 text-center">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  No matching parts found.
+                </p>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -302,25 +510,22 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       <User size={14} /> Document Details
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 relative">
-                      <div>
+                      <div className="relative z-30">
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                           Target Vendor <span className="text-red-500">*</span>
                         </label>
-                        <select
-                          required
-                          name="vendor_id"
+
+                        <VendorSearchableSelect
                           value={formData.vendor_id}
-                          onChange={handleChange}
+                          vendors={vendors}
+                          onChange={(val) =>
+                            handleChange({
+                              target: { name: "vendor_id", value: val },
+                            })
+                          }
                           disabled={!!initialData}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
-                        >
-                          <option value="">-- Select Active Vendor --</option>
-                          {vendors.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              [{v.vendor_code}] {v.business_name}
-                            </option>
-                          ))}
-                        </select>
+                        />
+
                         {formData.vendor_id && (
                           <p
                             className={`text-[9px] font-bold tracking-widest uppercase mt-2 ${preview.isVatRegistered ? "text-emerald-500" : "text-slate-400"}`}
@@ -343,7 +548,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.expected_delivery_date}
                           min={new Date().toISOString().split("T")[0]}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-all shadow-sm"
                         />
                       </div>
                     </div>
@@ -371,30 +576,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           style={{ zIndex: 50 - index }}
                           className="flex flex-col lg:flex-row gap-3 p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] relative group shadow-sm"
                         >
-                          {/* Item/Description Input */}
                           <div className="flex-1 min-w-0 relative">
                             <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
                               Master Inventory Item
                             </label>
-                            <select
-                              required
+                            <ItemSearchableSelect
                               value={item.item_id}
-                              onChange={(e) =>
-                                handleRowChange(
-                                  item.id,
-                                  "item_id",
-                                  e.target.value,
-                                )
+                              inventory={inventory}
+                              onChange={(val) =>
+                                handleRowChange(item.id, "item_id", val)
                               }
-                              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                            >
-                              <option value="">-- Select Master Part --</option>
-                              {inventory.map((inv) => (
-                                <option key={inv.id} value={inv.id}>
-                                  [{inv.sku}] {inv.item_name}
-                                </option>
-                              ))}
-                            </select>
+                            />
                           </div>
 
                           <div className="flex items-center justify-between gap-2 sm:gap-3 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t border-slate-100 dark:border-slate-700/50 lg:border-none mt-1 lg:mt-0">
@@ -510,7 +702,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           onChange={handleChange}
                           rows="3"
                           placeholder="e.g., Urgent delivery required for weekend repair job."
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
                         />
                       </div>
                     </section>
