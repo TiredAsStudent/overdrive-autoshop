@@ -188,7 +188,7 @@ const Vendors = () => {
             }`}
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black text-slate-900 dark:text-white font-mono tracking-tight">
+              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
                 {vendor.vendor_code}
               </span>
             </td>
