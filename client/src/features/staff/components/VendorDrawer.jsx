@@ -57,8 +57,8 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
             aria-modal="true"
           >
             {/* Header */}
-            <header className="flex justify-between items-center px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
-              <div className="flex items-center gap-4">
+            <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
+              <div className="flex items-start gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
                   <Store size={24} />
                 </div>
@@ -88,39 +88,48 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
                   <Building2 size={14} /> Corporate Profile
                 </h3>
 
-                <div className="grid grid-cols-2 gap-4 pb-2">
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                      Representative
-                    </p>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {vendor.contact_person}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                      Contact No.
-                    </p>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-                      <Phone size={12} className="text-amber-500 shrink-0" />
-                      {vendor.contact_number}
-                    </p>
-                  </div>
+                <div className="flex items-start gap-3 text-slate-900 dark:text-white font-bold text-sm">
+                  {vendor.contact_number}
+                </div>
+                <div className="flex items-start gap-3 text-slate-700 dark:text-slate-300 text-sm font-medium">
+                  {vendor.contact_person} (Representative)
                 </div>
 
                 {vendor.email && (
-                  <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300 text-xs font-medium">
+                  <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300 text-sm font-medium mt-2">
                     <Mail size={14} className="text-slate-400 shrink-0" />
                     <span className="truncate">{vendor.email}</span>
                   </div>
                 )}
 
-                <div className="flex items-start gap-3 text-slate-600 dark:text-slate-400 text-xs font-medium leading-relaxed">
+                <div className="flex items-start gap-3 text-slate-600 dark:text-slate-400 text-xs font-medium leading-relaxed mt-2">
                   <MapPin
                     size={14}
                     className="text-slate-400 mt-0.5 shrink-0"
                   />
                   <span>{vendor.business_address}</span>
+                </div>
+              </section>
+
+              {/* Administrative Details Card */}
+              <section className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm space-y-3">
+                <div className="flex items-center gap-2">
+                  <Building2 size={14} className="text-slate-400" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Registered Branch:
+                  </span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white ml-auto">
+                    {vendor.branch_name || "Global"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700/50">
+                  <Calendar size={14} className="text-slate-400" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Partner Since:
+                  </span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white ml-auto">
+                    {new Date(vendor.created_at).toLocaleDateString()}
+                  </span>
                 </div>
               </section>
 
@@ -156,36 +165,30 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
                   Procurement Summary
                 </h3>
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[18px] p-4 text-center shadow-sm">
-                    <div className="flex items-center justify-center gap-1.5 text-slate-400 mb-1">
-                      <ShoppingBag size={14} />
-                      <span className="text-[9px] font-bold uppercase tracking-widest">
-                        Purchase Orders
-                      </span>
-                    </div>
-                    <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 text-center shadow-sm">
+                    <span className="block text-2xl font-black text-slate-900 dark:text-white font-mono mb-1">
                       {vendor.total_pos ?? 0}
                     </span>
-                  </div>
-
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[18px] p-4 text-center shadow-sm">
-                    <div className="flex items-center justify-center gap-1.5 text-slate-400 mb-1">
-                      <Receipt size={14} />
-                      <span className="text-[9px] font-bold uppercase tracking-widest">
-                        Supplier Bills
-                      </span>
-                    </div>
-                    <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                      {vendor.total_bills ?? 0}
+                    <span className="flex items-center justify-center gap-1.5 text-slate-500 text-[8px] font-bold uppercase tracking-widest">
+                      <ShoppingBag size={12} /> Purchase Orders
                     </span>
                   </div>
 
-                  <div className="col-span-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-[18px] p-4 sm:p-5 shadow-sm flex justify-between items-center">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 text-center shadow-sm">
+                    <span className="block text-2xl font-black text-slate-900 dark:text-white font-mono mb-1">
+                      {vendor.total_bills ?? 0}
+                    </span>
+                    <span className="flex items-center justify-center gap-1.5 text-slate-500 text-[8px] font-bold uppercase tracking-widest">
+                      <Receipt size={12} /> Supplier Bills
+                    </span>
+                  </div>
+
+                  <div className="col-span-2 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm flex justify-between items-center">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-blue-800 dark:text-blue-300">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">
                         Total Procurement Value
                       </p>
-                      <p className="text-[9px] text-blue-600 dark:text-blue-400 mt-0.5">
+                      <p className="text-[9px] text-blue-600/70 dark:text-blue-500 mt-0.5 font-medium">
                         Latest:{" "}
                         {vendor.latest_procurement_date
                           ? new Date(
@@ -194,7 +197,7 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
                           : "Never"}
                       </p>
                     </div>
-                    <span className="text-lg sm:text-xl font-black text-blue-900 dark:text-blue-400 font-mono">
+                    <span className="text-xl sm:text-2xl font-black text-blue-700 dark:text-blue-400 font-mono tracking-tight">
                       ₱{procurementValue}
                     </span>
                   </div>
@@ -207,22 +210,11 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2 flex items-center gap-2">
                     <FileText size={14} /> Procurement Terms / Notes
                   </h3>
-                  <p className="text-xs text-amber-900 dark:text-amber-200/80 italic leading-relaxed">
+                  <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200/80 italic leading-relaxed">
                     "{vendor.notes}"
                   </p>
                 </section>
               )}
-
-              {/* Administrative Details */}
-              <section className="bg-slate-100/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-[18px] p-4 flex justify-between items-center text-slate-500 text-[10px] font-bold">
-                <span className="flex items-center gap-1.5 uppercase tracking-widest">
-                  <Building2 size={12} /> {vendor.branch_name || "Global"}
-                </span>
-                <span className="flex items-center gap-1.5 uppercase tracking-widest">
-                  <Calendar size={12} /> Registered:{" "}
-                  {new Date(vendor.created_at).toLocaleDateString()}
-                </span>
-              </section>
             </div>
           </motion.div>
         </div>

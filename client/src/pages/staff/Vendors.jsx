@@ -7,6 +7,7 @@ import {
   Archive,
   RotateCcw,
   ShieldCheck,
+  MinusCircle,
 } from "lucide-react";
 import { vendorService } from "../../services/staff/vendor.service";
 import VendorModal from "../../features/staff/components/VendorModal";
@@ -198,7 +199,7 @@ const Vendors = () => {
             }`}
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="inline-flex px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 text-[10px] font-black tracking-widest uppercase font-mono">
+              <span className="inline-flex px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-black tracking-widest uppercase font-mono">
                 {vendor.vendor_code}
               </span>
             </td>
@@ -230,7 +231,11 @@ const Vendors = () => {
                   icon={ShieldCheck}
                 />
               ) : (
-                <StatusBadge label="Non-VAT" variant="default" />
+                <StatusBadge
+                  label="Non-VAT"
+                  variant="default"
+                  icon={MinusCircle}
+                />
               )}
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
@@ -241,7 +246,7 @@ const Vendors = () => {
                     setIsDrawerOpen(true);
                   }}
                   title="View Profile"
-                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                  className="p-2.5 bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-500/10 text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-xl transition-all cursor-pointer"
                 >
                   <FileText size={16} />
                 </button>
@@ -251,17 +256,17 @@ const Vendors = () => {
                     setIsModalOpen(true);
                   }}
                   title="Edit Profile"
-                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                  className="p-2.5 bg-slate-100 hover:bg-amber-50 dark:bg-slate-800 dark:hover:bg-amber-500/10 text-slate-600 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 rounded-xl transition-all cursor-pointer"
                 >
                   <Edit2 size={16} />
                 </button>
                 <button
                   onClick={() => handleToggleStatus(vendor)}
                   title={vendor.is_active ? "Archive Vendor" : "Restore Vendor"}
-                  className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                  className={`p-2.5 rounded-xl transition-all cursor-pointer ${
                     vendor.is_active
-                      ? "text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
-                      : "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400"
+                      ? "bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-500/10 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+                      : "bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                   }`}
                 >
                   {vendor.is_active ? (

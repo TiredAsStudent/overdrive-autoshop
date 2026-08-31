@@ -106,8 +106,8 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
-            {/* Header */}
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+            {/* MODAL HEADER */}
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   {initialData ? <Edit2 size={20} /> : <Store size={20} />}
@@ -118,7 +118,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                     {initialData
-                      ? initialData.vendor_code
+                      ? `Vendor Profile: ${initialData.vendor_code}`
                       : "Vendor Master Data Profile"}
                   </p>
                 </div>
@@ -126,14 +126,14 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50"
+                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <X size={24} />
               </button>
             </div>
 
-            {/* Body */}
-            <div className="px-6 sm:px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+            {/* MODAL BODY */}
+            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -144,14 +144,14 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               <form
                 id="vendorForm"
                 onSubmit={handleSubmit}
-                className="space-y-8"
+                className="space-y-6"
               >
-                {/* Section 1: Business Identity */}
-                <div>
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex items-center gap-2">
+                {/* SECTION 1: BUSINESS IDENTITY */}
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <Building size={14} /> Corporate Identity
                   </h3>
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Registered Business Name{" "}
@@ -164,7 +164,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         value={formData.business_name}
                         onChange={handleChange}
                         placeholder="e.g., NGK Spark Plugs Philippines"
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                       />
                     </div>
                     <div>
@@ -179,17 +179,17 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         onChange={handleChange}
                         rows="2"
                         placeholder="e.g., 123 Warehouse Row, Calamba"
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Section 2: Contact & Tax Information (Dual Column) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* SECTION 2: CONTACT & TAX INFO */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Left Col: Contact */}
-                  <div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex items-center gap-2">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                       <Phone size={14} /> Primary Contact
                     </h3>
                     <div className="space-y-4">
@@ -205,7 +205,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.contact_person}
                           onChange={handleChange}
                           placeholder="e.g., Maria Santos"
-                          className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                         />
                       </div>
                       <div>
@@ -219,12 +219,12 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.contact_number}
                           onChange={handleChange}
                           placeholder="e.g., 0917-123-4567"
-                          className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                         />
                       </div>
                       <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Email{" "}
+                          Email Address{" "}
                           <span className="text-slate-400 font-medium lowercase">
                             (Optional)
                           </span>
@@ -235,15 +235,15 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.email}
                           onChange={handleChange}
                           placeholder="sales@supplier.com"
-                          className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Right Col: Tax */}
-                  <div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4 flex items-center gap-2">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                       <FileText size={14} /> Fiscal Data
                     </h3>
                     <div className="space-y-4">
@@ -260,7 +260,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.tin}
                           onChange={handleChange}
                           placeholder="9 or 12 digits"
-                          className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 tracking-wider"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 tracking-wider"
                         />
                       </div>
 
@@ -302,8 +302,8 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   </div>
                 </div>
 
-                {/* Section 3: Notes */}
-                <div className="pt-2">
+                {/* SECTION 3: NOTES */}
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                     Procurement Notes / Terms{" "}
                     <span className="text-slate-400 font-medium lowercase">
@@ -316,19 +316,19 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                     onChange={handleChange}
                     rows="2"
                     placeholder="e.g., Deliveries only on Tuesdays. Offers 30-day credit term."
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
                   />
                 </div>
               </form>
             </div>
 
-            {/* Footer */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50">
+            {/* MODAL FOOTER */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
               <button
                 type="submit"
                 form="vendorForm"
                 disabled={isSubmitting}
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] shadow-lg shadow-amber-500/20 flex justify-center items-center gap-2 cursor-pointer"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />
