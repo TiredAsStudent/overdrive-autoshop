@@ -15,11 +15,18 @@ class PurchaseOrderService {
       ? parseFloat(settings.vat_percentage) / 100
       : 0;
 
+    const itemIds = itemsArray.map((i) => i.item_id);
+    const inventoryRecords = await InventoryModel.findManyByIds(itemIds);
+
+    const inventoryMap = new Map(
+      inventoryRecords.map((item) => [item.id, item]),
+    );
+
     let subtotal = 0;
     const computedItems = [];
 
     for (const item of itemsArray) {
-      const partRec = await InventoryModel.findById(item.item_id);
+      const partRec = inventoryMap.get(item.item_id);
       if (!partRec || !partRec.is_active)
         throw new Error(`Part ID ${item.item_id} is invalid or inactive.`);
 

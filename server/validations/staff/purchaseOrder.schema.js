@@ -8,6 +8,16 @@ const poItemSchema = z.object({
   discount_amount: z.number().min(0).default(0),
 });
 
+const uniqueItemsRefinement = (items) => {
+  const itemIds = items.map((i) => i.item_id);
+  return new Set(itemIds).size === itemIds.length;
+};
+
+const uniqueItemsMessage = {
+  message:
+    "Duplicate items detected. Please consolidate quantities into a single row.",
+};
+
 const createPurchaseOrderSchema = z.object({
   body: z.object({
     vendor_id: z.number().int().positive("Valid Vendor ID is required"),
@@ -17,7 +27,8 @@ const createPurchaseOrderSchema = z.object({
     notes: z.string().trim().optional(),
     items: z
       .array(poItemSchema)
-      .min(1, "At least one procurement item must be included"),
+      .min(1, "At least one procurement item must be included")
+      .refine(uniqueItemsRefinement, uniqueItemsMessage),
     is_submitting: z.boolean().optional().default(false),
   }),
 });
@@ -30,7 +41,11 @@ const updatePurchaseOrderSchema = z.object({
         .refine((val) => !isNaN(Date.parse(val)), "Invalid date format")
         .optional(),
       notes: z.string().trim().optional(),
-      items: z.array(poItemSchema).min(1).optional(),
+      items: z
+        .array(poItemSchema)
+        .min(1, "At least one item is required")
+        .refine(uniqueItemsRefinement, uniqueItemsMessage)
+        .optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {
       message: "At least one field must be provided for update.",

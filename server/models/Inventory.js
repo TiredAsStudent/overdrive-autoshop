@@ -250,6 +250,14 @@ class Inventory {
     return result.rows[0];
   }
 
+  static async findManyByIds(ids) {
+    if (!ids || ids.length === 0) return [];
+
+    const sql = `SELECT * FROM inventory_items WHERE id = ANY($1::int[])`;
+    const result = await query(sql, [ids]);
+    return result.rows;
+  }
+
   static async update(id, data) {
     const sql = `
       UPDATE inventory_items 
