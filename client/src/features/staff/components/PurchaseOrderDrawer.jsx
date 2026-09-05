@@ -111,13 +111,22 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                         variant={getStatusVariant(po.status)}
                         icon={getStatusIcon(po.status)}
                       />
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
-                        <BadgeCheck size={12} className="text-amber-500" />
-                        Prepared by:{" "}
-                        <span className="text-slate-600 dark:text-slate-300">
-                          {po.created_by_name || "System"}
+                      <div className="flex flex-col gap-0.5 mt-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <BadgeCheck size={12} className="text-amber-500" />
+                          Prepared by:{" "}
+                          <span className="text-slate-600 dark:text-slate-300">
+                            {po.created_by_name || "System"}
+                          </span>
                         </span>
-                      </span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <Calendar size={12} className="text-slate-400" />
+                          PO Date:{" "}
+                          <span className="text-slate-600 dark:text-slate-300">
+                            {new Date(po.created_at).toLocaleDateString()}
+                          </span>
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>

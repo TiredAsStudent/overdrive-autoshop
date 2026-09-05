@@ -59,17 +59,20 @@ const PurchaseOrders = () => {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState({
     vendorId: "all",
+    status: "",
     startDate: "",
     endDate: "",
   });
   const [activeFilters, setActiveFilters] = useState({
     vendorId: "all",
+    status: "",
     startDate: "",
     endDate: "",
   });
 
   const activeFilterCount =
     (activeFilters.vendorId !== "all" ? 1 : 0) +
+    (activeFilters.status !== "" ? 1 : 0) +
     (activeFilters.startDate ? 1 : 0) +
     (activeFilters.endDate ? 1 : 0);
 
@@ -105,7 +108,7 @@ const PurchaseOrders = () => {
         currentPage,
         ITEMS_PER_PAGE,
         debouncedSearchQuery,
-        statusFilter,
+        activeFilters.status || statusFilter,
         activeFilters.vendorId,
         "all",
         activeFilters.startDate,
@@ -182,7 +185,7 @@ const PurchaseOrders = () => {
   };
 
   const clearFilters = () => {
-    const reset = { vendorId: "all", startDate: "", endDate: "" };
+    const reset = { vendorId: "all", status: "", startDate: "", endDate: "" };
     setTempFilters(reset);
     setActiveFilters(reset);
     setIsFilterModalOpen(false);
@@ -242,9 +245,9 @@ const PurchaseOrders = () => {
       <DataTable
         headers={[
           "Document Ref",
-          "Supplier Target",
-          "Expected Delivery",
-          "Financial Lock",
+          "Vendor",
+          "Date Details",
+          "Grand Total",
           "Status",
           "Actions",
         ]}
@@ -270,6 +273,10 @@ const PurchaseOrders = () => {
               </td>
               <td className="px-4 sm:px-8 py-4 sm:py-6">
                 <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                  {new Date(order.created_at).toLocaleDateString()}
+                </p>
+                <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">
+                  Delivery:{" "}
                   {new Date(order.expected_delivery_date).toLocaleDateString()}
                 </p>
               </td>
@@ -378,6 +385,26 @@ const PurchaseOrders = () => {
                   {v.business_name}
                 </option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Order Status
+            </label>
+            <select
+              value={tempFilters.status}
+              onChange={(e) =>
+                setTempFilters({ ...tempFilters, status: e.target.value })
+              }
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+            >
+              <option value="">Any Status</option>
+              <option value="DRAFT">Draft</option>
+              <option value="PENDING_APPROVAL">Pending Approval</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="CLOSED">Closed</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
           <div>
