@@ -460,7 +460,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -575,17 +575,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
 
                   {/* Procurement Line Items */}
                   <section className="relative z-[50] bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
-                        <Calculator size={16} /> Itemized Parts Breakdown
+                    <div className="flex justify-between items-end mb-4">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                        <Calculator size={14} /> Itemized Parts Breakdown
                       </h3>
-                      <button
-                        type="button"
-                        onClick={addPartRow}
-                        className="px-4 sm:px-3 py-2.5 sm:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 w-full sm:w-auto shadow-sm sm:shadow-none"
-                      >
-                        <Plus size={12} /> Add Part
-                      </button>
                     </div>
 
                     <div className="space-y-4 sm:space-y-3">
@@ -701,6 +694,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         </div>
                       ))}
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={addPartRow}
+                      className="mt-4 text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 flex items-center justify-center w-full sm:w-auto gap-1.5 hover:bg-amber-50 dark:hover:bg-amber-500/10 px-4 py-3 sm:py-2.5 rounded-xl transition-colors border border-dashed border-amber-200 dark:border-amber-500/30"
+                    >
+                      <Plus size={14} /> Add Another Row
+                    </button>
                   </section>
 
                   {/* Document Footer (Notes & Math) */}

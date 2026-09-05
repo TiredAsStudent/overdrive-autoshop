@@ -196,7 +196,7 @@ const PurchaseOrders = () => {
         return { variant: "warning", icon: Clock };
       case "REJECTED":
       case "CANCELLED":
-        return { variant: "danger", icon: AlertCircle };
+        return { variant: "danger", icon: XCircle };
       case "CLOSED":
         return { variant: "info", icon: CheckCircle };
       default:
