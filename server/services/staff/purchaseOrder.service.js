@@ -211,11 +211,11 @@ class PurchaseOrderService {
       throw new Error("Unauthorized.");
 
     if (
-      newStatus === "PENDING_APPROVAL" &&
+      ["PENDING_APPROVAL", "CANCELLED"].includes(newStatus) &&
       !["DRAFT", "REJECTED"].includes(po.status)
     ) {
       throw new Error(
-        "Only Draft or Rejected orders can be submitted for approval.",
+        `Cannot transition to ${newStatus}. Only Draft or Rejected orders can be modified or cancelled.`,
       );
     }
 
