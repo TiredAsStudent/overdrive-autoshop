@@ -9,6 +9,7 @@ const poItemSchema = z.object({
 });
 
 const uniqueItemsRefinement = (items) => {
+  if (!items) return true;
   const itemIds = items.map((i) => i.item_id);
   return new Set(itemIds).size === itemIds.length;
 };
@@ -46,6 +47,7 @@ const updatePurchaseOrderSchema = z.object({
         .min(1, "At least one item is required")
         .refine(uniqueItemsRefinement, uniqueItemsMessage)
         .optional(),
+      is_submitting: z.boolean().optional().default(false),
     })
     .refine((data) => Object.keys(data).length > 0, {
       message: "At least one field must be provided for update.",
