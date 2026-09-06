@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from "react";
-import {
-  Search,
-  Loader2,
-  ClipboardCheck,
-  FileSearch,
-  Archive,
-} from "lucide-react";
+import { Search, Loader2, ClipboardCheck, FileSearch } from "lucide-react";
 import { poApprovalService } from "../../services/manager/poApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
+import { vendorService } from "../../services/staff/vendor.service";
 import PurchaseOrderApprovalDrawer from "../../features/manager/components/POApprovalDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
+import FilterButton from "../../components/ui/FilterButton";
+import FilterModal from "../../components/shared/FilterModal";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -19,6 +16,7 @@ const PurchaseOrderApprovals = () => {
 
   const [orders, setOrders] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [vendorList, setVendorList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // View Mode: 'PENDING' | 'HISTORY'
@@ -32,20 +30,31 @@ const PurchaseOrderApprovals = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [tempVendorFilter, setTempVendorFilter] = useState("all");
+  const [activeVendorFilter, setActiveVendorFilter] = useState("all");
+
   // Drawer State
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const activeFilterCount = activeVendorFilter !== "all" ? 1 : 0;
 
   useEffect(() => {
     inventoryService
       .getActiveBranches()
       .then((res) => setBranches(res.data || []))
       .catch((err) => console.error("Failed to load branches", err));
+
+    vendorService
+      .getVendors(1, 500, "", "active", "all", "all")
+      .then((res) => setVendorList(res.data?.vendors || []))
+      .catch((err) => console.error("Failed to load vendors", err));
   }, []);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, viewMode, branchFilter]);
+  }, [debouncedSearchQuery, viewMode, branchFilter, activeVendorFilter]);
 
   const loadOrders = async () => {
     try {
@@ -56,14 +65,14 @@ const PurchaseOrderApprovals = () => {
               currentPage,
               ITEMS_PER_PAGE,
               debouncedSearchQuery,
-              "all",
+              activeVendorFilter,
               branchFilter,
             )
           : await poApprovalService.getApprovalHistory(
               currentPage,
               ITEMS_PER_PAGE,
               debouncedSearchQuery,
-              "all",
+              activeVendorFilter,
               branchFilter,
             );
 
@@ -78,7 +87,24 @@ const PurchaseOrderApprovals = () => {
 
   useEffect(() => {
     loadOrders();
-  }, [currentPage, debouncedSearchQuery, viewMode, branchFilter]);
+  }, [
+    currentPage,
+    debouncedSearchQuery,
+    viewMode,
+    branchFilter,
+    activeVendorFilter,
+  ]);
+
+  const applyFilters = () => {
+    setActiveVendorFilter(tempVendorFilter);
+    setIsFilterModalOpen(false);
+  };
+
+  const clearFilters = () => {
+    setTempVendorFilter("all");
+    setActiveVendorFilter("all");
+    setIsFilterModalOpen(false);
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -167,6 +193,12 @@ const PurchaseOrderApprovals = () => {
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
             />
           </div>
+
+          {/* Advanced Filter Button */}
+          <FilterButton
+            onClick={() => setIsFilterModalOpen(true)}
+            activeCount={activeFilterCount}
+          />
         </div>
       </div>
 
@@ -262,6 +294,35 @@ const PurchaseOrderApprovals = () => {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      {/* Advanced Filters Modal */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={clearFilters}
+        onApply={applyFilters}
+        title="Advanced Document Filters"
+      >
+        <div className="space-y-6">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Filter by Vendor
+            </label>
+            <select
+              value={tempVendorFilter}
+              onChange={(e) => setTempVendorFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+            >
+              <option value="all">All Vendors</option>
+              {vendorList.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.business_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </FilterModal>
 
       <PurchaseOrderApprovalDrawer
         isOpen={isDrawerOpen}
