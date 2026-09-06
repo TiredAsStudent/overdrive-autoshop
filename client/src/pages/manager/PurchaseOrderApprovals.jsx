@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ClipboardCheck, FileSearch } from "lucide-react";
+import { ClipboardCheck, Eye, Clock, CheckCircle, XCircle } from "lucide-react";
 import { poApprovalService } from "../../services/manager/poApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 import PurchaseOrderApprovalDrawer from "../../features/manager/components/POApprovalDrawer";
@@ -135,9 +135,8 @@ const PurchaseOrderApprovals = () => {
                 "PO Number",
                 "Purchase Date",
                 "Vendor",
-                "Branch",
+                "Branch & Staff",
                 "Total Amount",
-                "Submitted By",
                 "Status",
                 "Actions",
               ]
@@ -145,9 +144,8 @@ const PurchaseOrderApprovals = () => {
                 "PO Number",
                 "Date Processed",
                 "Vendor",
-                "Branch",
+                "Branch & Decision",
                 "Total Amount",
-                "Decision By",
                 "Decision",
                 "Actions",
               ]
@@ -190,9 +188,16 @@ const PurchaseOrderApprovals = () => {
             </td>
 
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                {order.branch_name}
-              </p>
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[150px]">
+                  {order.branch_name}
+                </span>
+                <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+                  {viewMode === "PENDING"
+                    ? `BY: ${order.created_by_name}`
+                    : `BY: ${order.resolved_by_name || order.created_by_name}`}
+                </span>
+              </div>
             </td>
 
             <td className="px-4 sm:px-8 py-4 sm:py-6">
@@ -205,17 +210,16 @@ const PurchaseOrderApprovals = () => {
             </td>
 
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate max-w-[120px]">
-                {viewMode === "PENDING"
-                  ? order.created_by_name
-                  : order.resolved_by_name || order.created_by_name}
-              </p>
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
               <StatusBadge
                 label={order.status.replace("_", " ")}
                 variant={getBadgeVariant(order.status)}
+                icon={
+                  order.status === "APPROVED"
+                    ? CheckCircle
+                    : order.status === "REJECTED"
+                      ? XCircle
+                      : Clock
+                }
               />
             </td>
 
@@ -226,16 +230,12 @@ const PurchaseOrderApprovals = () => {
                   setIsDrawerOpen(true);
                 }}
                 title={
-                  viewMode === "PENDING" ? "Review & Decide" : "View Details"
+                  viewMode === "PENDING" ? "Review Request" : "View Details"
                 }
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer ${
-                  viewMode === "PENDING"
-                    ? "bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
-                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
-                }`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
               >
-                <FileSearch size={14} />
-                {viewMode === "PENDING" ? "Review" : "View"}
+                <Eye size={14} />
+                {viewMode === "PENDING" ? "Review" : "Details"}
               </button>
             </td>
           </tr>
