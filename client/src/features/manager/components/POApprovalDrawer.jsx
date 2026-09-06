@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { poApprovalService } from "../../../services/manager/poApproval.service";
 import { useApp } from "../../../context/AppContext";
+import StatusBadge from "../../../components/ui/StatusBadge";
 
 const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
   const { showToast } = useApp();
@@ -78,16 +79,16 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getBadgeVariant = (status) => {
     switch (status) {
       case "PENDING_APPROVAL":
-        return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
+        return "warning";
       case "APPROVED":
-        return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
+        return "success";
       case "REJECTED":
-        return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
+        return "danger";
       default:
-        return "text-slate-600 bg-slate-50 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
+        return "default";
     }
   };
 
@@ -130,11 +131,11 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
                     {po?.purchase_order_number || "Loading..."}
                   </h2>
                   {po && (
-                    <span
-                      className={`inline-flex px-2 py-0.5 mt-1.5 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusColor(po.status)}`}
-                    >
-                      {po.status.replace("_", " ")}
-                    </span>
+                    <StatusBadge
+                      label={po.status.replace("_", " ")}
+                      variant={getBadgeVariant(po.status)}
+                      className="mt-1.5"
+                    />
                   )}
                 </div>
               </div>
@@ -174,19 +175,27 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
 
               {po && !loading && (
                 <div className="space-y-6 sm:space-y-8">
-                  {/* Historical Remarks (If already processed) */}
-                  {po.approval_remarks && po.status !== "PENDING_APPROVAL" && (
+                  {/* Historical Decision & Remarks */}
+                  {po.status !== "PENDING_APPROVAL" && (
                     <div
-                      className={`p-4 rounded-xl border flex items-start gap-3 ${po.status === "REJECTED" ? "bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:border-rose-500/20 text-rose-800 dark:text-rose-300" : "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300"}`}
+                      className={`p-5 rounded-[20px] sm:rounded-[24px] border flex items-start gap-4 ${po.status === "REJECTED" ? "bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:border-rose-500/20 text-rose-800 dark:text-rose-300" : "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300"}`}
                     >
-                      <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">
-                          Managerial Feedback
-                        </p>
-
-                        <p className="text-xs font-bold leading-relaxed whitespace-pre-wrap break-words">
-                          {po.approval_remarks}
+                      <AlertCircle size={20} className="shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
+                          <p className="text-[10px] font-black uppercase tracking-widest opacity-80">
+                            Managerial Decision
+                          </p>
+                          {po.resolved_by_name && (
+                            <span className="text-[9px] font-bold uppercase tracking-widest opacity-80 bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded border border-black/5 dark:border-white/5 truncate max-w-full">
+                              By: {po.resolved_by_name}{" "}
+                              {po.resolved_by_last_name}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs sm:text-sm font-bold leading-relaxed whitespace-pre-wrap break-words">
+                          {po.approval_remarks ||
+                            "No additional remarks provided."}
                         </p>
                       </div>
                     </div>
