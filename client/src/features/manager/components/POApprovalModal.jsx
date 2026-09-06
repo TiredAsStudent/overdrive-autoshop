@@ -3,9 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   ShoppingCart,
-  Calendar,
   Building2,
-  User,
   Loader2,
   Store,
   Package,
@@ -13,6 +11,7 @@ import {
   CheckCircle,
   XCircle,
   MessageSquare,
+  ClipboardList,
 } from "lucide-react";
 import { poApprovalService } from "../../../services/manager/poApproval.service";
 import { useApp } from "../../../context/AppContext";
@@ -96,25 +95,32 @@ const POApprovalModal = ({ isOpen, onClose, poId, onSuccess }) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-3xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-4xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
           >
-            {/* Header */}
+            {/* MODAL HEADER */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
                   <ShoppingCart size={24} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate">
                     {po?.purchase_order_number || "Loading PO..."}
                   </h2>
-                  {po && (
-                    <StatusBadge
-                      label={po.status.replace("_", " ")}
-                      variant={getBadgeVariant(po.status)}
-                      className="mt-1"
-                    />
-                  )}
+                  <div className="flex items-center flex-wrap gap-2 mt-1">
+                    {po && (
+                      <StatusBadge
+                        label={po.status.replace("_", " ")}
+                        variant={getBadgeVariant(po.status)}
+                      />
+                    )}
+                    <span className="hidden sm:inline text-slate-300 dark:text-slate-600">
+                      •
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">
+                      Drafted by: {po?.created_by_name}
+                    </span>
+                  </div>
                 </div>
               </div>
               <button
@@ -126,8 +132,8 @@ const POApprovalModal = ({ isOpen, onClose, poId, onSuccess }) => {
               </button>
             </div>
 
-            {/* Scrollable Body Container */}
-            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+            {/* MODAL BODY */}
+            <div className="px-4 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 sm:space-y-8">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400 opacity-70">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
@@ -152,74 +158,78 @@ const POApprovalModal = ({ isOpen, onClose, poId, onSuccess }) => {
 
               {po && !loading && (
                 <>
-                  {/* Meta Linkages */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                    <div className="p-5 bg-slate-50 dark:bg-slate-900/50 rounded-[20px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
-                      <Store size={16} className="text-slate-400 mb-3" />
-                      <div>
+                  {/* SECTION 1: Vendor & Logistics */}
+                  <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                      <Store size={14} /> Vendor & Logistics Information
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                      <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
                           Target Vendor
                         </p>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                        <p className="text-sm font-black text-slate-900 dark:text-white truncate">
                           {po.vendor_name}
                         </p>
                         {po.contact_person && (
-                          <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                          <p className="text-[10px] font-medium text-slate-500 truncate mt-0.5">
                             Attn: {po.contact_person}
                           </p>
                         )}
                         {po.vendor_email && (
-                          <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                          <p className="text-[10px] font-medium text-slate-500 truncate mt-0.5">
                             {po.vendor_email}
                           </p>
                         )}
-                        <p className="text-[10px] text-slate-500 truncate mt-2 flex items-center gap-1 font-medium border-t border-slate-200 dark:border-slate-700/50 pt-2">
-                          <Building2 size={10} /> {po.branch_name}
+                        <p className="text-[10px] text-slate-500 truncate mt-3 flex items-center gap-1.5 font-bold border-t border-slate-100 dark:border-slate-700/50 pt-3">
+                          <Building2 size={12} /> {po.branch_name}
                         </p>
                       </div>
-                    </div>
 
-                    <div className="p-5 bg-amber-50 dark:bg-amber-500/5 rounded-[20px] border border-amber-100 dark:border-amber-500/20 shadow-sm flex flex-col justify-between">
-                      <Calendar size={16} className="text-amber-400 mb-3" />
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
-                          Submission & Delivery
-                        </p>
-                        <div className="space-y-1.5">
+                      <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center">
+                        <div className="space-y-4">
                           <div>
-                            <p className="text-[9px] text-amber-600/70 dark:text-amber-500/70 uppercase tracking-widest">
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                               Purchase Date
                             </p>
-                            <p className="text-xs font-bold text-amber-900 dark:text-amber-400 truncate">
-                              {new Date(po.created_at).toLocaleDateString()}
+                            <p className="text-xs font-black text-slate-700 dark:text-slate-300 truncate mt-0.5">
+                              {new Date(po.created_at).toLocaleDateString(
+                                undefined,
+                                {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                },
+                              )}
                             </p>
                           </div>
                           <div>
-                            <p className="text-[9px] text-amber-600/70 dark:text-amber-500/70 uppercase tracking-widest mt-1">
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                               Delivery Target
                             </p>
-                            <p className="text-xs font-bold text-amber-900 dark:text-amber-400 truncate">
+                            <p className="text-xs font-black text-slate-700 dark:text-slate-300 truncate mt-0.5">
                               {new Date(
                                 po.expected_delivery_date,
-                              ).toLocaleDateString()}
+                              ).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
                             </p>
                           </div>
                         </div>
-                        <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70 truncate mt-2 flex items-center gap-1 font-medium border-t border-amber-200/50 dark:border-amber-500/20 pt-2">
-                          <User size={10} /> Submitted By: {po.created_by_name}
-                        </p>
                       </div>
                     </div>
-                  </div>
+                  </section>
 
-                  {/* Line Items Grid */}
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        Requested Parts
+                  {/* SECTION 2: Itemized Breakdown */}
+                  <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+                    <div className="flex justify-between items-end mb-4">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                        <Package size={14} /> Requested Parts
                       </h3>
                     </div>
-                    <div className="p-4 sm:p-5 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-1 sm:pr-2">
                       {po.items.map((item) => {
                         const net =
                           parseFloat(item.recorded_unit_cost) * item.quantity -
@@ -227,11 +237,11 @@ const POApprovalModal = ({ isOpen, onClose, poId, onSuccess }) => {
                         return (
                           <div
                             key={item.id}
-                            className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-2xl flex items-center justify-between"
+                            className="p-4 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] flex items-center justify-between shadow-sm"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                              <div className="p-1.5 rounded-md shrink-0 bg-white border border-slate-200 dark:border-slate-600 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                                <Package size={14} />
+                              <div className="p-2 rounded-md shrink-0 bg-slate-50 border border-slate-200 dark:border-slate-700 text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                                <Package size={16} />
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate uppercase italic">
@@ -268,39 +278,33 @@ const POApprovalModal = ({ isOpen, onClose, poId, onSuccess }) => {
                         );
                       })}
                     </div>
-                  </div>
+                  </section>
 
-                  {/* Financial Commitments & Decision Stack */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="bg-slate-900 dark:bg-black rounded-[20px] p-5 text-white shadow-xl flex flex-col justify-between">
-                      <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3">
-                          Financial Commitment
-                        </p>
-                        <div className="space-y-2 mb-5 text-sm font-medium text-slate-400">
-                          <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 rounded-xl">
-                            <span>Subtotal</span>
-                            <span className="font-bold text-slate-200 font-mono">
-                              ₱
-                              {parseFloat(po.subtotal).toLocaleString(
-                                undefined,
-                                { minimumFractionDigits: 2 },
-                              )}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 rounded-xl">
-                            <span>VAT Allocation</span>
-                            <span className="font-bold text-slate-200 font-mono">
-                              ₱
-                              {parseFloat(po.vat_amount).toLocaleString(
-                                undefined,
-                                { minimumFractionDigits: 2 },
-                              )}
-                            </span>
-                          </div>
+                  {/* SECTION 3: Financials & Remarks */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 relative z-0">
+                    <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl flex flex-col justify-center">
+                      <div className="space-y-2 mb-4 text-sm font-medium text-slate-400">
+                        <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                          <span>Subtotal</span>
+                          <span className="font-bold text-slate-200 font-mono">
+                            ₱
+                            {parseFloat(po.subtotal).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                          <span>VAT Allocation</span>
+                          <span className="font-bold text-slate-200 font-mono">
+                            ₱
+                            {parseFloat(po.vat_amount).toLocaleString(
+                              undefined,
+                              { minimumFractionDigits: 2 },
+                            )}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex justify-between items-end pt-4 border-t border-slate-700/50 mt-auto">
+                      <div className="flex justify-between items-center pt-4 sm:pt-5 mt-2 border-t border-slate-700/50">
                         <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
                           Grand Total
                         </span>
@@ -312,20 +316,22 @@ const POApprovalModal = ({ isOpen, onClose, poId, onSuccess }) => {
                           )}
                         </span>
                       </div>
-                    </div>
+                    </section>
 
-                    <div className="flex flex-col gap-4">
+                    <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 flex flex-col space-y-5">
                       {po.notes && (
-                        <div className="p-4 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px]">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
-                            Staff Justification
-                          </p>
-                          <p className="text-xs text-amber-900 dark:text-amber-200/80 italic leading-relaxed whitespace-pre-wrap break-words">
-                            "{po.notes}"
-                          </p>
+                        <div>
+                          <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-2 flex items-center gap-2">
+                            <ClipboardList size={14} /> Staff Justification
+                          </h3>
+                          <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+                            <p className="text-xs text-slate-600 dark:text-slate-300 italic leading-relaxed whitespace-pre-wrap break-words">
+                              "{po.notes}"
+                            </p>
+                          </div>
                         </div>
                       )}
-                      <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-[20px] border border-slate-200 dark:border-slate-700 flex-1 flex flex-col">
+                      <div className="flex-1 flex flex-col">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-3">
                           <MessageSquare size={14} /> Manager Remarks
                           <span className="text-red-500 ml-1 lowercase">
@@ -337,30 +343,30 @@ const POApprovalModal = ({ isOpen, onClose, poId, onSuccess }) => {
                           onChange={(e) => setRemarks(e.target.value)}
                           placeholder="Provide feedback or justification..."
                           disabled={isSubmitting}
-                          className="w-full h-full min-h-[100px] px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-50 shadow-sm transition-all"
+                          className="w-full h-full min-h-[100px] px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-50 shadow-sm transition-all"
                         />
                       </div>
-                    </div>
+                    </section>
                   </div>
                 </>
               )}
             </div>
 
-            {/* Action Footer */}
+            {/* MODAL FOOTER */}
             {po && !loading && (
-              <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+              <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => handleDecision("REJECTED")}
                     disabled={isSubmitting}
-                    className="flex-1 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-500 hover:text-red-500 text-slate-600 dark:text-slate-300 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+                    className="flex-1 py-3.5 sm:py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-500 hover:text-red-500 text-slate-600 dark:text-slate-300 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
                   >
                     <XCircle size={16} /> Reject Request
                   </button>
                   <button
                     onClick={() => handleDecision("APPROVED")}
                     disabled={isSubmitting}
-                    className="flex-[1.5] py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                    className="flex-[1.5] py-3.5 sm:py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
                   >
                     {isSubmitting ? (
                       <Loader2 size={16} className="animate-spin" />
