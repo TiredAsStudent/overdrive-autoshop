@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ClipboardCheck, Eye, Clock, CheckCircle, XCircle } from "lucide-react";
 import { poApprovalService } from "../../services/manager/poApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
+import POApprovalModal from "../../features/manager/components/POApprovalModal";
 import PurchaseOrderApprovalDrawer from "../../features/manager/components/POApprovalDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
@@ -34,8 +35,9 @@ const PurchaseOrderApprovals = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Drawer State
+  // View States
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const activeFilterCount = branchFilter !== "all" ? 1 : 0;
@@ -84,6 +86,15 @@ const PurchaseOrderApprovals = () => {
 
   const resetFilters = () => {
     setBranchFilter("all");
+  };
+
+  const handleOpenView = (orderId) => {
+    setSelectedOrderId(orderId);
+    if (viewMode === "PENDING") {
+      setIsModalOpen(true);
+    } else {
+      setIsDrawerOpen(true);
+    }
   };
 
   const getBadgeVariant = (status) => {
@@ -225,10 +236,7 @@ const PurchaseOrderApprovals = () => {
 
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <button
-                onClick={() => {
-                  setSelectedOrderId(order.id);
-                  setIsDrawerOpen(true);
-                }}
+                onClick={() => handleOpenView(order.id)}
                 title={
                   viewMode === "PENDING" ? "Review Request" : "View Details"
                 }
@@ -275,11 +283,17 @@ const PurchaseOrderApprovals = () => {
         </div>
       </FilterModal>
 
+      <POApprovalModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        poId={selectedOrderId}
+        onSuccess={loadOrders}
+      />
+
       <PurchaseOrderApprovalDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         poId={selectedOrderId}
-        onSuccess={loadOrders}
       />
     </div>
   );
