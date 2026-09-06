@@ -75,9 +75,14 @@ class POApprovalController {
         "Purchase Order details retrieved.",
       );
     } catch (error) {
-      const code = error.message.includes("Unauthorized")
-        ? STATUS_CODES.FORBIDDEN
-        : STATUS_CODES.NOT_FOUND;
+      let code = STATUS_CODES.INTERNAL_ERROR;
+
+      if (error.message.includes("Unauthorized")) {
+        code = STATUS_CODES.FORBIDDEN;
+      } else if (error.message.toLowerCase().includes("not found")) {
+        code = STATUS_CODES.NOT_FOUND;
+      }
+
       return sendError(res, code, error.message);
     }
   }
