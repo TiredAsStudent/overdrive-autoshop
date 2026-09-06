@@ -191,14 +191,7 @@ class PurchaseOrder {
     return result.rows[0];
   }
 
-  static async countFiltered(
-    search,
-    status,
-    vendorId,
-    branchId,
-    startDate,
-    endDate,
-  ) {
+  static async countFiltered(search, status, branchId) {
     let sql = `SELECT COUNT(DISTINCT po.id) FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id`;
     const conditions = [];
     const values = [];
@@ -216,27 +209,9 @@ class PurchaseOrder {
       values.push(status.toUpperCase());
       paramIdx++;
     }
-    if (vendorId && vendorId !== "all") {
-      conditions.push(`po.vendor_id = $${paramIdx}`);
-      values.push(vendorId);
-      paramIdx++;
-    }
     if (branchId && branchId !== "all") {
       conditions.push(`po.branch_id = $${paramIdx}`);
       values.push(branchId);
-      paramIdx++;
-    }
-
-    if (startDate) {
-      conditions.push(`po.created_at >= $${paramIdx}::timestamp`);
-      values.push(startDate);
-      paramIdx++;
-    }
-    if (endDate) {
-      conditions.push(
-        `po.created_at < $${paramIdx}::timestamp + interval '1 day'`,
-      );
-      values.push(endDate);
       paramIdx++;
     }
 
@@ -245,16 +220,7 @@ class PurchaseOrder {
     return parseInt(result.rows[0].count, 10);
   }
 
-  static async findPaginatedFiltered(
-    limit,
-    offset,
-    search,
-    status,
-    vendorId,
-    branchId,
-    startDate,
-    endDate,
-  ) {
+  static async findPaginatedFiltered(limit, offset, search, status, branchId) {
     let sql = `
       SELECT po.id, po.purchase_order_number, po.grand_total, po.status, po.expected_delivery_date, po.created_at, po.updated_at,
              v.business_name as vendor_name, b.branch_name, u.first_name as created_by_name
@@ -279,27 +245,9 @@ class PurchaseOrder {
       values.push(status.toUpperCase());
       paramIdx++;
     }
-    if (vendorId && vendorId !== "all") {
-      conditions.push(`po.vendor_id = $${paramIdx}`);
-      values.push(vendorId);
-      paramIdx++;
-    }
     if (branchId && branchId !== "all") {
       conditions.push(`po.branch_id = $${paramIdx}`);
       values.push(branchId);
-      paramIdx++;
-    }
-
-    if (startDate) {
-      conditions.push(`po.created_at >= $${paramIdx}::timestamp`);
-      values.push(startDate);
-      paramIdx++;
-    }
-    if (endDate) {
-      conditions.push(
-        `po.created_at < $${paramIdx}::timestamp + interval '1 day'`,
-      );
-      values.push(endDate);
       paramIdx++;
     }
 

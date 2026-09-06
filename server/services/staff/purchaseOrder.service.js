@@ -251,31 +251,18 @@ class PurchaseOrderService {
     limit = 10,
     search = "",
     status = "all",
-    vendorId = "all",
     branchId = "all",
-    startDate = null,
-    endDate = null,
   ) {
     const offset = (page - 1) * limit;
 
     const [totalItems, purchaseOrders] = await Promise.all([
-      PurchaseOrderModel.countFiltered(
-        search,
-        status,
-        vendorId,
-        branchId,
-        startDate,
-        endDate,
-      ),
+      PurchaseOrderModel.countFiltered(search, status, branchId),
       PurchaseOrderModel.findPaginatedFiltered(
         limit,
         offset,
         search,
         status,
-        vendorId,
         branchId,
-        startDate,
-        endDate,
       ),
     ]);
 

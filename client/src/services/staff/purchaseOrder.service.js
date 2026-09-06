@@ -6,10 +6,6 @@ export const purchaseOrderService = {
     limit = 10,
     search = "",
     status = "all",
-    vendorId = "all",
-    branchId = "all",
-    startDate = "",
-    endDate = "",
   ) => {
     try {
       const response = await api.get("/staff/purchase-orders", {
@@ -18,10 +14,6 @@ export const purchaseOrderService = {
           limit,
           search,
           status,
-          vendor: vendorId,
-          branch: branchId,
-          start_date: startDate || undefined,
-          end_date: endDate || undefined,
         },
       });
       return response.data;

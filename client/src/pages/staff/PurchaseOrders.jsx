@@ -15,7 +15,6 @@ import {
   Ban,
 } from "lucide-react";
 import { purchaseOrderService } from "../../services/staff/purchaseOrder.service";
-import { vendorService } from "../../services/staff/vendor.service";
 import PurchaseOrderModal from "../../features/staff/components/PurchaseOrderModal";
 import PurchaseOrderDrawer from "../../features/staff/components/PurchaseOrderDrawer";
 
@@ -25,8 +24,6 @@ import SearchBar from "../../components/ui/SearchBar";
 import StatusToggle from "../../components/ui/StatusToggle";
 import ActionButton from "../../components/ui/ActionButton";
 import StatusBadge from "../../components/ui/StatusBadge";
-import FilterButton from "../../components/ui/FilterButton";
-import FilterModal from "../../components/shared/FilterModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import ConfirmModal from "../../components/shared/ConfirmModal";
@@ -46,7 +43,6 @@ const PurchaseOrders = () => {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [vendorList, setVendorList] = useState([]);
 
   // Base Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,26 +51,6 @@ const PurchaseOrders = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
-
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [tempFilters, setTempFilters] = useState({
-    vendorId: "all",
-    status: "",
-    startDate: "",
-    endDate: "",
-  });
-  const [activeFilters, setActiveFilters] = useState({
-    vendorId: "all",
-    status: "",
-    startDate: "",
-    endDate: "",
-  });
-
-  const activeFilterCount =
-    (activeFilters.vendorId !== "all" ? 1 : 0) +
-    (activeFilters.status !== "" ? 1 : 0) +
-    (activeFilters.startDate ? 1 : 0) +
-    (activeFilters.endDate ? 1 : 0);
 
   // UI State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,15 +67,7 @@ const PurchaseOrders = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter, activeFilters]);
-
-  // Load Vendor Dictionary for the Filter
-  useEffect(() => {
-    vendorService
-      .getVendors(1, 500, "", "active", "all", "all")
-      .then((res) => setVendorList(res.data?.vendors || []))
-      .catch(() => setVendorList([]));
-  }, []);
+  }, [debouncedSearchQuery, statusFilter]);
 
   const loadOrders = async () => {
     try {
@@ -108,11 +76,7 @@ const PurchaseOrders = () => {
         currentPage,
         ITEMS_PER_PAGE,
         debouncedSearchQuery,
-        activeFilters.status || statusFilter,
-        activeFilters.vendorId,
-        "all",
-        activeFilters.startDate,
-        activeFilters.endDate,
+        statusFilter,
       );
       setOrders(response.data?.purchaseOrders || []);
       setTotalPages(response.data?.pagination?.totalPages || 1);
@@ -125,7 +89,7 @@ const PurchaseOrders = () => {
 
   useEffect(() => {
     loadOrders();
-  }, [currentPage, debouncedSearchQuery, statusFilter, activeFilters]);
+  }, [currentPage, debouncedSearchQuery, statusFilter]);
 
   const handleModalSubmit = async (formData) => {
     try {
@@ -179,18 +143,6 @@ const PurchaseOrders = () => {
     });
   };
 
-  const applyFilters = () => {
-    setActiveFilters(tempFilters);
-    setIsFilterModalOpen(false);
-  };
-
-  const clearFilters = () => {
-    const reset = { vendorId: "all", status: "", startDate: "", endDate: "" };
-    setTempFilters(reset);
-    setActiveFilters(reset);
-    setIsFilterModalOpen(false);
-  };
-
   const getBadgeDetails = (status) => {
     switch (status) {
       case "APPROVED":
@@ -225,11 +177,6 @@ const PurchaseOrders = () => {
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search PO or Vendor..."
           isSearching={searchQuery !== debouncedSearchQuery}
-        />
-
-        <FilterButton
-          onClick={() => setIsFilterModalOpen(true)}
-          activeCount={activeFilterCount}
         />
 
         <ActionButton
@@ -358,84 +305,6 @@ const PurchaseOrders = () => {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
-
-      {/* Advanced Filters Modal */}
-      <FilterModal
-        isOpen={isFilterModalOpen}
-        onClose={() => setIsFilterModalOpen(false)}
-        onClear={clearFilters}
-        onApply={applyFilters}
-        title="Advanced Document Filters"
-      >
-        <div className="space-y-6">
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Filter by Vendor
-            </label>
-            <select
-              value={tempFilters.vendorId}
-              onChange={(e) =>
-                setTempFilters({ ...tempFilters, vendorId: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-            >
-              <option value="all">All Vendors</option>
-              {vendorList.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.business_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Order Status
-            </label>
-            <select
-              value={tempFilters.status}
-              onChange={(e) =>
-                setTempFilters({ ...tempFilters, status: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-            >
-              <option value="">Any Status</option>
-              <option value="DRAFT">Draft</option>
-              <option value="PENDING_APPROVAL">Pending Approval</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-              <option value="CLOSED">Closed</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Date Created (From)
-            </label>
-            <input
-              type="date"
-              value={tempFilters.startDate}
-              onChange={(e) =>
-                setTempFilters({ ...tempFilters, startDate: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Date Created (To)
-            </label>
-            <input
-              type="date"
-              value={tempFilters.endDate}
-              min={tempFilters.startDate}
-              onChange={(e) =>
-                setTempFilters({ ...tempFilters, endDate: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
-            />
-          </div>
-        </div>
-      </FilterModal>
 
       <PurchaseOrderModal
         isOpen={isModalOpen}
