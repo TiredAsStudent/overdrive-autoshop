@@ -118,9 +118,12 @@ class Bill {
       // 4. Update Inventory & Log Movements
       for (const item of items) {
         const invUpdateSql = `
-          UPDATE branch_inventory 
-          SET quantity = quantity + $1, last_restock_date = NOW()
-          WHERE branch_id = $2 AND item_id = $3
+          INSERT INTO branch_inventory (branch_id, item_id, quantity, last_restock_date)
+          VALUES ($2, $3, $1, NOW())
+          ON CONFLICT (branch_id, item_id)
+          DO UPDATE SET 
+            quantity = branch_inventory.quantity + EXCLUDED.quantity, 
+            last_restock_date = EXCLUDED.last_restock_date
           RETURNING quantity
         `;
         const invRes = await client.query(invUpdateSql, [
@@ -128,12 +131,6 @@ class Bill {
           bill.branch_id,
           item.item_id,
         ]);
-
-        if (invRes.rows.length === 0) {
-          throw new Error(
-            `Inventory mapping missing for Item ID ${item.item_id} in Branch ${bill.branch_id}`,
-          );
-        }
 
         const newQuantity = invRes.rows[0].quantity;
 

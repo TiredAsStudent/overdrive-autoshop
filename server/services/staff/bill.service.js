@@ -21,8 +21,11 @@ class BillService {
 
     for (const item of itemsArray) {
       const partRec = await InventoryModel.findById(item.item_id);
-      if (!partRec || !partRec.is_active)
-        throw new Error(`Part ID ${item.item_id} is invalid or inactive.`);
+
+      if (!partRec)
+        throw new Error(
+          `Part ID ${item.item_id} no longer exists in the system.`,
+        );
 
       const cost = parseFloat(item.recorded_unit_cost);
       const qty = parseInt(item.quantity_received, 10);
