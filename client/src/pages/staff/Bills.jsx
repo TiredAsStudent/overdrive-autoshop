@@ -194,7 +194,7 @@ const Bills = () => {
       <DataTable
         headers={[
           "Reference",
-          "Supplier & PO",
+          "Supplier, PO & Branch",
           "Date Logs",
           "Grand Total",
           "Status (Rcv / Pay)",
@@ -223,9 +223,15 @@ const Bills = () => {
                 <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[200px]">
                   {bill.vendor_name}
                 </p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                  {bill.purchase_order_number}
-                </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    {bill.purchase_order_number}
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    {bill.branch_name}
+                  </span>
+                </div>
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5">
@@ -250,7 +256,6 @@ const Bills = () => {
                 })}
               </span>
             </td>
-
             <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex flex-col items-start gap-2">
                 <StatusBadge

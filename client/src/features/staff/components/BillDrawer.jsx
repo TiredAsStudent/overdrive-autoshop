@@ -162,13 +162,31 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                          Billing Date
-                        </p>
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center justify-end gap-1">
-                          <CalendarCheck size={12} />{" "}
-                          {new Date(bill.bill_date).toLocaleDateString()}
-                        </p>
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                            Billing Date
+                          </p>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center justify-end gap-1">
+                            <CalendarCheck size={12} />{" "}
+                            {new Date(bill.bill_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {bill.date_received && (
+                          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                              Date Received
+                            </p>
+                            <p className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center justify-end gap-1">
+                              <CheckCircle
+                                size={12}
+                                className="text-emerald-500"
+                              />{" "}
+                              {new Date(
+                                bill.date_received,
+                              ).toLocaleDateString()}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </section>
@@ -227,9 +245,24 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                           })}
                         </span>
                       </div>
+
+                      {parseFloat(bill.discount_amount) > 0 && (
+                        <div className="flex justify-between text-xs font-medium text-red-600 dark:text-red-400 bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                          <span>Discount Applied</span>
+                          <span className="font-mono">
+                            - ₱
+                            {parseFloat(bill.discount_amount).toLocaleString(
+                              undefined,
+                              { minimumFractionDigits: 2 },
+                            )}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
                         <span>
-                          VAT ({bill.is_vat_registered ? "12%" : "Exempt"})
+                          VAT Allocation{" "}
+                          {!bill.is_vat_registered ? "(Exempt)" : ""}
                         </span>
                         <span className="font-bold text-slate-200 font-mono">
                           ₱
