@@ -110,7 +110,6 @@ const PurchaseOrderApprovals = () => {
     setIsFilterModalOpen(false);
   };
 
-  // Helper for StatusBadge Component
   const getBadgeVariant = (status) => {
     switch (status) {
       case "PENDING_APPROVAL":
@@ -127,7 +126,7 @@ const PurchaseOrderApprovals = () => {
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
       <PageHeader
-        title="PO Approvals"
+        title="Purchase Order Approvals"
         subtitle="Managerial Procurement Oversight"
         icon={ClipboardCheck}
       >
@@ -140,7 +139,6 @@ const PurchaseOrderApprovals = () => {
           ]}
         />
 
-        {/* Branch Filter Dropdown */}
         <select
           value={branchFilter}
           onChange={(e) => setBranchFilter(e.target.value)}
@@ -167,16 +165,30 @@ const PurchaseOrderApprovals = () => {
         />
       </PageHeader>
 
-      {/* DATA TABLE */}
       <DataTable
-        headers={[
-          "Document Ref",
-          "Supplier Detail",
-          viewMode === "PENDING" ? "Expected Delivery" : "Processed At",
-          "Grand Total",
-          "Status",
-          "Actions",
-        ]}
+        headers={
+          viewMode === "PENDING"
+            ? [
+                "PO Number",
+                "Purchase Date",
+                "Vendor",
+                "Branch",
+                "Total Amount",
+                "Submitted By",
+                "Status",
+                "Actions",
+              ]
+            : [
+                "PO Number",
+                "Date Processed",
+                "Vendor",
+                "Branch",
+                "Total Amount",
+                "Decision By",
+                "Decision",
+                "Actions",
+              ]
+        }
         data={orders}
         loading={loading}
         emptyTitle={
@@ -194,48 +206,64 @@ const PurchaseOrderApprovals = () => {
             key={order.id}
             className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
           >
+            {/* 1. PO Number */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col gap-1 text-left">
-                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
-                  {order.purchase_order_number}
-                </span>
-                {viewMode === "HISTORY" && order.resolved_by_name ? (
-                  <span className="text-[9px] font-bold text-slate-500 tracking-widest uppercase">
-                    Processed By: {order.resolved_by_name}
-                  </span>
-                ) : (
-                  <span className="text-[9px] font-bold text-slate-500 tracking-widest uppercase">
-                    Drafted By: {order.created_by_name}
-                  </span>
-                )}
-              </div>
+              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
+                {order.purchase_order_number}
+              </span>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
-                {order.vendor_name}
-              </p>
-            </td>
+
+            {/* 2. Date */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
                 {viewMode === "PENDING"
-                  ? new Date(order.expected_delivery_date).toLocaleDateString()
+                  ? new Date(order.created_at).toLocaleDateString()
                   : new Date(order.processed_at).toLocaleString()}
               </p>
             </td>
+
+            {/* 3. Vendor */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black text-slate-900 dark:text-white">
+              <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[150px]">
+                {order.vendor_name}
+              </p>
+            </td>
+
+            {/* 4. Branch */}
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                {order.branch_name}
+              </p>
+            </td>
+
+            {/* 5. Total Amount */}
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
                 ₱
                 {parseFloat(order.grand_total).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                 })}
               </span>
             </td>
+
+            {/* 6. User Accountability */}
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate max-w-[120px]">
+                {viewMode === "PENDING"
+                  ? order.created_by_name
+                  : order.resolved_by_name || order.created_by_name}
+              </p>
+            </td>
+
+            {/* 7. Status */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <StatusBadge
                 label={order.status.replace("_", " ")}
                 variant={getBadgeVariant(order.status)}
               />
             </td>
+
+            {/* 8. Actions */}
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <button
                 onClick={() => {
@@ -265,7 +293,6 @@ const PurchaseOrderApprovals = () => {
         onPageChange={setCurrentPage}
       />
 
-      {/* Advanced Filters Modal */}
       <FilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}

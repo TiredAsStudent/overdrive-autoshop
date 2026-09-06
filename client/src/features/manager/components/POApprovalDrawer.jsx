@@ -62,8 +62,8 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
         await poApprovalService.rejectPO(po.id, remarks);
         showToast("Purchase Order Rejected.", "success");
       }
-      onSuccess(); // Refresh the list
-      onClose(); // Close Drawer
+      onSuccess();
+      onClose();
     } catch (err) {
       setValidationError(err.message);
 
@@ -202,7 +202,8 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
                   )}
 
                   {/* Meta Linkages */}
-                  <div className="grid grid-cols-2 gap-4 sm:gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                    {/* Target Vendor Card */}
                     <div className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
                       <Store size={16} className="text-slate-400 mb-3" />
                       <div>
@@ -212,24 +213,51 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
                         <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
                           {po.vendor_name}
                         </p>
-                        <p className="text-[10px] text-slate-500 truncate mt-0.5 flex items-center gap-1 font-medium">
+
+                        {po.contact_person && (
+                          <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                            Attn: {po.contact_person}
+                          </p>
+                        )}
+                        {po.vendor_email && (
+                          <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                            {po.vendor_email}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-slate-500 truncate mt-2 flex items-center gap-1 font-medium border-t border-slate-100 dark:border-slate-700/50 pt-2">
                           <Building2 size={10} /> {po.branch_name}
                         </p>
                       </div>
                     </div>
+                    {/* Delivery & Submission Target Card */}
                     <div className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 rounded-[20px] sm:rounded-[24px] border border-amber-100 dark:border-amber-500/20 shadow-sm flex flex-col justify-between">
                       <Calendar size={16} className="text-amber-400 mb-3" />
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-1">
-                          Delivery Target
+                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
+                          Submission & Delivery
                         </p>
-                        <p className="text-sm font-bold text-amber-900 dark:text-amber-400 truncate">
-                          {new Date(
-                            po.expected_delivery_date,
-                          ).toLocaleDateString()}
-                        </p>
-                        <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70 truncate mt-0.5 flex items-center gap-1 font-medium">
-                          <User size={10} /> By: {po.created_by_name}
+                        <div className="space-y-1.5">
+                          <div>
+                            <p className="text-[9px] text-amber-600/70 dark:text-amber-500/70 uppercase tracking-widest">
+                              Purchase Date
+                            </p>
+                            <p className="text-xs font-bold text-amber-900 dark:text-amber-400 truncate">
+                              {new Date(po.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-amber-600/70 dark:text-amber-500/70 uppercase tracking-widest mt-1">
+                              Delivery Target
+                            </p>
+                            <p className="text-xs font-bold text-amber-900 dark:text-amber-400 truncate">
+                              {new Date(
+                                po.expected_delivery_date,
+                              ).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70 truncate mt-2 flex items-center gap-1 font-medium border-t border-amber-200/50 dark:border-amber-500/20 pt-2">
+                          <User size={10} /> Submitted By: {po.created_by_name}
                         </p>
                       </div>
                     </div>
@@ -343,7 +371,7 @@ const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId, onSuccess }) => {
                     </div>
                   )}
 
-                  {/* Decision Area (Only visible if PENDING_APPROVAL) */}
+                  {/* Decision Area */}
                   {po.status === "PENDING_APPROVAL" && (
                     <div className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] space-y-4">
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
