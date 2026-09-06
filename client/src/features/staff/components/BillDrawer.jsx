@@ -13,6 +13,10 @@ import {
   Printer,
   Building2,
   Loader2,
+  BadgeCheck,
+  FileText,
+  AlertCircle,
+  Archive,
 } from "lucide-react";
 import { billService } from "../../../services/staff/bill.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -42,17 +46,29 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
     return "warning";
   };
 
+  const getReceiveIcon = (status) => {
+    if (status === "RECEIVED") return CheckCircle;
+    if (status === "CLOSED") return Archive;
+    return Clock;
+  };
+
   const getPaymentVariant = (status) => {
     if (status === "PAID") return "success";
     if (status === "PARTIALLY_PAID") return "info";
     return "danger";
   };
 
+  const getPaymentIcon = (status) => {
+    if (status === "PAID") return CheckCircle;
+    if (status === "PARTIALLY_PAID") return Clock;
+    return AlertCircle;
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          {/* 1. Standardized Backdrop */}
+          {/* Standardized Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -63,7 +79,7 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
             aria-hidden="true"
           />
 
-          {/* 2. Standardized Drawer Panel Width */}
+          {/* Standardized Drawer Panel Width */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -73,7 +89,7 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
             role="dialog"
             aria-modal="true"
           >
-            {/* 3. Standardized Fixed Header */}
+            {/* Standardized Fixed Header with Status Badges */}
             <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
@@ -84,9 +100,29 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                     {loading ? "Loading..." : bill?.bill_number}
                   </h2>
                   {bill && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-                      Invoice: {bill.vendor_invoice_number}
-                    </p>
+                    <div className="flex flex-col items-start gap-1.5 mt-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <StatusBadge
+                          label={bill.status.replace("_", " ")}
+                          variant={getReceiveVariant(bill.status)}
+                          icon={getReceiveIcon(bill.status)}
+                        />
+                        <StatusBadge
+                          label={
+                            bill.payment_status?.replace("_", " ") || "UNPAID"
+                          }
+                          variant={getPaymentVariant(bill.payment_status)}
+                          icon={getPaymentIcon(bill.payment_status)}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
+                        <BadgeCheck size={12} className="text-amber-500" />
+                        Prepared by:{" "}
+                        <span className="text-slate-600 dark:text-slate-300">
+                          {bill.created_by_name || "System"}
+                        </span>
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -98,7 +134,7 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
               </button>
             </header>
 
-            {/* 4. Standardized Scrollable Body */}
+            {/* Standardized Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 opacity-70">
@@ -109,23 +145,18 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                 </div>
               ) : bill ? (
                 <>
-                  {/* Status & PO Link */}
+                  {/* Source Operations Card */}
                   <section className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm gap-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                      <StatusBadge
-                        label={bill.status.replace("_", " ")}
-                        variant={getReceiveVariant(bill.status)}
-                        icon={bill.status === "RECEIVED" ? CheckCircle : Clock}
-                      />
-                      <StatusBadge
-                        label={
-                          bill.payment_status?.replace("_", " ") || "UNPAID"
-                        }
-                        variant={getPaymentVariant(bill.payment_status)}
-                      />
+                    <div className="flex flex-col">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Vendor Invoice Number
+                      </p>
+                      <p className="text-base font-black text-slate-900 dark:text-white uppercase tracking-widest mt-0.5">
+                        {bill.vendor_invoice_number}
+                      </p>
                     </div>
                     <div className="text-left sm:text-right w-full sm:w-auto border-t sm:border-t-0 border-slate-100 dark:border-slate-700/50 pt-3 sm:pt-0">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                         Source PO
                       </p>
                       <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
