@@ -6,14 +6,16 @@ import {
   Plus,
   FileText,
   CheckCircle2,
-  ScanLine,
 } from "lucide-react";
 import { billService } from "../../services/staff/bill.service";
+import { vendorService } from "../../services/staff/vendor.service";
 import BillModal from "../../features/staff/components/BillModal";
 import BillDrawer from "../../features/staff/components/BillDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import ConfirmModal from "../../components/shared/ConfirmModal";
+import FilterButton from "../../components/ui/FilterButton";
+import FilterModal from "../../components/shared/FilterModal";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -21,18 +23,22 @@ const Bills = () => {
   const { showToast } = useApp();
 
   const [bills, setBills] = useState([]);
+  const [vendorList, setVendorList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters & State
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [vendorFilter, setVendorFilter] = useState("all");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
   // Modals & Drawers
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [tempVendorFilter, setTempVendorFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedBillId, setSelectedBillId] = useState(null);
@@ -45,9 +51,19 @@ const Bills = () => {
     onConfirm: () => {},
   });
 
+  const activeFilterCount = vendorFilter !== "all" ? 1 : 0;
+
+  // Initial Data Load (Vendors for Filter)
+  useEffect(() => {
+    vendorService
+      .getVendors(1, 500, "", "active", "all", "all")
+      .then((res) => setVendorList(res.data?.vendors || []))
+      .catch((err) => console.error("Failed to load vendors", err));
+  }, []);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter]);
+  }, [debouncedSearchQuery, statusFilter, vendorFilter]);
 
   const loadBills = async () => {
     try {
@@ -57,7 +73,7 @@ const Bills = () => {
         ITEMS_PER_PAGE,
         debouncedSearchQuery,
         statusFilter,
-        "all",
+        vendorFilter,
         "all",
       );
       setBills(response.data?.bills || []);
@@ -71,7 +87,18 @@ const Bills = () => {
 
   useEffect(() => {
     loadBills();
-  }, [currentPage, debouncedSearchQuery, statusFilter]);
+  }, [currentPage, debouncedSearchQuery, statusFilter, vendorFilter]);
+
+  const applyFilters = () => {
+    setVendorFilter(tempVendorFilter);
+    setIsFilterModalOpen(false);
+  };
+
+  const clearFilters = () => {
+    setTempVendorFilter("all");
+    setVendorFilter("all");
+    setIsFilterModalOpen(false);
+  };
 
   const handleModalSubmit = async (formData) => {
     try {
@@ -151,6 +178,11 @@ const Bills = () => {
               </button>
             ))}
           </div>
+
+          <FilterButton
+            onClick={() => setIsFilterModalOpen(true)}
+            activeCount={activeFilterCount}
+          />
 
           <div className="relative w-full sm:max-w-[200px]">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -293,6 +325,34 @@ const Bills = () => {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={clearFilters}
+        onApply={applyFilters}
+        title="Filter by Vendor"
+      >
+        <div className="space-y-6">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Select Target Supplier
+            </label>
+            <select
+              value={tempVendorFilter}
+              onChange={(e) => setTempVendorFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+            >
+              <option value="all">All Vendors</option>
+              {vendorList.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.business_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </FilterModal>
 
       <BillModal
         isOpen={isModalOpen}
