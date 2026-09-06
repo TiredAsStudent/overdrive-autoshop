@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Search,
-  Loader2,
-  Receipt,
-  Plus,
-  FileText,
-  CheckCircle2,
-} from "lucide-react";
+import { Receipt, Plus, FileText, CheckCircle2 } from "lucide-react";
 import { billService } from "../../services/staff/bill.service";
 import { vendorService } from "../../services/staff/vendor.service";
 import BillModal from "../../features/staff/components/BillModal";
@@ -16,6 +9,10 @@ import Pagination from "../../components/shared/Pagination";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import FilterButton from "../../components/ui/FilterButton";
 import FilterModal from "../../components/shared/FilterModal";
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import StatusToggle from "../../components/ui/StatusToggle";
+import StatusBadge from "../../components/ui/StatusBadge";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -142,73 +139,56 @@ const Bills = () => {
     setIsDrawerOpen(true);
   };
 
+  // Status Badge Mappings
+  const getReceiveVariant = (status) => {
+    if (status === "RECEIVED") return "success";
+    if (status === "CLOSED") return "info";
+    return "warning";
+  };
+
+  const getPaymentVariant = (status) => {
+    if (status === "PAID") return "success";
+    if (status === "PARTIALLY_PAID") return "info";
+    return "danger";
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Receipt className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Bills
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Accounts Payable Registry
-            </p>
-          </div>
-        </div>
+      <PageHeader
+        title="Bills"
+        subtitle="Accounts Payable Registry"
+        icon={Receipt}
+      >
+        <StatusToggle
+          activeValue={statusFilter}
+          onToggle={setStatusFilter}
+          options={[
+            { label: "All", value: "all" },
+            { label: "Pending", value: "pending_receipt" },
+            { label: "Received", value: "received" },
+            { label: "Closed", value: "closed" },
+          ]}
+        />
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          {/* Status Filter */}
-          <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 overflow-x-auto custom-scrollbar">
-            {[
-              { id: "all", label: "All" },
-              { id: "pending_receipt", label: "Pending" },
-              { id: "received", label: "Received" },
-              { id: "closed", label: "Closed" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setStatusFilter(f.id)}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap ${statusFilter === f.id ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
 
-          <FilterButton
-            onClick={() => setIsFilterModalOpen(true)}
-            activeCount={activeFilterCount}
-          />
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search Bills..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-          <div className="relative w-full sm:max-w-[200px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search Bills..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-            />
-          </div>
-
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
-          >
-            <Plus size={16} /> Record Bill
-          </button>
-        </div>
-      </div>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
+        >
+          <Plus size={16} /> Record Bill
+        </button>
+      </PageHeader>
 
       {/* DATA TABLE */}
       <DataTable
@@ -222,7 +202,7 @@ const Bills = () => {
         ]}
         data={bills}
         loading={loading}
-        emptyTitle={`No ${statusFilter !== "all" ? statusFilter.toLowerCase() : ""} bills found`}
+        emptyTitle={`No ${statusFilter !== "all" ? statusFilter.replace("_", " ").toLowerCase() : ""} bills found`}
         renderRow={(bill) => (
           <tr
             key={bill.id}
@@ -270,30 +250,17 @@ const Bills = () => {
                 })}
               </span>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex flex-col items-start gap-2">
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase border ${
-                    bill.status === "RECEIVED"
-                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
-                      : bill.status === "CLOSED"
-                        ? "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400 border-sky-200 dark:border-sky-500/20"
-                        : "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-500 border-amber-200 dark:border-amber-500/20"
-                  }`}
-                >
-                  {bill.status.replace("_", " ")}
-                </span>
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase border ${
-                    bill.payment_status === "PAID"
-                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
-                      : bill.payment_status === "PARTIALLY_PAID"
-                        ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20"
-                        : "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
-                  }`}
-                >
-                  {bill.payment_status?.replace("_", " ") || "UNPAID"}
-                </span>
+                <StatusBadge
+                  label={bill.status.replace("_", " ")}
+                  variant={getReceiveVariant(bill.status)}
+                />
+                <StatusBadge
+                  label={bill.payment_status?.replace("_", " ") || "UNPAID"}
+                  variant={getPaymentVariant(bill.payment_status)}
+                />
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
