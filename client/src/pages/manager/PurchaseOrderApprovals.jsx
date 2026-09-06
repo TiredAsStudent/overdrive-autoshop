@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { ClipboardCheck, FileSearch } from "lucide-react";
 import { poApprovalService } from "../../services/manager/poApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
-import { vendorService } from "../../services/staff/vendor.service";
 import PurchaseOrderApprovalDrawer from "../../features/manager/components/POApprovalDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
@@ -20,7 +19,6 @@ const PurchaseOrderApprovals = () => {
 
   const [orders, setOrders] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [vendorList, setVendorList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // View Mode: 'PENDING' | 'HISTORY'
@@ -30,35 +28,28 @@ const PurchaseOrderApprovals = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [branchFilter, setBranchFilter] = useState("all");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
-
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [tempVendorFilter, setTempVendorFilter] = useState("all");
-  const [activeVendorFilter, setActiveVendorFilter] = useState("all");
 
   // Drawer State
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const activeFilterCount = activeVendorFilter !== "all" ? 1 : 0;
+  const activeFilterCount = branchFilter !== "all" ? 1 : 0;
 
   useEffect(() => {
     inventoryService
       .getActiveBranches()
       .then((res) => setBranches(res.data || []))
       .catch((err) => console.error("Failed to load branches", err));
-
-    vendorService
-      .getVendors(1, 500, "", "active", "all", "all")
-      .then((res) => setVendorList(res.data?.vendors || []))
-      .catch((err) => console.error("Failed to load vendors", err));
   }, []);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, viewMode, branchFilter, activeVendorFilter]);
+  }, [debouncedSearchQuery, viewMode, branchFilter]);
 
   const loadOrders = async () => {
     try {
@@ -69,14 +60,12 @@ const PurchaseOrderApprovals = () => {
               currentPage,
               ITEMS_PER_PAGE,
               debouncedSearchQuery,
-              activeVendorFilter,
               branchFilter,
             )
           : await poApprovalService.getApprovalHistory(
               currentPage,
               ITEMS_PER_PAGE,
               debouncedSearchQuery,
-              activeVendorFilter,
               branchFilter,
             );
 
@@ -91,23 +80,10 @@ const PurchaseOrderApprovals = () => {
 
   useEffect(() => {
     loadOrders();
-  }, [
-    currentPage,
-    debouncedSearchQuery,
-    viewMode,
-    branchFilter,
-    activeVendorFilter,
-  ]);
+  }, [currentPage, debouncedSearchQuery, viewMode, branchFilter]);
 
-  const applyFilters = () => {
-    setActiveVendorFilter(tempVendorFilter);
-    setIsFilterModalOpen(false);
-  };
-
-  const clearFilters = () => {
-    setTempVendorFilter("all");
-    setActiveVendorFilter("all");
-    setIsFilterModalOpen(false);
+  const resetFilters = () => {
+    setBranchFilter("all");
   };
 
   const getBadgeVariant = (status) => {
@@ -130,28 +106,6 @@ const PurchaseOrderApprovals = () => {
         subtitle="Managerial Procurement Oversight"
         icon={ClipboardCheck}
       >
-        <StatusToggle
-          activeValue={viewMode}
-          onToggle={setViewMode}
-          options={[
-            { label: "Pending", value: "PENDING" },
-            { label: "History", value: "HISTORY" },
-          ]}
-        />
-
-        <select
-          value={branchFilter}
-          onChange={(e) => setBranchFilter(e.target.value)}
-          className="w-full sm:w-auto px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
-        >
-          <option value="all">All Branches</option>
-          {branches.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.branch_name}
-            </option>
-          ))}
-        </select>
-
         <SearchBar
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -162,6 +116,15 @@ const PurchaseOrderApprovals = () => {
         <FilterButton
           onClick={() => setIsFilterModalOpen(true)}
           activeCount={activeFilterCount}
+        />
+
+        <StatusToggle
+          activeValue={viewMode}
+          onToggle={setViewMode}
+          options={[
+            { label: "Pending", value: "PENDING" },
+            { label: "History", value: "HISTORY" },
+          ]}
         />
       </PageHeader>
 
@@ -206,14 +169,12 @@ const PurchaseOrderApprovals = () => {
             key={order.id}
             className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
           >
-            {/* 1. PO Number */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
                 {order.purchase_order_number}
               </span>
             </td>
 
-            {/* 2. Date */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
                 {viewMode === "PENDING"
@@ -222,21 +183,18 @@ const PurchaseOrderApprovals = () => {
               </p>
             </td>
 
-            {/* 3. Vendor */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[150px]">
                 {order.vendor_name}
               </p>
             </td>
 
-            {/* 4. Branch */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
                 {order.branch_name}
               </p>
             </td>
 
-            {/* 5. Total Amount */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
                 ₱
@@ -246,7 +204,6 @@ const PurchaseOrderApprovals = () => {
               </span>
             </td>
 
-            {/* 6. User Accountability */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <p className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate max-w-[120px]">
                 {viewMode === "PENDING"
@@ -255,7 +212,6 @@ const PurchaseOrderApprovals = () => {
               </p>
             </td>
 
-            {/* 7. Status */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <StatusBadge
                 label={order.status.replace("_", " ")}
@@ -263,7 +219,6 @@ const PurchaseOrderApprovals = () => {
               />
             </td>
 
-            {/* 8. Actions */}
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <button
                 onClick={() => {
@@ -296,24 +251,23 @@ const PurchaseOrderApprovals = () => {
       <FilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
-        onClear={clearFilters}
-        onApply={applyFilters}
-        title="Advanced Document Filters"
+        onClear={resetFilters}
+        title="Advanced Filters"
       >
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Filter by Vendor
+              Branch Location
             </label>
             <select
-              value={tempVendorFilter}
-              onChange={(e) => setTempVendorFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
             >
-              <option value="all">All Vendors</option>
-              {vendorList.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.business_name}
+              <option value="all">All Branches</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.branch_name}
                 </option>
               ))}
             </select>

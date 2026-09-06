@@ -5,14 +5,13 @@ export const poApprovalService = {
     page = 1,
     limit = 10,
     search = "",
-    vendorId = "all",
     branchId = "all",
   ) => {
     try {
       const response = await api.get(
         "/manager/approvals/purchase-orders/pending",
         {
-          params: { page, limit, search, vendor: vendorId, branch: branchId },
+          params: { page, limit, search, branch: branchId },
         },
       );
       return response.data;
@@ -28,14 +27,13 @@ export const poApprovalService = {
     page = 1,
     limit = 10,
     search = "",
-    vendorId = "all",
     branchId = "all",
   ) => {
     try {
       const response = await api.get(
         "/manager/approvals/purchase-orders/history",
         {
-          params: { page, limit, search, vendor: vendorId, branch: branchId },
+          params: { page, limit, search, branch: branchId },
         },
       );
       return response.data;
@@ -64,9 +62,7 @@ export const poApprovalService = {
     try {
       const response = await api.patch(
         `/manager/approvals/purchase-orders/${id}/approve`,
-        {
-          remarks,
-        },
+        { remarks },
       );
       return response.data;
     } catch (error) {
@@ -81,9 +77,7 @@ export const poApprovalService = {
     try {
       const response = await api.patch(
         `/manager/approvals/purchase-orders/${id}/reject`,
-        {
-          remarks,
-        },
+        { remarks },
       );
       return response.data;
     } catch (error) {

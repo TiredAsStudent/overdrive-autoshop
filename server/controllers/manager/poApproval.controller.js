@@ -8,13 +8,12 @@ class POApprovalController {
       const branchId = req.query.branch || "all";
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
-      const { search, vendor } = req.query;
+      const { search } = req.query;
 
       const result = await POApprovalService.getPendingApprovals(
         page,
         limit,
         search,
-        vendor,
         branchId,
       );
 
@@ -39,13 +38,12 @@ class POApprovalController {
       const branchId = req.query.branch || "all";
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
-      const { search, vendor } = req.query;
+      const { search } = req.query;
 
       const result = await POApprovalService.getApprovalHistory(
         page,
         limit,
         search,
-        vendor,
         branchId,
       );
 

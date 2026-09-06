@@ -193,7 +193,7 @@ class PurchaseOrder {
     return result.rows[0];
   }
 
-  static async countFiltered(search, status, branchId, vendorId = "all") {
+  static async countFiltered(search, status, branchId) {
     let sql = `SELECT COUNT(DISTINCT po.id) FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id`;
     const conditions = [];
     const values = [];
@@ -216,25 +216,13 @@ class PurchaseOrder {
       values.push(branchId);
       paramIdx++;
     }
-    if (vendorId && vendorId !== "all") {
-      conditions.push(`po.vendor_id = $${paramIdx}`);
-      values.push(vendorId);
-      paramIdx++;
-    }
 
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
     const result = await query(sql, values);
     return parseInt(result.rows[0].count, 10);
   }
 
-  static async findPaginatedFiltered(
-    limit,
-    offset,
-    search,
-    status,
-    branchId,
-    vendorId = "all",
-  ) {
+  static async findPaginatedFiltered(limit, offset, search, status, branchId) {
     let sql = `
       SELECT po.id, po.purchase_order_number, po.grand_total, po.status, po.expected_delivery_date, po.created_at, po.updated_at,
              v.business_name as vendor_name, b.branch_name, u.first_name as created_by_name
@@ -264,11 +252,6 @@ class PurchaseOrder {
       values.push(branchId);
       paramIdx++;
     }
-    if (vendorId && vendorId !== "all") {
-      conditions.push(`po.vendor_id = $${paramIdx}`);
-      values.push(vendorId);
-      paramIdx++;
-    }
 
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
     sql += ` ORDER BY po.updated_at DESC, po.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
@@ -278,7 +261,7 @@ class PurchaseOrder {
     return result.rows;
   }
 
-  static async countApprovalHistory(search, vendorId, branchId) {
+  static async countApprovalHistory(search, branchId) {
     let sql = `SELECT COUNT(DISTINCT po.id) FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id WHERE po.status IN ('APPROVED', 'REJECTED')`;
     const values = [];
     let paramIdx = 1;
@@ -286,11 +269,6 @@ class PurchaseOrder {
     if (search) {
       sql += ` AND (po.purchase_order_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`;
       values.push(`%${search}%`);
-      paramIdx++;
-    }
-    if (vendorId && vendorId !== "all") {
-      sql += ` AND po.vendor_id = $${paramIdx}`;
-      values.push(vendorId);
       paramIdx++;
     }
     if (branchId && branchId !== "all") {
@@ -303,13 +281,7 @@ class PurchaseOrder {
     return parseInt(result.rows[0].count, 10);
   }
 
-  static async findPaginatedApprovalHistory(
-    limit,
-    offset,
-    search,
-    vendorId,
-    branchId,
-  ) {
+  static async findPaginatedApprovalHistory(limit, offset, search, branchId) {
     let sql = `
       SELECT po.id, po.purchase_order_number, po.grand_total, po.status, po.expected_delivery_date, 
              COALESCE(po.resolved_at, po.updated_at) as processed_at,
@@ -328,11 +300,6 @@ class PurchaseOrder {
     if (search) {
       sql += ` AND (po.purchase_order_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`;
       values.push(`%${search}%`);
-      paramIdx++;
-    }
-    if (vendorId && vendorId !== "all") {
-      sql += ` AND po.vendor_id = $${paramIdx}`;
-      values.push(vendorId);
       paramIdx++;
     }
     if (branchId && branchId !== "all") {

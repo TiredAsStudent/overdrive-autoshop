@@ -6,25 +6,18 @@ class POApprovalService {
     page = 1,
     limit = 10,
     search = "",
-    vendorId = "all",
     branchId,
   ) {
     const offset = (page - 1) * limit;
 
     const [totalItems, purchaseOrders] = await Promise.all([
-      PurchaseOrderModel.countFiltered(
-        search,
-        "PENDING_APPROVAL",
-        branchId,
-        vendorId,
-      ),
+      PurchaseOrderModel.countFiltered(search, "PENDING_APPROVAL", branchId),
       PurchaseOrderModel.findPaginatedFiltered(
         limit,
         offset,
         search,
         "PENDING_APPROVAL",
         branchId,
-        vendorId,
       ),
     ]);
 
@@ -39,22 +32,15 @@ class POApprovalService {
     };
   }
 
-  static async getApprovalHistory(
-    page = 1,
-    limit = 10,
-    search = "",
-    vendorId = "all",
-    branchId,
-  ) {
+  static async getApprovalHistory(page = 1, limit = 10, search = "", branchId) {
     const offset = (page - 1) * limit;
 
     const [totalItems, purchaseOrders] = await Promise.all([
-      PurchaseOrderModel.countApprovalHistory(search, vendorId, branchId),
+      PurchaseOrderModel.countApprovalHistory(search, branchId),
       PurchaseOrderModel.findPaginatedApprovalHistory(
         limit,
         offset,
         search,
-        vendorId,
         branchId,
       ),
     ]);
