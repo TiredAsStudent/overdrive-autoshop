@@ -151,11 +151,13 @@ class PurchaseOrder {
   static async findById(id) {
     const sql = `
       SELECT po.*, v.business_name as vendor_name, v.contact_person, v.email as vendor_email, 
-             b.branch_name, u.first_name as created_by_name, u.last_name as created_by_last_name
+             b.branch_name, u.first_name as created_by_name, u.last_name as created_by_last_name,
+             r.first_name as resolved_by_name, r.last_name as resolved_by_last_name
       FROM purchase_orders po
       JOIN vendors v ON po.vendor_id = v.id
       JOIN branches b ON po.branch_id = b.id
       LEFT JOIN users u ON po.created_by = u.id
+      LEFT JOIN users r ON po.resolved_by = r.id
       WHERE po.id = $1
     `;
     const result = await query(sql, [id]);
@@ -180,18 +182,18 @@ class PurchaseOrder {
     return result.rows[0];
   }
 
-  static async processApprovalDecision(id, status, remarks) {
+  static async processApprovalDecision(id, status, remarks, userId) {
     const sql = `
       UPDATE purchase_orders 
-      SET status = $1, approval_remarks = $2, updated_at = NOW() 
-      WHERE id = $3 AND status = 'PENDING_APPROVAL'
+      SET status = $1, approval_remarks = $2, resolved_by = $3, resolved_at = NOW(), updated_at = NOW() 
+      WHERE id = $4 AND status = 'PENDING_APPROVAL'
       RETURNING *
     `;
-    const result = await query(sql, [status, remarks, id]);
+    const result = await query(sql, [status, remarks, userId, id]);
     return result.rows[0];
   }
 
-  static async countFiltered(search, status, branchId) {
+  static async countFiltered(search, status, branchId, vendorId = "all") {
     let sql = `SELECT COUNT(DISTINCT po.id) FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id`;
     const conditions = [];
     const values = [];
@@ -214,13 +216,25 @@ class PurchaseOrder {
       values.push(branchId);
       paramIdx++;
     }
+    if (vendorId && vendorId !== "all") {
+      conditions.push(`po.vendor_id = $${paramIdx}`);
+      values.push(vendorId);
+      paramIdx++;
+    }
 
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
     const result = await query(sql, values);
     return parseInt(result.rows[0].count, 10);
   }
 
-  static async findPaginatedFiltered(limit, offset, search, status, branchId) {
+  static async findPaginatedFiltered(
+    limit,
+    offset,
+    search,
+    status,
+    branchId,
+    vendorId = "all",
+  ) {
     let sql = `
       SELECT po.id, po.purchase_order_number, po.grand_total, po.status, po.expected_delivery_date, po.created_at, po.updated_at,
              v.business_name as vendor_name, b.branch_name, u.first_name as created_by_name
@@ -248,6 +262,11 @@ class PurchaseOrder {
     if (branchId && branchId !== "all") {
       conditions.push(`po.branch_id = $${paramIdx}`);
       values.push(branchId);
+      paramIdx++;
+    }
+    if (vendorId && vendorId !== "all") {
+      conditions.push(`po.vendor_id = $${paramIdx}`);
+      values.push(vendorId);
       paramIdx++;
     }
 
@@ -292,12 +311,15 @@ class PurchaseOrder {
     branchId,
   ) {
     let sql = `
-      SELECT po.id, po.purchase_order_number, po.grand_total, po.status, po.expected_delivery_date, po.updated_at as processed_at,
-             v.business_name as vendor_name, b.branch_name, u.first_name as created_by_name
+      SELECT po.id, po.purchase_order_number, po.grand_total, po.status, po.expected_delivery_date, 
+             COALESCE(po.resolved_at, po.updated_at) as processed_at,
+             v.business_name as vendor_name, b.branch_name, u.first_name as created_by_name,
+             r.first_name as resolved_by_name
       FROM purchase_orders po
       JOIN vendors v ON po.vendor_id = v.id
       JOIN branches b ON po.branch_id = b.id
       LEFT JOIN users u ON po.created_by = u.id
+      LEFT JOIN users r ON po.resolved_by = r.id
       WHERE po.status IN ('APPROVED', 'REJECTED')
     `;
     const values = [];

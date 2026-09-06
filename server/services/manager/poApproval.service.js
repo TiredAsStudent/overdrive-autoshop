@@ -15,16 +15,16 @@ class POApprovalService {
       PurchaseOrderModel.countFiltered(
         search,
         "PENDING_APPROVAL",
-        vendorId,
         branchId,
+        vendorId,
       ),
       PurchaseOrderModel.findPaginatedFiltered(
         limit,
         offset,
         search,
         "PENDING_APPROVAL",
-        vendorId,
         branchId,
+        vendorId,
       ),
     ]);
 
@@ -91,6 +91,7 @@ class POApprovalService {
       id,
       actionStatus,
       remarks || null,
+      activeUser.id,
     );
 
     if (!updatedPO) {
