@@ -23,6 +23,7 @@ import PageHeader from "../../components/shared/PageHeader";
 import SearchBar from "../../components/ui/SearchBar";
 import StatusToggle from "../../components/ui/StatusToggle";
 import StatusBadge from "../../components/ui/StatusBadge";
+import ActionButton from "../../components/ui/ActionButton";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -149,6 +150,7 @@ const Bills = () => {
     setIsDrawerOpen(true);
   };
 
+  // Status Badge Mappings with Icons
   const getReceiveVariant = (status) => {
     if (status === "RECEIVED") return "success";
     if (status === "CLOSED") return "info";
@@ -164,13 +166,15 @@ const Bills = () => {
   const getPaymentVariant = (status) => {
     if (status === "PAID") return "success";
     if (status === "PARTIALLY_PAID") return "info";
-    return "danger";
+    if (status === "VOID") return "danger";
+    return "danger"; // UNPAID / OVERDUE
   };
 
   const getPaymentIcon = (status) => {
     if (status === "PAID") return CheckCircle;
     if (status === "PARTIALLY_PAID") return Clock;
-    return AlertCircle;
+    if (status === "VOID") return Ban;
+    return AlertCircle; // UNPAID / OVERDUE
   };
 
   return (
@@ -203,12 +207,11 @@ const Bills = () => {
           isSearching={searchQuery !== debouncedSearchQuery}
         />
 
-        <button
+        <ActionButton
           onClick={() => setIsModalOpen(true)}
-          className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
-        >
-          <Plus size={16} /> Record Bill
-        </button>
+          label="Record Bill"
+          icon={Plus}
+        />
       </PageHeader>
 
       {/* DATA TABLE */}
@@ -227,21 +230,24 @@ const Bills = () => {
         renderRow={(bill) => (
           <tr
             key={bill.id}
-            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+            className={`group transition-colors ${bill.status === "CLOSED" ? "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]" : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50"}`}
           >
             <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex flex-col items-start gap-1.5">
-                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
+                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase shadow-sm">
                   {bill.bill_number}
                 </span>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                  INV: {bill.vendor_invoice_number}
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                  INV:{" "}
+                  <span className="text-slate-700 dark:text-slate-300">
+                    {bill.vendor_invoice_number}
+                  </span>
                 </span>
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex flex-col items-start gap-1">
-                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[250px]">
+                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[250px]">
                   {bill.vendor_name}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
@@ -249,7 +255,7 @@ const Bills = () => {
                     {bill.purchase_order_number}
                   </span>
                   <span className="text-slate-300 dark:text-slate-600">•</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                     {bill.branch_name}
                   </span>
                 </div>
@@ -258,13 +264,17 @@ const Bills = () => {
             <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex flex-col gap-1 text-[10px] font-medium text-slate-600 dark:text-slate-400">
                 <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400 w-10">Billed:</span>
+                  <span className="text-slate-400 w-10 uppercase tracking-widest text-[8px] font-black">
+                    Billed
+                  </span>
                   <span className="font-bold text-slate-700 dark:text-slate-300">
                     {new Date(bill.bill_date).toLocaleDateString()}
                   </span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400 w-10">Rcvd:</span>
+                  <span className="text-slate-400 w-10 uppercase tracking-widest text-[8px] font-black">
+                    Rcvd
+                  </span>
                   <span className="font-bold text-slate-700 dark:text-slate-300">
                     {bill.date_received
                       ? new Date(bill.date_received).toLocaleDateString()

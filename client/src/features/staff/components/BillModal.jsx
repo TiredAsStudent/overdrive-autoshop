@@ -52,7 +52,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
         status: "PENDING_RECEIPT",
       });
 
-      // Fetch eligible POs
       setIsLoadingPOs(true);
       billService
         .getEligiblePOs()
@@ -62,7 +61,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     }
   }, [isOpen]);
 
-  // Fetch full PO details when a PO is selected to get the line items
   useEffect(() => {
     if (formData.purchase_order_id) {
       setIsLoadingPODetails(true);
@@ -92,7 +90,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     if (!poDetails || !poDetails.items)
       return setValidationError("PO line items failed to load.");
 
-    // Map the PO items into the Bill Items format
     const items = poDetails.items.map((item) => ({
       item_id: item.item_id,
       quantity_received: item.quantity,
@@ -178,7 +175,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                         value={formData.purchase_order_id}
                         onChange={handleChange}
                         disabled={isLoadingPOs}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-50 transition-all shadow-sm"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-50 transition-all shadow-sm cursor-pointer"
                       >
                         <option value="">
                           {isLoadingPOs
@@ -303,14 +300,16 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                           key={item.id}
                           className="flex justify-between items-center text-xs p-3.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm"
                         >
-                          <span className="font-bold text-slate-700 dark:text-slate-300 truncate pr-4">
+                          <span className="font-bold text-slate-700 dark:text-slate-300 truncate pr-4 uppercase">
                             {item.quantity}x {item.item_name}
                           </span>
                           <span className="font-mono font-black text-slate-600 dark:text-slate-400">
                             ₱
                             {parseFloat(item.recorded_unit_cost).toLocaleString(
                               undefined,
-                              { minimumFractionDigits: 2 },
+                              {
+                                minimumFractionDigits: 2,
+                              },
                             )}
                           </span>
                         </div>

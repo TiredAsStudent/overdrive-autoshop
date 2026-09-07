@@ -14,8 +14,8 @@ import {
   Building2,
   Loader2,
   BadgeCheck,
-  FileText,
   AlertCircle,
+  Ban,
   Archive,
 } from "lucide-react";
 import { billService } from "../../../services/staff/bill.service";
@@ -55,12 +55,14 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
   const getPaymentVariant = (status) => {
     if (status === "PAID") return "success";
     if (status === "PARTIALLY_PAID") return "info";
+    if (status === "VOID") return "danger";
     return "danger";
   };
 
   const getPaymentIcon = (status) => {
     if (status === "PAID") return CheckCircle;
     if (status === "PARTIALLY_PAID") return Clock;
+    if (status === "VOID") return Ban;
     return AlertCircle;
   };
 
@@ -129,6 +131,7 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
               <button
                 onClick={onClose}
                 className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
+                aria-label="Close panel"
               >
                 <X size={20} />
               </button>
@@ -159,7 +162,7 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                         Source PO
                       </p>
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">
                         {bill.purchase_order_number}
                       </p>
                     </div>
