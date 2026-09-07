@@ -17,6 +17,9 @@ import {
   AlertCircle,
   Ban,
   Archive,
+  Link,
+  Calendar,
+  FileText,
 } from "lucide-react";
 import { billService } from "../../../services/staff/bill.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -56,14 +59,14 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
     if (status === "PAID") return "success";
     if (status === "PARTIALLY_PAID") return "info";
     if (status === "VOID") return "danger";
-    return "danger";
+    return "danger"; // UNPAID
   };
 
   const getPaymentIcon = (status) => {
     if (status === "PAID") return CheckCircle;
     if (status === "PARTIALLY_PAID") return Clock;
     if (status === "VOID") return Ban;
-    return AlertCircle;
+    return AlertCircle; // UNPAID
   };
 
   return (
@@ -148,84 +151,84 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                 </div>
               ) : bill ? (
                 <>
-                  {/* Source Operations Card */}
-                  <section className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm gap-4">
-                    <div className="flex flex-col">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        Vendor Invoice Number
-                      </p>
-                      <p className="text-base font-black text-slate-900 dark:text-white uppercase tracking-widest mt-0.5">
-                        {bill.vendor_invoice_number}
-                      </p>
-                    </div>
-                    <div className="text-left sm:text-right w-full sm:w-auto border-t sm:border-t-0 border-slate-100 dark:border-slate-700/50 pt-3 sm:pt-0">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        Source PO
-                      </p>
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">
-                        {bill.purchase_order_number}
-                      </p>
-                    </div>
-                  </section>
-
-                  {/* Vendor Info */}
-                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 border-b border-slate-100 dark:border-slate-700/50 pb-3 mb-2 flex items-center gap-1.5">
-                      <Store size={14} /> Supplier Entity
-                    </h3>
-                    <div className="flex justify-between items-start">
+                  {/* Meta Cards: Supplier & Source DOcument */}
+                  <div className="grid grid-cols-2 gap-4 sm:gap-5">
+                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                      <Store size={16} className="text-slate-400 mb-3" />
                       <div>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white uppercase">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Supplier Entity
+                        </p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate uppercase">
                           {bill.vendor_name}
                         </p>
-                        <p className="text-[10px] font-medium text-slate-500 mt-1 flex items-center gap-1">
-                          {bill.is_vat_registered ? (
-                            <>
-                              <ShieldCheck
-                                size={12}
-                                className="text-emerald-500"
-                              />{" "}
-                              VAT Registered
-                            </>
-                          ) : (
-                            "Non-VAT Entity"
-                          )}
-                        </p>
-                        <p className="text-[10px] font-medium text-slate-500 mt-2 pt-2 flex items-center gap-1 border-t border-slate-100 dark:border-slate-700/50">
-                          <Building2 size={10} /> {bill.branch_name}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                            Billing Date
+                        <div className="flex flex-col gap-1 mt-1">
+                          <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                            {bill.is_vat_registered ? (
+                              <>
+                                <ShieldCheck
+                                  size={12}
+                                  className="text-emerald-500"
+                                />{" "}
+                                VAT Registered
+                              </>
+                            ) : (
+                              "Non-VAT Entity"
+                            )}
                           </p>
-                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center justify-end gap-1">
-                            <CalendarCheck size={12} />{" "}
-                            {new Date(bill.bill_date).toLocaleDateString()}
+                          <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate font-medium pt-2 mt-1 border-t border-slate-100 dark:border-slate-700/50">
+                            <Building2 size={10} /> {bill.branch_name}
                           </p>
                         </div>
-                        {bill.date_received && (
-                          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                              Date Received
-                            </p>
-                            <p className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center justify-end gap-1">
-                              <CheckCircle
-                                size={12}
-                                className="text-emerald-500"
-                              />{" "}
-                              {new Date(
-                                bill.date_received,
-                              ).toLocaleDateString()}
-                            </p>
-                          </div>
-                        )}
                       </div>
+                    </section>
+
+                    <section className="p-5 sm:p-6 bg-blue-50 dark:bg-blue-500/5 rounded-[20px] sm:rounded-[24px] border border-blue-100 dark:border-blue-500/20 shadow-sm flex flex-col justify-between">
+                      <Link size={16} className="text-blue-400 mb-3" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">
+                          Vendor Invoice
+                        </p>
+                        <p className="text-sm font-bold text-blue-700 dark:text-blue-400 truncate uppercase">
+                          {bill.vendor_invoice_number}
+                        </p>
+                        <p className="text-[10px] text-blue-600/70 dark:text-blue-500/70 mt-2 pt-2 border-t border-blue-200/50 dark:border-blue-500/20 truncate font-medium flex flex-col gap-0.5">
+                          <span className="uppercase tracking-widest font-black text-[8px]">
+                            Source PO
+                          </span>
+                          {bill.purchase_order_number}
+                        </p>
+                      </div>
+                    </section>
+                  </div>
+
+                  {/* Single Bar Timeline/Dates */}
+                  <section className="flex items-center gap-4 p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm">
+                    <Calendar size={20} className="text-amber-500 shrink-0" />
+                    <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between min-w-0 gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Billing Date
+                        </p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                          {new Date(bill.bill_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {bill.date_received && (
+                        <div className="sm:text-right border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-700/50 pt-3 sm:pt-0 sm:pl-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                            Date Received
+                          </p>
+                          <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center sm:justify-end gap-1.5">
+                            <CheckCircle size={14} />
+                            {new Date(bill.date_received).toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </section>
 
-                  {/* Line Items */}
+                  {/* Line Items Table */}
                   <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
                     <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
@@ -233,34 +236,55 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                       </h3>
                     </div>
                     <div className="p-5 sm:p-6 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
-                      {bill.items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex justify-between items-center p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-[16px] sm:rounded-[20px] transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-800"
-                        >
-                          <div>
-                            <p className="text-xs font-bold text-slate-900 dark:text-white uppercase">
-                              {item.item_name}
-                            </p>
-                            <p className="text-[10px] text-slate-500 font-mono tracking-widest mt-0.5">
-                              {item.sku}
-                            </p>
+                      {bill.items.map((item) => {
+                        const gross =
+                          parseFloat(item.recorded_unit_cost) *
+                          item.quantity_received;
+                        const net = gross - parseFloat(item.discount_amount);
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex justify-between items-center p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-[16px] sm:rounded-[20px] transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-800"
+                          >
+                            <div className="flex flex-col min-w-0 flex-1 pr-4">
+                              <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase truncate">
+                                {item.item_name}
+                              </p>
+                              <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-widest mt-0.5 truncate">
+                                {item.quantity_received}x {item.uom} @ ₱
+                                {parseFloat(
+                                  item.recorded_unit_cost,
+                                ).toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                })}
+                                {parseFloat(item.discount_amount) > 0 && (
+                                  <span className="text-amber-500 ml-1.5">
+                                    (Disc: -₱
+                                    {parseFloat(
+                                      item.discount_amount,
+                                    ).toLocaleString(undefined, {
+                                      minimumFractionDigits: 2,
+                                    })}
+                                    )
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                                ₱
+                                {net.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                })}
+                              </span>
+                              <p className="text-[9px] font-mono text-slate-500 mt-0.5 tracking-widest uppercase">
+                                SKU: {item.sku}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                              {item.quantity_received} {item.uom}
-                            </p>
-                            <p className="text-[10px] font-mono text-slate-500 mt-0.5">
-                              @ ₱
-                              {parseFloat(
-                                item.recorded_unit_cost,
-                              ).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </section>
 
@@ -280,7 +304,7 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                         </span>
                       </div>
 
-                      {parseFloat(bill.discount_amount) > 0 && (
+                      {parseFloat(bill.discount_amount || 0) > 0 && (
                         <div className="flex justify-between text-xs font-medium text-red-600 dark:text-red-400 bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
                           <span>Discount Applied</span>
                           <span className="font-mono">
@@ -324,8 +348,8 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                   {/* Notes */}
                   {bill.notes && (
                     <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
-                        Invoice Notes
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2 flex items-center gap-1.5">
+                        <FileText size={14} /> Invoice Notes
                       </p>
                       <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200/80 italic leading-relaxed">
                         "{bill.notes}"
