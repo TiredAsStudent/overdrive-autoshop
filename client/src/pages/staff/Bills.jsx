@@ -233,11 +233,11 @@ const Bills = () => {
             className={`group transition-colors ${bill.status === "CLOSED" ? "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]" : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50"}`}
           >
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="flex flex-col items-start gap-1.5">
-                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase shadow-sm">
+              <div className="flex flex-col">
+                <span className="inline-flex w-fit px-2.5 py-1 rounded-md text-xs font-black tracking-widest uppercase bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   {bill.bill_number}
                 </span>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1.5 flex items-center gap-1">
                   INV:{" "}
                   <span className="text-slate-700 dark:text-slate-300">
                     {bill.vendor_invoice_number}
@@ -245,37 +245,37 @@ const Bills = () => {
                 </span>
               </div>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="flex flex-col items-start gap-1">
-                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[250px]">
+              <div className="min-w-0 max-w-[200px] sm:max-w-[250px]">
+                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase truncate">
                   {bill.vendor_name}
                 </p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                <div className="flex items-center gap-2 mt-1 truncate">
+                  <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest truncate">
                     {bill.purchase_order_number}
                   </span>
-                  <span className="text-slate-300 dark:text-slate-600">•</span>
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                  <span className="text-slate-300 dark:text-slate-600 shrink-0">
+                    •
+                  </span>
+                  <span className="text-[9px] font-medium text-slate-400 truncate">
                     {bill.branch_name}
                   </span>
                 </div>
               </div>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="flex flex-col gap-1 text-[10px] font-medium text-slate-600 dark:text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400 w-10 uppercase tracking-widest text-[8px] font-black">
-                    Billed
-                  </span>
-                  <span className="font-bold text-slate-700 dark:text-slate-300">
+              <div className="flex flex-col items-start gap-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  Billed:{" "}
+                  <span className="text-slate-700 dark:text-slate-300 ml-1">
                     {new Date(bill.bill_date).toLocaleDateString()}
                   </span>
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400 w-10 uppercase tracking-widest text-[8px] font-black">
-                    Rcvd
-                  </span>
-                  <span className="font-bold text-slate-700 dark:text-slate-300">
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
+                  Rcvd:{" "}
+                  <span className="text-emerald-600 dark:text-emerald-400 ml-1">
                     {bill.date_received
                       ? new Date(bill.date_received).toLocaleDateString()
                       : "--"}
@@ -283,16 +283,18 @@ const Bills = () => {
                 </span>
               </div>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <span className="text-sm font-mono font-black text-amber-600 dark:text-amber-500">
+              <span className="text-sm font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 ₱
                 {parseFloat(bill.grand_total).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                 })}
               </span>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="flex flex-col items-start gap-2">
+              <div className="flex flex-col items-start gap-1.5">
                 <StatusBadge
                   label={bill.status.replace("_", " ")}
                   variant={getReceiveVariant(bill.status)}
@@ -305,12 +307,13 @@ const Bills = () => {
                 />
               </div>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
-              <div className="flex items-center justify-end gap-1.5">
+              <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                 <button
                   onClick={() => openDrawer(bill.id)}
                   title="View Ledger"
-                  className="p-1.5 sm:p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
                 >
                   <FileText size={16} />
                 </button>
@@ -318,7 +321,7 @@ const Bills = () => {
                   <button
                     onClick={() => handleConfirmReceipt(bill)}
                     title="Confirm Goods Received"
-                    className="p-1.5 sm:p-2.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl transition-colors cursor-pointer"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer"
                   >
                     <CheckCircle2 size={16} />
                   </button>
