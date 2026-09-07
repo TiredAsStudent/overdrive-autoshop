@@ -84,12 +84,17 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
             aria-hidden="true"
           />
 
-          {/* Standardized Drawer Panel Width */}
+          {/* Standardized Drawer Panel Width & Animation */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            transition={{
+              type: "spring",
+              damping: 30,
+              stiffness: 300,
+              mass: 0.8,
+            }}
             className="relative w-full sm:w-[500px] lg:w-[600px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
             role="dialog"
             aria-modal="true"
