@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -8,8 +8,8 @@ import {
   Calendar,
   FileText,
   CheckCircle2,
-  Store,
   PackageCheck,
+  Search,
 } from "lucide-react";
 import { billService } from "../../../services/staff/bill.service";
 import { purchaseOrderService } from "../../../services/staff/purchaseOrder.service";
@@ -32,6 +32,11 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
   const [poDetails, setPoDetails] = useState(null);
   const [isLoadingPODetails, setIsLoadingPODetails] = useState(false);
 
+  // Custom Searchable Dropdown States
+  const dropdownRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   const [formData, setFormData] = useState({
     purchase_order_id: "",
     vendor_invoice_number: "",
@@ -44,6 +49,8 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     if (isOpen) {
       setValidationError("");
       setPoDetails(null);
+      setSearchTerm("");
+      setIsDropdownOpen(false);
       setFormData({
         purchase_order_id: "",
         vendor_invoice_number: "",
@@ -52,6 +59,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
         status: "PENDING_RECEIPT",
       });
 
+      // Fetch eligible POs
       setIsLoadingPOs(true);
       billService
         .getEligiblePOs()
@@ -61,6 +69,18 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     }
   }, [isOpen]);
 
+  // Handle clicking outside the custom dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Fetch full PO details when a PO is selected to get the line items
   useEffect(() => {
     if (formData.purchase_order_id) {
       setIsLoadingPODetails(true);
@@ -74,6 +94,31 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     }
   }, [formData.purchase_order_id]);
 
+  // Local filtering for the eligible POs array
+  const filteredPOs = eligiblePOs.filter(
+    (po) =>
+      po.purchase_order_number
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      po.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setIsDropdownOpen(true);
+    // Clear selection if user starts typing again
+    if (formData.purchase_order_id) {
+      setFormData((prev) => ({ ...prev, purchase_order_id: "" }));
+      setPoDetails(null);
+    }
+  };
+
+  const handleSelectPO = (po) => {
+    setFormData((prev) => ({ ...prev, purchase_order_id: po.id.toString() }));
+    setSearchTerm(`${po.purchase_order_number} — ${po.vendor_name}`);
+    setIsDropdownOpen(false);
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -84,12 +129,15 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     setValidationError("");
 
     if (!formData.purchase_order_id)
-      return setValidationError("You must select a source Purchase Order.");
+      return setValidationError(
+        "You must search and select a source Purchase Order.",
+      );
     if (!formData.vendor_invoice_number.trim())
       return setValidationError("Vendor Invoice / Receipt Number is required.");
     if (!poDetails || !poDetails.items)
       return setValidationError("PO line items failed to load.");
 
+    // Map the PO items into the Bill Items format
     const items = poDetails.items.map((item) => ({
       item_id: item.item_id,
       quantity_received: item.quantity,
@@ -164,38 +212,82 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                     <FileText size={14} /> Source Document
                   </h3>
                   <div className="space-y-4">
-                    <div>
+                    {/* CUSTOM SEARCHABLE DROPDOWN */}
+                    <div ref={dropdownRef} className="relative z-20">
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Source Purchase Order{" "}
                         <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        required
-                        name="purchase_order_id"
-                        value={formData.purchase_order_id}
-                        onChange={handleChange}
-                        disabled={isLoadingPOs}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-50 transition-all shadow-sm cursor-pointer"
-                      >
-                        <option value="">
-                          {isLoadingPOs
-                            ? "Loading POs..."
-                            : "-- Select an Approved PO --"}
-                        </option>
-                        {eligiblePOs.map((po) => (
-                          <option key={po.id} value={po.id}>
-                            {po.purchase_order_number} — {po.vendor_name} (₱
-                            {po.grand_total})
-                          </option>
-                        ))}
-                      </select>
-                      {eligiblePOs.length === 0 && !isLoadingPOs && (
-                        <p className="text-[10px] text-red-500 mt-2 font-medium">
-                          No pending approved Purchase Orders found for this
-                          branch.
-                        </p>
-                      )}
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          {isLoadingPOs ? (
+                            <Loader2
+                              size={18}
+                              className="text-amber-500 animate-spin"
+                            />
+                          ) : (
+                            <Search size={18} className="text-slate-400" />
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={searchTerm}
+                          onChange={handleSearchChange}
+                          onFocus={() => setIsDropdownOpen(true)}
+                          placeholder="Type PO Number or Vendor Name to search..."
+                          className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
+                        />
+
+                        {/* Dropdown Results */}
+                        <AnimatePresence>
+                          {isDropdownOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 5 }}
+                              className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-30"
+                            >
+                              {filteredPOs.length > 0 ? (
+                                filteredPOs.map((po) => (
+                                  <div
+                                    key={po.id}
+                                    onClick={() => handleSelectPO(po)}
+                                    className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                                  >
+                                    <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                                      {po.purchase_order_number}
+                                    </p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                                      {po.vendor_name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase">
+                                      Total Amount:{" "}
+                                      <span className="font-black text-slate-700 dark:text-slate-300">
+                                        ₱
+                                        {parseFloat(
+                                          po.grand_total,
+                                        ).toLocaleString(undefined, {
+                                          minimumFractionDigits: 2,
+                                        })}
+                                      </span>
+                                    </p>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="p-8 text-center">
+                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+                                    {isLoadingPOs
+                                      ? "Loading POs..."
+                                      : "No matching approved POs found."}
+                                  </p>
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                     </div>
+
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Vendor Invoice / OR Number{" "}
