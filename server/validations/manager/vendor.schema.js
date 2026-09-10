@@ -85,19 +85,7 @@ const updateVendorSchema = z.object({
     })
     .refine((data) => Object.keys(data).length > 0, {
       message: "At least one field must be provided for update.",
-    })
-    .refine(
-      (data) => {
-        if (data.is_vat_registered === true && data.tin === null) {
-          return false;
-        }
-        return true;
-      },
-      {
-        message: "Cannot remove TIN if vendor remains VAT Registered.",
-        path: ["tin"],
-      },
-    ),
+    }),
 });
 
 const getVendorsSchema = z.object({

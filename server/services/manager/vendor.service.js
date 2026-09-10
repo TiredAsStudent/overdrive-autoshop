@@ -59,6 +59,21 @@ class ManagerVendorService {
     const oldVendor = await VendorModel.findById(id);
     if (!oldVendor) throw new Error("Vendor record not found.");
 
+    const finalIsVatRegistered =
+      data.is_vat_registered !== undefined
+        ? data.is_vat_registered
+        : oldVendor.is_vat_registered;
+    const finalTin = data.tin !== undefined ? data.tin : oldVendor.tin;
+
+    if (
+      finalIsVatRegistered === true &&
+      (finalTin === null || finalTin === "")
+    ) {
+      throw new Error(
+        "Update rejected: A valid TIN is strictly required when a vendor is VAT Registered.",
+      );
+    }
+
     if (
       data.business_name &&
       data.business_name.toLowerCase() !== oldVendor.business_name.toLowerCase()
