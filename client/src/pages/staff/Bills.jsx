@@ -127,7 +127,7 @@ const Bills = () => {
     setConfirmConfig({
       isOpen: true,
       title: `Confirm Delivery Receipt`,
-      message: `Are you certain the goods for Invoice ${bill.vendor_invoice_number} have physically arrived? This will irrevocably increment branch inventory and post the liability.`,
+      message: `Are you sure the goods for Invoice ${bill.vendor_invoice_number} have arrived? This will add them to branch inventory and record the amount owed.`,
       confirmText: `Yes, Items Received`,
       variant: "warning",
       onConfirm: async () => {
@@ -218,7 +218,7 @@ const Bills = () => {
       <DataTable
         headers={[
           "Reference",
-          "Supplier, PO & Branch",
+          "Supplier & PO",
           "Date Logs",
           "Grand Total",
           "Status (Rcv / Pay)",
@@ -254,12 +254,6 @@ const Bills = () => {
                 <div className="flex items-center gap-2 mt-1 truncate">
                   <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest truncate">
                     {bill.purchase_order_number}
-                  </span>
-                  <span className="text-slate-300 dark:text-slate-600 shrink-0">
-                    •
-                  </span>
-                  <span className="text-[9px] font-medium text-slate-400 truncate">
-                    {bill.branch_name}
                   </span>
                 </div>
               </div>
