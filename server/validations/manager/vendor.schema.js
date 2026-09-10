@@ -27,8 +27,8 @@ const vendorBaseSchema = z.object({
     .string()
     .trim()
     .regex(
-      /^(\d{9}|\d{12})$/,
-      "TIN must be exactly 9 or 12 digits (e.g., 123456789).",
+      /^(\d{3}-\d{3}-\d{3}(-\d{3,5})?|\d{9}|\d{12})$/,
+      "TIN must be valid digits (e.g., 123-456-789-000 or 12 digits).",
     )
     .optional()
     .or(z.literal("").transform(() => null)),
@@ -72,7 +72,11 @@ const updateVendorSchema = z.object({
       tin: z
         .string()
         .trim()
-        .regex(/^(\d{9}|\d{12})$/, "TIN must be exactly 9 or 12 digits.")
+        .regex(
+          /^(\d{3}-\d{3}-\d{3}(-\d{3,5})?|\d{9}|\d{12})$/,
+          "TIN must be exactly 9 or 12 digits.",
+        )
+        .nullable()
         .optional()
         .or(z.literal("").transform(() => null)),
       is_vat_registered: z.boolean().optional(),
