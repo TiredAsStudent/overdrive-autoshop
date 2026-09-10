@@ -1,16 +1,9 @@
 const VendorModel = require("../../models/Vendor");
 const { logSecureAction } = require("../../utils/auditLogger");
 
-class VendorService {
+class ManagerVendorService {
   static async registerVendor(data, activeUser, ipAddress) {
-    let targetBranchId = activeUser.branchId;
-    if (activeUser.role !== "STAFF" && data.branch_id) {
-      targetBranchId = data.branch_id;
-    }
-
-    if (!targetBranchId)
-      throw new Error("System Error: Branch context missing.");
-    data.branch_id = targetBranchId;
+    const targetBranchId = data.branch_id || null;
 
     const duplicate = await VendorModel.checkDuplicate(
       data.business_name,
@@ -18,7 +11,7 @@ class VendorService {
     );
     if (duplicate) {
       throw new Error(
-        `A supplier named '${data.business_name}' already exists in this branch's registry.`,
+        `A supplier named '${data.business_name}' already exists in the system.`,
       );
     }
 
@@ -28,6 +21,7 @@ class VendorService {
     while (retries > 0) {
       try {
         data.vendor_code = await VendorModel.generateVendorCode();
+        data.branch_id = targetBranchId;
         newVendor = await VendorModel.create(data);
         break;
       } catch (error) {
@@ -66,15 +60,6 @@ class VendorService {
     if (!oldVendor) throw new Error("Vendor record not found.");
 
     if (
-      activeUser.role === "STAFF" &&
-      oldVendor.branch_id !== activeUser.branchId
-    ) {
-      throw new Error(
-        "Unauthorized: You cannot modify a vendor registered to another branch.",
-      );
-    }
-
-    if (
       data.business_name &&
       data.business_name.toLowerCase() !== oldVendor.business_name.toLowerCase()
     ) {
@@ -97,7 +82,7 @@ class VendorService {
       data.is_active !== undefined &&
       data.is_active !== oldVendor.is_active
     ) {
-      severity = data.is_active ? "INFO" : "WARNING"; // Deactivation is a warning level event
+      severity = data.is_active ? "INFO" : "WARNING"; // Archiving is a warning event
     }
 
     await logSecureAction(
@@ -147,6 +132,16 @@ class VendorService {
       },
     };
   }
+
+  static async getVendorLedger(id, page = 1, limit = 10) {
+    const vendor = await VendorModel.findById(id);
+    if (!vendor) throw new Error("Vendor record not found.");
+
+    const offset = (page - 1) * limit;
+    const history = await VendorModel.getTransactionLedger(id, limit, offset);
+
+    return { history };
+  }
 }
 
-module.exports = VendorService;
+module.exports = ManagerVendorService;

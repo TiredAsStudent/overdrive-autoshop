@@ -60,11 +60,6 @@ const {
   getPaymentsSchema,
 } = require("../../validations/staff/payment.schema");
 const {
-  createVendorSchema,
-  updateVendorSchema,
-  getVendorsSchema,
-} = require("../../validations/staff/vendor.schema");
-const {
   createPurchaseOrderSchema,
   updatePurchaseOrderSchema,
   updatePOStatusSchema,
@@ -208,19 +203,9 @@ router.get("/payments/:id", PaymentController.getPaymentDetails);
 router.patch("/payments/:id/void", PaymentController.voidPayment);
 
 // ==========================================
-// MODULE: VENDORS (SUPPLIER CRM)
+// MODULE: READ-ONLY VENDORS (For POs and Bills)
 // ==========================================
-router.post(
-  "/vendors",
-  validate(createVendorSchema),
-  VendorController.registerVendor,
-);
-router.get("/vendors", validate(getVendorsSchema), VendorController.getVendors);
-router.put(
-  "/vendors/:id",
-  validate(updateVendorSchema),
-  VendorController.updateVendor,
-);
+router.get("/vendors/active-lookup", VendorController.getActiveLookup);
 
 // ==========================================
 // MODULE: PURCHASE ORDERS (PROCUREMENT)

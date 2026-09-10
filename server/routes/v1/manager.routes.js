@@ -11,6 +11,7 @@ const POApprovalController = require("../../controllers/manager/poApproval.contr
 const ExpenseApprovalController = require("../../controllers/manager/expenseApproval.controller");
 const ReceiptApprovalController = require("../../controllers/manager/receiptApproval.controller");
 const ChartOfAccountsController = require("../../controllers/manager/chartOfAccounts.controller");
+const ManagerVendorController = require("../../controllers/manager/vendor.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -69,6 +70,11 @@ const {
   toggleAccountStatusSchema,
   getAccountsSchema,
 } = require("../../validations/manager/chartOfAccounts.schema");
+const {
+  createVendorSchema,
+  updateVendorSchema,
+  getVendorsSchema,
+} = require("../../validations/manager/vendor.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -286,6 +292,26 @@ router.patch(
   "/accounting/accounts/:id/status",
   validate(toggleAccountStatusSchema),
   ChartOfAccountsController.toggleStatus,
+);
+
+// ==========================================
+// MODULE: PURCHASES - VENDOR MASTER DATA
+// ==========================================
+router.post(
+  "/vendors",
+  validate(createVendorSchema),
+  ManagerVendorController.registerVendor,
+);
+router.get(
+  "/vendors",
+  validate(getVendorsSchema),
+  ManagerVendorController.getVendors,
+);
+router.get("/vendors/:id/ledger", ManagerVendorController.getVendorLedger);
+router.put(
+  "/vendors/:id",
+  validate(updateVendorSchema),
+  ManagerVendorController.updateVendor,
 );
 
 module.exports = router;

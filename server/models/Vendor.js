@@ -22,11 +22,20 @@ class Vendor {
   }
 
   static async checkDuplicate(businessName, branchId, excludeId = null) {
-    let sql = `SELECT id, business_name FROM vendors WHERE branch_id = $1 AND LOWER(business_name) = LOWER($2)`;
-    const params = [branchId, businessName];
+    let sql = `SELECT id, business_name FROM vendors WHERE LOWER(business_name) = LOWER($1)`;
+    const params = [businessName];
+    let paramIdx = 2;
+
+    if (branchId) {
+      sql += ` AND branch_id = $${paramIdx}`;
+      params.push(branchId);
+      paramIdx++;
+    } else {
+      sql += ` AND branch_id IS NULL`;
+    }
 
     if (excludeId) {
-      sql += ` AND id != $3`;
+      sql += ` AND id != $${paramIdx}`;
       params.push(excludeId);
     }
 
@@ -51,7 +60,7 @@ class Vendor {
       data.email,
       data.tin,
       data.is_vat_registered,
-      data.branch_id,
+      data.branch_id || null,
       data.notes,
     ];
     const result = await query(sql, values);
@@ -195,6 +204,33 @@ class Vendor {
 
     const result = await query(sql, values);
     return result.rows[0];
+  }
+
+  static async getTransactionLedger(vendorId, limit, offset) {
+    const sql = `
+      SELECT 'PURCHASE_ORDER' as transaction_type, purchase_order_number as reference_number, 
+             created_at as transaction_date, grand_total as amount, status::text as status
+      FROM purchase_orders WHERE vendor_id = $1
+      UNION ALL
+      SELECT 'BILL' as transaction_type, bill_number as reference_number, 
+             bill_date as transaction_date, grand_total as amount, status::text as status
+      FROM bills WHERE vendor_id = $1
+      ORDER BY transaction_date DESC LIMIT $2 OFFSET $3
+    `;
+    const result = await query(sql, [vendorId, limit, offset]);
+    return result.rows;
+  }
+
+  // NEW: Lightweight Active Vendor Lookup for Staff Portals
+  static async getActiveLookup() {
+    const sql = `
+      SELECT id, vendor_code, business_name, is_vat_registered 
+      FROM vendors 
+      WHERE is_active = TRUE 
+      ORDER BY business_name ASC
+    `;
+    const result = await query(sql);
+    return result.rows;
   }
 }
 
