@@ -8,6 +8,7 @@ import {
   RotateCcw,
   ShieldCheck,
   MinusCircle,
+  CheckCircle,
 } from "lucide-react";
 import { managerVendorService } from "../../services/manager/vendor.service";
 import VendorModal from "../../features/manager/components/VendorModal";
@@ -167,6 +168,7 @@ const Vendors = () => {
           "Business Identity",
           "Primary Contact",
           "Tax Status",
+          "Status",
           "Actions",
         ]}
         data={vendors}
@@ -214,6 +216,21 @@ const Vendors = () => {
                   label="Non-VAT"
                   variant="default"
                   icon={MinusCircle}
+                />
+              )}
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              {vendor.is_active ? (
+                <StatusBadge
+                  label="Active"
+                  variant="success"
+                  icon={CheckCircle}
+                />
+              ) : (
+                <StatusBadge
+                  label="Archived"
+                  variant="default"
+                  icon={Archive}
                 />
               )}
             </td>

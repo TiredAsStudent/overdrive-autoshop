@@ -21,21 +21,12 @@ class Vendor {
     return `${prefix}${String(sequence).padStart(4, "0")}`;
   }
 
-  static async checkDuplicate(businessName, branchId, excludeId = null) {
-    let sql = `SELECT id, business_name FROM vendors WHERE LOWER(business_name) = LOWER($1)`;
+  static async checkDuplicate(businessName, excludeId = null) {
+    let sql = `SELECT id, business_name FROM vendors WHERE LOWER(TRIM(business_name)) = LOWER(TRIM($1))`;
     const params = [businessName];
-    let paramIdx = 2;
-
-    if (branchId) {
-      sql += ` AND branch_id = $${paramIdx}`;
-      params.push(branchId);
-      paramIdx++;
-    } else {
-      sql += ` AND branch_id IS NULL`;
-    }
 
     if (excludeId) {
-      sql += ` AND id != $${paramIdx}`;
+      sql += ` AND id != $2`;
       params.push(excludeId);
     }
 
@@ -209,11 +200,11 @@ class Vendor {
   static async getTransactionLedger(vendorId, limit, offset) {
     const sql = `
       SELECT 'PURCHASE_ORDER' as transaction_type, purchase_order_number as reference_number, 
-             created_at as transaction_date, grand_total as amount, status::text as status
+             created_at::timestamptz as transaction_date, grand_total as amount, status::text as status
       FROM purchase_orders WHERE vendor_id = $1
       UNION ALL
       SELECT 'BILL' as transaction_type, bill_number as reference_number, 
-             bill_date as transaction_date, grand_total as amount, status::text as status
+             bill_date::timestamptz as transaction_date, grand_total as amount, status::text as status
       FROM bills WHERE vendor_id = $1
       ORDER BY transaction_date DESC LIMIT $2 OFFSET $3
     `;
@@ -221,7 +212,6 @@ class Vendor {
     return result.rows;
   }
 
-  // NEW: Lightweight Active Vendor Lookup for Staff Portals
   static async getActiveLookup() {
     const sql = `
       SELECT id, vendor_code, business_name, is_vat_registered 

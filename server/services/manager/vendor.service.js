@@ -5,10 +5,7 @@ class ManagerVendorService {
   static async registerVendor(data, activeUser, ipAddress) {
     const targetBranchId = data.branch_id || null;
 
-    const duplicate = await VendorModel.checkDuplicate(
-      data.business_name,
-      targetBranchId,
-    );
+    const duplicate = await VendorModel.checkDuplicate(data.business_name);
     if (duplicate) {
       throw new Error(
         `A supplier named '${data.business_name}' already exists in the system.`,
@@ -59,6 +56,7 @@ class ManagerVendorService {
     const oldVendor = await VendorModel.findById(id);
     if (!oldVendor) throw new Error("Vendor record not found.");
 
+    // Strict evaluation of final VAT & TIN state
     const finalIsVatRegistered =
       data.is_vat_registered !== undefined
         ? data.is_vat_registered
@@ -80,7 +78,6 @@ class ManagerVendorService {
     ) {
       const duplicate = await VendorModel.checkDuplicate(
         data.business_name,
-        oldVendor.branch_id,
         id,
       );
       if (duplicate) {
@@ -97,7 +94,7 @@ class ManagerVendorService {
       data.is_active !== undefined &&
       data.is_active !== oldVendor.is_active
     ) {
-      severity = data.is_active ? "INFO" : "WARNING"; // Archiving is a warning event
+      severity = data.is_active ? "INFO" : "WARNING";
     }
 
     await logSecureAction(

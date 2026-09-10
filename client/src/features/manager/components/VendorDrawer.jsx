@@ -15,6 +15,8 @@ import {
   MinusCircle,
   Loader2,
   FileText,
+  Phone,
+  User,
 } from "lucide-react";
 import { managerVendorService } from "../../../services/manager/vendor.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -47,7 +49,6 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -57,7 +58,6 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer"
           />
 
-          {/* Panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -95,23 +95,31 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
 
             {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
+              {/* Corporate Profile Card */}
               <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 border-b border-slate-100 dark:border-slate-700/50 pb-3 mb-2 flex items-center gap-2">
                   <Building2 size={14} /> Corporate Profile
                 </h3>
-                <div className="flex items-start gap-3 text-slate-900 dark:text-white font-bold text-sm">
-                  {vendor.contact_number}
+                <div className="flex items-center gap-3 text-slate-900 dark:text-white font-bold text-sm">
+                  <Phone size={14} className="text-amber-500 shrink-0" />
+                  <span>{vendor.contact_number}</span>
                 </div>
-                <div className="flex items-start gap-3 text-slate-700 dark:text-slate-300 text-sm font-medium">
-                  {vendor.contact_person} (Representative)
+                <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300 text-sm font-medium">
+                  <User size={14} className="text-slate-400 shrink-0" />
+                  <span>
+                    {vendor.contact_person}{" "}
+                    <span className="text-xs text-slate-400 font-normal">
+                      (Primary Contact)
+                    </span>
+                  </span>
                 </div>
                 {vendor.email && (
-                  <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300 text-sm font-medium mt-2">
+                  <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300 text-sm font-medium">
                     <Mail size={14} className="text-slate-400 shrink-0" />
                     <span className="truncate">{vendor.email}</span>
                   </div>
                 )}
-                <div className="flex items-start gap-3 text-slate-600 dark:text-slate-400 text-xs font-medium leading-relaxed mt-2">
+                <div className="flex items-start gap-3 text-slate-600 dark:text-slate-400 text-xs font-medium leading-relaxed pt-1">
                   <MapPin
                     size={14}
                     className="text-slate-400 mt-0.5 shrink-0"
@@ -120,6 +128,29 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
                 </div>
               </section>
 
+              {/* Administrative Timeline Card */}
+              <section className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm space-y-3">
+                <div className="flex items-center gap-2">
+                  <Building2 size={14} className="text-slate-400" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Master Assignment:
+                  </span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white ml-auto">
+                    {vendor.branch_name || "Enterprise Wide (Global)"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 pt-3 border-t border-slate-200 dark:border-slate-700/50">
+                  <Calendar size={14} className="text-slate-400" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Registered Date:
+                  </span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white ml-auto font-mono">
+                    {new Date(vendor.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </section>
+
+              {/* Fiscal Registration Card */}
               <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-slate-700/50 pb-3 mb-2 flex items-center gap-2">
                   <Landmark size={14} /> Fiscal Registration
@@ -131,20 +162,22 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-100 dark:border-slate-700/50">
-                  <span className="font-bold text-slate-500">Tax Type</span>
+                  <span className="font-bold text-slate-500">
+                    Tax Classification
+                  </span>
                   {vendor.is_vat_registered ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
                       <ShieldCheck size={12} /> VAT Registered
                     </span>
                   ) : (
-                    <span className="inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
-                      <MinusCircle size={12} className="mr-1 inline-block" />{" "}
-                      NON-VAT
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
+                      <MinusCircle size={12} /> Non-VAT
                     </span>
                   )}
                 </div>
               </section>
 
+              {/* Procurement Summary Metrics */}
               <section>
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
                   <Calculator size={14} className="text-amber-500" />{" "}
