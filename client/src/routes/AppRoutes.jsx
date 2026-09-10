@@ -38,7 +38,6 @@ const StaffPayments = lazy(() => import("../pages/staff/Payments"));
 const StaffExpenses = lazy(() => import("../pages/staff/Expenses"));
 const StaffPurchaseOrders = lazy(() => import("../pages/staff/PurchaseOrders"));
 const StaffBills = lazy(() => import("../pages/staff/Bills"));
-const StaffVendors = lazy(() => import("../pages/staff/Vendors"));
 const StaffStockManagement = lazy(
   () => import("../pages/staff/StockManagement"),
 );
@@ -77,6 +76,8 @@ const ManagerStockAdjustments = lazy(
 const ManagerStockTransfers = lazy(
   () => import("../pages/manager/StockTransfers"),
 );
+const ManagerVendors = lazy(() => import("../pages/manager/Vendors"));
+const ManagerPayments = lazy(() => import("../pages/manager/Payments"));
 const ManagerExpenseApprovals = lazy(
   () => import("../pages/manager/ExpenseApprovals"),
 );
@@ -333,6 +334,24 @@ const LocationBasedRoutes = ({ user }) => {
               }
             />
 
+            {/* === Purchases === */}
+            <Route
+              path="purchases/vendors"
+              element={
+                <PageWrapper>
+                  <ManagerVendors />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="purchases/payments"
+              element={
+                <PageWrapper>
+                  <ManagerPayments />
+                </PageWrapper>
+              }
+            />
+
             {/* === Approvals === */}
             <Route
               path="approvals/expense-approvals"
@@ -558,14 +577,6 @@ const LocationBasedRoutes = ({ user }) => {
               element={
                 <PageWrapper>
                   <StaffBills />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="purchases/vendors"
-              element={
-                <PageWrapper>
-                  <StaffVendors />
                 </PageWrapper>
               }
             />

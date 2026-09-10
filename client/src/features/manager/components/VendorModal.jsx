@@ -76,19 +76,33 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     if (formData.business_address.trim().length < 5)
       return setValidationError("Business address is required.");
 
-    // Front-end TIN Catch
+    // Strict Frontend Rules
+    if (formData.is_vat_registered && !formData.tin.trim()) {
+      return setValidationError(
+        "TIN is strictly required for VAT Registered suppliers.",
+      );
+    }
+
     if (formData.tin.trim()) {
-      const tinRegex = /^(\d{9}|\d{12})$/;
+      const tinRegex = /^(\d{3}-\d{3}-\d{3}(-\d{3,5})?|\d{9}|\d{12})$/;
       if (!tinRegex.test(formData.tin.trim())) {
         return setValidationError(
-          "TIN must be exactly 9 or 12 numeric digits.",
+          "TIN must be exactly 9 or 12 numeric digits (e.g., 123-456-789-000).",
         );
       }
     }
 
+    // Clean payload for submission (Convert empty strings to null for optional fields)
+    const payload = {
+      ...formData,
+      tin: formData.tin.trim() === "" ? null : formData.tin.trim(),
+      email: formData.email.trim() === "" ? null : formData.email.trim(),
+      notes: formData.notes.trim() === "" ? null : formData.notes.trim(),
+    };
+
     setIsSubmitting(true);
     try {
-      await onSubmit(formData);
+      await onSubmit(payload);
     } catch (error) {
       setValidationError(error.message || "Failed to process vendor.");
     } finally {
@@ -106,7 +120,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
-            {/* MODAL HEADER */}
+            {/* Header */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
@@ -132,7 +146,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               </button>
             </div>
 
-            {/* MODAL BODY */}
+            {/* Body */}
             <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
@@ -146,7 +160,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 onSubmit={handleSubmit}
                 className="space-y-6"
               >
-                {/* SECTION 1: BUSINESS IDENTITY */}
+                {/* Corporate Identity */}
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <Building size={14} /> Corporate Identity
@@ -185,9 +199,8 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   </div>
                 </div>
 
-                {/* SECTION 2: CONTACT & TAX INFO */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left Col: Contact */}
+                  {/* Left: Contact */}
                   <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                       <Phone size={14} /> Primary Contact
@@ -241,68 +254,74 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                     </div>
                   </div>
 
-                  {/* Right Col: Tax */}
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
-                      <FileText size={14} /> Fiscal Data
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Tax Identification Number{" "}
-                          <span className="text-slate-400 font-medium lowercase">
-                            (Optional)
-                          </span>
-                        </label>
-                        <input
-                          type="text"
-                          name="tin"
-                          value={formData.tin}
-                          onChange={handleChange}
-                          placeholder="9 or 12 digits"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 tracking-wider"
-                        />
-                      </div>
+                  {/* Right: Tax */}
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                        <FileText size={14} /> Fiscal Data
+                      </h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                            Tax Identification Number
+                            {formData.is_vat_registered ? (
+                              <span className="text-red-500 ml-1">*</span>
+                            ) : (
+                              <span className="text-slate-400 font-medium lowercase ml-1">
+                                (Optional)
+                              </span>
+                            )}
+                          </label>
+                          <input
+                            type="text"
+                            name="tin"
+                            value={formData.tin}
+                            onChange={handleChange}
+                            placeholder="9 or 12 digits"
+                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 tracking-wider"
+                          />
+                        </div>
 
-                      <div className="pt-2">
-                        <label className="flex items-center gap-3 cursor-pointer group">
-                          <div className="relative flex items-center justify-center">
-                            <input
-                              type="checkbox"
-                              name="is_vat_registered"
-                              checked={formData.is_vat_registered}
-                              onChange={handleChange}
-                              className="peer sr-only"
-                            />
-                            <div className="w-5 h-5 border-2 border-slate-300 dark:border-slate-600 rounded peer-checked:bg-amber-500 peer-checked:border-amber-500 transition-colors"></div>
-                            <svg
-                              className="absolute w-3.5 h-3.5 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
+                        <div className="pt-2">
+                          <label className="flex items-center gap-3 cursor-pointer group">
+                            <div className="relative flex items-center justify-center">
+                              <input
+                                type="checkbox"
+                                name="is_vat_registered"
+                                checked={formData.is_vat_registered}
+                                onChange={handleChange}
+                                className="peer sr-only"
                               />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 group-hover:text-amber-500 transition-colors">
-                              VAT Registered Entity
-                            </p>
-                            <p className="text-[9px] text-slate-400 leading-tight mt-0.5">
-                              Check this if the supplier issues valid VAT
-                              invoices.
-                            </p>
-                          </div>
-                        </label>
+                              <div className="w-5 h-5 border-2 border-slate-300 dark:border-slate-600 rounded peer-checked:bg-amber-500 peer-checked:border-amber-500 transition-colors"></div>
+                              <svg
+                                className="absolute w-3.5 h-3.5 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 group-hover:text-amber-500 transition-colors">
+                                VAT Registered Entity
+                              </p>
+                              <p className="text-[9px] text-slate-400 leading-tight mt-0.5">
+                                Check this if the supplier issues valid VAT
+                                invoices.
+                              </p>
+                            </div>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* SECTION 3: NOTES */}
+                {/* Notes */}
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                     Procurement Notes / Terms{" "}
@@ -322,7 +341,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               </form>
             </div>
 
-            {/* MODAL FOOTER */}
+            {/* Footer */}
             <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
               <button
                 type="submit"

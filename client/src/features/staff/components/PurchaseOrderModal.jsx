@@ -102,12 +102,6 @@ const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
                   <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
                     {v.business_name}
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-2 flex flex-wrap items-center gap-1 font-medium tracking-widest uppercase">
-                    <span>Contact:</span>
-                    <span className="font-black text-slate-700 dark:text-slate-300">
-                      {v.contact_person} ({v.contact_number})
-                    </span>
-                  </p>
                 </div>
               ))
             ) : (
@@ -258,7 +252,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
         setLoadingLookups(true);
         try {
           const [venRes, invRes, setRes] = await Promise.all([
-            vendorService.getVendors(1, 500, "", "active", "all", "all"),
+            vendorService.getActiveLookup(),
             catalogService.getInventoryCatalog(
               1,
               1000,
@@ -269,7 +263,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             ),
             catalogService.getSettings(),
           ]);
-          setVendors(venRes.data?.vendors || []);
+          setVendors(venRes.data || []);
           setInventory(invRes.data || []);
           setSystemVatRate(parseFloat(setRes.data?.vat_percentage || 12) / 100);
         } catch (error) {

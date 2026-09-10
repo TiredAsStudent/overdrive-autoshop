@@ -75,6 +75,14 @@ export const managerMenu = [
     ],
   },
   {
+    label: "Purchases",
+    icon: ShoppingBag,
+    items: [
+      { name: "Vendors", path: "/manager/purchases/vendors" },
+      { name: "Payments", path: "/manager/purchases/payments" },
+    ],
+  },
+  {
     label: "Approvals",
     icon: ClipboardCheck,
     items: [
@@ -153,7 +161,6 @@ export const staffMenu = [
       { name: "Expenses", path: "/staff/purchases/expenses" },
       { name: "Purchase Orders", path: "/staff/purchases/purchase-orders" },
       { name: "Bills", path: "/staff/purchases/bills" },
-      { name: "Vendors", path: "/staff/purchases/vendors" },
     ],
   },
   {

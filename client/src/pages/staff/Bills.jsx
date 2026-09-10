@@ -64,8 +64,8 @@ const Bills = () => {
   // Initial Data Load (Vendors for Filter)
   useEffect(() => {
     vendorService
-      .getVendors(1, 500, "", "active", "all", "all")
-      .then((res) => setVendorList(res.data?.vendors || []))
+      .getActiveLookup()
+      .then((res) => setVendorList(res.data || []))
       .catch((err) => console.error("Failed to load vendors", err));
   }, []);
 

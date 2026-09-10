@@ -65,8 +65,8 @@ const ExpenseModal = ({
         .catch((err) => console.error("Failed to load settings:", err));
 
       vendorService
-        .getVendors(1, 1000, "", "active", "all", "all")
-        .then((res) => setVendors(res.data?.vendors || []))
+        .getActiveLookup()
+        .then((res) => setVendors(res.data || []))
         .catch(() => setValidationError("Could not load vendor registry."))
         .finally(() => setIsLoadingVendors(false));
 

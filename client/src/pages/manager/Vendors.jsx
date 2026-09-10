@@ -9,11 +9,10 @@ import {
   ShieldCheck,
   MinusCircle,
 } from "lucide-react";
-import { vendorService } from "../../services/staff/vendor.service";
-import VendorModal from "../../features/staff/components/VendorModal";
-import VendorDrawer from "../../features/staff/components/VendorDrawer";
+import { managerVendorService } from "../../services/manager/vendor.service";
+import VendorModal from "../../features/manager/components/VendorModal";
+import VendorDrawer from "../../features/manager/components/VendorDrawer";
 
-// --- REUSABLE SHARED COMPONENTS ---
 import PageHeader from "../../components/shared/PageHeader";
 import SearchBar from "../../components/ui/SearchBar";
 import StatusToggle from "../../components/ui/StatusToggle";
@@ -63,7 +62,7 @@ const Vendors = () => {
     try {
       setLoading(true);
       const statusParam = showArchived ? "inactive" : "active";
-      const response = await vendorService.getVendors(
+      const response = await managerVendorService.getVendors(
         currentPage,
         ITEMS_PER_PAGE,
         debouncedSearchQuery,
@@ -87,10 +86,10 @@ const Vendors = () => {
   const handleModalSubmit = async (formData) => {
     try {
       if (selectedVendor) {
-        await vendorService.updateVendor(selectedVendor.id, formData);
+        await managerVendorService.updateVendor(selectedVendor.id, formData);
         showToast("Vendor master data updated successfully.", "success");
       } else {
-        await vendorService.registerVendor(formData);
+        await managerVendorService.registerVendor(formData);
         showToast("New supplier registered successfully.", "success");
       }
       setIsModalOpen(false);
@@ -111,7 +110,7 @@ const Vendors = () => {
       variant: variant,
       onConfirm: async () => {
         try {
-          await vendorService.updateVendor(vendor.id, {
+          await managerVendorService.updateVendor(vendor.id, {
             is_active: !vendor.is_active,
           });
           showToast(
@@ -128,7 +127,6 @@ const Vendors = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* Page Header and Controls */}
       <PageHeader title="Vendors" subtitle="Supplier Master Data" icon={Store}>
         <StatusToggle
           activeValue={vatFilter}
@@ -139,14 +137,12 @@ const Vendors = () => {
             { label: "Non-VAT", value: "non_vat" },
           ]}
         />
-
         <SearchBar
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search Supplier..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
-
         <StatusToggle
           activeValue={showArchived}
           onToggle={setShowArchived}
@@ -155,7 +151,6 @@ const Vendors = () => {
             { label: "Archived", value: true },
           ]}
         />
-
         <ActionButton
           onClick={() => {
             setSelectedVendor(null);
@@ -166,7 +161,6 @@ const Vendors = () => {
         />
       </PageHeader>
 
-      {/* Data Table */}
       <DataTable
         headers={[
           "Supplier ID",
@@ -181,11 +175,7 @@ const Vendors = () => {
         renderRow={(vendor) => (
           <tr
             key={vendor.id}
-            className={`group transition-colors ${
-              !vendor.is_active
-                ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale"
-                : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
-            }`}
+            className={`group transition-colors ${!vendor.is_active ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale" : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"}`}
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
@@ -252,11 +242,7 @@ const Vendors = () => {
                 <button
                   onClick={() => handleToggleStatus(vendor)}
                   title={vendor.is_active ? "Archive Vendor" : "Restore Vendor"}
-                  className={`p-2.5 rounded-xl transition-all cursor-pointer ${
-                    vendor.is_active
-                      ? "bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-500/10 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
-                      : "bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                  }`}
+                  className={`p-2.5 rounded-xl transition-all cursor-pointer ${vendor.is_active ? "bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-500/10 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400" : "bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"}`}
                 >
                   {vendor.is_active ? (
                     <Archive size={16} />
