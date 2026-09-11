@@ -77,10 +77,16 @@ class BillService {
         "Unauthorized: Purchase Order belongs to a different branch.",
       );
 
-    // 2. Compute Financials
+    const secureItems = po.items.map((item) => ({
+      item_id: item.item_id,
+      quantity_received: item.quantity,
+      recorded_unit_cost: item.recorded_unit_cost,
+      discount_amount: item.discount_amount,
+    }));
+
     const { computedItems, financials } = await this._formulateFinancials(
       po.vendor_id,
-      data.items,
+      secureItems,
     );
 
     const payload = {
@@ -135,7 +141,6 @@ class BillService {
       }
     }
 
-    // 3. Immediately process inventory if submitted as RECEIVED
     if (data.status === "RECEIVED") {
       newBill = await BillModel.executeReceiptTransaction(
         newBill.id,
