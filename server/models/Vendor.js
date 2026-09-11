@@ -101,6 +101,8 @@ class Vendor {
       SELECT v.*, b.branch_name,
         (SELECT COUNT(*) FROM purchase_orders po WHERE po.vendor_id = v.id) AS total_pos,
         (SELECT COUNT(*) FROM bills bi WHERE bi.vendor_id = v.id) AS total_bills,
+        (SELECT COUNT(*) FROM vendor_payments vp WHERE vp.vendor_id = v.id) AS total_payments,
+        (SELECT COALESCE(SUM(bi.grand_total - bi.amount_paid), 0) FROM bills bi WHERE bi.vendor_id = v.id AND bi.status = 'RECEIVED' AND bi.payment_status IN ('UNPAID', 'PARTIALLY_PAID')) AS outstanding_payables,
         (SELECT COALESCE(SUM(bi.grand_total), 0) FROM bills bi WHERE bi.vendor_id = v.id) AS total_procurement_value,
         (SELECT MAX(bi.created_at) FROM bills bi WHERE bi.vendor_id = v.id) AS latest_procurement_date
       FROM vendors v
@@ -143,6 +145,8 @@ class Vendor {
       SELECT v.*, b.branch_name,
         (SELECT COUNT(*) FROM purchase_orders po WHERE po.vendor_id = v.id) AS total_pos,
         (SELECT COUNT(*) FROM bills bi WHERE bi.vendor_id = v.id) AS total_bills,
+        (SELECT COUNT(*) FROM vendor_payments vp WHERE vp.vendor_id = v.id) AS total_payments,
+        (SELECT COALESCE(SUM(bi.grand_total - bi.amount_paid), 0) FROM bills bi WHERE bi.vendor_id = v.id AND bi.status = 'RECEIVED' AND bi.payment_status IN ('UNPAID', 'PARTIALLY_PAID')) AS outstanding_payables,
         (SELECT COALESCE(SUM(bi.grand_total), 0) FROM bills bi WHERE bi.vendor_id = v.id) AS total_procurement_value,
         (SELECT MAX(bi.created_at) FROM bills bi WHERE bi.vendor_id = v.id) AS latest_procurement_date
       FROM vendors v 
@@ -206,6 +210,10 @@ class Vendor {
       SELECT 'BILL' as transaction_type, bill_number as reference_number, 
              bill_date::timestamptz as transaction_date, grand_total as amount, status::text as status
       FROM bills WHERE vendor_id = $1
+      UNION ALL
+      SELECT 'PAYMENT' as transaction_type, payment_number as reference_number, 
+             payment_date::timestamptz as transaction_date, amount_paid as amount, 'COMPLETED' as status
+      FROM vendor_payments WHERE vendor_id = $1
       ORDER BY transaction_date DESC LIMIT $2 OFFSET $3
     `;
     const result = await query(sql, [vendorId, limit, offset]);
