@@ -17,6 +17,7 @@ import {
   FileText,
   Phone,
   User,
+  CreditCard,
 } from "lucide-react";
 import { managerVendorService } from "../../../services/manager/vendor.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -40,6 +41,13 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
 
   const procurementValue = parseFloat(
     vendor.total_procurement_value || 0,
+  ).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const outstandingPayables = parseFloat(
+    vendor.outstanding_payables || 0,
   ).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -187,24 +195,54 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
                   <Calculator size={14} className="text-amber-500" />{" "}
                   Procurement Summary
                 </h3>
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 text-center shadow-sm">
-                    <span className="block text-2xl font-black text-slate-900 dark:text-white font-mono mb-1">
+
+                {/* Metric Count Boxes */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3 sm:mb-4">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] p-4 text-center shadow-sm">
+                    <span className="block text-xl font-black text-slate-900 dark:text-white font-mono mb-1">
                       {vendor.total_pos ?? 0}
                     </span>
-                    <span className="flex items-center justify-center gap-1.5 text-slate-500 text-[8px] font-bold uppercase tracking-widest">
-                      <ShoppingBag size={12} /> Purchase Orders
+                    <span className="flex items-center justify-center gap-1 text-slate-500 text-[8px] font-bold uppercase tracking-widest">
+                      <ShoppingBag size={10} /> POs
                     </span>
                   </div>
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 text-center shadow-sm">
-                    <span className="block text-2xl font-black text-slate-900 dark:text-white font-mono mb-1">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] p-4 text-center shadow-sm">
+                    <span className="block text-xl font-black text-slate-900 dark:text-white font-mono mb-1">
                       {vendor.total_bills ?? 0}
                     </span>
-                    <span className="flex items-center justify-center gap-1.5 text-slate-500 text-[8px] font-bold uppercase tracking-widest">
-                      <Receipt size={12} /> Supplier Bills
+                    <span className="flex items-center justify-center gap-1 text-slate-500 text-[8px] font-bold uppercase tracking-widest">
+                      <Receipt size={10} /> Bills
                     </span>
                   </div>
-                  <div className="col-span-2 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm flex justify-between items-center">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] sm:rounded-[20px] p-4 text-center shadow-sm">
+                    <span className="block text-xl font-black text-slate-900 dark:text-white font-mono mb-1">
+                      {vendor.total_payments ?? 0}
+                    </span>
+                    <span className="flex items-center justify-center gap-1 text-slate-500 text-[8px] font-bold uppercase tracking-widest">
+                      <CreditCard size={10} /> Pymnts
+                    </span>
+                  </div>
+                </div>
+
+                {/* Financial Overview Boxes */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  {/* Outstanding Payables */}
+                  <div className="bg-red-50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/20 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm flex flex-col justify-between items-start gap-3 sm:gap-2">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-1">
+                        Outstanding Payables
+                      </p>
+                      <p className="text-[9px] text-red-600/70 dark:text-red-500/80 mt-0.5 font-medium">
+                        Unsettled Liabilities
+                      </p>
+                    </div>
+                    <span className="text-xl sm:text-2xl font-black text-red-700 dark:text-red-400 font-mono tracking-tight self-end sm:self-auto w-full text-right sm:text-left mt-2 sm:mt-0">
+                      ₱{outstandingPayables}
+                    </span>
+                  </div>
+
+                  {/* Total Procurement Value */}
+                  <div className="bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm flex flex-col justify-between items-start gap-3 sm:gap-2">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">
                         Total Procurement Value
@@ -218,7 +256,7 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
                           : "Never"}
                       </p>
                     </div>
-                    <span className="text-xl sm:text-2xl font-black text-blue-700 dark:text-blue-400 font-mono tracking-tight">
+                    <span className="text-xl sm:text-2xl font-black text-blue-700 dark:text-blue-400 font-mono tracking-tight self-end sm:self-auto w-full text-right sm:text-left mt-2 sm:mt-0">
                       ₱{procurementValue}
                     </span>
                   </div>
@@ -266,7 +304,9 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
                           <StatusBadge
                             label={tx.status.replace("_", " ")}
                             variant={
-                              tx.status === "CLOSED" || tx.status === "RECEIVED"
+                              tx.status === "CLOSED" ||
+                              tx.status === "RECEIVED" ||
+                              tx.status === "PAID"
                                 ? "success"
                                 : "warning"
                             }

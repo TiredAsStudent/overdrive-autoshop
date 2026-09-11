@@ -76,10 +76,9 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     if (formData.business_address.trim().length < 5)
       return setValidationError("Business address is required.");
 
-    // Strict Frontend Rules
     if (formData.is_vat_registered && !formData.tin.trim()) {
       return setValidationError(
-        "TIN is strictly required for VAT Registered suppliers.",
+        "TIN is strictly required for VAT Registered entities.",
       );
     }
 
@@ -92,7 +91,6 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       }
     }
 
-    // Clean payload for submission (Convert empty strings to null for optional fields)
     const payload = {
       ...formData,
       tin: formData.tin.trim() === "" ? null : formData.tin.trim(),
@@ -120,7 +118,6 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
-            {/* Header */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
@@ -128,7 +125,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </div>
                 <div>
                   <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
-                    {initialData ? "Update Supplier" : "Register Supplier"}
+                    {initialData ? "Update Vendor" : "Register Vendor"}
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                     {initialData
@@ -146,7 +143,6 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               </button>
             </div>
 
-            {/* Body */}
             <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
@@ -160,7 +156,6 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 onSubmit={handleSubmit}
                 className="space-y-6"
               >
-                {/* Corporate Identity */}
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <Building size={14} /> Corporate Identity
@@ -200,7 +195,6 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left: Contact */}
                   <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                       <Phone size={14} /> Primary Contact
@@ -254,7 +248,6 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                     </div>
                   </div>
 
-                  {/* Right: Tax */}
                   <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                     <div>
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
@@ -296,7 +289,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                 VAT Registered Entity
                               </span>
                               <span className="text-[9px] text-slate-400 leading-tight mt-0.5">
-                                Check this if the supplier issues valid VAT
+                                Check this if the vendor issues valid VAT
                                 invoices.
                               </span>
                             </div>
@@ -307,7 +300,6 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   </div>
                 </div>
 
-                {/* Notes */}
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                     Procurement Notes / Terms{" "}
@@ -327,7 +319,6 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               </form>
             </div>
 
-            {/* Footer */}
             <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
               <button
                 type="submit"
@@ -342,7 +333,7 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 ) : (
                   <Store size={16} />
                 )}
-                {initialData ? "Save Master Data" : "Register Supplier"}
+                {initialData ? "Update Vendor" : "Register Vendor"}
               </button>
             </div>
           </motion.div>

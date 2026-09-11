@@ -96,7 +96,7 @@ const Vendors = () => {
         showToast("Vendor master data updated successfully.", "success");
       } else {
         await managerVendorService.registerVendor(formData);
-        showToast("New supplier registered successfully.", "success");
+        showToast("New vendor registered successfully.", "success");
       }
       setIsModalOpen(false);
       loadVendors();
@@ -110,7 +110,7 @@ const Vendors = () => {
     const variant = vendor.is_active ? "danger" : "info";
     setConfirmConfig({
       isOpen: true,
-      title: `${action} Supplier Profile`,
+      title: `${action} Vendor Profile`,
       message: `Are you sure you want to ${action.toLowerCase()} ${vendor.business_name}? ${vendor.is_active ? "They will be blocked from future purchase orders." : ""}`,
       confirmText: `Yes, ${action}`,
       variant: variant,
@@ -142,7 +142,7 @@ const Vendors = () => {
         <SearchBar
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search Supplier..."
+          placeholder="Search Vendor..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
 
@@ -165,23 +165,23 @@ const Vendors = () => {
             setSelectedVendor(null);
             setIsModalOpen(true);
           }}
-          label="Register Supplier"
+          label="Register Vendor"
           icon={Plus}
         />
       </PageHeader>
 
       <DataTable
         headers={[
-          "Supplier ID",
+          "Vendor Code",
           "Business Identity",
           "Primary Contact",
-          "Tax Status",
+          "VAT Status",
           "Status",
           "Actions",
         ]}
         data={vendors}
         loading={loading}
-        emptyTitle={`No ${showArchived ? "archived" : "active"} suppliers found`}
+        emptyTitle={`No ${showArchived ? "archived" : "active"} vendors found`}
         renderRow={(vendor) => (
           <tr
             key={vendor.id}
