@@ -22,6 +22,8 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import ConfirmModal from "../../components/shared/ConfirmModal";
+import FilterButton from "../../components/ui/FilterButton";
+import FilterModal from "../../components/shared/FilterModal";
 
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -43,6 +45,7 @@ const Vendors = () => {
   const ITEMS_PER_PAGE = 10;
 
   // Modals & Drawers
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState(null);
@@ -54,6 +57,8 @@ const Vendors = () => {
     variant: "danger",
     onConfirm: () => {},
   });
+
+  const activeFilterCount = vatFilter !== "all" ? 1 : 0;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -126,24 +131,26 @@ const Vendors = () => {
     });
   };
 
+  const resetFilters = () => {
+    setVatFilter("all");
+    setIsFilterModalOpen(false);
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
       <PageHeader title="Vendors" subtitle="Supplier Master Data" icon={Store}>
-        <StatusToggle
-          activeValue={vatFilter}
-          onToggle={setVatFilter}
-          options={[
-            { label: "All", value: "all" },
-            { label: "VAT Reg.", value: "vat" },
-            { label: "Non-VAT", value: "non_vat" },
-          ]}
-        />
         <SearchBar
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search Supplier..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
+
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
+
         <StatusToggle
           activeValue={showArchived}
           onToggle={setShowArchived}
@@ -152,6 +159,7 @@ const Vendors = () => {
             { label: "Archived", value: true },
           ]}
         />
+
         <ActionButton
           onClick={() => {
             setSelectedVendor(null);
@@ -259,7 +267,11 @@ const Vendors = () => {
                 <button
                   onClick={() => handleToggleStatus(vendor)}
                   title={vendor.is_active ? "Archive Vendor" : "Restore Vendor"}
-                  className={`p-2.5 rounded-xl transition-all cursor-pointer ${vendor.is_active ? "bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-500/10 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400" : "bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"}`}
+                  className={`p-2.5 rounded-xl transition-all cursor-pointer ${
+                    vendor.is_active
+                      ? "bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-500/10 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+                      : "bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                  }`}
                 >
                   {vendor.is_active ? (
                     <Archive size={16} />
@@ -278,6 +290,30 @@ const Vendors = () => {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={resetFilters}
+        title="Advanced Filters"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Tax Registration Status
+            </label>
+            <select
+              value={vatFilter}
+              onChange={(e) => setVatFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+            >
+              <option value="all">All Statuses</option>
+              <option value="vat">VAT Registered</option>
+              <option value="non_vat">Non-VAT</option>
+            </select>
+          </div>
+        </div>
+      </FilterModal>
 
       <VendorModal
         isOpen={isModalOpen}

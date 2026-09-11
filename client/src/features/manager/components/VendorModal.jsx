@@ -283,36 +283,22 @@ const VendorModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         </div>
 
                         <div className="pt-2">
-                          <label className="flex items-center gap-3 cursor-pointer group">
-                            <div className="relative flex items-center justify-center">
-                              <input
-                                type="checkbox"
-                                name="is_vat_registered"
-                                checked={formData.is_vat_registered}
-                                onChange={handleChange}
-                                className="peer sr-only"
-                              />
-                              <div className="w-5 h-5 border-2 border-slate-300 dark:border-slate-600 rounded peer-checked:bg-amber-500 peer-checked:border-amber-500 transition-colors"></div>
-                              <svg
-                                className="absolute w-3.5 h-3.5 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 group-hover:text-amber-500 transition-colors">
+                          <label className="flex items-center gap-3 cursor-pointer group p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors hover:border-amber-300">
+                            <input
+                              type="checkbox"
+                              name="is_vat_registered"
+                              checked={formData.is_vat_registered}
+                              onChange={handleChange}
+                              className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500 focus:ring-offset-0 bg-white dark:bg-slate-800 cursor-pointer shrink-0"
+                            />
+                            <div className="flex flex-col">
+                              <span className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 group-hover:text-amber-500 transition-colors">
                                 VAT Registered Entity
-                              </p>
-                              <p className="text-[9px] text-slate-400 leading-tight mt-0.5">
+                              </span>
+                              <span className="text-[9px] text-slate-400 leading-tight mt-0.5">
                                 Check this if the supplier issues valid VAT
                                 invoices.
-                              </p>
+                              </span>
                             </div>
                           </label>
                         </div>

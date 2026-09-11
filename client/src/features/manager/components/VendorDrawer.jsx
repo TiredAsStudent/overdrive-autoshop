@@ -166,13 +166,17 @@ const VendorDrawer = ({ isOpen, onClose, vendor }) => {
                     Tax Classification
                   </span>
                   {vendor.is_vat_registered ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
-                      <ShieldCheck size={12} /> VAT Registered
-                    </span>
+                    <StatusBadge
+                      label="VAT Registered"
+                      variant="success"
+                      icon={ShieldCheck}
+                    />
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
-                      <MinusCircle size={12} /> Non-VAT
-                    </span>
+                    <StatusBadge
+                      label="Non-VAT"
+                      variant="default"
+                      icon={MinusCircle}
+                    />
                   )}
                 </div>
               </section>
