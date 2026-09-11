@@ -386,6 +386,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                       <PackageCheck size={14} className="text-amber-500" />{" "}
                       Verified PO Line Items ({poDetails.items.length})
                     </h4>
+
                     <div className="max-h-40 overflow-y-auto custom-scrollbar space-y-2 pr-1">
                       {poDetails.items.map((item) => (
                         <div
@@ -406,6 +407,40 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                           </span>
                         </div>
                       ))}
+                    </div>
+
+                    {/* Dynamic Financial Summary */}
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        <span>Subtotal</span>
+                        <span className="font-mono text-slate-700 dark:text-slate-300">
+                          ₱
+                          {parseFloat(poDetails.subtotal).toLocaleString(
+                            undefined,
+                            { minimumFractionDigits: 2 },
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        <span>VAT Amount</span>
+                        <span className="font-mono text-slate-700 dark:text-slate-300">
+                          ₱
+                          {parseFloat(poDetails.vat_amount).toLocaleString(
+                            undefined,
+                            { minimumFractionDigits: 2 },
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <span>Grand Total</span>
+                        <span className="font-mono text-amber-500 tracking-tight">
+                          ₱
+                          {parseFloat(poDetails.grand_total).toLocaleString(
+                            undefined,
+                            { minimumFractionDigits: 2 },
+                          )}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}

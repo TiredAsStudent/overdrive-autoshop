@@ -162,7 +162,7 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                       <Store size={16} className="text-slate-400 mb-3" />
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                          Supplier Entity
+                          Vendor Entity
                         </p>
                         <p className="text-sm font-bold text-slate-900 dark:text-white truncate uppercase">
                           {bill.vendor_name}

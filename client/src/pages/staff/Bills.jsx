@@ -9,6 +9,7 @@ import {
   Ban,
   AlertCircle,
   Archive,
+  Building2,
 } from "lucide-react";
 import { billService } from "../../services/staff/bill.service";
 import { vendorService } from "../../services/staff/vendor.service";
@@ -121,7 +122,7 @@ const Bills = () => {
     setConfirmConfig({
       isOpen: true,
       title: `Confirm Delivery Receipt`,
-      message: `Are you sure the goods for Invoice ${bill.vendor_invoice_number} have arrived? This will add them to branch inventory and record the amount owed.`,
+      message: `Are you sure the goods for Vendor Invoice ${bill.vendor_invoice_number} have arrived? This will add them to branch inventory and record the amount owed.`,
       confirmText: `Yes, Items Received`,
       variant: "warning",
       onConfirm: async () => {
@@ -201,7 +202,7 @@ const Bills = () => {
       <DataTable
         headers={[
           "Reference",
-          "Supplier & PO",
+          "Vendor & PO",
           "Date Logs",
           "Grand Total",
           "Status (Rcv / Pay)",
@@ -234,9 +235,13 @@ const Bills = () => {
                 <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase truncate">
                   {bill.vendor_name}
                 </p>
-                <div className="flex items-center gap-2 mt-1 truncate">
+                <div className="flex flex-col gap-1 mt-1">
                   <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest truncate">
                     {bill.purchase_order_number}
+                  </span>
+                  <span className="text-[9px] font-medium text-slate-500 flex items-center gap-1 truncate uppercase tracking-widest">
+                    <Building2 size={10} className="shrink-0" />
+                    {bill.branch_name}
                   </span>
                 </div>
               </div>
@@ -339,7 +344,7 @@ const Bills = () => {
           </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Select Target Supplier
+              Select Target Vendor
             </label>
             <select
               value={vendorFilter}
