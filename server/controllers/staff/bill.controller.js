@@ -5,11 +5,18 @@ const { STATUS_CODES } = require("../../constants/statusCodes");
 class BillController {
   static async createBill(req, res) {
     try {
-      const bill = await BillService.createBill(req.body, req.user, req.ip);
+      const bill = await BillService.createBill(
+        req.body,
+        req.user,
+        req.ip,
+        req.file,
+      );
+
       const msg =
         bill.status === "RECEIVED"
           ? "Bill successfully posted and inventory updated."
           : "Bill drafted successfully.";
+
       return sendSuccess(res, STATUS_CODES.CREATED, bill, msg);
     } catch (error) {
       const code = error.message.includes("already been billed")

@@ -30,6 +30,7 @@ const {
   uploadReceipt,
   uploadAdjustmentEvidence,
   uploadPaymentProof,
+  uploadBillAttachment,
 } = require("../../middlewares/uploadMiddleware");
 const { ROLES } = require("../../constants/roles");
 
@@ -242,7 +243,12 @@ router.patch(
 // ==========================================
 // MODULE: SUPPLIER BILLS (ACCOUNTS PAYABLE)
 // ==========================================
-router.post("/bills", validate(createBillSchema), BillController.createBill);
+router.post(
+  "/bills",
+  uploadBillAttachment.single("attachment"),
+  validate(createBillSchema),
+  BillController.createBill,
+);
 router.get("/bills", validate(getBillsSchema), BillController.getBills);
 router.get("/bills/:id", BillController.getBillDetails);
 

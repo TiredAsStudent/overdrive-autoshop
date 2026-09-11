@@ -28,8 +28,8 @@ class Bill {
       const headerSql = `
         INSERT INTO bills (
           bill_number, purchase_order_id, vendor_id, branch_id, vendor_invoice_number,
-          bill_date, date_received, status, subtotal, vat_amount, grand_total, notes, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *
+          bill_date, date_received, status, subtotal, vat_amount, grand_total, notes, created_by, attachment_url
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *
       `;
 
       const dateReceived = billData.status === "RECEIVED" ? new Date() : null;
@@ -48,6 +48,7 @@ class Bill {
         billData.grand_total,
         billData.notes,
         billData.created_by,
+        billData.attachment_url || null,
       ];
 
       const headerRes = await client.query(headerSql, headerValues);
@@ -87,13 +88,11 @@ class Bill {
     }
   }
 
-  // The 5-Step Atomic Transaction for Stock Reception
   static async executeReceiptTransaction(billId, userId) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      // 1. Lock and Verify Bill
       const billRes = await client.query(
         `SELECT * FROM bills WHERE id = $1 FOR UPDATE`,
         [billId],
@@ -104,18 +103,15 @@ class Bill {
       if (bill.status !== "PENDING_RECEIPT")
         throw new Error(`Cannot receive a Bill with status: ${bill.status}`);
 
-      // 2. Update Bill Status
       const updateBillSql = `UPDATE bills SET status = 'RECEIVED', date_received = CURRENT_DATE, updated_at = NOW() WHERE id = $1 RETURNING *`;
       const updatedBill = (await client.query(updateBillSql, [billId])).rows[0];
 
-      // 3. Retrieve Items
       const itemsRes = await client.query(
         `SELECT * FROM bill_items WHERE bill_id = $1`,
         [billId],
       );
       const items = itemsRes.rows;
 
-      // 4. Update Inventory & Log Movements
       for (const item of items) {
         const invUpdateSql = `
           INSERT INTO branch_inventory (branch_id, item_id, quantity, last_restock_date)
@@ -134,7 +130,6 @@ class Bill {
 
         const newQuantity = invRes.rows[0].quantity;
 
-        // Insert Immutable Audit Movement
         const moveSql = `
           INSERT INTO inventory_movements (
             item_id, branch_id, transaction_type, transaction_reference, 
@@ -152,7 +147,6 @@ class Bill {
         ]);
       }
 
-      // 5. Close Parent Purchase Order
       await client.query(
         `UPDATE purchase_orders SET status = 'CLOSED', updated_at = NOW() WHERE id = $1`,
         [bill.purchase_order_id],
@@ -236,7 +230,7 @@ class Bill {
     branchId,
   ) {
     let sql = `
-      SELECT b.id, b.bill_number, b.vendor_invoice_number, b.grand_total, b.status, b.payment_status, b.bill_date, b.date_received,
+      SELECT b.id, b.bill_number, b.vendor_invoice_number, b.grand_total, b.status, b.payment_status, b.bill_date, b.date_received, b.attachment_url,
              po.purchase_order_number, v.business_name as vendor_name, br.branch_name
       FROM bills b
       JOIN purchase_orders po ON b.purchase_order_id = po.id

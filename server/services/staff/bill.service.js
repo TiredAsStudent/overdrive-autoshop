@@ -4,6 +4,7 @@ const VendorModel = require("../../models/Vendor");
 const InventoryModel = require("../../models/Inventory");
 const SystemSetting = require("../../models/SystemSetting");
 const { logSecureAction } = require("../../utils/auditLogger");
+const fs = require("fs").promises;
 
 class BillService {
   static async _formulateFinancials(vendorId, itemsArray) {
@@ -61,106 +62,120 @@ class BillService {
     };
   }
 
-  static async createBill(data, activeUser, ipAddress) {
+  static async createBill(data, activeUser, ipAddress, file) {
     const branchId = activeUser.branchId;
-    if (!branchId) throw new Error("System Error: Branch context missing.");
 
-    // 1. Verify Parent Purchase Order
-    const po = await PurchaseOrderModel.findById(data.purchase_order_id);
-    if (!po) throw new Error("Source Purchase Order not found.");
-    if (po.status !== "APPROVED")
-      throw new Error(
-        "Bills can only be created from APPROVED Purchase Orders.",
+    try {
+      if (!branchId) throw new Error("System Error: Branch context missing.");
+
+      // 1. Verify Parent Purchase Order
+      const po = await PurchaseOrderModel.findById(data.purchase_order_id);
+      if (!po) throw new Error("Source Purchase Order not found.");
+      if (po.status !== "APPROVED")
+        throw new Error(
+          "Bills can only be created from APPROVED Purchase Orders.",
+        );
+      if (po.branch_id !== branchId)
+        throw new Error(
+          "Unauthorized: Purchase Order belongs to a different branch.",
+        );
+
+      const secureItems = po.items.map((item) => ({
+        item_id: item.item_id,
+        quantity_received: item.quantity,
+        recorded_unit_cost: item.recorded_unit_cost,
+        discount_amount: item.discount_amount,
+      }));
+
+      const { computedItems, financials } = await this._formulateFinancials(
+        po.vendor_id,
+        secureItems,
       );
-    if (po.branch_id !== branchId)
-      throw new Error(
-        "Unauthorized: Purchase Order belongs to a different branch.",
-      );
 
-    const secureItems = po.items.map((item) => ({
-      item_id: item.item_id,
-      quantity_received: item.quantity,
-      recorded_unit_cost: item.recorded_unit_cost,
-      discount_amount: item.discount_amount,
-    }));
+      const payload = {
+        purchase_order_id: po.id,
+        vendor_id: po.vendor_id,
+        branch_id: branchId,
+        vendor_invoice_number: data.vendor_invoice_number,
+        bill_date: data.bill_date,
+        status: data.status || "PENDING_RECEIPT",
+        notes: data.notes,
+        created_by: activeUser.id,
+        ...financials,
+      };
 
-    const { computedItems, financials } = await this._formulateFinancials(
-      po.vendor_id,
-      secureItems,
-    );
+      if (file) {
+        payload.attachment_url = file.path.replace(/\\/g, "/");
+      }
 
-    const payload = {
-      purchase_order_id: po.id,
-      vendor_id: po.vendor_id,
-      branch_id: branchId,
-      vendor_invoice_number: data.vendor_invoice_number,
-      bill_date: data.bill_date,
-      status: "PENDING_RECEIPT",
-      notes: data.notes,
-      created_by: activeUser.id,
-      ...financials,
-    };
+      let retries = 3;
+      let newBill = null;
 
-    let retries = 3;
-    let newBill = null;
-
-    while (retries > 0) {
-      try {
-        payload.bill_number = await BillModel.generateBillCode();
-        newBill = await BillModel.createTransaction(payload, computedItems);
-        break;
-      } catch (error) {
-        if (
-          error.code === "23505" &&
-          error.constraint === "unique_vendor_invoice_per_vendor"
-        ) {
-          throw new Error(
-            `Vendor Invoice '${data.vendor_invoice_number}' has already been billed for this vendor.`,
-          );
-        }
-        if (
-          error.code === "23505" &&
-          error.constraint === "bills_purchase_order_id_key"
-        ) {
-          throw new Error(
-            `Purchase Order ${po.purchase_order_number} has already been billed.`,
-          );
-        }
-        if (
-          error.code === "23505" &&
-          error.constraint === "bills_bill_number_key"
-        ) {
-          retries--;
-          if (retries === 0)
+      while (retries > 0) {
+        try {
+          payload.bill_number = await BillModel.generateBillCode();
+          newBill = await BillModel.createTransaction(payload, computedItems);
+          break;
+        } catch (error) {
+          if (
+            error.code === "23505" &&
+            error.constraint === "unique_vendor_invoice_per_vendor"
+          ) {
             throw new Error(
-              "High system traffic. Failed to generate a unique Bill code.",
+              `Vendor Invoice '${data.vendor_invoice_number}' has already been billed for this vendor.`,
             );
-        } else {
-          throw error;
+          }
+          if (
+            error.code === "23505" &&
+            error.constraint === "bills_purchase_order_id_key"
+          ) {
+            throw new Error(
+              `Purchase Order ${po.purchase_order_number} has already been billed.`,
+            );
+          }
+          if (
+            error.code === "23505" &&
+            error.constraint === "bills_bill_number_key"
+          ) {
+            retries--;
+            if (retries === 0)
+              throw new Error(
+                "High system traffic. Failed to generate a unique Bill code.",
+              );
+          } else {
+            throw error;
+          }
         }
       }
-    }
 
-    if (data.status === "RECEIVED") {
-      newBill = await BillModel.executeReceiptTransaction(
-        newBill.id,
+      if (payload.status === "RECEIVED") {
+        newBill = await BillModel.executeReceiptTransaction(
+          newBill.id,
+          activeUser.id,
+        );
+      }
+
+      await logSecureAction(
         activeUser.id,
+        branchId,
+        "SUPPLIER_BILL_CREATED",
+        "INFO",
+        ipAddress,
+        "bills",
+        newBill.id,
+        null,
+        {
+          bill_number: newBill.bill_number,
+          status: newBill.status,
+          has_attachment: !!payload.attachment_url,
+        },
       );
+
+      return newBill;
+    } catch (error) {
+      if (file) await fs.unlink(file.path).catch(console.error);
+      throw error;
     }
-
-    await logSecureAction(
-      activeUser.id,
-      branchId,
-      "SUPPLIER_BILL_CREATED",
-      "INFO",
-      ipAddress,
-      "bills",
-      newBill.id,
-      null,
-      { bill_number: newBill.bill_number, status: newBill.status },
-    );
-
-    return newBill;
   }
 
   static async confirmReceipt(id, activeUser, ipAddress) {

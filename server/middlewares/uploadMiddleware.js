@@ -7,8 +7,9 @@ const brandingDir = "uploads/branding/";
 const receiptDir = "uploads/receipts/";
 const adjustmentDir = "uploads/adjustments/";
 const paymentDir = "uploads/payments/";
+const billDir = "uploads/bills/";
 
-[brandingDir, receiptDir, adjustmentDir, paymentDir].forEach((dir) => {
+[brandingDir, receiptDir, adjustmentDir, paymentDir, billDir].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -28,6 +29,27 @@ const imageFileFilter = (req, file, cb) => {
   cb(
     new Error(
       "Strict Upload Policy: Only images (JPEG, PNG, WEBP) are allowed.",
+    ),
+  );
+};
+
+// Strict Document & Image Filter for OCR & Bills (Allows PDF)
+const documentFileFilter = (req, file, cb) => {
+  const allowedExtensions = /jpeg|jpg|png|webp|pdf/;
+  const allowedMimeTypes =
+    /image\/jpeg|image\/png|image\/webp|application\/pdf/;
+
+  const extname = allowedExtensions.test(
+    path.extname(file.originalname).toLowerCase(),
+  );
+  const mimetype = allowedMimeTypes.test(file.mimetype);
+
+  if (extname && mimetype) {
+    return cb(null, true);
+  }
+  cb(
+    new Error(
+      "Strict Upload Policy: Only images (JPEG, PNG) and PDFs are allowed.",
     ),
   );
 };
@@ -61,27 +83,6 @@ const uploadAdjustmentEvidence = multer({
   fileFilter: imageFileFilter,
 });
 
-// Strict Document & Image Filter for OCR (Allows PDF)
-const documentFileFilter = (req, file, cb) => {
-  const allowedExtensions = /jpeg|jpg|png|webp|pdf/;
-  const allowedMimeTypes =
-    /image\/jpeg|image\/png|image\/webp|application\/pdf/;
-
-  const extname = allowedExtensions.test(
-    path.extname(file.originalname).toLowerCase(),
-  );
-  const mimetype = allowedMimeTypes.test(file.mimetype);
-
-  if (extname && mimetype) {
-    return cb(null, true);
-  }
-  cb(
-    new Error(
-      "Strict Upload Policy: Only images (JPEG, PNG) and PDFs are allowed for receipts.",
-    ),
-  );
-};
-
 // Receipt Scan Upload (OCR Engine)
 const uploadReceipt = multer({
   storage: multer.diskStorage({
@@ -114,9 +115,26 @@ const uploadPaymentProof = multer({
   fileFilter: imageFileFilter,
 });
 
+// Electronic Bill Attachment Upload Configuration
+const uploadBillAttachment = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, billDir),
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(
+        null,
+        `bill_${uniqueSuffix}${path.extname(file.originalname).toLowerCase()}`,
+      );
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: documentFileFilter,
+});
+
 module.exports = {
   uploadLogo,
   uploadReceipt,
   uploadAdjustmentEvidence,
   uploadPaymentProof,
+  uploadBillAttachment,
 };
