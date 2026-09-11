@@ -21,7 +21,6 @@ import FilterButton from "../../components/ui/FilterButton";
 import FilterModal from "../../components/shared/FilterModal";
 import PageHeader from "../../components/shared/PageHeader";
 import SearchBar from "../../components/ui/SearchBar";
-import StatusToggle from "../../components/ui/StatusToggle";
 import StatusBadge from "../../components/ui/StatusBadge";
 import ActionButton from "../../components/ui/ActionButton";
 import { useApp } from "../../context/AppContext";
@@ -46,7 +45,6 @@ const Bills = () => {
 
   // Modals & Drawers
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [tempVendorFilter, setTempVendorFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedBillId, setSelectedBillId] = useState(null);
@@ -59,7 +57,8 @@ const Bills = () => {
     onConfirm: () => {},
   });
 
-  const activeFilterCount = vendorFilter !== "all" ? 1 : 0;
+  const activeFilterCount =
+    (statusFilter !== "all" ? 1 : 0) + (vendorFilter !== "all" ? 1 : 0);
 
   // Initial Data Load (Vendors for Filter)
   useEffect(() => {
@@ -97,13 +96,8 @@ const Bills = () => {
     loadBills();
   }, [currentPage, debouncedSearchQuery, statusFilter, vendorFilter]);
 
-  const applyFilters = () => {
-    setVendorFilter(tempVendorFilter);
-    setIsFilterModalOpen(false);
-  };
-
-  const clearFilters = () => {
-    setTempVendorFilter("all");
+  const resetFilters = () => {
+    setStatusFilter("all");
     setVendorFilter("all");
     setIsFilterModalOpen(false);
   };
@@ -184,27 +178,16 @@ const Bills = () => {
         subtitle="Accounts Payable Registry"
         icon={Receipt}
       >
-        <StatusToggle
-          activeValue={statusFilter}
-          onToggle={setStatusFilter}
-          options={[
-            { label: "All", value: "all" },
-            { label: "Pending", value: "pending_receipt" },
-            { label: "Received", value: "received" },
-            { label: "Closed", value: "closed" },
-          ]}
-        />
-
-        <FilterButton
-          onClick={() => setIsFilterModalOpen(true)}
-          activeCount={activeFilterCount}
-        />
-
         <SearchBar
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search Bills..."
           isSearching={searchQuery !== debouncedSearchQuery}
+        />
+
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
         />
 
         <ActionButton
@@ -335,18 +318,32 @@ const Bills = () => {
       <FilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
-        onClear={clearFilters}
-        onApply={applyFilters}
-        title="Filter by Vendor"
+        onClear={resetFilters}
+        title="Advanced Filters"
       >
         <div className="space-y-6">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Receiving Status
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+            >
+              <option value="all">All Statuses</option>
+              <option value="pending_receipt">Pending Receipt</option>
+              <option value="received">Received</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
               Select Target Supplier
             </label>
             <select
-              value={tempVendorFilter}
-              onChange={(e) => setTempVendorFilter(e.target.value)}
+              value={vendorFilter}
+              onChange={(e) => setVendorFilter(e.target.value)}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
             >
               <option value="all">All Vendors</option>
