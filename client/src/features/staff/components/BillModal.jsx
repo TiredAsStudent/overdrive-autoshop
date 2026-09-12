@@ -16,7 +16,6 @@ import {
 import { billService } from "../../../services/staff/bill.service";
 import { purchaseOrderService } from "../../../services/staff/purchaseOrder.service";
 
-// Timezone safe date formatter
 const formatToLocalDateInput = (date = new Date()) => {
   const d = new Date(date);
   const year = d.getFullYear();
@@ -34,15 +33,16 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
   const [poDetails, setPoDetails] = useState(null);
   const [isLoadingPODetails, setIsLoadingPODetails] = useState(false);
 
-  // Custom Searchable Dropdown & File Refs
   const dropdownRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  // File Upload & Drag States
   const [attachmentFile, setAttachmentFile] = useState(null);
   const [attachmentPreview, setAttachmentPreview] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [formData, setFormData] = useState({
     purchase_order_id: "",
@@ -75,13 +75,13 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
       if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
       setAttachmentFile(null);
       setAttachmentPreview(null);
+      setIsDragging(false);
 
-      // Fetch eligible POs
       setIsLoadingPOs(true);
       billService
         .getEligiblePOs()
         .then((res) => setEligiblePOs(res.data || []))
-        .catch((err) => setValidationError("Could not fetch eligible POs."))
+        .catch(() => setValidationError("Could not fetch eligible POs."))
         .finally(() => setIsLoadingPOs(false));
     }
   }, [isOpen]);
@@ -102,7 +102,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
       purchaseOrderService
         .getPurchaseOrderDetails(formData.purchase_order_id)
         .then((res) => setPoDetails(res.data))
-        .catch((err) => setValidationError("Failed to load PO line items."))
+        .catch(() => setValidationError("Failed to load PO line items."))
         .finally(() => setIsLoadingPODetails(false));
     } else {
       setPoDetails(null);
@@ -137,35 +137,53 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "application/pdf",
-      ];
+  const processFile = (file) => {
+    if (!file) return;
 
-      if (!allowedTypes.includes(file.type)) {
-        setValidationError(
-          "Invalid file format. Only PDF, JPEG, PNG, and WEBP are allowed.",
-        );
-        removeFile();
-        return;
-      }
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/pdf",
+    ];
 
-      // Max Size: 10MB
-      if (file.size > 10 * 1024 * 1024) {
-        setValidationError("Document exceeds the maximum 10MB size limit.");
-        removeFile();
-        return;
-      }
+    if (!allowedTypes.includes(file.type)) {
+      setValidationError(
+        "Invalid format. Only PDF, JPEG, PNG, and WEBP are allowed.",
+      );
+      removeFile();
+      return;
+    }
 
-      if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
-      setAttachmentFile(file);
-      setAttachmentPreview(URL.createObjectURL(file));
-      setValidationError("");
+    if (file.size > 10 * 1024 * 1024) {
+      setValidationError("Document exceeds the maximum 10MB size limit.");
+      removeFile();
+      return;
+    }
+
+    if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
+    setAttachmentFile(file);
+    setAttachmentPreview(URL.createObjectURL(file));
+    setValidationError("");
+  };
+
+  const handleFileChange = (e) => processFile(e.target.files[0]);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFile(e.dataTransfer.files[0]);
     }
   };
 
@@ -266,7 +284,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                     <FileText size={14} /> Source Document
                   </h3>
                   <div className="space-y-4">
-                    {/* CUSTOM SEARCHABLE DROPDOWN */}
                     <div ref={dropdownRef} className="relative z-20">
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Source Purchase Order{" "}
@@ -408,7 +425,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                     </div>
                   )}
 
-                  {/* BILL ATTACHMENT DROPZONE */}
+                  {/* PREMIUM FILE DROPZONE */}
                   <div className="mb-5 border-t border-slate-200 dark:border-slate-700 pt-5">
                     <label className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
                       <FileCode2 size={14} /> Documentary Proof
@@ -418,20 +435,40 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                     </label>
 
                     {!attachmentPreview ? (
-                      <div className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 flex flex-col items-center justify-center bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors relative cursor-pointer">
+                      <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`w-full border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer relative overflow-hidden ${
+                          isDragging
+                            ? "border-amber-500 bg-amber-50 dark:bg-amber-500/10"
+                            : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        }`}
+                      >
                         <input
                           type="file"
                           ref={fileInputRef}
                           onChange={handleFileChange}
                           accept="image/jpeg, image/png, image/webp, application/pdf"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          className="hidden"
                         />
                         <UploadCloud
                           size={32}
-                          className="text-slate-400 mb-3"
+                          className={`mb-3 transition-colors ${
+                            isDragging ? "text-amber-500" : "text-slate-400"
+                          }`}
                         />
-                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                          Click or drag Receipt to attach
+                        <p
+                          className={`text-xs font-bold ${
+                            isDragging
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-slate-600 dark:text-slate-300"
+                          }`}
+                        >
+                          {isDragging
+                            ? "Drop document here"
+                            : "Click or drag Receipt to attach"}
                         </p>
                         <p className="text-[10px] text-slate-400 mt-1 text-center">
                           PDF, JPEG, PNG, WEBP up to 10MB
@@ -511,9 +548,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                             ₱
                             {parseFloat(item.recorded_unit_cost).toLocaleString(
                               undefined,
-                              {
-                                minimumFractionDigits: 2,
-                              },
+                              { minimumFractionDigits: 2 },
                             )}
                           </span>
                         </div>
