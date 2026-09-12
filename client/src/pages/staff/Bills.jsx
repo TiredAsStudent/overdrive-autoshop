@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Archive,
   Building2,
+  Paperclip,
 } from "lucide-react";
 import { billService } from "../../services/staff/bill.service";
 import { vendorService } from "../../services/staff/vendor.service";
@@ -61,7 +62,6 @@ const Bills = () => {
   const activeFilterCount =
     (statusFilter !== "all" ? 1 : 0) + (vendorFilter !== "all" ? 1 : 0);
 
-  // Initial Data Load (Vendors for Filter)
   useEffect(() => {
     vendorService
       .getActiveLookup()
@@ -103,9 +103,9 @@ const Bills = () => {
     setIsFilterModalOpen(false);
   };
 
-  const handleModalSubmit = async (formData) => {
+  const handleModalSubmit = async (formData, attachmentFile) => {
     try {
-      const res = await billService.createBill(formData);
+      const res = await billService.createBill(formData, attachmentFile);
       const msg =
         res.data.status === "RECEIVED"
           ? "Bill posted and inventory incremented."
@@ -114,7 +114,7 @@ const Bills = () => {
       setIsModalOpen(false);
       loadBills();
     } catch (error) {
-      throw error; // Handled by Modal
+      throw error;
     }
   };
 
@@ -162,14 +162,14 @@ const Bills = () => {
     if (status === "PAID") return "success";
     if (status === "PARTIALLY_PAID") return "info";
     if (status === "VOID") return "danger";
-    return "danger"; // UNPAID / OVERDUE
+    return "danger";
   };
 
   const getPaymentIcon = (status) => {
     if (status === "PAID") return CheckCircle;
     if (status === "PARTIALLY_PAID") return Clock;
     if (status === "VOID") return Ban;
-    return AlertCircle; // UNPAID / OVERDUE
+    return AlertCircle;
   };
 
   return (
@@ -198,7 +198,6 @@ const Bills = () => {
         />
       </PageHeader>
 
-      {/* DATA TABLE */}
       <DataTable
         headers={[
           "Reference",
@@ -221,12 +220,22 @@ const Bills = () => {
                 <span className="inline-flex w-fit px-2.5 py-1 rounded-md text-xs font-black tracking-widest uppercase bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   {bill.bill_number}
                 </span>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1.5 flex items-center gap-1">
-                  INV:{" "}
-                  <span className="text-slate-700 dark:text-slate-300">
-                    {bill.vendor_invoice_number}
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    INV:{" "}
+                    <span className="text-slate-700 dark:text-slate-300">
+                      {bill.vendor_invoice_number}
+                    </span>
                   </span>
-                </span>
+
+                  {bill.attachment_url && (
+                    <Paperclip
+                      size={12}
+                      className="text-amber-500"
+                      title="Attachment Present"
+                    />
+                  )}
+                </div>
               </div>
             </td>
 

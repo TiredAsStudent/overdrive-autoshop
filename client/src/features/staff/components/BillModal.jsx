@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   PackageCheck,
   Search,
+  UploadCloud,
+  FileCode2,
 } from "lucide-react";
 import { billService } from "../../../services/staff/bill.service";
 import { purchaseOrderService } from "../../../services/staff/purchaseOrder.service";
@@ -32,10 +34,15 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
   const [poDetails, setPoDetails] = useState(null);
   const [isLoadingPODetails, setIsLoadingPODetails] = useState(false);
 
-  // Custom Searchable Dropdown States
+  // Custom Searchable Dropdown & File Refs
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const [attachmentFile, setAttachmentFile] = useState(null);
+  const [attachmentPreview, setAttachmentPreview] = useState(null);
 
   const [formData, setFormData] = useState({
     purchase_order_id: "",
@@ -44,6 +51,12 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     notes: "",
     status: "PENDING_RECEIPT",
   });
+
+  useEffect(() => {
+    return () => {
+      if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
+    };
+  }, [attachmentPreview]);
 
   useEffect(() => {
     if (isOpen) {
@@ -59,6 +72,10 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
         status: "PENDING_RECEIPT",
       });
 
+      if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
+      setAttachmentFile(null);
+      setAttachmentPreview(null);
+
       // Fetch eligible POs
       setIsLoadingPOs(true);
       billService
@@ -69,7 +86,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     }
   }, [isOpen]);
 
-  // Handle clicking outside the custom dropdown to close it
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -80,7 +96,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch full PO details when a PO is selected to get the line items
   useEffect(() => {
     if (formData.purchase_order_id) {
       setIsLoadingPODetails(true);
@@ -94,7 +109,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     }
   }, [formData.purchase_order_id]);
 
-  // Local filtering for the eligible POs array
   const filteredPOs = eligiblePOs.filter(
     (po) =>
       po.purchase_order_number
@@ -106,7 +120,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     setIsDropdownOpen(true);
-    // Clear selection if user starts typing again
     if (formData.purchase_order_id) {
       setFormData((prev) => ({ ...prev, purchase_order_id: "" }));
       setPoDetails(null);
@@ -124,6 +137,45 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf",
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        setValidationError(
+          "Invalid file format. Only PDF, JPEG, PNG, and WEBP are allowed.",
+        );
+        removeFile();
+        return;
+      }
+
+      // Max Size: 10MB
+      if (file.size > 10 * 1024 * 1024) {
+        setValidationError("Document exceeds the maximum 10MB size limit.");
+        removeFile();
+        return;
+      }
+
+      if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
+      setAttachmentFile(file);
+      setAttachmentPreview(URL.createObjectURL(file));
+      setValidationError("");
+    }
+  };
+
+  const removeFile = () => {
+    if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
+    setAttachmentFile(null);
+    setAttachmentPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setValidationError("");
@@ -137,7 +189,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
     if (!poDetails || !poDetails.items)
       return setValidationError("PO line items failed to load.");
 
-    // Map the PO items into the Bill Items format
     const items = poDetails.items.map((item) => ({
       item_id: item.item_id,
       quantity_received: item.quantity,
@@ -147,16 +198,19 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
 
     setIsSubmitting(true);
     try {
-      await onSubmit({
-        purchase_order_id: parseInt(formData.purchase_order_id, 10),
-        vendor_invoice_number: formData.vendor_invoice_number
-          .toUpperCase()
-          .trim(),
-        bill_date: formData.bill_date,
-        status: formData.status,
-        notes: formData.notes,
-        items,
-      });
+      await onSubmit(
+        {
+          purchase_order_id: parseInt(formData.purchase_order_id, 10),
+          vendor_invoice_number: formData.vendor_invoice_number
+            .toUpperCase()
+            .trim(),
+          bill_date: formData.bill_date,
+          status: formData.status,
+          notes: formData.notes,
+          items,
+        },
+        attachmentFile,
+      );
     } catch (error) {
       setValidationError(error.message || "Failed to process bill.");
     } finally {
@@ -238,7 +292,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                           className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
                         />
 
-                        {/* Dropdown Results */}
                         <AnimatePresence>
                           {isDropdownOpen && (
                             <motion.div
@@ -306,7 +359,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                   </div>
                 </section>
 
-                {/* SECTION 2: BILLING DETAILS */}
+                {/* SECTION 2: BILLING DETAILS & FILE UPLOAD */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <Calendar size={14} /> Billing Details
@@ -354,6 +407,64 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                       </p>
                     </div>
                   )}
+
+                  {/* BILL ATTACHMENT DROPZONE */}
+                  <div className="mb-5 border-t border-slate-200 dark:border-slate-700 pt-5">
+                    <label className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                      <FileCode2 size={14} /> Documentary Proof
+                      <span className="text-slate-400 font-medium lowercase">
+                        (Optional)
+                      </span>
+                    </label>
+
+                    {!attachmentPreview ? (
+                      <div className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 flex flex-col items-center justify-center bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors relative cursor-pointer">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                          accept="image/jpeg, image/png, image/webp, application/pdf"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <UploadCloud
+                          size={32}
+                          className="text-slate-400 mb-3"
+                        />
+                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                          Click or drag Receipt to attach
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-1 text-center">
+                          PDF, JPEG, PNG, WEBP up to 10MB
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-white dark:bg-slate-800 p-2">
+                        {attachmentFile?.type === "application/pdf" ? (
+                          <div className="w-full h-32 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg">
+                            <FileText size={40} className="text-red-500 mb-2" />
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[80%]">
+                              {attachmentFile.name}
+                            </p>
+                          </div>
+                        ) : (
+                          <img
+                            src={attachmentPreview}
+                            alt="Document Preview"
+                            className="w-full h-48 sm:h-56 object-contain bg-slate-50 dark:bg-slate-900 rounded-lg"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+                          <button
+                            type="button"
+                            onClick={removeFile}
+                            className="px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-red-600 transition-colors cursor-pointer"
+                          >
+                            <X size={14} /> Remove Document
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
@@ -409,7 +520,6 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                       ))}
                     </div>
 
-                    {/* Dynamic Financial Summary */}
                     <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
                       <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                         <span>Subtotal</span>

@@ -5,8 +5,6 @@ import {
   Receipt,
   CheckCircle,
   Clock,
-  CalendarCheck,
-  PackageCheck,
   Store,
   ShieldCheck,
   Calculator,
@@ -20,6 +18,10 @@ import {
   Link,
   Calendar,
   FileText,
+  PackageCheck,
+  Paperclip,
+  Download,
+  Image as ImageIcon,
 } from "lucide-react";
 import { billService } from "../../../services/staff/bill.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -59,21 +61,32 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
     if (status === "PAID") return "success";
     if (status === "PARTIALLY_PAID") return "info";
     if (status === "VOID") return "danger";
-    return "danger"; // UNPAID
+    return "danger";
   };
 
   const getPaymentIcon = (status) => {
     if (status === "PAID") return CheckCircle;
     if (status === "PARTIALLY_PAID") return Clock;
     if (status === "VOID") return Ban;
-    return AlertCircle; // UNPAID
+    return AlertCircle;
+  };
+
+  const getAttachmentUrl = (path) => {
+    if (!path) return null;
+    const baseUrl =
+      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+      "http://localhost:5000";
+    return `${baseUrl}/${path}`;
+  };
+
+  const isPdf = (path) => {
+    return path?.toLowerCase().endsWith(".pdf");
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          {/* Standardized Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -84,7 +97,6 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
             aria-hidden="true"
           />
 
-          {/* Standardized Drawer Panel Width & Animation */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -99,7 +111,6 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
             role="dialog"
             aria-modal="true"
           >
-            {/* Standardized Fixed Header with Status Badges */}
             <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
@@ -145,7 +156,6 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
               </button>
             </header>
 
-            {/* Standardized Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 opacity-70">
@@ -156,7 +166,6 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                 </div>
               ) : bill ? (
                 <>
-                  {/* Meta Cards: Supplier & Source DOcument */}
                   <div className="grid grid-cols-2 gap-4 sm:gap-5">
                     <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
                       <Store size={16} className="text-slate-400 mb-3" />
@@ -207,7 +216,6 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                     </section>
                   </div>
 
-                  {/* Single Bar Timeline/Dates */}
                   <section className="flex items-center gap-4 p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm">
                     <Calendar size={20} className="text-amber-500 shrink-0" />
                     <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between min-w-0 gap-3">
@@ -233,7 +241,6 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                     </div>
                   </section>
 
-                  {/* Line Items Table */}
                   <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
                     <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
@@ -293,7 +300,6 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                     </div>
                   </section>
 
-                  {/* Financials Summary */}
                   <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
                     <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3 flex items-center gap-1.5">
                       <Calculator size={14} /> Financial Posting
@@ -350,7 +356,57 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
                     </div>
                   </section>
 
-                  {/* Notes */}
+                  {/* DOCUMENTARY PROOF VIEWER */}
+                  {bill.attachment_url && (
+                    <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                      <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700/50 pb-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                          <Paperclip size={14} /> Documentary Proof
+                        </p>
+                        {isPdf(bill.attachment_url) && (
+                          <a
+                            href={getAttachmentUrl(bill.attachment_url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 dark:bg-blue-500/10 px-3 py-1.5 rounded-lg"
+                          >
+                            <Download size={12} /> Download PDF
+                          </a>
+                        )}
+                      </div>
+
+                      {isPdf(bill.attachment_url) ? (
+                        <div className="w-full h-40 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <FileText size={48} className="text-red-500 mb-3" />
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            PDF Document Attached
+                          </span>
+                          <span className="text-[9px] text-slate-400 mt-1 uppercase tracking-widest">
+                            Click download to view full document
+                          </span>
+                        </div>
+                      ) : (
+                        <a
+                          href={getAttachmentUrl(bill.attachment_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
+                        >
+                          <img
+                            src={getAttachmentUrl(bill.attachment_url)}
+                            alt="Documentary Proof"
+                            className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                            <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm flex items-center gap-1.5">
+                              <ImageIcon size={12} /> Click to Enlarge
+                            </span>
+                          </div>
+                        </a>
+                      )}
+                    </section>
+                  )}
+
                   {bill.notes && (
                     <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
                       <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2 flex items-center gap-1.5">
@@ -365,7 +421,6 @@ const BillDrawer = ({ isOpen, onClose, billId }) => {
               ) : null}
             </div>
 
-            {/* Print Footer Stub */}
             <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
               <button
                 disabled={!bill || loading}
