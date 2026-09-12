@@ -98,7 +98,8 @@ class BillService {
         branch_id: branchId,
         vendor_invoice_number: data.vendor_invoice_number,
         bill_date: data.bill_date,
-        status: data.status || "PENDING_RECEIPT",
+
+        status: "PENDING_RECEIPT",
         notes: data.notes,
         created_by: activeUser.id,
         ...financials,
@@ -148,7 +149,7 @@ class BillService {
         }
       }
 
-      if (payload.status === "RECEIVED") {
+      if (data.status === "RECEIVED") {
         newBill = await BillModel.executeReceiptTransaction(
           newBill.id,
           activeUser.id,
