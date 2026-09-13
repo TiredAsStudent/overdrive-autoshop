@@ -222,30 +222,24 @@ const Payments = () => {
         renderRow={(pay) => (
           <tr
             key={pay.id}
-            className="group transition-colors hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
+            className={`group transition-colors ${pay.status === "VOID" ? "opacity-60 bg-slate-50/50 dark:bg-slate-800/20" : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"}`}
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`inline-flex w-fit px-2.5 py-1 rounded-md text-xs font-black tracking-widest uppercase ${pay.status === "VOID" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 line-through opacity-70" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
+                    className={`inline-flex w-fit px-2.5 py-1 rounded-md text-xs font-black tracking-widest uppercase ${pay.status === "VOID" ? "bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 line-through" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
                   >
                     {pay.payment_number}
                   </span>
-                  {pay.proof_of_payment_url && (
-                    <Paperclip
-                      size={12}
-                      className="text-amber-500"
-                      title="Proof Attached"
-                    />
+                  {pay.status === "VOID" && (
+                    <StatusBadge label="VOID" variant="danger" />
                   )}
                 </div>
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div
-                className={`min-w-0 max-w-[200px] sm:max-w-[250px] ${pay.status === "VOID" ? "opacity-50" : ""}`}
-              >
+              <div className="min-w-0 max-w-[200px] sm:max-w-[250px]">
                 <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
                   {pay.vendor_name}
                 </p>
@@ -277,24 +271,25 @@ const Payments = () => {
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col items-start gap-1">
-                {pay.status === "VOID" ? (
-                  <span className="text-[9px] font-black text-red-500 uppercase tracking-widest px-2 py-0.5 bg-red-50 dark:bg-red-500/10 rounded border border-red-200 dark:border-red-500/20">
-                    VOIDED
-                  </span>
-                ) : (
-                  renderMethodBadge(pay.payment_method)
-                )}
-                {pay.reference_number && (
-                  <span className="text-[8px] text-slate-400 font-mono tracking-wider truncate max-w-[120px] mt-1">
-                    {pay.reference_number}
-                  </span>
-                )}
+                {renderMethodBadge(pay.payment_method)}
+                <div className="flex items-center gap-1.5 mt-1">
+                  {pay.reference_number && (
+                    <span className="text-[8px] text-slate-400 font-mono tracking-wider truncate max-w-[120px]">
+                      {pay.reference_number}
+                    </span>
+                  )}
+                  {pay.proof_of_payment_url && (
+                    <Paperclip
+                      size={12}
+                      className="text-amber-500"
+                      title="Proof Attached"
+                    />
+                  )}
+                </div>
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span
-                className={`text-[10px] font-bold uppercase tracking-widest ${pay.status === "VOID" ? "text-slate-400 line-through" : "text-slate-500"}`}
-              >
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                 {formatCalendarDate(pay.payment_date || pay.created_at)}
               </span>
             </td>
