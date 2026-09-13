@@ -133,6 +133,12 @@ const Payments = () => {
     setIsFilterModalOpen(false);
   };
 
+  const formatCalendarDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const [year, month, day] = dateString.split("T")[0].split("-");
+    return `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+  };
+
   const renderMethodBadge = (method) => {
     switch (method) {
       case "CASH":
@@ -194,7 +200,7 @@ const Payments = () => {
           "Vendor & Bill",
           "Amount Disbursed",
           "Channel",
-          "Date Logs",
+          "Payment Date",
           "Actions",
         ]}
         data={payments}
@@ -231,6 +237,11 @@ const Payments = () => {
                   <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest truncate">
                     {pay.bill_number}
                   </span>
+                  {pay.current_bill_status && (
+                    <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">
+                      Status: {pay.current_bill_status.replace("_", " ")}
+                    </p>
+                  )}
                   <span className="text-[9px] font-medium text-slate-500 flex items-center gap-1 truncate uppercase tracking-widest">
                     <Building2 size={10} className="shrink-0" />
                     {pay.branch_name}
@@ -258,7 +269,7 @@ const Payments = () => {
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                {pay.payment_date}
+                {formatCalendarDate(pay.payment_date || pay.created_at)}
               </span>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">

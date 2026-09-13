@@ -80,6 +80,13 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
 
   const isPdf = (path) => path?.toLowerCase().endsWith(".pdf");
 
+  // Dynamic Math Logic for Full Financial Context
+  const billTotal = payment ? parseFloat(payment.bill_total) : 0;
+  const currentPayment = payment ? parseFloat(payment.amount_paid) : 0;
+  const totalPaidOnBill = payment ? parseFloat(payment.bill_amount_paid) : 0;
+  const previouslyPaid = totalPaidOnBill - currentPayment;
+  const remainingBalance = billTotal - totalPaidOnBill;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -274,30 +281,67 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                     </section>
                   )}
 
+                  {/* FINANCIAL CONTEXT MATRIX */}
                   <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 border-b border-white/10 pb-3">
                       Accounts Payable Liquidation
                     </p>
-                    <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-4">
+
+                    <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-3">
                       <span>Associated Bill Total</span>
                       <span className="font-mono">
                         ₱
-                        {parseFloat(payment.bill_total).toLocaleString(
+                        {billTotal.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-4 pb-4 border-b border-white/10">
+                      <span>Previously Paid</span>
+                      <span className="font-mono">
+                        - ₱
+                        {Math.max(0, previouslyPaid).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-sm font-medium text-slate-300 mb-4 pb-4 border-b border-white/10">
+                      <span>Remaining Balance</span>
+                      <span className="font-mono text-rose-400">
+                        ₱
+                        {Math.max(0, remainingBalance).toLocaleString(
                           undefined,
                           { minimumFractionDigits: 2 },
                         )}
                       </span>
                     </div>
+
+                    <div className="flex justify-between items-center text-sm font-medium text-slate-300 mb-5">
+                      <span>Current Bill Status</span>
+                      <StatusBadge
+                        label={
+                          payment.current_bill_status?.replace("_", " ") ||
+                          "UNKNOWN"
+                        }
+                        variant={
+                          payment.current_bill_status === "PAID"
+                            ? "success"
+                            : "warning"
+                        }
+                      />
+                    </div>
+
                     <div className="flex justify-between items-center pt-4 border-t border-slate-800">
                       <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-emerald-400">
                         Amount Disbursed
                       </span>
                       <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-emerald-500">
                         ₱
-                        {parseFloat(payment.amount_paid).toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2 },
-                        )}
+                        {currentPayment.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}
                       </span>
                     </div>
                   </section>

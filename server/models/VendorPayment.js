@@ -127,7 +127,8 @@ class VendorPayment {
   static async findById(id) {
     const sql = `
       SELECT vp.*, TO_CHAR(vp.payment_date, 'YYYY-MM-DD') as payment_date, 
-             b.bill_number, b.grand_total as bill_total, b.vendor_invoice_number,
+             b.bill_number, b.grand_total as bill_total, b.vendor_invoice_number, 
+             b.payment_status as current_bill_status, b.amount_paid as bill_amount_paid,
              v.business_name as vendor_name, v.vendor_code,
              u.first_name as created_by_name, br.branch_name
       FROM vendor_payments vp
