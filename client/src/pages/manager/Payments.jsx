@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   CreditCard,
   FileSearch,
@@ -10,13 +9,12 @@ import {
   Paperclip,
   Building2,
   Ban,
-  AlertTriangle,
-  Loader2,
 } from "lucide-react";
 import { vendorPaymentService } from "../../services/manager/vendorPayment.service";
 import { managerVendorService } from "../../services/manager/vendor.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 
+// Reusable / Universal Components
 import VendorPaymentModal from "../../features/manager/components/VendorPaymentModal";
 import VendorPaymentDrawer from "../../features/manager/components/VendorPaymentDrawer";
 import DataTable from "../../components/shared/DataTable";
@@ -28,6 +26,8 @@ import FilterButton from "../../components/ui/FilterButton";
 import FilterModal from "../../components/shared/FilterModal";
 import StatusToggle from "../../components/ui/StatusToggle";
 import StatusBadge from "../../components/ui/StatusBadge";
+import ConfirmModal from "../../components/shared/ConfirmModal";
+
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -65,7 +65,6 @@ const Payments = () => {
 
   const [isVoidModalOpen, setIsVoidModalOpen] = useState(false);
   const [paymentToVoid, setPaymentToVoid] = useState(null);
-  const [isVoiding, setIsVoiding] = useState(false);
 
   const activeFilterCount =
     (branchFilter !== "all" ? 1 : 0) + (vendorFilter !== "all" ? 1 : 0);
@@ -134,20 +133,16 @@ const Payments = () => {
 
   const handleConfirmVoid = async () => {
     if (!paymentToVoid) return;
-    setIsVoiding(true);
     try {
       await vendorPaymentService.voidPayment(paymentToVoid.id);
       showToast(
         "Disbursement successfully voided. Bill liability reinstated.",
         "success",
       );
-      setIsVoidModalOpen(false);
-      setPaymentToVoid(null);
       loadPayments();
     } catch (error) {
       showToast(error.message, "error");
-    } finally {
-      setIsVoiding(false);
+      throw error;
     }
   };
 
@@ -387,62 +382,40 @@ const Payments = () => {
         </div>
       </FilterModal>
 
-      {/* VOID CONFIRMATION MODAL */}
-      <AnimatePresence>
-        {isVoidModalOpen && paymentToVoid && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-700"
-            >
-              <div className="flex items-center gap-3 text-red-500 mb-4">
-                <AlertTriangle size={24} />
-                <h3 className="text-lg font-black uppercase tracking-tight">
-                  Void Disbursement?
-                </h3>
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
-                Are you sure you want to void voucher{" "}
-                <span className="font-bold font-mono">
-                  {paymentToVoid.payment_number}
-                </span>
-                ? This action is irreversible. The{" "}
-                <span className="font-bold">
-                  ₱{parseFloat(paymentToVoid.amount_paid).toLocaleString()}
-                </span>{" "}
-                disbursement will be reversed, and the Accounts Payable
-                liability for the target bill will be reinstated.
-              </p>
-              <div className="flex justify-end gap-3">
-                <button
-                  disabled={isVoiding}
-                  onClick={() => {
-                    setIsVoidModalOpen(false);
-                    setPaymentToVoid(null);
-                  }}
-                  className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={isVoiding}
-                  onClick={handleConfirmVoid}
-                  className="px-4 py-2 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-red-500/20 cursor-pointer"
-                >
-                  {isVoiding ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <Ban size={16} />
-                  )}
-                  Confirm Void
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ConfirmModal
+        isOpen={isVoidModalOpen && paymentToVoid !== null}
+        onClose={() => {
+          setIsVoidModalOpen(false);
+          setPaymentToVoid(null);
+        }}
+        onConfirm={handleConfirmVoid}
+        title="Void Disbursement?"
+        message={
+          paymentToVoid ? (
+            <>
+              Are you sure you want to void voucher{" "}
+              <span className="font-bold font-mono text-slate-700 dark:text-slate-200">
+                {paymentToVoid.payment_number}
+              </span>
+              ? This action is irreversible. The{" "}
+              <span className="font-bold text-slate-700 dark:text-slate-200">
+                ₱
+                {parseFloat(paymentToVoid.amount_paid).toLocaleString(
+                  undefined,
+                  { minimumFractionDigits: 2 },
+                )}
+              </span>{" "}
+              disbursement will be reversed, and the Accounts Payable liability
+              for the target bill will be reinstated.
+            </>
+          ) : (
+            ""
+          )
+        }
+        confirmText="Confirm Void"
+        cancelText="Cancel"
+        variant="danger"
+      />
 
       <VendorPaymentModal
         isOpen={isModalOpen}
