@@ -75,4 +75,16 @@ export const vendorPaymentService = {
       );
     }
   },
+
+  voidPayment: async (id) => {
+    try {
+      const response = await api.patch(`/manager/vendor-payments/${id}/void`);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to void vendor payment.",
+      );
+    }
+  },
 };

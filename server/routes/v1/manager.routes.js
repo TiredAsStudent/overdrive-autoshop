@@ -341,5 +341,6 @@ router.get(
   VendorPaymentController.getPayments,
 );
 router.get("/vendor-payments/:id", VendorPaymentController.getPaymentDetails);
+router.patch("/vendor-payments/:id/void", VendorPaymentController.voidPayment);
 
 module.exports = router;

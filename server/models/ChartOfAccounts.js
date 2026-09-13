@@ -179,18 +179,18 @@ class ChartOfAccounts {
 
       if (account_code === "1010") {
         queries.push(
-          `SELECT COUNT(*) as cnt FROM payments WHERE payment_method = 'CASH'`,
+          `SELECT COUNT(*) as cnt FROM payments WHERE payment_method = 'CASH' AND status != 'VOID'`,
         );
         queries.push(
-          `SELECT COUNT(*) as cnt FROM vendor_payments WHERE payment_method = 'CASH'`,
+          `SELECT COUNT(*) as cnt FROM vendor_payments WHERE payment_method = 'CASH' AND status != 'VOID'`,
         );
       }
       if (account_code === "1020") {
         queries.push(
-          `SELECT COUNT(*) as cnt FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER')`,
+          `SELECT COUNT(*) as cnt FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'`,
         );
         queries.push(
-          `SELECT COUNT(*) as cnt FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER')`,
+          `SELECT COUNT(*) as cnt FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'`,
         );
       }
 
@@ -198,7 +198,9 @@ class ChartOfAccounts {
         queries.push(
           `SELECT COUNT(*) as cnt FROM bills WHERE status != 'CANCELLED'`,
         );
-        queries.push(`SELECT COUNT(*) as cnt FROM vendor_payments`);
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM vendor_payments WHERE status != 'VOID'`,
+        );
       }
 
       const sql =
@@ -270,12 +272,12 @@ class ChartOfAccounts {
         queries.push(`
            SELECT 'PAYMENT (Cash Inflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_received as amount, status::text as status
-           FROM payments WHERE payment_method = 'CASH'
+           FROM payments WHERE payment_method = 'CASH' AND status != 'VOID'
          `);
         queries.push(`
            SELECT 'DISBURSEMENT (Cash Outflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_paid as amount, status::text as status
-           FROM vendor_payments WHERE payment_method = 'CASH'
+           FROM vendor_payments WHERE payment_method = 'CASH' AND status != 'VOID'
          `);
       }
 
@@ -283,12 +285,12 @@ class ChartOfAccounts {
         queries.push(`
            SELECT 'PAYMENT (Bank/E-Wallet Inflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_received as amount, status::text as status
-           FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER')
+           FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'
          `);
         queries.push(`
            SELECT 'DISBURSEMENT (Bank/E-Wallet Outflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_paid as amount, status::text as status
-           FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER')
+           FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'
          `);
       }
 
@@ -301,7 +303,7 @@ class ChartOfAccounts {
         queries.push(`
            SELECT 'VENDOR PAYMENT (A/P Liquidation)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_paid as amount, status::text as status
-           FROM vendor_payments
+           FROM vendor_payments WHERE status != 'VOID'
          `);
       }
 

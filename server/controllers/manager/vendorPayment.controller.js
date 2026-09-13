@@ -29,6 +29,24 @@ class VendorPaymentController {
     }
   }
 
+  static async voidPayment(req, res) {
+    try {
+      const result = await VendorPaymentService.voidPayment(
+        req.params.id,
+        req.user,
+        req.ip,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        result,
+        "Disbursement successfully voided.",
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
+
   static async getPayments(req, res) {
     try {
       const page = parseInt(req.query.page, 10) || 1;

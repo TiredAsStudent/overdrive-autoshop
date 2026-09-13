@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   CreditCard,
   FileSearch,
@@ -8,6 +9,9 @@ import {
   Landmark,
   Paperclip,
   Building2,
+  Ban,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { vendorPaymentService } from "../../services/manager/vendorPayment.service";
 import { managerVendorService } from "../../services/manager/vendor.service";
@@ -44,7 +48,6 @@ const Payments = () => {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters & State
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [methodFilter, setMethodFilter] = useState("all");
@@ -55,11 +58,14 @@ const Payments = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Modals & Drawers
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  const [isVoidModalOpen, setIsVoidModalOpen] = useState(false);
+  const [paymentToVoid, setPaymentToVoid] = useState(null);
+  const [isVoiding, setIsVoiding] = useState(false);
 
   const activeFilterCount =
     (branchFilter !== "all" ? 1 : 0) + (vendorFilter !== "all" ? 1 : 0);
@@ -68,12 +74,11 @@ const Payments = () => {
     inventoryService
       .getActiveBranches()
       .then((res) => setBranches(res.data || []))
-      .catch((err) => console.error("Failed to load branches", err));
-
+      .catch(() => {});
     managerVendorService
       .getVendors(1, 1000, "", "active", "all", "all")
       .then((res) => setVendors(res.data?.vendors || []))
-      .catch((err) => console.error("Failed to load vendors", err));
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -127,6 +132,25 @@ const Payments = () => {
     }
   };
 
+  const handleConfirmVoid = async () => {
+    if (!paymentToVoid) return;
+    setIsVoiding(true);
+    try {
+      await vendorPaymentService.voidPayment(paymentToVoid.id);
+      showToast(
+        "Disbursement successfully voided. Bill liability reinstated.",
+        "success",
+      );
+      setIsVoidModalOpen(false);
+      setPaymentToVoid(null);
+      loadPayments();
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setIsVoiding(false);
+    }
+  };
+
   const resetFilters = () => {
     setBranchFilter("all");
     setVendorFilter("all");
@@ -174,19 +198,16 @@ const Payments = () => {
           options={METHOD_FILTERS.map((f) => ({ label: f.label, value: f.id }))}
           className="overflow-x-auto custom-scrollbar"
         />
-
         <SearchBar
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search Voucher or Vendor..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
-
         <FilterButton
           onClick={() => setIsFilterModalOpen(true)}
           activeCount={activeFilterCount}
         />
-
         <ActionButton
           label="Record Disbursement"
           icon={Plus}
@@ -215,7 +236,9 @@ const Payments = () => {
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex w-fit px-2.5 py-1 rounded-md text-xs font-black tracking-widest uppercase bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  <span
+                    className={`inline-flex w-fit px-2.5 py-1 rounded-md text-xs font-black tracking-widest uppercase ${pay.status === "VOID" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 line-through opacity-70" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
+                  >
                     {pay.payment_number}
                   </span>
                   {pay.proof_of_payment_url && (
@@ -229,7 +252,9 @@ const Payments = () => {
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="min-w-0 max-w-[200px] sm:max-w-[250px]">
+              <div
+                className={`min-w-0 max-w-[200px] sm:max-w-[250px] ${pay.status === "VOID" ? "opacity-50" : ""}`}
+              >
                 <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
                   {pay.vendor_name}
                 </p>
@@ -250,7 +275,9 @@ const Payments = () => {
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black text-rose-600 dark:text-rose-500">
+              <span
+                className={`text-sm font-black ${pay.status === "VOID" ? "text-slate-400 line-through" : "text-rose-600 dark:text-rose-500"}`}
+              >
                 - ₱
                 {parseFloat(pay.amount_paid).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
@@ -259,7 +286,13 @@ const Payments = () => {
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col items-start gap-1">
-                {renderMethodBadge(pay.payment_method)}
+                {pay.status === "VOID" ? (
+                  <span className="text-[9px] font-black text-red-500 uppercase tracking-widest px-2 py-0.5 bg-red-50 dark:bg-red-500/10 rounded border border-red-200 dark:border-red-500/20">
+                    VOIDED
+                  </span>
+                ) : (
+                  renderMethodBadge(pay.payment_method)
+                )}
                 {pay.reference_number && (
                   <span className="text-[8px] text-slate-400 font-mono tracking-wider truncate max-w-[120px] mt-1">
                     {pay.reference_number}
@@ -268,7 +301,9 @@ const Payments = () => {
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <span
+                className={`text-[10px] font-bold uppercase tracking-widest ${pay.status === "VOID" ? "text-slate-400 line-through" : "text-slate-500"}`}
+              >
                 {formatCalendarDate(pay.payment_date || pay.created_at)}
               </span>
             </td>
@@ -284,6 +319,18 @@ const Payments = () => {
                 >
                   <FileSearch size={16} />
                 </button>
+                {pay.status !== "VOID" && (
+                  <button
+                    onClick={() => {
+                      setPaymentToVoid(pay);
+                      setIsVoidModalOpen(true);
+                    }}
+                    title="Void Disbursement"
+                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Ban size={16} />
+                  </button>
+                )}
               </div>
             </td>
           </tr>
@@ -340,12 +387,68 @@ const Payments = () => {
         </div>
       </FilterModal>
 
+      {/* VOID CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {isVoidModalOpen && paymentToVoid && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-700"
+            >
+              <div className="flex items-center gap-3 text-red-500 mb-4">
+                <AlertTriangle size={24} />
+                <h3 className="text-lg font-black uppercase tracking-tight">
+                  Void Disbursement?
+                </h3>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
+                Are you sure you want to void voucher{" "}
+                <span className="font-bold font-mono">
+                  {paymentToVoid.payment_number}
+                </span>
+                ? This action is irreversible. The{" "}
+                <span className="font-bold">
+                  ₱{parseFloat(paymentToVoid.amount_paid).toLocaleString()}
+                </span>{" "}
+                disbursement will be reversed, and the Accounts Payable
+                liability for the target bill will be reinstated.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  disabled={isVoiding}
+                  onClick={() => {
+                    setIsVoidModalOpen(false);
+                    setPaymentToVoid(null);
+                  }}
+                  className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={isVoiding}
+                  onClick={handleConfirmVoid}
+                  className="px-4 py-2 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-red-500/20 cursor-pointer"
+                >
+                  {isVoiding ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Ban size={16} />
+                  )}
+                  Confirm Void
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <VendorPaymentModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleModalSubmit}
       />
-
       <VendorPaymentDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}

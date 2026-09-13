@@ -26,15 +26,12 @@ class VendorPayment {
     try {
       await client.query("BEGIN");
 
-      // 1. Lock the parent bill for concurrency safety AND fetch vendor_id
+      // 1. Lock the parent bill for concurrency safety
       const lockSql = `SELECT id, grand_total, amount_paid, branch_id, status, payment_status, vendor_id 
                        FROM bills WHERE id = $1 FOR UPDATE`;
       const lockRes = await client.query(lockSql, [paymentData.bill_id]);
 
-      if (lockRes.rows.length === 0) {
-        throw new Error("Target Bill not found.");
-      }
-
+      if (lockRes.rows.length === 0) throw new Error("Target Bill not found.");
       const bill = lockRes.rows[0];
 
       if (
@@ -44,8 +41,6 @@ class VendorPayment {
           "Security Violation: The target bill does not belong to the selected vendor.",
         );
       }
-
-      // BR-04 Enforcement: Goods must be received before paying
       if (bill.status !== "RECEIVED") {
         throw new Error(
           "Payment rejected. Bill goods have not been confirmed as RECEIVED.",
@@ -54,16 +49,13 @@ class VendorPayment {
 
       const outstandingBalance =
         parseFloat(bill.grand_total) - parseFloat(bill.amount_paid);
-
-      // Prevent Overpayment
-      if (outstandingBalance <= 0) {
+      if (outstandingBalance <= 0)
         throw new Error("This bill has already been fully paid.");
-      }
 
       const paymentAmount = parseFloat(paymentData.amount_paid);
       if (paymentAmount > outstandingBalance) {
         throw new Error(
-          `Payment rejected. The amount (₱${paymentAmount}) exceeds the remaining balance (₱${outstandingBalance}).`,
+          `Payment rejected. The amount exceeds the remaining balance.`,
         );
       }
 
@@ -75,8 +67,8 @@ class VendorPayment {
       const insertSql = `
         INSERT INTO vendor_payments (
           payment_number, vendor_id, bill_id, branch_id, amount_paid, 
-          payment_method, reference_number, notes, created_by, payment_date, proof_of_payment_url
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          payment_method, reference_number, notes, created_by, payment_date, proof_of_payment_url, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'COMPLETED')
         RETURNING *
       `;
       const insertValues = [
@@ -95,7 +87,6 @@ class VendorPayment {
       const insertRes = await client.query(insertSql, insertValues);
       const newPayment = insertRes.rows[0];
 
-      // 3. Update the Bill's Payment Status Atomically
       const updateBillSql = `
         UPDATE bills 
         SET 
@@ -104,9 +95,13 @@ class VendorPayment {
                              WHEN (amount_paid + $1) >= grand_total THEN 'PAID'::bill_payment_status_enum
                              ELSE 'PARTIALLY_PAID'::bill_payment_status_enum
                            END,
+          status = CASE 
+                     WHEN (amount_paid + $1) >= grand_total THEN 'CLOSED'::bill_status_enum
+                     ELSE status
+                   END,
           updated_at = NOW()
         WHERE id = $2
-        RETURNING payment_status, amount_paid, grand_total
+        RETURNING payment_status, status, amount_paid, grand_total
       `;
       const updateRes = await client.query(updateBillSql, [
         paymentAmount,
@@ -116,6 +111,56 @@ class VendorPayment {
 
       await client.query("COMMIT");
       return { payment: newPayment, updatedBill };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async voidPayment(paymentId) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const payRes = await client.query(
+        "SELECT * FROM vendor_payments WHERE id = $1 FOR UPDATE",
+        [paymentId],
+      );
+      if (!payRes.rows.length) throw new Error("Payment record not found.");
+      const payment = payRes.rows[0];
+
+      if (payment.status === "VOID")
+        throw new Error("This transaction is already voided.");
+
+      const billRes = await client.query(
+        "SELECT * FROM bills WHERE id = $1 FOR UPDATE",
+        [payment.bill_id],
+      );
+      if (!billRes.rows.length) throw new Error("Target Bill not found.");
+
+      await client.query(
+        "UPDATE vendor_payments SET status = 'VOID', updated_at = NOW() WHERE id = $1",
+        [paymentId],
+      );
+
+      const revertBillSql = `
+        UPDATE bills 
+        SET 
+          amount_paid = GREATEST(amount_paid - $1, 0),
+          payment_status = CASE 
+                             WHEN (amount_paid - $1) <= 0 THEN 'UNPAID'::bill_payment_status_enum
+                             ELSE 'PARTIALLY_PAID'::bill_payment_status_enum
+                           END,
+          status = 'RECEIVED'::bill_status_enum,
+          updated_at = NOW()
+        WHERE id = $2
+      `;
+      await client.query(revertBillSql, [payment.amount_paid, payment.bill_id]);
+
+      await client.query("COMMIT");
+      return { message: "Disbursement voided successfully." };
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -195,7 +240,7 @@ class VendorPayment {
     let paramIdx = 1;
 
     sqlParts.push(`
-      SELECT vp.id, vp.payment_number, vp.amount_paid, vp.payment_method, 
+      SELECT vp.id, vp.payment_number, vp.amount_paid, vp.payment_method, vp.status,
              TO_CHAR(vp.payment_date, 'YYYY-MM-DD') as payment_date, 
              vp.created_at, vp.reference_number, vp.proof_of_payment_url,
              b.bill_number, b.payment_status as current_bill_status, 
@@ -231,7 +276,6 @@ class VendorPayment {
 
     if (conditions.length > 0)
       sqlParts.push(` WHERE ` + conditions.join(" AND "));
-
     sqlParts.push(
       ` ORDER BY vp.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
     );

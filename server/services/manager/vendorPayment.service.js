@@ -75,6 +75,27 @@ class VendorPaymentService {
     }
   }
 
+  static async voidPayment(id, activeUser, ipAddress) {
+    const payment = await VendorPaymentModel.findById(id);
+    if (!payment) throw new Error("Vendor payment record not found.");
+
+    const result = await VendorPaymentModel.voidPayment(id);
+
+    await logSecureAction(
+      activeUser.id,
+      payment.branch_id,
+      "VENDOR_PAYMENT_VOIDED",
+      "CRITICAL",
+      ipAddress,
+      "bills",
+      payment.bill_id,
+      { payment_status: "COMPLETED", amount: payment.amount_paid },
+      { payment_status: "VOID", amount_reverted: payment.amount_paid },
+    );
+
+    return result;
+  }
+
   static async getPaymentDetails(id) {
     const payment = await VendorPaymentModel.findById(id);
     if (!payment) throw new Error("Vendor payment record not found.");
