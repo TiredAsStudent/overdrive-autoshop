@@ -8,8 +8,16 @@ const receiptDir = "uploads/receipts/";
 const adjustmentDir = "uploads/adjustments/";
 const paymentDir = "uploads/payments/";
 const billDir = "uploads/bills/";
+const vendorPaymentDir = "uploads/vendor-payments/";
 
-[brandingDir, receiptDir, adjustmentDir, paymentDir, billDir].forEach((dir) => {
+[
+  brandingDir,
+  receiptDir,
+  adjustmentDir,
+  paymentDir,
+  billDir,
+  vendorPaymentDir,
+].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -33,7 +41,7 @@ const imageFileFilter = (req, file, cb) => {
   );
 };
 
-// Strict Document & Image Filter for OCR & Bills (Allows PDF)
+// Strict Document & Image Filter for OCR, Bills & Vendor Payments (Allows PDF)
 const documentFileFilter = (req, file, cb) => {
   const allowedExtensions = /jpeg|jpg|png|webp|pdf/;
   const allowedMimeTypes =
@@ -63,7 +71,7 @@ const uploadLogo = multer({
       cb(null, cleanName + path.extname(file.originalname).toLowerCase());
     },
   }),
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: imageFileFilter,
 });
 
@@ -79,7 +87,7 @@ const uploadAdjustmentEvidence = multer({
       );
     },
   }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: imageFileFilter,
 });
 
@@ -95,7 +103,7 @@ const uploadReceipt = multer({
       );
     },
   }),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: documentFileFilter,
 });
 
@@ -131,10 +139,27 @@ const uploadBillAttachment = multer({
   fileFilter: documentFileFilter,
 });
 
+// Vendor Payment Proof Upload Configuration
+const uploadVendorPaymentProof = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, vendorPaymentDir),
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(
+        null,
+        `vpay_${uniqueSuffix}${path.extname(file.originalname).toLowerCase()}`,
+      );
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: documentFileFilter,
+});
+
 module.exports = {
   uploadLogo,
   uploadReceipt,
   uploadAdjustmentEvidence,
   uploadPaymentProof,
   uploadBillAttachment,
+  uploadVendorPaymentProof,
 };

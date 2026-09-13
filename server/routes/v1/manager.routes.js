@@ -12,6 +12,7 @@ const ExpenseApprovalController = require("../../controllers/manager/expenseAppr
 const ReceiptApprovalController = require("../../controllers/manager/receiptApproval.controller");
 const ChartOfAccountsController = require("../../controllers/manager/chartOfAccounts.controller");
 const ManagerVendorController = require("../../controllers/manager/vendor.controller");
+const VendorPaymentController = require("../../controllers/manager/vendorPayment.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -23,6 +24,9 @@ const {
   verifyToken,
   requireRole,
 } = require("../../middlewares/authMiddleware");
+const {
+  uploadVendorPaymentProof,
+} = require("../../middlewares/uploadMiddleware");
 
 // Constants
 const { ROLES } = require("../../constants/roles");
@@ -75,6 +79,10 @@ const {
   updateVendorSchema,
   getVendorsSchema,
 } = require("../../validations/manager/vendor.schema");
+const {
+  createVendorPaymentSchema,
+  getVendorPaymentsSchema,
+} = require("../../validations/manager/vendorPayment.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -313,5 +321,25 @@ router.put(
   validate(updateVendorSchema),
   ManagerVendorController.updateVendor,
 );
+
+// ==========================================
+// MODULE: PURCHASES - VENDOR PAYMENTS (AP LIQUIDATION)
+// ==========================================
+router.get(
+  "/vendor-payments/eligible-bills/:vendorId",
+  VendorPaymentController.getEligibleBills,
+);
+router.post(
+  "/vendor-payments",
+  uploadVendorPaymentProof.single("proof"),
+  validate(createVendorPaymentSchema),
+  VendorPaymentController.recordPayment,
+);
+router.get(
+  "/vendor-payments",
+  validate(getVendorPaymentsSchema),
+  VendorPaymentController.getPayments,
+);
+router.get("/vendor-payments/:id", VendorPaymentController.getPaymentDetails);
 
 module.exports = router;
