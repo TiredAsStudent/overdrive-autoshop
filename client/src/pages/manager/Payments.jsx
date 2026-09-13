@@ -37,7 +37,7 @@ const METHOD_FILTERS = [
 ];
 
 const Payments = () => {
-  const { showToast, user } = useApp();
+  const { showToast } = useApp();
 
   const [payments, setPayments] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -303,25 +303,23 @@ const Payments = () => {
         title="Advanced Filters"
       >
         <div className="space-y-6">
-          {user?.role === "ADMIN" && (
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                Filter by Branch
-              </label>
-              <select
-                value={branchFilter}
-                onChange={(e) => setBranchFilter(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-              >
-                <option value="all">Enterprise-Wide (All)</option>
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.branch_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Filter by Branch
+            </label>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+            >
+              <option value="all">All Branch</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.branch_name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
               Filter by Vendor
