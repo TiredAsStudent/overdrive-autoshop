@@ -176,14 +176,30 @@ class ChartOfAccounts {
         queries.push(
           `SELECT COUNT(*) as cnt FROM invoices WHERE vat_amount > 0`,
         );
-      if (account_code === "1010")
+
+      if (account_code === "1010") {
         queries.push(
           `SELECT COUNT(*) as cnt FROM payments WHERE payment_method = 'CASH'`,
         );
-      if (account_code === "1020")
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM vendor_payments WHERE payment_method = 'CASH'`,
+        );
+      }
+      if (account_code === "1020") {
         queries.push(
           `SELECT COUNT(*) as cnt FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER')`,
         );
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER')`,
+        );
+      }
+
+      if (account_code === "2010") {
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM bills WHERE status != 'CANCELLED'`,
+        );
+        queries.push(`SELECT COUNT(*) as cnt FROM vendor_payments`);
+      }
 
       const sql =
         `SELECT SUM(cnt) as total FROM (` + queries.join(" UNION ALL ") + `) t`;
@@ -252,17 +268,40 @@ class ChartOfAccounts {
 
       if (account_code === "1010") {
         queries.push(`
-           SELECT 'PAYMENT (Cash)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
+           SELECT 'PAYMENT (Cash Inflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_received as amount, status::text as status
            FROM payments WHERE payment_method = 'CASH'
+         `);
+        queries.push(`
+           SELECT 'DISBURSEMENT (Cash Outflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
+           amount_paid as amount, status::text as status
+           FROM vendor_payments WHERE payment_method = 'CASH'
          `);
       }
 
       if (account_code === "1020") {
         queries.push(`
-           SELECT 'PAYMENT (Bank/E-Wallet)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
+           SELECT 'PAYMENT (Bank/E-Wallet Inflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_received as amount, status::text as status
            FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER')
+         `);
+        queries.push(`
+           SELECT 'DISBURSEMENT (Bank/E-Wallet Outflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
+           amount_paid as amount, status::text as status
+           FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER')
+         `);
+      }
+
+      if (account_code === "2010") {
+        queries.push(`
+           SELECT 'SUPPLIER BILL (A/P Liability)' as transaction_type, bill_number as reference, created_at as transaction_date, 
+           grand_total as amount, status::text as status
+           FROM bills WHERE status != 'CANCELLED'
+         `);
+        queries.push(`
+           SELECT 'VENDOR PAYMENT (A/P Liquidation)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
+           amount_paid as amount, status::text as status
+           FROM vendor_payments
          `);
       }
 
