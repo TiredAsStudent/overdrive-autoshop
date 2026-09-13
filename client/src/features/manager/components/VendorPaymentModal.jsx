@@ -77,7 +77,7 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
     }
   }, [isOpen]);
 
-  // Modal Cleanup
+  // Reset Modal
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -97,10 +97,12 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
       setProofFile(null);
       setProofPreview(null);
       setIsDragging(false);
+
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }, [isOpen]);
 
-  // Click outside listener for Vendor Search
+  // Handle outside click for Vendor Dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (vendorRef.current && !vendorRef.current.contains(event.target)) {
@@ -328,7 +330,7 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
               )}
 
               <form id="vpayForm" onSubmit={handleSubmit} className="space-y-6">
-                {/* SECTION 1: VENDOR & BILL SELECTION */}
+                {/* SECTION 1 - VENDOR & BILL SELECTION */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <Store size={14} /> Payee & Liability Selection
@@ -509,7 +511,7 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
                   </AnimatePresence>
                 </section>
 
-                {/* SECTION 2: DISBURSEMENT DETAILS */}
+                {/* SECTION 2 - DISBURSEMENT DETAILS */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
                     <Wallet size={14} /> Disbursement Details
@@ -606,7 +608,7 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
                       </div>
                     )}
 
-                    {/* PREMIUM DROPZONE */}
+                    {/* PREMIUM FILE DROPZONE */}
                     <div className="md:col-span-2 border-t border-slate-200 dark:border-slate-700 pt-5">
                       <label className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
                         <FileCode2 size={14} /> Documentary Proof

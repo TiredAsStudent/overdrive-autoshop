@@ -26,8 +26,8 @@ class VendorPayment {
     try {
       await client.query("BEGIN");
 
-      // 1. Lock the parent bill for concurrency safety
-      const lockSql = `SELECT id, grand_total, amount_paid, branch_id, status, payment_status 
+      // 1. Lock the parent bill for concurrency safety AND fetch vendor_id
+      const lockSql = `SELECT id, grand_total, amount_paid, branch_id, status, payment_status, vendor_id 
                        FROM bills WHERE id = $1 FOR UPDATE`;
       const lockRes = await client.query(lockSql, [paymentData.bill_id]);
 
@@ -36,6 +36,14 @@ class VendorPayment {
       }
 
       const bill = lockRes.rows[0];
+
+      if (
+        parseInt(bill.vendor_id, 10) !== parseInt(paymentData.vendor_id, 10)
+      ) {
+        throw new Error(
+          "Security Violation: The target bill does not belong to the selected vendor.",
+        );
+      }
 
       // BR-04 Enforcement: Goods must be received before paying
       if (bill.status !== "RECEIVED") {
@@ -232,7 +240,6 @@ class VendorPayment {
     return result.rows;
   }
 
-  // Specialized Lookup for the UI to find Unpaid Bills
   static async findEligibleBillsByVendor(vendorId) {
     const sql = `
       SELECT id, bill_number, vendor_invoice_number, grand_total, amount_paid, 
