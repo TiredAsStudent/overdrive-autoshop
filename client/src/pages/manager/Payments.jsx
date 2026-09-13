@@ -24,7 +24,6 @@ import SearchBar from "../../components/ui/SearchBar";
 import ActionButton from "../../components/ui/ActionButton";
 import FilterButton from "../../components/ui/FilterButton";
 import FilterModal from "../../components/shared/FilterModal";
-import StatusToggle from "../../components/ui/StatusToggle";
 import StatusBadge from "../../components/ui/StatusBadge";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 
@@ -67,7 +66,9 @@ const Payments = () => {
   const [paymentToVoid, setPaymentToVoid] = useState(null);
 
   const activeFilterCount =
-    (branchFilter !== "all" ? 1 : 0) + (vendorFilter !== "all" ? 1 : 0);
+    (branchFilter !== "all" ? 1 : 0) +
+    (vendorFilter !== "all" ? 1 : 0) +
+    (methodFilter !== "all" ? 1 : 0);
 
   useEffect(() => {
     inventoryService
@@ -149,6 +150,7 @@ const Payments = () => {
   const resetFilters = () => {
     setBranchFilter("all");
     setVendorFilter("all");
+    setMethodFilter("all");
     setIsFilterModalOpen(false);
   };
 
@@ -187,12 +189,6 @@ const Payments = () => {
         subtitle="Accounts Payable Liquidation Hub"
         icon={CreditCard}
       >
-        <StatusToggle
-          activeValue={methodFilter}
-          onToggle={setMethodFilter}
-          options={METHOD_FILTERS.map((f) => ({ label: f.label, value: f.id }))}
-          className="overflow-x-auto custom-scrollbar"
-        />
         <SearchBar
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -375,6 +371,23 @@ const Payments = () => {
               {vendors.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.business_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Filter by Payment Method
+            </label>
+            <select
+              value={methodFilter}
+              onChange={(e) => setMethodFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+            >
+              {METHOD_FILTERS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
                 </option>
               ))}
             </select>
