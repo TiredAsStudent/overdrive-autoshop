@@ -157,7 +157,7 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
               {payment && !loading && (
                 <div className="space-y-6 sm:space-y-8">
                   <div className="grid grid-cols-2 gap-4 sm:gap-5">
-                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
                       <Store size={16} className="text-slate-400 mb-3" />
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
@@ -172,7 +172,7 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                       </div>
                     </section>
 
-                    <section className="p-5 sm:p-6 bg-blue-50 dark:bg-blue-500/5 rounded-[24px] border border-blue-100 dark:border-blue-500/20 shadow-sm flex flex-col justify-between">
+                    <section className="p-5 sm:p-6 bg-blue-50 dark:bg-blue-500/5 rounded-[20px] sm:rounded-[24px] border border-blue-100 dark:border-blue-500/20 shadow-sm flex flex-col justify-between">
                       <Link size={16} className="text-blue-400 mb-3" />
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">
@@ -188,7 +188,7 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                     </section>
                   </div>
 
-                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
                     <div className="p-5 sm:p-6 flex flex-col sm:flex-row justify-between gap-5 sm:items-center">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
@@ -221,9 +221,8 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                     )}
                   </section>
 
-                  {/* DOCUMENTARY PROOF VIEWER */}
                   {payment.proof_of_payment_url && (
-                    <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                    <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
                       <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700/50 pb-3">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
                           <ImageIcon size={14} /> Documentary Proof
@@ -275,7 +274,7 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                     </section>
                   )}
 
-                  <section className="bg-slate-900 dark:bg-black rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
+                  <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 border-b border-white/10 pb-3">
                       Accounts Payable Liquidation
                     </p>
@@ -304,7 +303,7 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                   </section>
 
                   {payment.notes && (
-                    <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[24px]">
+                    <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
                       <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
                         Disbursement Notes
                       </p>
