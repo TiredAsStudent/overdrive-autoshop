@@ -7,19 +7,17 @@ import {
   Loader2,
   CheckCircle2,
   Wallet,
-  Banknote,
-  Landmark,
   Search,
   UploadCloud,
   FileCode2,
   Store,
+  FileText,
 } from "lucide-react";
 import { vendorPaymentService } from "../../../services/manager/vendorPayment.service";
 import { managerVendorService } from "../../../services/manager/vendor.service";
-import { useDebounce } from "../../../hooks/useDebounce";
 
 const PAYMENT_METHODS = [
-  { id: "CASH", label: "Cash Voucher" },
+  { id: "CASH", label: "Cash" },
   { id: "CHECK", label: "Company Check" },
   { id: "GCASH", label: "GCash E-Wallet" },
   { id: "MAYA", label: "Maya E-Wallet" },
@@ -37,19 +35,16 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
 
-  // Vendor Lookup State
   const [vendors, setVendors] = useState([]);
   const [isLoadingVendors, setIsLoadingVendors] = useState(false);
   const [vendorSearch, setVendorSearch] = useState("");
   const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
   const vendorRef = useRef(null);
 
-  // Eligible Bills State
   const [eligibleBills, setEligibleBills] = useState([]);
   const [isLoadingBills, setIsLoadingBills] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
 
-  // File Upload States
   const fileInputRef = useRef(null);
   const [proofFile, setProofFile] = useState(null);
   const [proofPreview, setProofPreview] = useState(null);
@@ -65,7 +60,6 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
     notes: "",
   });
 
-  // Fetch all active vendors on mount
   useEffect(() => {
     if (isOpen) {
       setIsLoadingVendors(true);
@@ -77,7 +71,6 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
     }
   }, [isOpen]);
 
-  // Reset Modal
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -102,7 +95,6 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
     }
   }, [isOpen]);
 
-  // Handle outside click for Vendor Dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (vendorRef.current && !vendorRef.current.contains(event.target)) {
@@ -113,14 +105,12 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Memory cleanup for object URLs
   useEffect(() => {
     return () => {
       if (proofPreview) URL.revokeObjectURL(proofPreview);
     };
   }, [proofPreview]);
 
-  // Fetch Bills when a vendor is selected
   useEffect(() => {
     if (formData.vendor_id) {
       setIsLoadingBills(true);
@@ -168,7 +158,6 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // File Validation & Dropzone Handlers
   const processFile = (file) => {
     if (!file) return;
     const allowedTypes = [
@@ -221,7 +210,6 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
-  // Live Math Calculation
   const { currentBalance } = useMemo(() => {
     const cb = selectedBill ? parseFloat(selectedBill.remaining_balance) : 0;
     return { currentBalance: cb };
@@ -242,9 +230,7 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
       );
     }
     if (amountToApply <= 0) {
-      return setValidationError(
-        "Disbursement amount must be greater than zero.",
-      );
+      return setValidationError("Payment amount must be greater than zero.");
     }
     if (amountToApply > currentBalance) {
       return setValidationError(
@@ -260,7 +246,7 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
       }
       if (!proofFile) {
         return setValidationError(
-          `Documentary proof is mandatory for ${formData.payment_method} disbursements.`,
+          `Documentary proof is mandatory for ${formData.payment_method} payments.`,
         );
       }
     }
@@ -305,10 +291,10 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
                 </div>
                 <div>
                   <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
-                    Vendor Disbursement
+                    Vendor Payment
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                    Accounts Payable Liquidation
+                    Record payment to a vendor
                   </p>
                 </div>
               </div>
@@ -330,7 +316,6 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
               )}
 
               <form id="vpayForm" onSubmit={handleSubmit} className="space-y-6">
-                {/* SECTION 1 - VENDOR & BILL SELECTION */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <Store size={14} /> Payee & Liability Selection
@@ -511,10 +496,9 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
                   </AnimatePresence>
                 </section>
 
-                {/* SECTION 2 - DISBURSEMENT DETAILS */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
-                    <Wallet size={14} /> Disbursement Details
+                    <Wallet size={14} /> Payment Details
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -548,7 +532,7 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
                               amount_paid: currentBalance.toFixed(2),
                             })
                           }
-                          className="mt-2 text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors"
+                          className="mt-2 text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors cursor-pointer"
                         >
                           Apply Full Remaining Balance
                         </button>
@@ -576,8 +560,7 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
 
                     <div className="md:col-span-2">
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Disbursement Date{" "}
-                        <span className="text-red-500">*</span>
+                        Payment Date <span className="text-red-500">*</span>
                       </label>
                       <input
                         required
@@ -608,7 +591,6 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
                       </div>
                     )}
 
-                    {/* PREMIUM FILE DROPZONE */}
                     <div className="md:col-span-2 border-t border-slate-200 dark:border-slate-700 pt-5">
                       <label className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
                         <FileCode2 size={14} /> Documentary Proof
@@ -691,7 +673,7 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
 
                     <div className="md:col-span-2">
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Internal Notes{" "}
+                        Payment Notes{" "}
                         <span className="text-slate-400 font-medium lowercase">
                           (Optional)
                         </span>
@@ -722,7 +704,7 @@ const VendorPaymentModal = ({ isOpen, onClose, onSubmit }) => {
                 ) : (
                   <CheckCircle2 size={16} />
                 )}
-                Confirm & Disburse Payment
+                Confirm & Save Payment
               </button>
             </div>
           </motion.div>

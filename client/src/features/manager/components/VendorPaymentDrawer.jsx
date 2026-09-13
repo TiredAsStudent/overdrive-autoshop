@@ -80,7 +80,6 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
 
   const isPdf = (path) => path?.toLowerCase().endsWith(".pdf");
 
-  // Dynamic Math Logic for Full Financial Context
   const billTotal = payment ? parseFloat(payment.bill_total) : 0;
   const currentPayment = payment ? parseFloat(payment.amount_paid) : 0;
   const totalPaidOnBill = payment ? parseFloat(payment.bill_amount_paid) : 0;
@@ -123,13 +122,10 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                   </h2>
                   {payment && (
                     <div className="flex flex-col items-start gap-1.5 mt-1.5">
-                      <StatusBadge
-                        label="DISBURSEMENT VOUCHER"
-                        variant="success"
-                      />
+                      <StatusBadge label="VENDOR PAYMENT" variant="success" />
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
                         <BadgeCheck size={12} className="text-amber-500" />
-                        Disbursed by:{" "}
+                        Paid by:{" "}
                         <span className="text-slate-600 dark:text-slate-300">
                           {payment.created_by_name || "System"}
                         </span>
@@ -199,7 +195,7 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                     <div className="p-5 sm:p-6 flex flex-col sm:flex-row justify-between gap-5 sm:items-center">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Disbursement Method
+                          Payment Method
                         </p>
                         {renderMethodBadge(payment.payment_method)}
                       </div>
@@ -281,7 +277,6 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                     </section>
                   )}
 
-                  {/* FINANCIAL CONTEXT MATRIX */}
                   <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 border-b border-white/10 pb-3">
                       Accounts Payable Liquidation
@@ -335,7 +330,7 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
 
                     <div className="flex justify-between items-center pt-4 border-t border-slate-800">
                       <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-emerald-400">
-                        Amount Disbursed
+                        Amount Paid
                       </span>
                       <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-emerald-500">
                         ₱
@@ -349,7 +344,7 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                   {payment.notes && (
                     <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
                       <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
-                        Disbursement Notes
+                        Payment Notes
                       </p>
                       <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200/80 italic leading-relaxed">
                         "{payment.notes}"
@@ -365,7 +360,7 @@ const VendorPaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                 disabled={!payment || loading}
                 className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Printer size={16} /> Print Voucher
+                <Printer size={16} /> Print Official Receipt
               </button>
             </div>
           </motion.div>

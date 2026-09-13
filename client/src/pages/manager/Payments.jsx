@@ -121,8 +121,8 @@ const Payments = () => {
       const isFullyPaid = res.data?.updatedBill?.payment_status === "PAID";
       showToast(
         isFullyPaid
-          ? "Vendor disbursement executed. Bill fully settled."
-          : "Partial vendor disbursement recorded.",
+          ? "Vendor payment successful. Bill fully settled."
+          : "Partial vendor payment recorded.",
         "success",
       );
       setIsModalOpen(false);
@@ -137,7 +137,7 @@ const Payments = () => {
     try {
       await vendorPaymentService.voidPayment(paymentToVoid.id);
       showToast(
-        "Disbursement successfully voided. Bill liability reinstated.",
+        "Payment successfully voided. Bill balance restored.",
         "success",
       );
       loadPayments();
@@ -185,14 +185,14 @@ const Payments = () => {
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
       <PageHeader
-        title="Vendor Disbursements"
+        title="Payments"
         subtitle="Accounts Payable Liquidation Hub"
         icon={CreditCard}
       >
         <SearchBar
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search Voucher or Vendor..."
+          placeholder="Search Payment No. or Vendor..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
         <FilterButton
@@ -200,7 +200,7 @@ const Payments = () => {
           activeCount={activeFilterCount}
         />
         <ActionButton
-          label="Record Disbursement"
+          label="Record Payment"
           icon={Plus}
           onClick={() => setIsModalOpen(true)}
         />
@@ -208,17 +208,17 @@ const Payments = () => {
 
       <DataTable
         headers={[
-          "Voucher No.",
+          "Payment No.",
           "Vendor & Bill",
-          "Amount Disbursed",
+          "Amount Paid",
           "Channel",
           "Payment Date",
           "Actions",
         ]}
         data={payments}
         loading={loading}
-        emptyTitle="No Disbursements Found"
-        emptySubtitle="Try adjusting filters or record a new vendor payment."
+        emptyTitle="No Payments Found"
+        emptySubtitle="Try adjusting filters or record a new payment."
         renderRow={(pay) => (
           <tr
             key={pay.id}
@@ -305,7 +305,7 @@ const Payments = () => {
                     setSelectedPaymentId(pay.id);
                     setIsDrawerOpen(true);
                   }}
-                  title="View Voucher"
+                  title="View Payment"
                   className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
                 >
                   <FileSearch size={16} />
@@ -316,7 +316,7 @@ const Payments = () => {
                       setPaymentToVoid(pay);
                       setIsVoidModalOpen(true);
                     }}
-                    title="Void Disbursement"
+                    title="Void Payment"
                     className="p-1.5 sm:p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
                   >
                     <Ban size={16} />
@@ -375,7 +375,6 @@ const Payments = () => {
               ))}
             </select>
           </div>
-
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
               Filter by Payment Method
@@ -402,15 +401,15 @@ const Payments = () => {
           setPaymentToVoid(null);
         }}
         onConfirm={handleConfirmVoid}
-        title="Void Disbursement?"
+        title="Void Payment?"
         message={
           paymentToVoid ? (
             <>
-              Are you sure you want to void voucher{" "}
+              Are you sure you want to void payment{" "}
               <span className="font-bold font-mono text-slate-700 dark:text-slate-200">
                 {paymentToVoid.payment_number}
               </span>
-              ? This action is irreversible. The{" "}
+              ? This action cannot be undone. The{" "}
               <span className="font-bold text-slate-700 dark:text-slate-200">
                 ₱
                 {parseFloat(paymentToVoid.amount_paid).toLocaleString(
@@ -418,8 +417,7 @@ const Payments = () => {
                   { minimumFractionDigits: 2 },
                 )}
               </span>{" "}
-              disbursement will be reversed, and the Accounts Payable liability
-              for the target bill will be reinstated.
+              payment will be reversed, and the bill balance will be restored.
             </>
           ) : (
             ""
