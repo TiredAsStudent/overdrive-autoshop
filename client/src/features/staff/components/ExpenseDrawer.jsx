@@ -11,6 +11,7 @@ import {
   CheckCircle,
   XCircle,
   FileText,
+  Building2,
   Loader2,
 } from "lucide-react";
 import { expenseService } from "../../../services/staff/expense.service";
@@ -83,7 +84,6 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
             }}
             className="relative w-full sm:w-[500px] lg:w-[600px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800"
           >
-            {/* Standardized Header */}
             <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
@@ -106,7 +106,6 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
               </button>
             </header>
 
-            {/* Standardized Scrollable Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 opacity-70">
@@ -176,6 +175,9 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                         </p>
                         <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                           {expense.vendor_name || "Unregistered Entity"}
+                        </p>
+                        <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 truncate font-medium">
+                          <Building2 size={10} /> {expense.branch_name}
                         </p>
                       </div>
                       <div>

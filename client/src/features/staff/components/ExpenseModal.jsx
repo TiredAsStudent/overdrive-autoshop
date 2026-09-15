@@ -46,6 +46,7 @@ const ExpenseModal = ({
     is_vatable: true,
     payment_method: "CASH",
     vendor_id: "",
+    vendor_name: "",
     reference_number: "",
     notes: "",
     is_submitting: false,
@@ -79,6 +80,7 @@ const ExpenseModal = ({
           is_vatable: true,
           payment_method: "CASH",
           vendor_id: "",
+          vendor_name: "",
           reference_number: "",
           notes: "",
           is_submitting: false,
@@ -90,8 +92,9 @@ const ExpenseModal = ({
           description: initialData.description || "",
           total_amount: initialData.total_amount || "",
           is_vatable: initialData.is_vatable ?? true,
-          payment_method: "CASH",
+          payment_method: initialData.payment_method || "CASH",
           vendor_id: "",
+          vendor_name: "",
           reference_number: "",
           notes: "",
           is_submitting: false,
@@ -109,6 +112,7 @@ const ExpenseModal = ({
               is_vatable: fullData.is_vatable ?? true,
               payment_method: fullData.payment_method || "CASH",
               vendor_id: fullData.vendor_id || "",
+              vendor_name: fullData.vendor_name || "",
               reference_number: fullData.reference_number || "",
               notes: fullData.notes || "",
               is_submitting: false,
@@ -147,6 +151,10 @@ const ExpenseModal = ({
       ...formData,
       total_amount: parseFloat(formData.total_amount),
       vendor_id: formData.vendor_id ? parseInt(formData.vendor_id, 10) : null,
+      vendor_name:
+        !formData.vendor_id && formData.vendor_name.trim()
+          ? formData.vendor_name.trim()
+          : null,
       is_submitting: submitForApproval,
     };
 
@@ -358,10 +366,10 @@ const ExpenseModal = ({
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 border-t border-slate-100 dark:border-slate-700/50 pt-5">
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Vendor / Payee{" "}
+                      Registered Vendor{" "}
                       <span className="lowercase font-medium text-slate-400">
                         (Optional)
                       </span>
@@ -369,7 +377,11 @@ const ExpenseModal = ({
                     <select
                       name="vendor_id"
                       value={formData.vendor_id}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        handleChange(e);
+                        if (e.target.value)
+                          setFormData((prev) => ({ ...prev, vendor_name: "" }));
+                      }}
                       disabled={isLoadingVendors}
                       className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-50 cursor-pointer shadow-sm"
                     >
@@ -382,6 +394,27 @@ const ExpenseModal = ({
                     </select>
                   </div>
                   <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      Payee Name (Unregistered){" "}
+                      <span className="lowercase font-medium text-slate-400">
+                        (Optional)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      name="vendor_name"
+                      value={formData.vendor_name}
+                      onChange={handleChange}
+                      disabled={!!formData.vendor_id}
+                      placeholder={
+                        formData.vendor_id
+                          ? "Using Registered Vendor"
+                          : "e.g., Local Hardware Store"
+                      }
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                       Reference / Receipt #{" "}
                       <span className="lowercase font-medium text-slate-400">

@@ -62,7 +62,6 @@ const Expenses = () => {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [branchFilter, setBranchFilter] = useState("all");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -86,8 +85,7 @@ const Expenses = () => {
     onConfirm: () => {},
   });
 
-  const activeFilterCount =
-    (categoryFilter !== "all" ? 1 : 0) + (branchFilter !== "all" ? 1 : 0);
+  const activeFilterCount = categoryFilter !== "all" ? 1 : 0;
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -101,7 +99,7 @@ const Expenses = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter, categoryFilter, branchFilter]);
+  }, [debouncedSearchQuery, statusFilter, categoryFilter]);
 
   const loadExpenses = async () => {
     try {
@@ -112,7 +110,7 @@ const Expenses = () => {
         debouncedSearchQuery,
         statusFilter,
         categoryFilter,
-        branchFilter,
+        "all",
       );
       setExpenses(response.data?.expenses || []);
       setTotalPages(response.data?.pagination?.totalPages || 1);
@@ -125,13 +123,7 @@ const Expenses = () => {
 
   useEffect(() => {
     loadExpenses();
-  }, [
-    currentPage,
-    debouncedSearchQuery,
-    statusFilter,
-    categoryFilter,
-    branchFilter,
-  ]);
+  }, [currentPage, debouncedSearchQuery, statusFilter, categoryFilter]);
 
   const handleModalSubmit = async (formData) => {
     try {
@@ -180,7 +172,6 @@ const Expenses = () => {
 
   const resetFilters = () => {
     setCategoryFilter("all");
-    setBranchFilter("all");
     setIsFilterModalOpen(false);
   };
 
@@ -215,7 +206,7 @@ const Expenses = () => {
         <SearchBar
           value={searchQuery}
           onChange={handleSearchChange}
-          placeholder="Search Ref or Desc..."
+          placeholder="Search Expense No. or Desc..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
 
@@ -237,7 +228,7 @@ const Expenses = () => {
 
       <DataTable
         headers={[
-          "Doc Ref",
+          "Expense No.",
           "Particulars",
           "Payee",
           "Amount",
@@ -359,18 +350,6 @@ const Expenses = () => {
                   {cat}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Filter by Branch
-            </label>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-            >
-              <option value="all">My Branch</option>
             </select>
           </div>
         </div>
