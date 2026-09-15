@@ -6,11 +6,14 @@ const fs = require("fs").promises;
 
 class ExpenseService {
   static async _calculateTaxes(totalAmount, isVatable) {
-    if (!isVatable) {
+    const numericTotal = parseFloat(totalAmount);
+    const booleanVatable = String(isVatable) === "true";
+
+    if (!booleanVatable) {
       return {
-        subtotal: parseFloat(totalAmount.toFixed(2)),
+        subtotal: parseFloat(numericTotal.toFixed(2)),
         vat_amount: 0.0,
-        total_amount: parseFloat(totalAmount.toFixed(2)),
+        total_amount: parseFloat(numericTotal.toFixed(2)),
       };
     }
 
@@ -18,13 +21,13 @@ class ExpenseService {
     const vatPercentage = parseFloat(settings.vat_percentage);
     const vatDivisor = 1 + vatPercentage / 100; // e.g., 1.12
 
-    const subtotal = totalAmount / vatDivisor;
-    const vatAmount = totalAmount - subtotal;
+    const subtotal = numericTotal / vatDivisor;
+    const vatAmount = numericTotal - subtotal;
 
     return {
       subtotal: parseFloat(subtotal.toFixed(2)),
       vat_amount: parseFloat(vatAmount.toFixed(2)),
-      total_amount: parseFloat(totalAmount.toFixed(2)),
+      total_amount: parseFloat(numericTotal.toFixed(2)),
     };
   }
 
@@ -34,30 +37,57 @@ class ExpenseService {
     try {
       if (!branchId) throw new Error("System Error: Branch context missing.");
 
-      if (data.vendor_id) {
-        const vendor = await VendorModel.findById(data.vendor_id);
+      const parsedTotalAmount = parseFloat(data.total_amount);
+      const parsedIsVatable = String(data.is_vatable) === "true";
+      const parsedIsSubmitting = String(data.is_submitting) === "true";
+
+      const parsedVendorId =
+        data.vendor_id &&
+        data.vendor_id !== "null" &&
+        data.vendor_id !== "undefined"
+          ? parseInt(data.vendor_id, 10)
+          : null;
+      const parsedVendorName =
+        data.vendor_name &&
+        data.vendor_name !== "null" &&
+        data.vendor_name !== "undefined"
+          ? data.vendor_name.trim()
+          : null;
+      const parsedRefNumber =
+        data.reference_number &&
+        data.reference_number !== "null" &&
+        data.reference_number !== "undefined"
+          ? data.reference_number.trim()
+          : null;
+      const parsedNotes =
+        data.notes && data.notes !== "null" && data.notes !== "undefined"
+          ? data.notes.trim()
+          : null;
+
+      if (parsedVendorId) {
+        const vendor = await VendorModel.findById(parsedVendorId);
         if (!vendor || !vendor.is_active)
           throw new Error("The selected vendor is invalid or inactive.");
       }
 
       const financials = await this._calculateTaxes(
-        data.total_amount,
-        data.is_vatable,
+        parsedTotalAmount,
+        parsedIsVatable,
       );
 
       const payload = {
         branch_id: branchId,
-        vendor_id: data.vendor_id || null,
-        vendor_name: data.vendor_name || null,
+        vendor_id: parsedVendorId,
+        vendor_name: parsedVendorName,
         category: data.category,
         description: data.description,
-        reference_number: data.reference_number || null,
+        reference_number: parsedRefNumber,
         expense_date: data.expense_date,
-        is_vatable: data.is_vatable,
+        is_vatable: parsedIsVatable,
         payment_method: data.payment_method,
-        notes: data.notes || null,
+        notes: parsedNotes,
         created_by: activeUser.id,
-        status: data.is_submitting ? "PENDING_APPROVAL" : "DRAFT",
+        status: parsedIsSubmitting ? "PENDING_APPROVAL" : "DRAFT",
         ...financials,
       };
 
@@ -79,7 +109,7 @@ class ExpenseService {
             error.constraint === "idx_unique_expense_ref"
           ) {
             throw new Error(
-              `Reference number '${data.reference_number}' already exists for this vendor.`,
+              `Reference number '${parsedRefNumber}' already exists for this vendor.`,
             );
           }
           if (
@@ -141,30 +171,72 @@ class ExpenseService {
         );
       }
 
-      let financials = {
-        subtotal: oldExpense.subtotal,
-        vat_amount: oldExpense.vat_amount,
-        total_amount: oldExpense.total_amount,
-      };
-
-      const isVatableUpdated =
-        data.is_vatable !== undefined ? data.is_vatable : oldExpense.is_vatable;
-      const amountUpdated =
+      const parsedIsVatable =
+        data.is_vatable !== undefined
+          ? String(data.is_vatable) === "true"
+          : oldExpense.is_vatable;
+      const parsedTotalAmount =
         data.total_amount !== undefined
-          ? data.total_amount
-          : oldExpense.total_amount;
+          ? parseFloat(data.total_amount)
+          : parseFloat(oldExpense.total_amount);
+      const parsedIsSubmitting = String(data.is_submitting) === "true";
+
+      let parsedVendorId = oldExpense.vendor_id;
+      if (data.vendor_id !== undefined) {
+        parsedVendorId =
+          data.vendor_id &&
+          data.vendor_id !== "null" &&
+          data.vendor_id !== "undefined"
+            ? parseInt(data.vendor_id, 10)
+            : null;
+      }
+
+      const parsedVendorName =
+        data.vendor_name !== undefined
+          ? data.vendor_name &&
+            data.vendor_name !== "null" &&
+            data.vendor_name !== "undefined"
+            ? data.vendor_name.trim()
+            : null
+          : oldExpense.vendor_name;
+      const parsedRefNumber =
+        data.reference_number !== undefined
+          ? data.reference_number &&
+            data.reference_number !== "null" &&
+            data.reference_number !== "undefined"
+            ? data.reference_number.trim()
+            : null
+          : oldExpense.reference_number;
+      const parsedNotes =
+        data.notes !== undefined
+          ? data.notes && data.notes !== "null" && data.notes !== "undefined"
+            ? data.notes.trim()
+            : null
+          : oldExpense.notes;
+
+      let financials = {
+        subtotal: parseFloat(oldExpense.subtotal),
+        vat_amount: parseFloat(oldExpense.vat_amount),
+        total_amount: parseFloat(oldExpense.total_amount),
+      };
 
       if (data.total_amount !== undefined || data.is_vatable !== undefined) {
         financials = await this._calculateTaxes(
-          amountUpdated,
-          isVatableUpdated,
+          parsedTotalAmount,
+          parsedIsVatable,
         );
       }
 
       const payload = {
         ...data,
+        vendor_id: parsedVendorId,
+        vendor_name: parsedVendorName,
+        reference_number: parsedRefNumber,
+        notes: parsedNotes,
+        is_vatable: parsedIsVatable,
+        total_amount: parsedTotalAmount,
         ...financials,
-        status: data.is_submitting ? "PENDING_APPROVAL" : oldExpense.status,
+        status: parsedIsSubmitting ? "PENDING_APPROVAL" : oldExpense.status,
       };
 
       if (file) {
@@ -193,7 +265,7 @@ class ExpenseService {
           error.constraint === "idx_unique_expense_ref"
         ) {
           throw new Error(
-            `Reference number '${data.reference_number}' already exists for this vendor.`,
+            `Reference number '${parsedRefNumber}' already exists for this vendor.`,
           );
         }
         throw error;

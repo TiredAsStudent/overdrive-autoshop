@@ -158,7 +158,7 @@ class Expense {
   ) {
     let sql = `
       SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
-             e.total_amount, e.status, e.scan_id, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name
+             e.total_amount, e.status, e.scan_id, e.receipt_url, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
@@ -233,7 +233,7 @@ class Expense {
   ) {
     let sql = `
       SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
-             e.total_amount, e.status, e.resolved_at as processed_at, e.scan_id,
+             e.total_amount, e.status, e.resolved_at as processed_at, e.scan_id, e.receipt_url,
              COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, u.first_name as resolved_by_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
