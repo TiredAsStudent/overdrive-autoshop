@@ -9,6 +9,7 @@ const adjustmentDir = "uploads/adjustments/";
 const paymentDir = "uploads/payments/";
 const billDir = "uploads/bills/";
 const vendorPaymentDir = "uploads/vendor-payments/";
+const expenseDir = "uploads/expenses/";
 
 [
   brandingDir,
@@ -17,6 +18,7 @@ const vendorPaymentDir = "uploads/vendor-payments/";
   paymentDir,
   billDir,
   vendorPaymentDir,
+  expenseDir,
 ].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
@@ -41,7 +43,7 @@ const imageFileFilter = (req, file, cb) => {
   );
 };
 
-// Strict Document & Image Filter for OCR, Bills & Vendor Payments (Allows PDF)
+// Strict Document & Image Filter for OCR, Bills, Expenses & Vendor Payments (Allows PDF)
 const documentFileFilter = (req, file, cb) => {
   const allowedExtensions = /jpeg|jpg|png|webp|pdf/;
   const allowedMimeTypes =
@@ -107,7 +109,7 @@ const uploadReceipt = multer({
   fileFilter: documentFileFilter,
 });
 
-// Proof of Payment Upload Configuration
+// Proof of Payment Upload Configuration (AR)
 const uploadPaymentProof = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, paymentDir),
@@ -139,7 +141,7 @@ const uploadBillAttachment = multer({
   fileFilter: documentFileFilter,
 });
 
-// Vendor Payment Proof Upload Configuration
+// Vendor Payment Proof Upload Configuration (AP)
 const uploadVendorPaymentProof = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, vendorPaymentDir),
@@ -155,6 +157,22 @@ const uploadVendorPaymentProof = multer({
   fileFilter: documentFileFilter,
 });
 
+// Manual Expense Attachment Configuration
+const uploadExpenseAttachment = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, expenseDir),
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(
+        null,
+        `expense_${uniqueSuffix}${path.extname(file.originalname).toLowerCase()}`,
+      );
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: documentFileFilter,
+});
+
 module.exports = {
   uploadLogo,
   uploadReceipt,
@@ -162,4 +180,5 @@ module.exports = {
   uploadPaymentProof,
   uploadBillAttachment,
   uploadVendorPaymentProof,
+  uploadExpenseAttachment,
 };

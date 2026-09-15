@@ -25,8 +25,8 @@ class Expense {
       INSERT INTO expenses (
         expense_number, branch_id, vendor_id, category, description, reference_number,
         expense_date, is_vatable, subtotal, vat_amount, total_amount, payment_method, 
-        status, notes, created_by, vendor_name
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        status, notes, created_by, vendor_name, receipt_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *
     `;
     const values = [
@@ -46,6 +46,7 @@ class Expense {
       data.notes,
       data.created_by,
       data.vendor_name,
+      data.receipt_url || null,
     ];
     const result = await query(sql, values);
     return result.rows[0];
@@ -69,6 +70,7 @@ class Expense {
       "notes",
       "status",
       "vendor_name",
+      "receipt_url",
     ];
 
     for (const field of fields) {
@@ -113,7 +115,8 @@ class Expense {
 
   static async countFiltered(search, status, category, branchId) {
     let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id`;
-    const conditions = ["e.scan_id IS NULL"];
+
+    const conditions = [];
     const values = [];
     let paramIdx = 1;
 
@@ -155,12 +158,13 @@ class Expense {
   ) {
     let sql = `
       SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
-             e.total_amount, e.status, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name
+             e.total_amount, e.status, e.scan_id, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
     `;
-    const conditions = ["e.scan_id IS NULL"];
+
+    const conditions = [];
     const values = [];
     let paramIdx = 1;
 
@@ -196,7 +200,7 @@ class Expense {
   }
 
   static async countApprovalHistory(search, category, branchId) {
-    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id WHERE e.status IN ('APPROVED', 'REJECTED') AND e.scan_id IS NULL`;
+    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id WHERE e.status IN ('APPROVED', 'REJECTED')`;
     const values = [];
     let paramIdx = 1;
 
@@ -229,13 +233,13 @@ class Expense {
   ) {
     let sql = `
       SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
-             e.total_amount, e.status, e.resolved_at as processed_at,
+             e.total_amount, e.status, e.resolved_at as processed_at, e.scan_id,
              COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, u.first_name as resolved_by_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       LEFT JOIN users u ON e.resolved_by = u.id
-      WHERE e.status IN ('APPROVED', 'REJECTED') AND e.scan_id IS NULL
+      WHERE e.status IN ('APPROVED', 'REJECTED')
     `;
     const values = [];
     let paramIdx = 1;

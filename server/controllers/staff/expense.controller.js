@@ -9,6 +9,7 @@ class ExpenseController {
         req.body,
         req.user,
         req.ip,
+        req.file,
       );
       const msg = req.body.is_submitting
         ? "Expense recorded and submitted for managerial approval."
@@ -81,6 +82,7 @@ class ExpenseController {
         req.body,
         req.user,
         req.ip,
+        req.file,
       );
       return sendSuccess(
         res,

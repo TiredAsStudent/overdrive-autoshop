@@ -31,6 +31,7 @@ const {
   uploadAdjustmentEvidence,
   uploadPaymentProof,
   uploadBillAttachment,
+  uploadExpenseAttachment,
 } = require("../../middlewares/uploadMiddleware");
 const { ROLES } = require("../../constants/roles");
 
@@ -259,6 +260,7 @@ router.patch("/bills/:id/receive", BillController.confirmReceipt);
 // ==========================================
 router.post(
   "/expenses",
+  uploadExpenseAttachment.single("attachment"),
   validate(createExpenseSchema),
   ExpenseController.createExpense,
 );
@@ -270,6 +272,7 @@ router.get(
 router.get("/expenses/:id", ExpenseController.getExpenseDetails);
 router.put(
   "/expenses/:id",
+  uploadExpenseAttachment.single("attachment"),
   validate(updateExpenseSchema),
   ExpenseController.updateExpense,
 );
