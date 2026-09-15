@@ -25,8 +25,8 @@ class Expense {
       INSERT INTO expenses (
         expense_number, branch_id, vendor_id, category, description, reference_number,
         expense_date, is_vatable, subtotal, vat_amount, total_amount, payment_method, 
-        status, notes, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        status, notes, created_by, vendor_name
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *
     `;
     const values = [
@@ -45,6 +45,7 @@ class Expense {
       data.status,
       data.notes,
       data.created_by,
+      data.vendor_name,
     ];
     const result = await query(sql, values);
     return result.rows[0];
@@ -67,6 +68,7 @@ class Expense {
       "payment_method",
       "notes",
       "status",
+      "vendor_name",
     ];
 
     for (const field of fields) {
@@ -98,7 +100,7 @@ class Expense {
 
   static async findById(id) {
     const sql = `
-      SELECT e.*, v.business_name as vendor_name_db, b.branch_name, u.first_name as created_by_name
+      SELECT e.*, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, u.first_name as created_by_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
@@ -117,7 +119,7 @@ class Expense {
 
     if (search) {
       conditions.push(
-        `(e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`,
+        `(e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`,
       );
       values.push(`%${search}%`);
       paramIdx++;
@@ -153,7 +155,7 @@ class Expense {
   ) {
     let sql = `
       SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
-             e.total_amount, e.status, v.business_name as vendor_name, b.branch_name
+             e.total_amount, e.status, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
@@ -164,7 +166,7 @@ class Expense {
 
     if (search) {
       conditions.push(
-        `(e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`,
+        `(e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`,
       );
       values.push(`%${search}%`);
       paramIdx++;
@@ -199,7 +201,7 @@ class Expense {
     let paramIdx = 1;
 
     if (search) {
-      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`;
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
       values.push(`%${search}%`);
       paramIdx++;
     }
@@ -228,7 +230,7 @@ class Expense {
     let sql = `
       SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
              e.total_amount, e.status, e.resolved_at as processed_at,
-             v.business_name as vendor_name, b.branch_name, u.first_name as resolved_by_name
+             COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, u.first_name as resolved_by_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
@@ -239,7 +241,7 @@ class Expense {
     let paramIdx = 1;
 
     if (search) {
-      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx})`;
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
       values.push(`%${search}%`);
       paramIdx++;
     }

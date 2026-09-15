@@ -46,6 +46,7 @@ class ExpenseService {
     const payload = {
       branch_id: branchId,
       vendor_id: data.vendor_id || null,
+      vendor_name: data.vendor_name || null,
       category: data.category,
       description: data.description,
       reference_number: data.reference_number || null,
@@ -148,7 +149,7 @@ class ExpenseService {
     const payload = {
       ...data,
       ...financials,
-      status: data.is_submitting ? "PENDING_APPROVAL" : oldExpense.status, // Re-trigger approval if needed
+      status: data.is_submitting ? "PENDING_APPROVAL" : oldExpense.status,
     };
 
     try {

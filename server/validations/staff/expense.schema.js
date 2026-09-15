@@ -15,6 +15,7 @@ const createExpenseSchema = z.object({
       .default("CASH"),
 
     vendor_id: z.number().int().positive().optional().nullable(),
+    vendor_name: z.string().trim().max(150).optional().nullable(),
     reference_number: z
       .string()
       .trim()
@@ -43,6 +44,7 @@ const updateExpenseSchema = z.object({
         .enum(["CASH", "PETTY_CASH", "GCASH", "MAYA", "BANK_TRANSFER", "CHECK"])
         .optional(),
       vendor_id: z.number().int().positive().optional().nullable(),
+      vendor_name: z.string().trim().max(150).optional().nullable(),
       reference_number: z
         .string()
         .trim()
