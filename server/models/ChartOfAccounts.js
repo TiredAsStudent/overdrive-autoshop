@@ -165,7 +165,7 @@ class ChartOfAccounts {
       queries.push(`
         SELECT COUNT(*) as cnt
         FROM expenses e
-        WHERE e.category = $2
+        WHERE e.category = $2 AND e.status = 'APPROVED'
       `);
 
       if (account_code === "1100")
@@ -184,13 +184,31 @@ class ChartOfAccounts {
         queries.push(
           `SELECT COUNT(*) as cnt FROM vendor_payments WHERE payment_method = 'CASH' AND status != 'VOID'`,
         );
+
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM expenses WHERE payment_method IN ('CASH', 'PETTY_CASH') AND status = 'APPROVED'`,
+        );
       }
+
       if (account_code === "1020") {
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM expenses WHERE vat_amount > 0 AND status = 'APPROVED'`,
+        );
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM bills WHERE vat_amount > 0 AND status != 'CANCELLED'`,
+        );
+      }
+
+      if (account_code === "1030") {
         queries.push(
           `SELECT COUNT(*) as cnt FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'`,
         );
         queries.push(
           `SELECT COUNT(*) as cnt FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'`,
+        );
+
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM expenses WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER', 'CHECK') AND status = 'APPROVED'`,
         );
       }
 
@@ -240,7 +258,7 @@ class ChartOfAccounts {
         SELECT 'EXPENSE' as transaction_type, e.expense_number as reference, e.expense_date as transaction_date, 
         e.total_amount as amount, e.status::text as status
         FROM expenses e
-        WHERE e.category = $2
+        WHERE e.category = $2 AND e.status = 'APPROVED'
       `);
 
       if (account_code === "1100") {
@@ -279,9 +297,28 @@ class ChartOfAccounts {
            amount_paid as amount, status::text as status
            FROM vendor_payments WHERE payment_method = 'CASH' AND status != 'VOID'
          `);
+
+        queries.push(`
+           SELECT 'EXPENSE (Cash Outflow)' as transaction_type, expense_number as reference, expense_date as transaction_date, 
+           total_amount as amount, status::text as status
+           FROM expenses WHERE payment_method IN ('CASH', 'PETTY_CASH') AND status = 'APPROVED'
+         `);
       }
 
       if (account_code === "1020") {
+        queries.push(`
+           SELECT 'INPUT VAT (Operational Expense)' as transaction_type, expense_number as reference, expense_date as transaction_date, 
+           vat_amount as amount, status::text as status
+           FROM expenses WHERE vat_amount > 0 AND status = 'APPROVED'
+         `);
+        queries.push(`
+           SELECT 'INPUT VAT (Supplier Bill)' as transaction_type, bill_number as reference, bill_date as transaction_date, 
+           vat_amount as amount, status::text as status
+           FROM bills WHERE vat_amount > 0 AND status != 'CANCELLED'
+         `);
+      }
+
+      if (account_code === "1030") {
         queries.push(`
            SELECT 'PAYMENT (Bank/E-Wallet Inflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_received as amount, status::text as status
@@ -291,6 +328,12 @@ class ChartOfAccounts {
            SELECT 'DISBURSEMENT (Bank/E-Wallet Outflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_paid as amount, status::text as status
            FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'
+         `);
+
+        queries.push(`
+           SELECT 'EXPENSE (Bank/E-Wallet Outflow)' as transaction_type, expense_number as reference, expense_date as transaction_date, 
+           total_amount as amount, status::text as status
+           FROM expenses WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER', 'CHECK') AND status = 'APPROVED'
          `);
       }
 
