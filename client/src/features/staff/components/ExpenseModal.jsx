@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -9,6 +9,7 @@ import {
   DollarSign,
   FileText,
   ClipboardList,
+  Search,
 } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
@@ -32,6 +33,103 @@ const EXPENSE_CATEGORIES = [
   "Meals & Entertainment",
   "Office Supplies",
 ];
+
+const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (value) {
+      const selected = vendors.find(
+        (v) => v.id.toString() === value.toString(),
+      );
+      if (selected) setSearchTerm(selected.business_name);
+    } else {
+      setSearchTerm("");
+    }
+  }, [value, vendors]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setIsOpen(false);
+        const selected = vendors.find(
+          (v) => v.id.toString() === value?.toString(),
+        );
+        setSearchTerm(selected ? selected.business_name : "");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value, vendors]);
+
+  const filtered = vendors.filter(
+    (v) =>
+      v.business_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.vendor_code.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  return (
+    <div ref={wrapperRef} className="relative z-50">
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search size={18} className="text-slate-400" />
+        </div>
+        <input
+          type="text"
+          disabled={disabled}
+          value={isOpen ? searchTerm : value ? searchTerm : ""}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsOpen(true);
+            if (value) onChange("");
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="Search registered vendor..."
+          className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm disabled:opacity-60"
+        />
+      </div>
+      <AnimatePresence>
+        {isOpen && !disabled && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-64 overflow-y-auto custom-scrollbar z-[100]"
+          >
+            {filtered.length > 0 ? (
+              filtered.map((v) => (
+                <div
+                  key={v.id}
+                  onClick={() => {
+                    onChange(v.id);
+                    setSearchTerm(v.business_name);
+                    setIsOpen(false);
+                  }}
+                  className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                >
+                  <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                    {v.vendor_code}
+                  </p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                    {v.business_name}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+                  No matching vendors found.
+                </p>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const ExpenseModal = ({
   isOpen,
@@ -291,27 +389,25 @@ const ExpenseModal = ({
                           (Optional)
                         </span>
                       </label>
-                      <select
-                        name="vendor_id"
+                      <VendorSearchableSelect
                         value={formData.vendor_id}
-                        onChange={(e) => {
-                          handleChange(e);
-                          if (e.target.value)
+                        vendors={vendors}
+                        disabled={isLoadingVendors}
+                        onChange={(val) => {
+                          handleChange({
+                            target: {
+                              name: "vendor_id",
+                              value: val,
+                              type: "text",
+                            },
+                          });
+                          if (val)
                             setFormData((prev) => ({
                               ...prev,
                               vendor_name: "",
                             }));
                         }}
-                        disabled={isLoadingVendors}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-50 cursor-pointer shadow-sm"
-                      >
-                        <option value="">-- No Vendor Linked --</option>
-                        {vendors.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.business_name}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
