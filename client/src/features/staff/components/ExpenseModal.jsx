@@ -16,8 +16,10 @@ import {
 } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
+import { expenseService } from "../../../services/staff/expense.service";
 
 const formatToLocalDateInput = (date = new Date()) => {
+  if (!date) return "";
   const d = new Date(date);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -232,18 +234,45 @@ const ExpenseModal = ({
           category: initialData.category || "",
           description: initialData.description || "",
           total_amount: initialData.total_amount || "",
-          is_vatable: initialData.is_vatable ?? true,
-          payment_method: initialData.payment_method || "CASH",
-          vendor_id: initialData.vendor_id || "",
+          is_vatable: true,
+          payment_method: "CASH",
+          vendor_id: "",
           vendor_name: initialData.vendor_name || "",
-          reference_number: initialData.reference_number || "",
-          notes: initialData.notes || "",
+          reference_number: "",
+          notes: "",
           is_submitting: false,
         });
 
         if (initialData.receipt_url) {
           setAttachmentPreview(getAttachmentUrl(initialData.receipt_url));
         }
+
+        expenseService
+          .getExpenseDetails(initialData.id)
+          .then((res) => {
+            const fullData = res.data;
+            setFormData({
+              expense_date: formatToLocalDateInput(fullData.expense_date),
+              category: fullData.category || "",
+              description: fullData.description || "",
+              total_amount: fullData.total_amount || "",
+              is_vatable: fullData.is_vatable ?? true,
+              payment_method: fullData.payment_method || "CASH",
+              vendor_id: fullData.vendor_id || "",
+              vendor_name: fullData.vendor_name || "",
+              reference_number: fullData.reference_number || "",
+              notes: fullData.notes || "",
+              is_submitting: false,
+            });
+
+            if (fullData.receipt_url) {
+              setAttachmentPreview(getAttachmentUrl(fullData.receipt_url));
+            }
+          })
+          .catch((err) => {
+            console.error("Fetch Details Error:", err);
+            setValidationError("Could not fetch full expense details.");
+          });
       }
     }
   }, [isOpen, mode, initialData]);
@@ -366,7 +395,7 @@ const ExpenseModal = ({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
           >
             {/* Header */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
