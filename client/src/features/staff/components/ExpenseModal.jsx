@@ -153,6 +153,8 @@ const ExpenseModal = ({
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  const [isAttachmentRemoved, setIsAttachmentRemoved] = useState(false);
+
   const [formData, setFormData] = useState({
     expense_date: formatToLocalDateInput(),
     category: "",
@@ -202,12 +204,13 @@ const ExpenseModal = ({
         .catch(() => setValidationError("Could not load vendor registry."))
         .finally(() => setIsLoadingVendors(false));
 
-      // Reset File States
+      // Reset File States completely
       if (attachmentPreview && !attachmentPreview.startsWith("http"))
         URL.revokeObjectURL(attachmentPreview);
       setAttachmentFile(null);
       setAttachmentPreview(null);
       setIsDragging(false);
+      setIsAttachmentRemoved(false);
 
       if (mode === "CREATE") {
         setFormData({
@@ -306,6 +309,11 @@ const ExpenseModal = ({
       URL.revokeObjectURL(attachmentPreview);
     setAttachmentFile(null);
     setAttachmentPreview(null);
+
+    if (mode === "EDIT" && initialData?.receipt_url) {
+      setIsAttachmentRemoved(true);
+    }
+
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -334,6 +342,10 @@ const ExpenseModal = ({
       is_submitting: submitForApproval,
     };
 
+    if (isAttachmentRemoved && !attachmentFile) {
+      payload.remove_attachment = true;
+    }
+
     setIsSubmitting(true);
     try {
       await onSubmit(payload, attachmentFile);
@@ -354,7 +366,7 @@ const ExpenseModal = ({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
+            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
             {/* Header */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
@@ -714,7 +726,7 @@ const ExpenseModal = ({
                     onChange={handleChange}
                     rows="2"
                     placeholder="Any justification for this expense..."
-                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
                   />
                 </section>
               </form>

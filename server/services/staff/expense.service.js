@@ -3,6 +3,7 @@ const SystemSetting = require("../../models/SystemSetting");
 const VendorModel = require("../../models/Vendor");
 const { logSecureAction } = require("../../utils/auditLogger");
 const fs = require("fs").promises;
+const path = require("path");
 
 class ExpenseService {
   static async _calculateTaxes(totalAmount, isVatable) {
@@ -180,6 +181,7 @@ class ExpenseService {
           ? parseFloat(data.total_amount)
           : parseFloat(oldExpense.total_amount);
       const parsedIsSubmitting = String(data.is_submitting) === "true";
+      const parsedRemoveAttachment = String(data.remove_attachment) === "true";
 
       let parsedVendorId = oldExpense.vendor_id;
       if (data.vendor_id !== undefined) {
@@ -241,6 +243,30 @@ class ExpenseService {
 
       if (file) {
         payload.receipt_url = file.path.replace(/\\/g, "/");
+
+        if (oldExpense.receipt_url && !oldExpense.scan_id) {
+          try {
+            await fs.unlink(path.resolve(oldExpense.receipt_url));
+          } catch (err) {
+            console.warn(
+              "Could not delete replaced expense attachment:",
+              err.message,
+            );
+          }
+        }
+      } else if (parsedRemoveAttachment) {
+        payload.receipt_url = null;
+
+        if (oldExpense.receipt_url && !oldExpense.scan_id) {
+          try {
+            await fs.unlink(path.resolve(oldExpense.receipt_url));
+          } catch (err) {
+            console.warn(
+              "Could not delete removed expense attachment:",
+              err.message,
+            );
+          }
+        }
       }
 
       try {

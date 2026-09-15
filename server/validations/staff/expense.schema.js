@@ -56,7 +56,7 @@ const updateExpenseSchema = z.object({
         .enum(["CASH", "PETTY_CASH", "GCASH", "MAYA", "BANK_TRANSFER", "CHECK"])
         .optional(),
       vendor_id: z.preprocess(
-        (v) => (v === "" ? null : v),
+        (v) => (v === "" || v === "null" || v === "undefined" ? null : v),
         z.coerce.number().int().positive().nullable().optional(),
       ),
       vendor_name: z.string().trim().max(150).optional().nullable(),
@@ -68,6 +68,14 @@ const updateExpenseSchema = z.object({
         .optional()
         .nullable(),
       notes: z.string().trim().optional().nullable(),
+      is_submitting: z
+        .preprocess(parseBoolean, z.boolean())
+        .optional()
+        .default(false),
+      remove_attachment: z
+        .preprocess(parseBoolean, z.boolean())
+        .optional()
+        .default(false),
     })
     .refine((data) => Object.keys(data).length > 0, {
       message: "At least one field must be provided for update.",
