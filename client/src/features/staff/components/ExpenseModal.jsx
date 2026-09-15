@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ReceiptText, AlertCircle, Loader2 } from "lucide-react";
+import {
+  X,
+  ReceiptText,
+  AlertCircle,
+  Loader2,
+  Store,
+  DollarSign,
+  FileText,
+  ClipboardList,
+} from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
 import { expenseService } from "../../../services/staff/expense.service";
@@ -180,7 +189,8 @@ const ExpenseModal = ({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+            {/* Header */}
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <ReceiptText size={20} />
@@ -203,6 +213,7 @@ const ExpenseModal = ({
               </button>
             </div>
 
+            {/* Scrollable Body */}
             <div className="px-6 sm:px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
@@ -212,60 +223,144 @@ const ExpenseModal = ({
               )}
 
               <form id="expenseForm" className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {/* SECTION 1: EXPENSE PARTICULARS */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                    <FileText size={14} /> Expense Particulars
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Expense Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        required
+                        type="date"
+                        name="expense_date"
+                        value={formData.expense_date}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-all cursor-pointer shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Category <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        name="category"
+                        value={formData.category}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm cursor-pointer"
+                      >
+                        <option value="">-- Select Category --</option>
+                        {EXPENSE_CATEGORIES.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Expense Date <span className="text-red-500">*</span>
+                      Description <span className="text-red-500">*</span>
                     </label>
                     <input
                       required
-                      type="date"
-                      name="expense_date"
-                      value={formData.expense_date}
+                      type="text"
+                      name="description"
+                      value={formData.description}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-all cursor-pointer shadow-sm"
+                      placeholder="e.g., Shop floor cleaning supplies"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Category <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      required
-                      name="category"
-                      value={formData.category}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm cursor-pointer"
-                    >
-                      <option value="">-- Select Category --</option>
-                      {EXPENSE_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                </section>
 
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                    Description <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    placeholder="e.g., Shop floor cleaning supplies"
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
-                  />
-                </div>
-
-                <div className="p-5 bg-amber-50/50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 rounded-[20px] sm:rounded-[24px] space-y-5 shadow-sm">
+                {/* SECTION 2: PAYEE & DOCUMENTATION */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                    <Store size={14} /> Payee & Documentation
+                  </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Registered Vendor{" "}
+                        <span className="lowercase font-medium text-slate-400">
+                          (Optional)
+                        </span>
+                      </label>
+                      <select
+                        name="vendor_id"
+                        value={formData.vendor_id}
+                        onChange={(e) => {
+                          handleChange(e);
+                          if (e.target.value)
+                            setFormData((prev) => ({
+                              ...prev,
+                              vendor_name: "",
+                            }));
+                        }}
+                        disabled={isLoadingVendors}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-50 cursor-pointer shadow-sm"
+                      >
+                        <option value="">-- No Vendor Linked --</option>
+                        {vendors.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.business_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Payee Name (Unregistered){" "}
+                        <span className="lowercase font-medium text-slate-400">
+                          (Optional)
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        name="vendor_name"
+                        value={formData.vendor_name}
+                        onChange={handleChange}
+                        disabled={!!formData.vendor_id}
+                        placeholder={
+                          formData.vendor_id
+                            ? "Using Registered Vendor"
+                            : "e.g., Local Hardware Store"
+                        }
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm disabled:opacity-50"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Reference / Receipt #{" "}
+                        <span className="lowercase font-medium text-slate-400">
+                          (Optional)
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        name="reference_number"
+                        value={formData.reference_number}
+                        onChange={handleChange}
+                        placeholder="e.g., OR-10293"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                {/* SECTION 3: FINANCIAL DETAILS */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
+                    <DollarSign size={14} /> Financial Details
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Total Amount (₱) <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -277,18 +372,18 @@ const ExpenseModal = ({
                         value={formData.total_amount}
                         onChange={handleChange}
                         placeholder="0.00"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-amber-200 dark:border-slate-700 rounded-xl text-lg font-black text-slate-900 dark:text-amber-500 focus:outline-none focus:border-amber-500 shadow-sm"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-lg font-black text-slate-900 dark:text-emerald-500 focus:outline-none focus:border-emerald-500 shadow-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Payment Method
                       </label>
                       <select
                         name="payment_method"
                         value={formData.payment_method}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-amber-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm cursor-pointer"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 shadow-sm cursor-pointer"
                       >
                         <option value="CASH">Cash</option>
                         <option value="PETTY_CASH">Petty Cash</option>
@@ -299,13 +394,14 @@ const ExpenseModal = ({
                       </select>
                     </div>
                   </div>
-                  <label className="flex items-center gap-3 cursor-pointer">
+
+                  <label className="flex items-center gap-3 cursor-pointer mb-4">
                     <input
                       type="checkbox"
                       name="is_vatable"
                       checked={formData.is_vatable}
                       onChange={handleChange}
-                      className="w-5 h-5 rounded text-amber-500 focus:ring-amber-500 focus:ring-offset-0 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                      className="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
                     />
                     <div className="flex flex-col">
                       <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
@@ -319,18 +415,18 @@ const ExpenseModal = ({
                   </label>
 
                   {formData.total_amount && !isNaN(formData.total_amount) && (
-                    <div className="mt-4 p-3 bg-amber-100/50 dark:bg-amber-500/10 rounded-xl flex justify-between items-center border border-amber-200 dark:border-amber-500/20">
+                    <div className="p-4 bg-emerald-50/50 dark:bg-emerald-500/10 rounded-xl flex justify-between items-center border border-emerald-200 dark:border-emerald-500/20">
                       <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500">
                           Live VAT Breakdown
                         </span>
-                        <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                        <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
                           {formData.is_vatable
                             ? `${vatRate}% Input VAT Extracted`
                             : "VAT Exempt"}
                         </span>
                       </div>
-                      <div className="text-right font-mono text-xs font-black text-amber-700 dark:text-amber-400">
+                      <div className="text-right font-mono text-xs font-black text-emerald-700 dark:text-emerald-400">
                         <p>
                           Subtotal: ₱
                           {formData.is_vatable
@@ -350,7 +446,7 @@ const ExpenseModal = ({
                               )}
                         </p>
                         {formData.is_vatable && (
-                          <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-0.5">
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-0.5">
                             VAT: ₱
                             {(
                               parseFloat(formData.total_amount) -
@@ -364,99 +460,32 @@ const ExpenseModal = ({
                       </div>
                     </div>
                   )}
-                </div>
+                </section>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 border-t border-slate-100 dark:border-slate-700/50 pt-5">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Registered Vendor{" "}
-                      <span className="lowercase font-medium text-slate-400">
-                        (Optional)
-                      </span>
-                    </label>
-                    <select
-                      name="vendor_id"
-                      value={formData.vendor_id}
-                      onChange={(e) => {
-                        handleChange(e);
-                        if (e.target.value)
-                          setFormData((prev) => ({ ...prev, vendor_name: "" }));
-                      }}
-                      disabled={isLoadingVendors}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-50 cursor-pointer shadow-sm"
-                    >
-                      <option value="">-- No Vendor Linked --</option>
-                      {vendors.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.business_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Payee Name (Unregistered){" "}
-                      <span className="lowercase font-medium text-slate-400">
-                        (Optional)
-                      </span>
-                    </label>
-                    <input
-                      type="text"
-                      name="vendor_name"
-                      value={formData.vendor_name}
-                      onChange={handleChange}
-                      disabled={!!formData.vendor_id}
-                      placeholder={
-                        formData.vendor_id
-                          ? "Using Registered Vendor"
-                          : "e.g., Local Hardware Store"
-                      }
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm disabled:opacity-50"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Reference / Receipt #{" "}
-                      <span className="lowercase font-medium text-slate-400">
-                        (Optional)
-                      </span>
-                    </label>
-                    <input
-                      type="text"
-                      name="reference_number"
-                      value={formData.reference_number}
-                      onChange={handleChange}
-                      placeholder="e.g., OR-10293"
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                    Internal Notes{" "}
-                    <span className="lowercase font-medium text-slate-400">
-                      (Optional)
-                    </span>
-                  </label>
+                {/* SECTION 4: NOTES */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                    <ClipboardList size={14} /> Internal Notes
+                  </h3>
                   <textarea
                     name="notes"
                     value={formData.notes}
                     onChange={handleChange}
                     rows="2"
                     placeholder="Any justification for this expense..."
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm"
                   />
-                </div>
+                </section>
               </form>
             </div>
 
+            {/* Footer */}
             <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0 flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={(e) => handleSubmit(e, false)}
                 disabled={isSubmitting}
-                className="flex-1 py-3.5 sm:py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                className="flex-1 py-3.5 sm:py-4 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? "Processing..." : "Save as Draft"}
               </button>
