@@ -30,14 +30,14 @@ import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
 const EXPENSE_CATEGORIES = [
-  "Utilities",
-  "Shop Supplies",
-  "Rent",
-  "Repairs & Maintenance",
-  "Gasoline & Transport",
+  "Utility Expense",
+  "Parts & Supplies Expense",
+  "Equipment Maintenance",
+  "Uncategorized Expense",
+  "Rent Expense",
+  "Transportation Expense",
   "Meals & Entertainment",
   "Office Supplies",
-  "Miscellaneous",
 ];
 
 const STATUS_FILTERS = [

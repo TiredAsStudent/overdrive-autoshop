@@ -14,14 +14,14 @@ const formatToLocalDateInput = (date = new Date()) => {
 };
 
 const EXPENSE_CATEGORIES = [
-  "Utilities",
-  "Shop Supplies",
-  "Rent",
-  "Repairs & Maintenance",
-  "Gasoline & Transport",
+  "Utility Expense",
+  "Parts & Supplies Expense",
+  "Equipment Maintenance",
+  "Uncategorized Expense",
+  "Rent Expense",
+  "Transportation Expense",
   "Meals & Entertainment",
   "Office Supplies",
-  "Miscellaneous",
 ];
 
 const ExpenseModal = ({
