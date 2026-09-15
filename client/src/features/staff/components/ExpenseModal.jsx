@@ -10,10 +10,12 @@ import {
   FileText,
   ClipboardList,
   Search,
+  UploadCloud,
+  FileCode2,
+  ImageIcon,
 } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
-import { expenseService } from "../../../services/staff/expense.service";
 
 const formatToLocalDateInput = (date = new Date()) => {
   const d = new Date(date);
@@ -145,6 +147,12 @@ const ExpenseModal = ({
   const [isLoadingVendors, setIsLoadingVendors] = useState(false);
   const [vatRate, setVatRate] = useState(12);
 
+  // File Dropzone States
+  const fileInputRef = useRef(null);
+  const [attachmentFile, setAttachmentFile] = useState(null);
+  const [attachmentPreview, setAttachmentPreview] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   const [formData, setFormData] = useState({
     expense_date: formatToLocalDateInput(),
     category: "",
@@ -158,6 +166,22 @@ const ExpenseModal = ({
     notes: "",
     is_submitting: false,
   });
+
+  const getAttachmentUrl = (path) => {
+    if (!path) return null;
+    const baseUrl =
+      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+      "http://localhost:5000";
+    return `${baseUrl}/${path}`;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (attachmentPreview && !attachmentPreview.startsWith("http")) {
+        URL.revokeObjectURL(attachmentPreview);
+      }
+    };
+  }, [attachmentPreview]);
 
   useEffect(() => {
     if (isOpen) {
@@ -177,6 +201,13 @@ const ExpenseModal = ({
         .then((res) => setVendors(res.data || []))
         .catch(() => setValidationError("Could not load vendor registry."))
         .finally(() => setIsLoadingVendors(false));
+
+      // Reset File States
+      if (attachmentPreview && !attachmentPreview.startsWith("http"))
+        URL.revokeObjectURL(attachmentPreview);
+      setAttachmentFile(null);
+      setAttachmentPreview(null);
+      setIsDragging(false);
 
       if (mode === "CREATE") {
         setFormData({
@@ -200,34 +231,16 @@ const ExpenseModal = ({
           total_amount: initialData.total_amount || "",
           is_vatable: initialData.is_vatable ?? true,
           payment_method: initialData.payment_method || "CASH",
-          vendor_id: "",
-          vendor_name: "",
-          reference_number: "",
-          notes: "",
+          vendor_id: initialData.vendor_id || "",
+          vendor_name: initialData.vendor_name || "",
+          reference_number: initialData.reference_number || "",
+          notes: initialData.notes || "",
           is_submitting: false,
         });
 
-        expenseService
-          .getExpenseDetails(initialData.id)
-          .then((res) => {
-            const fullData = res.data;
-            setFormData({
-              expense_date: formatToLocalDateInput(fullData.expense_date),
-              category: fullData.category || "",
-              description: fullData.description || "",
-              total_amount: fullData.total_amount || "",
-              is_vatable: fullData.is_vatable ?? true,
-              payment_method: fullData.payment_method || "CASH",
-              vendor_id: fullData.vendor_id || "",
-              vendor_name: fullData.vendor_name || "",
-              reference_number: fullData.reference_number || "",
-              notes: fullData.notes || "",
-              is_submitting: false,
-            });
-          })
-          .catch(() =>
-            setValidationError("Could not fetch full expense details."),
-          );
+        if (initialData.receipt_url) {
+          setAttachmentPreview(getAttachmentUrl(initialData.receipt_url));
+        }
       }
     }
   }, [isOpen, mode, initialData]);
@@ -238,6 +251,62 @@ const ExpenseModal = ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  // --- DROPZONE HANDLERS ---
+  const processFile = (file) => {
+    if (!file) return;
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/pdf",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setValidationError(
+        "Invalid format. Only PDF, JPEG, PNG, and WEBP are allowed.",
+      );
+      removeFile();
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setValidationError("Document exceeds the maximum 10MB size limit.");
+      removeFile();
+      return;
+    }
+
+    if (attachmentPreview && !attachmentPreview.startsWith("http"))
+      URL.revokeObjectURL(attachmentPreview);
+    setAttachmentFile(file);
+    setAttachmentPreview(URL.createObjectURL(file));
+    setValidationError("");
+  };
+
+  const handleFileChange = (e) => processFile(e.target.files[0]);
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const removeFile = () => {
+    if (attachmentPreview && !attachmentPreview.startsWith("http"))
+      URL.revokeObjectURL(attachmentPreview);
+    setAttachmentFile(null);
+    setAttachmentPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSubmit = async (e, submitForApproval = false) => {
@@ -259,7 +328,7 @@ const ExpenseModal = ({
       total_amount: parseFloat(formData.total_amount),
       vendor_id: formData.vendor_id ? parseInt(formData.vendor_id, 10) : null,
       vendor_name:
-        !formData.vendor_id && formData.vendor_name.trim()
+        !formData.vendor_id && formData.vendor_name?.trim()
           ? formData.vendor_name.trim()
           : null,
       is_submitting: submitForApproval,
@@ -267,7 +336,7 @@ const ExpenseModal = ({
 
     setIsSubmitting(true);
     try {
-      await onSubmit(payload);
+      await onSubmit(payload, attachmentFile);
     } catch (error) {
       setValidationError(error.message || "Failed to process expense.");
     } finally {
@@ -285,7 +354,7 @@ const ExpenseModal = ({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
           >
             {/* Header */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
@@ -320,7 +389,7 @@ const ExpenseModal = ({
                 </div>
               )}
 
-              <form id="expenseForm" className="space-y-6">
+              <form id="expenseForm" className="space-y-6 pb-2">
                 {/* SECTION 1: EXPENSE PARTICULARS */}
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
@@ -382,7 +451,7 @@ const ExpenseModal = ({
                     <Store size={14} /> Payee & Documentation
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div>
+                    <div className="relative z-[70]">
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Registered Vendor{" "}
                         <span className="lowercase font-medium text-slate-400">
@@ -419,7 +488,7 @@ const ExpenseModal = ({
                       <input
                         type="text"
                         name="vendor_name"
-                        value={formData.vendor_name}
+                        value={formData.vendor_name || ""}
                         onChange={handleChange}
                         disabled={!!formData.vendor_id}
                         placeholder={
@@ -430,7 +499,7 @@ const ExpenseModal = ({
                         className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm disabled:opacity-50"
                       />
                     </div>
-                    <div className="sm:col-span-2">
+                    <div className="sm:col-span-2 relative z-10">
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Reference / Receipt #{" "}
                         <span className="lowercase font-medium text-slate-400">
@@ -440,7 +509,7 @@ const ExpenseModal = ({
                       <input
                         type="text"
                         name="reference_number"
-                        value={formData.reference_number}
+                        value={formData.reference_number || ""}
                         onChange={handleChange}
                         placeholder="e.g., OR-10293"
                         className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
@@ -450,7 +519,7 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 3: FINANCIAL DETAILS */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
                     <DollarSign size={14} /> Financial Details
                   </h3>
@@ -558,14 +627,90 @@ const ExpenseModal = ({
                   )}
                 </section>
 
-                {/* SECTION 4: NOTES */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                {/* SECTION 4: DOCUMENTARY PROOF / ATTACHMENT */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <FileCode2 size={14} className="text-amber-500" />
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500">
+                      Documentary Proof{" "}
+                      <span className="lowercase text-slate-400 font-medium">
+                        (Optional)
+                      </span>
+                    </h3>
+                  </div>
+
+                  {!attachmentPreview ? (
+                    <div
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`w-full border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer relative overflow-hidden ${
+                        isDragging
+                          ? "border-amber-500 bg-amber-50 dark:bg-amber-500/10"
+                          : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept="image/jpeg, image/png, image/webp, application/pdf"
+                        className="hidden"
+                      />
+                      <UploadCloud
+                        size={32}
+                        className={`mb-3 transition-colors ${isDragging ? "text-amber-500" : "text-slate-400"}`}
+                      />
+                      <p
+                        className={`text-xs font-bold ${isDragging ? "text-amber-600 dark:text-amber-400" : "text-slate-600 dark:text-slate-300"}`}
+                      >
+                        {isDragging
+                          ? "Drop document here"
+                          : "Click or drag Receipt to attach"}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-1 text-center">
+                        PDF, JPEG, PNG, WEBP up to 10MB
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-white dark:bg-slate-800 p-2">
+                      {attachmentFile?.type === "application/pdf" ||
+                      attachmentPreview.endsWith(".pdf") ? (
+                        <div className="w-full h-32 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg">
+                          <FileText size={40} className="text-red-500 mb-2" />
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[80%]">
+                            {attachmentFile?.name || "Attached PDF Document"}
+                          </p>
+                        </div>
+                      ) : (
+                        <img
+                          src={attachmentPreview}
+                          alt="Document Preview"
+                          className="w-full h-48 sm:h-56 object-contain bg-slate-50 dark:bg-slate-900 rounded-lg"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+                        <button
+                          type="button"
+                          onClick={removeFile}
+                          className="px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-red-600 transition-colors cursor-pointer"
+                        >
+                          <X size={14} /> Remove Document
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {/* SECTION 5: NOTES */}
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <ClipboardList size={14} /> Internal Notes
                   </h3>
                   <textarea
                     name="notes"
-                    value={formData.notes}
+                    value={formData.notes || ""}
                     onChange={handleChange}
                     rows="2"
                     placeholder="Any justification for this expense..."

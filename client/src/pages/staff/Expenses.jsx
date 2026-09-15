@@ -10,6 +10,8 @@ import {
   Clock,
   XCircle,
   FileText,
+  Paperclip,
+  ScanText,
 } from "lucide-react";
 import { expenseService } from "../../services/staff/expense.service";
 import ExpenseModal from "../../features/staff/components/ExpenseModal";
@@ -131,10 +133,13 @@ const Expenses = () => {
     loadExpenses();
   }, [loadExpenses]);
 
-  const handleModalSubmit = async (formData) => {
+  const handleModalSubmit = async (formData, attachmentFile) => {
     try {
       if (modalMode === "CREATE") {
-        const res = await expenseService.createExpense(formData);
+        const res = await expenseService.createExpense(
+          formData,
+          attachmentFile,
+        );
         showToast(
           res.data.status === "PENDING_APPROVAL"
             ? "Expense submitted for approval."
@@ -142,7 +147,11 @@ const Expenses = () => {
           "success",
         );
       } else {
-        await expenseService.updateExpense(selectedExpenseData.id, formData);
+        await expenseService.updateExpense(
+          selectedExpenseData.id,
+          formData,
+          attachmentFile,
+        );
         showToast("Expense updated successfully.", "success");
       }
       setIsModalOpen(false);
@@ -251,10 +260,27 @@ const Expenses = () => {
           >
             <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex flex-col items-start gap-1">
-                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
-                  {expense.expense_number}
-                </span>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
+                    {expense.expense_number}
+                  </span>
+                  {/* Visual Evidence Indicators */}
+                  {expense.scan_id ? (
+                    <span
+                      className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
+                      title="Generated via OCR Receipt Scanner"
+                    >
+                      <ScanText size={10} /> OCR
+                    </span>
+                  ) : expense.receipt_url ? (
+                    <Paperclip
+                      size={14}
+                      className="text-amber-500"
+                      title="Attachment Present"
+                    />
+                  ) : null}
+                </div>
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                   {new Date(expense.expense_date).toLocaleDateString()}
                 </span>
               </div>

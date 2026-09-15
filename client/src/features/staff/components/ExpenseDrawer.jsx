@@ -14,6 +14,9 @@ import {
   Building2,
   Loader2,
   ScanText,
+  Paperclip,
+  Download,
+  Image as ImageIcon,
 } from "lucide-react";
 import { expenseService } from "../../../services/staff/expense.service";
 import { catalogService } from "../../../services/staff/catalog.service";
@@ -66,6 +69,10 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
       import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
       "http://localhost:5000";
     return `${baseUrl}/${path}`;
+  };
+
+  const isPdf = (path) => {
+    return path?.toLowerCase().endsWith(".pdf");
   };
 
   if (!isOpen) return null;
@@ -275,29 +282,62 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                     </section>
                   )}
 
-                  {/* OCR SCANNED RECEIPT EVIDENCE */}
+                  {/* DOCUMENTARY / OCR EVIDENCE */}
                   {expense.receipt_url && (
                     <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-3 flex items-center gap-1.5">
-                        <ScanText size={14} /> Scanned Receipt Evidence
-                      </h3>
-                      <a
-                        href={getAttachmentUrl(expense.receipt_url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
-                      >
-                        <img
-                          src={getAttachmentUrl(expense.receipt_url)}
-                          alt="OCR Scanned Receipt"
-                          className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                          <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
-                            Click to Enlarge
+                      <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700/50 pb-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 flex items-center gap-1.5">
+                          {expense.scan_id ? (
+                            <>
+                              <ScanText size={14} /> Scanned Receipt Evidence
+                            </>
+                          ) : (
+                            <>
+                              <Paperclip size={14} /> Documentary Proof
+                            </>
+                          )}
+                        </p>
+                        {isPdf(expense.receipt_url) && (
+                          <a
+                            href={getAttachmentUrl(expense.receipt_url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 dark:bg-blue-500/10 px-3 py-1.5 rounded-lg"
+                          >
+                            <Download size={12} /> Download PDF
+                          </a>
+                        )}
+                      </div>
+
+                      {isPdf(expense.receipt_url) ? (
+                        <div className="w-full h-40 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <FileText size={48} className="text-red-500 mb-3" />
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            PDF Document Attached
+                          </span>
+                          <span className="text-[9px] text-slate-400 mt-1 uppercase tracking-widest">
+                            Click download to view full document
                           </span>
                         </div>
-                      </a>
+                      ) : (
+                        <a
+                          href={getAttachmentUrl(expense.receipt_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
+                        >
+                          <img
+                            src={getAttachmentUrl(expense.receipt_url)}
+                            alt="Documentary Evidence"
+                            className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                            <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm flex items-center gap-1.5">
+                              <ImageIcon size={12} /> Click to Enlarge
+                            </span>
+                          </div>
+                        </a>
+                      )}
                     </section>
                   )}
                 </>

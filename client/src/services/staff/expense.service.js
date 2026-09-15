@@ -40,9 +40,23 @@ export const expenseService = {
     }
   },
 
-  createExpense: async (expenseData) => {
+  createExpense: async (expenseData, attachmentFile = null) => {
     try {
-      const response = await api.post("/staff/expenses", expenseData);
+      const formData = new FormData();
+
+      Object.keys(expenseData).forEach((key) => {
+        if (expenseData[key] !== null && expenseData[key] !== undefined) {
+          formData.append(key, expenseData[key]);
+        }
+      });
+
+      if (attachmentFile) {
+        formData.append("attachment", attachmentFile);
+      }
+
+      const response = await api.post("/staff/expenses", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return response.data;
     } catch (error) {
       throw new Error(
@@ -51,9 +65,23 @@ export const expenseService = {
     }
   },
 
-  updateExpense: async (id, expenseData) => {
+  updateExpense: async (id, expenseData, attachmentFile = null) => {
     try {
-      const response = await api.put(`/staff/expenses/${id}`, expenseData);
+      const formData = new FormData();
+
+      Object.keys(expenseData).forEach((key) => {
+        if (expenseData[key] !== null && expenseData[key] !== undefined) {
+          formData.append(key, expenseData[key]);
+        }
+      });
+
+      if (attachmentFile) {
+        formData.append("attachment", attachmentFile);
+      }
+
+      const response = await api.put(`/staff/expenses/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return response.data;
     } catch (error) {
       throw new Error(
