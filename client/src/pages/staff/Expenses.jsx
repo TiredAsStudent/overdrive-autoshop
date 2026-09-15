@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   ReceiptText,
@@ -101,7 +101,7 @@ const Expenses = () => {
     setCurrentPage(1);
   }, [debouncedSearchQuery, statusFilter, categoryFilter]);
 
-  const loadExpenses = async () => {
+  const loadExpenses = useCallback(async () => {
     try {
       setLoading(true);
       const response = await expenseService.getExpenses(
@@ -119,11 +119,17 @@ const Expenses = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    currentPage,
+    debouncedSearchQuery,
+    statusFilter,
+    categoryFilter,
+    showToast,
+  ]);
 
   useEffect(() => {
     loadExpenses();
-  }, [currentPage, debouncedSearchQuery, statusFilter, categoryFilter]);
+  }, [loadExpenses]);
 
   const handleModalSubmit = async (formData) => {
     try {
