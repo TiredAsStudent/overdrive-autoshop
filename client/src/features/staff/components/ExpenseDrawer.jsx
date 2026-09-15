@@ -13,6 +13,7 @@ import {
   FileText,
   Building2,
   Loader2,
+  ScanText,
 } from "lucide-react";
 import { expenseService } from "../../../services/staff/expense.service";
 import { catalogService } from "../../../services/staff/catalog.service";
@@ -59,19 +60,32 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
     return FileText;
   };
 
+  const getAttachmentUrl = (path) => {
+    if (!path) return null;
+    const baseUrl =
+      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+      "http://localhost:5000";
+    return `${baseUrl}/${path}`;
+  };
+
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Standardized Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer z-40"
+            aria-hidden="true"
           />
+
+          {/* Standardized Drawer Panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -83,17 +97,20 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
               mass: 0.8,
             }}
             className="relative w-full sm:w-[500px] lg:w-[600px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800"
+            role="dialog"
+            aria-modal="true"
           >
+            {/* Standardized Fixed Header */}
             <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
                   <ReceiptText size={24} />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
                     {loading ? "Loading..." : expense?.expense_number}
                   </h2>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
                     {loading ? "..." : expense?.category}
                   </p>
                 </div>
@@ -101,11 +118,13 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
               <button
                 onClick={onClose}
                 className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
+                aria-label="Close panel"
               >
                 <X size={20} />
               </button>
             </header>
 
+            {/* Standardized Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 opacity-70">
@@ -116,7 +135,8 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                 </div>
               ) : expense ? (
                 <>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
+                  {/* STATUS & DATE SECTION */}
+                  <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm">
                     <div className="flex flex-col items-start gap-1.5">
                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                         Current Status
@@ -135,11 +155,12 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                         {new Date(expense.expense_date).toLocaleDateString()}
                       </p>
                     </div>
-                  </div>
+                  </section>
 
+                  {/* REJECTION REMARKS CARD */}
                   {expense.status === "REJECTED" &&
                     expense.rejection_remarks && (
-                      <div className="p-5 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-2xl flex items-start gap-3 shadow-sm">
+                      <section className="p-5 sm:p-6 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-[20px] sm:rounded-[24px] flex items-start gap-3 shadow-sm">
                         <ShieldAlert
                           size={18}
                           className="text-rose-600 shrink-0 mt-0.5"
@@ -152,21 +173,23 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                             "{expense.rejection_remarks}"
                           </p>
                         </div>
-                      </div>
+                      </section>
                     )}
 
-                  <div className="space-y-1">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      Particulars
+                  {/* PARTICULARS CARD */}
+                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm space-y-3">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-slate-700/50 pb-3 mb-2 flex items-center gap-2">
+                      <FileText size={14} /> Particulars
                     </h3>
                     <p className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
                       {expense.description}
                     </p>
-                  </div>
+                  </section>
 
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center gap-1.5">
-                      <Store size={12} /> Payee Information
+                  {/* PAYEE INFORMATION CARD */}
+                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm space-y-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 border-b border-slate-100 dark:border-slate-700/50 pb-3 mb-2 flex items-center gap-1.5">
+                      <Store size={14} /> Payee Information
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -189,45 +212,48 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </section>
 
-                  <div className="bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px] p-5 space-y-3">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 flex items-center gap-1.5 mb-2">
-                      <Calculator size={12} /> Financial Posting
+                  {/* FINANCIAL POSTING CARD */}
+                  <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
+                    <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3 flex items-center gap-1.5">
+                      <Calculator size={14} /> Financial Posting
                     </h3>
-                    <div className="flex justify-between text-xs font-medium text-amber-800 dark:text-amber-200/70">
-                      <span>Subtotal</span>
-                      <span className="font-mono">
-                        ₱
-                        {parseFloat(expense.subtotal).toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2 },
-                        )}
-                      </span>
+                    <div className="space-y-3 mb-5 text-sm font-medium text-slate-400">
+                      <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                        <span>Subtotal</span>
+                        <span className="font-bold text-slate-200 font-mono">
+                          ₱
+                          {parseFloat(expense.subtotal).toLocaleString(
+                            undefined,
+                            { minimumFractionDigits: 2 },
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                        <span>
+                          Input VAT (
+                          {expense.is_vatable ? `${vatRate}%` : "Exempt"})
+                        </span>
+                        <span className="font-bold text-slate-200 font-mono">
+                          ₱
+                          {parseFloat(expense.vat_amount).toLocaleString(
+                            undefined,
+                            { minimumFractionDigits: 2 },
+                          )}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-xs font-medium text-amber-800 dark:text-amber-200/70">
-                      <span>
-                        Input VAT (
-                        {expense.is_vatable ? `${vatRate}%` : "Exempt"})
-                      </span>
-                      <span className="font-mono">
-                        ₱
-                        {parseFloat(expense.vat_amount).toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2 },
-                        )}
-                      </span>
-                    </div>
-                    <div className="pt-4 border-t border-amber-200 dark:border-amber-500/30 flex justify-between items-center">
+                    <div className="pt-4 sm:pt-5 border-t border-slate-700/50 flex justify-between items-center">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-900 dark:text-amber-400">
+                        <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
                           Grand Total
                         </span>
-                        <span className="text-[9px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                           Paid via {expense.payment_method.replace("_", " ")}
                         </span>
                       </div>
-                      <span className="text-xl sm:text-2xl font-black font-mono text-amber-700 dark:text-amber-500 tracking-tight">
+                      <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight font-mono">
                         ₱
                         {parseFloat(expense.total_amount).toLocaleString(
                           undefined,
@@ -235,21 +261,54 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                         )}
                       </span>
                     </div>
-                  </div>
+                  </section>
 
+                  {/* INTERNAL NOTES CARD */}
                   {expense.notes && (
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl text-xs text-slate-600 dark:text-slate-400 italic border border-slate-100 dark:border-slate-800">
-                      " {expense.notes} "
-                    </div>
+                    <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2 flex items-center gap-1.5">
+                        <FileText size={14} /> Internal Notes
+                      </h3>
+                      <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200/80 italic leading-relaxed">
+                        "{expense.notes}"
+                      </p>
+                    </section>
+                  )}
+
+                  {/* OCR SCANNED RECEIPT EVIDENCE */}
+                  {expense.receipt_url && (
+                    <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-3 flex items-center gap-1.5">
+                        <ScanText size={14} /> Scanned Receipt Evidence
+                      </h3>
+                      <a
+                        href={getAttachmentUrl(expense.receipt_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
+                      >
+                        <img
+                          src={getAttachmentUrl(expense.receipt_url)}
+                          alt="OCR Scanned Receipt"
+                          className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
+                            Click to Enlarge
+                          </span>
+                        </div>
+                      </a>
+                    </section>
                   )}
                 </>
               ) : null}
             </div>
 
-            <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+            {/* Print Footer */}
+            <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
               <button
                 disabled={!expense || loading}
-                className="w-full py-3.5 sm:py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-3.5 sm:py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Printer size={16} /> Print Document
               </button>
