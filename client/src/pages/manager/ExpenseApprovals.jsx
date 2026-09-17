@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { expenseApprovalService } from "../../services/manager/expenseApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
+
+import ExpenseApprovalModal from "../../features/manager/components/ExpenseApprovalModal";
 import ExpenseApprovalDrawer from "../../features/manager/components/ExpenseApprovalDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
@@ -21,6 +23,7 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import FilterButton from "../../components/ui/FilterButton";
 import FilterModal from "../../components/shared/FilterModal";
 import StatusToggle from "../../components/ui/StatusToggle";
+
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -56,8 +59,9 @@ const ExpenseApprovals = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Drawer State
+  // UI View States
   const [selectedExpenseId, setSelectedExpenseId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const activeFilterCount =
@@ -118,6 +122,15 @@ const ExpenseApprovals = () => {
       setCurrentPage((prev) => prev - 1);
     }
   }, [expenses.length, loading, currentPage]);
+
+  const handleOpenView = (expenseId) => {
+    setSelectedExpenseId(expenseId);
+    if (viewMode === "PENDING") {
+      setIsModalOpen(true);
+    } else {
+      setIsDrawerOpen(true);
+    }
+  };
 
   const getBadgeVariant = (status) => {
     switch (status) {
@@ -279,10 +292,7 @@ const ExpenseApprovals = () => {
 
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <button
-                onClick={() => {
-                  setSelectedExpenseId(expense.id);
-                  setIsDrawerOpen(true);
-                }}
+                onClick={() => handleOpenView(expense.id)}
                 title={
                   viewMode === "PENDING" ? "Review Request" : "View Details"
                 }
@@ -347,11 +357,17 @@ const ExpenseApprovals = () => {
         </div>
       </FilterModal>
 
+      <ExpenseApprovalModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        expenseId={selectedExpenseId}
+        onSuccess={loadExpenses}
+      />
+
       <ExpenseApprovalDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         expenseId={selectedExpenseId}
-        onSuccess={loadExpenses}
       />
     </div>
   );
