@@ -102,23 +102,35 @@ class Expense {
 
   static async findById(id) {
     const sql = `
-      SELECT e.*, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, u.first_name as created_by_name
+      SELECT e.*, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
+             u.first_name as created_by_name, r.first_name as resolved_by_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       LEFT JOIN users u ON e.created_by = u.id
+      LEFT JOIN users r ON e.resolved_by = r.id
       WHERE e.id = $1
     `;
     const result = await query(sql, [id]);
     return result.rows[0];
   }
 
-  static async countFiltered(search, status, category, branchId) {
+  static async countFiltered(
+    search,
+    status,
+    category,
+    branchId,
+    excludeOcr = false,
+  ) {
     let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id`;
 
     const conditions = [];
     const values = [];
     let paramIdx = 1;
+
+    if (excludeOcr) {
+      conditions.push(`e.scan_id IS NULL`);
+    }
 
     if (search) {
       conditions.push(
@@ -155,18 +167,26 @@ class Expense {
     status,
     category,
     branchId,
+    excludeOcr = false,
   ) {
     let sql = `
       SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
-             e.total_amount, e.status, e.scan_id, e.receipt_url, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name
+             e.total_amount, e.status, e.scan_id, e.receipt_url, 
+             COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name,
+             u.first_name as created_by_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
+      LEFT JOIN users u ON e.created_by = u.id
     `;
 
     const conditions = [];
     const values = [];
     let paramIdx = 1;
+
+    if (excludeOcr) {
+      conditions.push(`e.scan_id IS NULL`);
+    }
 
     if (search) {
       conditions.push(
@@ -199,10 +219,19 @@ class Expense {
     return result.rows;
   }
 
-  static async countApprovalHistory(search, category, branchId) {
+  static async countApprovalHistory(
+    search,
+    category,
+    branchId,
+    excludeOcr = false,
+  ) {
     let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id WHERE e.status IN ('APPROVED', 'REJECTED')`;
     const values = [];
     let paramIdx = 1;
+
+    if (excludeOcr) {
+      sql += ` AND e.scan_id IS NULL`;
+    }
 
     if (search) {
       sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
@@ -230,19 +259,26 @@ class Expense {
     search,
     category,
     branchId,
+    excludeOcr = false,
   ) {
     let sql = `
       SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
              e.total_amount, e.status, e.resolved_at as processed_at, e.scan_id, e.receipt_url,
-             COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, u.first_name as resolved_by_name
+             COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
+             c.first_name as created_by_name, r.first_name as resolved_by_name
       FROM expenses e
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
-      LEFT JOIN users u ON e.resolved_by = u.id
+      LEFT JOIN users c ON e.created_by = c.id
+      LEFT JOIN users r ON e.resolved_by = r.id
       WHERE e.status IN ('APPROVED', 'REJECTED')
     `;
     const values = [];
     let paramIdx = 1;
+
+    if (excludeOcr) {
+      sql += ` AND e.scan_id IS NULL`;
+    }
 
     if (search) {
       sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;

@@ -17,6 +17,7 @@ class ExpenseApprovalService {
         "PENDING_APPROVAL",
         category,
         branchId,
+        true,
       ),
       ExpenseModel.findPaginatedFiltered(
         limit,
@@ -25,6 +26,7 @@ class ExpenseApprovalService {
         "PENDING_APPROVAL",
         category,
         branchId,
+        true,
       ),
     ]);
 
@@ -49,13 +51,14 @@ class ExpenseApprovalService {
     const offset = (page - 1) * limit;
 
     const [totalItems, expenses] = await Promise.all([
-      ExpenseModel.countApprovalHistory(search, category, branchId),
+      ExpenseModel.countApprovalHistory(search, category, branchId, true),
       ExpenseModel.findPaginatedApprovalHistory(
         limit,
         offset,
         search,
         category,
         branchId,
+        true,
       ),
     ]);
 
