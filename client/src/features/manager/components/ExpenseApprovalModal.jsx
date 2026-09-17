@@ -14,7 +14,6 @@ import {
   XCircle,
   MessageSquare,
   ScanText,
-  ZoomIn,
   ImageOff,
   Clock,
   FileText,
@@ -38,7 +37,6 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
   const [validationError, setValidationError] = useState("");
 
   const [imageError, setImageError] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
 
   useEffect(() => {
     if (isOpen && expenseId) {
@@ -47,7 +45,6 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
       setRemarks("");
       setValidationError("");
       setImageError(false);
-      setIsZoomed(false);
 
       expenseApprovalService
         .getExpenseDetails(expenseId)
@@ -205,7 +202,7 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                           {expense.category}
                         </p>
                         <div className="p-4 sm:p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
                             Target Vendor
                           </p>
                           <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
@@ -304,20 +301,22 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
 
                   {/* Receipt Image / PDF Viewer */}
                   {expense.receipt_url && (
-                    <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-                      <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700/50 pb-3">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500 flex items-center gap-2">
+                    <section className="bg-white dark:bg-slate-800 p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                      <div className="flex justify-between items-center mb-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                           {expense.scan_id ? (
                             <>
-                              <ScanText size={14} /> Scanned Receipt Evidence
+                              <ScanText size={14} className="text-blue-500" />{" "}
+                              Scanned Receipt Evidence
                             </>
                           ) : (
                             <>
-                              <Paperclip size={14} /> Documentary Proof
+                              <Paperclip size={14} className="text-blue-500" />{" "}
+                              Documentary Proof
                             </>
                           )}
-                        </h3>
-                        {isPdf(expense.receipt_url) ? (
+                        </p>
+                        {isPdf(expense.receipt_url) && (
                           <a
                             href={getAttachmentUrl(expense.receipt_url)}
                             target="_blank"
@@ -326,16 +325,6 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                           >
                             <Download size={12} /> Download PDF
                           </a>
-                        ) : (
-                          !imageError && (
-                            <button
-                              onClick={() => setIsZoomed(!isZoomed)}
-                              className="text-[10px] font-bold text-amber-500 flex items-center gap-1 hover:text-amber-600 transition-colors cursor-pointer"
-                            >
-                              <ZoomIn size={12} />{" "}
-                              {isZoomed ? "Shrink" : "Zoom"}
-                            </button>
-                          )
                         )}
                       </div>
 
@@ -347,27 +336,35 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                           </span>
                         </div>
                       ) : (
-                        <div
-                          className={`relative group w-full bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex items-center justify-center p-2 transition-all duration-300 ${
-                            isZoomed ? "h-auto min-h-[500px]" : "h-64"
-                          }`}
+                        <a
+                          href={getAttachmentUrl(expense.receipt_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
                         >
                           {imageError ? (
-                            <div className="flex flex-col items-center justify-center text-slate-400 space-y-2">
+                            <div className="w-full h-48 sm:h-64 flex flex-col items-center justify-center text-slate-400 space-y-2">
                               <ImageOff size={32} className="opacity-50" />
                               <p className="text-[10px] font-bold uppercase tracking-widest">
                                 Image file unavailable
                               </p>
                             </div>
                           ) : (
-                            <img
-                              src={getAttachmentUrl(expense.receipt_url)}
-                              alt="Expense Receipt"
-                              onError={() => setImageError(true)}
-                              className="w-full h-full object-contain rounded-lg shadow-sm"
-                            />
+                            <>
+                              <img
+                                src={getAttachmentUrl(expense.receipt_url)}
+                                alt="Expense Receipt"
+                                onError={() => setImageError(true)}
+                                className="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
+                                  Click to enlarge
+                                </span>
+                              </div>
+                            </>
                           )}
-                        </div>
+                        </a>
                       )}
                     </section>
                   )}
