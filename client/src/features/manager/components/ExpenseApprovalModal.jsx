@@ -269,10 +269,7 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                         </span>
                       </div>
                       <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
-                        <span>
-                          VAT Allocation{" "}
-                          {expense.is_vatable ? "(12%)" : "(Non-VAT)"}
-                        </span>
+                        <span>VAT Allocation</span>
                         <span className="font-bold text-slate-200 font-mono">
                           ₱
                           {parseFloat(expense.vat_amount).toLocaleString(
