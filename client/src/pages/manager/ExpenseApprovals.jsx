@@ -23,6 +23,17 @@ import FilterButton from "../../components/ui/FilterButton";
 import FilterModal from "../../components/shared/FilterModal";
 import StatusToggle from "../../components/ui/StatusToggle";
 
+const EXPENSE_CATEGORIES = [
+  "Utility Expense",
+  "Parts & Supplies Expense",
+  "Equipment Maintenance",
+  "Uncategorized Expense",
+  "Rent Expense",
+  "Transportation Expense",
+  "Meals & Entertainment",
+  "Office Supplies",
+];
+
 const ExpenseApprovals = () => {
   const { showToast } = useApp();
 
@@ -37,6 +48,7 @@ const ExpenseApprovals = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [branchFilter, setBranchFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,7 +59,8 @@ const ExpenseApprovals = () => {
   const [selectedExpenseId, setSelectedExpenseId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const activeFilterCount = branchFilter !== "all" ? 1 : 0;
+  const activeFilterCount =
+    (branchFilter !== "all" ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
 
   useEffect(() => {
     inventoryService
@@ -58,25 +71,26 @@ const ExpenseApprovals = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, viewMode, branchFilter]);
+  }, [debouncedSearchQuery, viewMode, branchFilter, categoryFilter]);
 
   const loadExpenses = async () => {
     try {
       setLoading(true);
+
       const res =
         viewMode === "PENDING"
           ? await expenseApprovalService.getPendingApprovals(
               currentPage,
               ITEMS_PER_PAGE,
               debouncedSearchQuery,
-              "all",
+              categoryFilter,
               branchFilter,
             )
           : await expenseApprovalService.getApprovalHistory(
               currentPage,
               ITEMS_PER_PAGE,
               debouncedSearchQuery,
-              "all",
+              categoryFilter,
               branchFilter,
             );
 
@@ -91,7 +105,13 @@ const ExpenseApprovals = () => {
 
   useEffect(() => {
     loadExpenses();
-  }, [currentPage, debouncedSearchQuery, viewMode, branchFilter]);
+  }, [
+    currentPage,
+    debouncedSearchQuery,
+    viewMode,
+    branchFilter,
+    categoryFilter,
+  ]);
 
   useEffect(() => {
     if (!loading && expenses.length === 0 && currentPage > 1) {
@@ -127,6 +147,7 @@ const ExpenseApprovals = () => {
 
   const resetFilters = () => {
     setBranchFilter("all");
+    setCategoryFilter("all");
     setIsFilterModalOpen(false);
   };
 
@@ -313,6 +334,24 @@ const ExpenseApprovals = () => {
         title="Advanced Filters"
       >
         <div className="space-y-5">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Expense Category
+            </label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+            >
+              <option value="all">All Categories</option>
+              {EXPENSE_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
               Branch Location
