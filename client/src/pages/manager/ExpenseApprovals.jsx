@@ -158,13 +158,11 @@ const ExpenseApprovals = () => {
         subtitle="Operational Expense Governance"
         icon={ReceiptText}
       >
-        <StatusToggle
-          activeValue={viewMode}
-          onToggle={setViewMode}
-          options={[
-            { label: "Pending", value: "PENDING" },
-            { label: "History", value: "HISTORY" },
-          ]}
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search Document..."
+          isSearching={searchQuery !== debouncedSearchQuery}
         />
 
         <FilterButton
@@ -172,11 +170,13 @@ const ExpenseApprovals = () => {
           activeCount={activeFilterCount}
         />
 
-        <SearchBar
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search Document..."
-          isSearching={searchQuery !== debouncedSearchQuery}
+        <StatusToggle
+          activeValue={viewMode}
+          onToggle={setViewMode}
+          options={[
+            { label: "Pending", value: "PENDING" },
+            { label: "History", value: "HISTORY" },
+          ]}
         />
       </PageHeader>
 
