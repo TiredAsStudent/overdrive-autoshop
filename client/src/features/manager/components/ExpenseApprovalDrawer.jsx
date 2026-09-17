@@ -9,15 +9,21 @@ import {
   Loader2,
   Store,
   AlertCircle,
+  CheckCircle,
   CheckCircle2,
   XCircle,
   MessageSquare,
   ScanText,
   ZoomIn,
   ImageOff,
+  Clock,
+  FileText,
+  Paperclip,
+  Download,
 } from "lucide-react";
 import { expenseApprovalService } from "../../../services/manager/expenseApproval.service";
 import { useApp } from "../../../context/AppContext";
+import StatusBadge from "../../../components/ui/StatusBadge";
 import api from "../../../services/api";
 
 const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
@@ -79,16 +85,29 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getBadgeVariant = (status) => {
     switch (status) {
       case "PENDING_APPROVAL":
-        return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
+        return "warning";
       case "APPROVED":
-        return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
+        return "success";
       case "REJECTED":
-        return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
+        return "danger";
       default:
-        return "text-slate-600 bg-slate-50 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
+        return "default";
+    }
+  };
+
+  const getBadgeIcon = (status) => {
+    switch (status) {
+      case "APPROVED":
+        return CheckCircle;
+      case "PENDING_APPROVAL":
+        return Clock;
+      case "REJECTED":
+        return XCircle;
+      default:
+        return FileText;
     }
   };
 
@@ -99,6 +118,10 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
     return import.meta.env.VITE_API_URL
       ? import.meta.env.VITE_API_URL.replace("/api/v1", "")
       : "http://localhost:5000";
+  };
+
+  const isPdf = (path) => {
+    return path?.toLowerCase().endsWith(".pdf");
   };
 
   const staffNotes = expense?.notes
@@ -140,13 +163,13 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
                     {expense?.expense_number || "Loading..."}
                   </h2>
                   {expense && (
-                    <span
-                      className={`inline-flex px-2 py-0.5 mt-1 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusColor(
-                        expense.status,
-                      )}`}
-                    >
-                      {expense.status.replace("_", " ")}
-                    </span>
+                    <div className="mt-1">
+                      <StatusBadge
+                        label={expense.status.replace("_", " ")}
+                        variant={getBadgeVariant(expense.status)}
+                        icon={getBadgeIcon(expense.status)}
+                      />
+                    </div>
                   )}
                 </div>
               </div>
@@ -323,14 +346,32 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
                     </div>
                   </div>
 
-                  {/* Receipt Image Preview (If OCR'd) */}
+                  {/* Receipt Image / PDF Viewer */}
                   {expense.receipt_url && (
-                    <div>
-                      <div className="flex items-center justify-between px-1 mb-2">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                          <ScanText size={12} /> Attached Receipt / OCR Scan
-                        </h3>
-                        {!imageError && (
+                    <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                      <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700/50 pb-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 flex items-center gap-1.5">
+                          {expense.scan_id ? (
+                            <>
+                              <ScanText size={14} /> Scanned Receipt Evidence
+                            </>
+                          ) : (
+                            <>
+                              <Paperclip size={14} /> Documentary Proof
+                            </>
+                          )}
+                        </p>
+                        {isPdf(expense.receipt_url) && (
+                          <a
+                            href={`${getBaseUrl()}${expense.receipt_url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 dark:bg-blue-500/10 px-3 py-1.5 rounded-lg"
+                          >
+                            <Download size={12} /> Download PDF
+                          </a>
+                        )}
+                        {!imageError && !isPdf(expense.receipt_url) && (
                           <button
                             onClick={() => setIsZoomed(!isZoomed)}
                             className="text-[10px] font-bold text-amber-500 flex items-center gap-1 hover:text-amber-600 transition-colors"
@@ -340,26 +381,40 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
                         )}
                       </div>
 
-                      <div
-                        className={`relative group w-full bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex items-center justify-center p-2 transition-all duration-300 ${isZoomed ? "h-auto min-h-[500px]" : "h-64"}`}
-                      >
-                        {imageError ? (
-                          <div className="flex flex-col items-center justify-center text-slate-400 space-y-2">
-                            <ImageOff size={32} className="opacity-50" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest">
-                              Image file unavailable
-                            </p>
-                          </div>
-                        ) : (
-                          <img
-                            src={`${getBaseUrl()}${expense.receipt_url}`}
-                            alt="Expense Receipt"
-                            onError={() => setImageError(true)}
-                            className="w-full h-full object-contain rounded-lg shadow-sm"
-                          />
-                        )}
-                      </div>
-                    </div>
+                      {isPdf(expense.receipt_url) ? (
+                        <div className="w-full h-40 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <FileText size={48} className="text-red-500 mb-3" />
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            PDF Document Attached
+                          </span>
+                          <span className="text-[9px] text-slate-400 mt-1 uppercase tracking-widest">
+                            Click download to view full document
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          className={`relative group w-full bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex items-center justify-center p-2 transition-all duration-300 ${
+                            isZoomed ? "h-auto min-h-[500px]" : "h-64"
+                          }`}
+                        >
+                          {imageError ? (
+                            <div className="flex flex-col items-center justify-center text-slate-400 space-y-2">
+                              <ImageOff size={32} className="opacity-50" />
+                              <p className="text-[10px] font-bold uppercase tracking-widest">
+                                Image file unavailable
+                              </p>
+                            </div>
+                          ) : (
+                            <img
+                              src={`${getBaseUrl()}${expense.receipt_url}`}
+                              alt="Expense Receipt"
+                              onError={() => setImageError(true)}
+                              className="w-full h-full object-contain rounded-lg shadow-sm"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </section>
                   )}
 
                   {/* Decision Area (Only visible if PENDING_APPROVAL) */}

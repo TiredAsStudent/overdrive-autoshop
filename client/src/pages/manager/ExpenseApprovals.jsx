@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Search, Loader2, ReceiptText, FileSearch } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  ReceiptText,
+  FileSearch,
+  ScanText,
+  Paperclip,
+  CheckCircle,
+  Clock,
+  XCircle,
+  FileText,
+} from "lucide-react";
 import { expenseApprovalService } from "../../services/manager/expenseApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 import ExpenseApprovalDrawer from "../../features/manager/components/ExpenseApprovalDrawer";
@@ -7,6 +18,10 @@ import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
+import StatusBadge from "../../components/ui/StatusBadge";
+import FilterButton from "../../components/ui/FilterButton";
+import FilterModal from "../../components/shared/FilterModal";
+import StatusToggle from "../../components/ui/StatusToggle";
 
 const ExpenseApprovals = () => {
   const { showToast } = useApp();
@@ -22,6 +37,8 @@ const ExpenseApprovals = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [branchFilter, setBranchFilter] = useState("all");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -29,6 +46,8 @@ const ExpenseApprovals = () => {
   // Drawer State
   const [selectedExpenseId, setSelectedExpenseId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const activeFilterCount = branchFilter !== "all" ? 1 : 0;
 
   useEffect(() => {
     inventoryService
@@ -80,17 +99,35 @@ const ExpenseApprovals = () => {
     }
   }, [expenses.length, loading, currentPage]);
 
-  const getStatusBadge = (status) => {
+  const getBadgeVariant = (status) => {
     switch (status) {
       case "PENDING_APPROVAL":
-        return "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+        return "warning";
       case "APPROVED":
-        return "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+        return "success";
       case "REJECTED":
-        return "text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20";
+        return "danger";
       default:
-        return "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+        return "default";
     }
+  };
+
+  const getBadgeIcon = (status) => {
+    switch (status) {
+      case "APPROVED":
+        return CheckCircle;
+      case "PENDING_APPROVAL":
+        return Clock;
+      case "REJECTED":
+        return XCircle;
+      default:
+        return FileText;
+    }
+  };
+
+  const resetFilters = () => {
+    setBranchFilter("all");
+    setIsFilterModalOpen(false);
   };
 
   return (
@@ -113,42 +150,19 @@ const ExpenseApprovals = () => {
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
           {/* Tab Toggle */}
-          <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
-            <button
-              onClick={() => setViewMode("PENDING")}
-              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                viewMode === "PENDING"
-                  ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              Pending
-            </button>
-            <button
-              onClick={() => setViewMode("HISTORY")}
-              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                viewMode === "HISTORY"
-                  ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              History
-            </button>
-          </div>
+          <StatusToggle
+            activeValue={viewMode}
+            onToggle={setViewMode}
+            options={[
+              { label: "Pending", value: "PENDING" },
+              { label: "History", value: "HISTORY" },
+            ]}
+          />
 
-          {/* Branch Filter Dropdown */}
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
-          >
-            <option value="all">All Branches</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.branch_name}
-              </option>
-            ))}
-          </select>
+          <FilterButton
+            onClick={() => setIsFilterModalOpen(true)}
+            activeCount={activeFilterCount}
+          />
 
           {/* Search Bar */}
           <div className="relative w-full sm:max-w-[200px] flex-1">
@@ -199,9 +213,25 @@ const ExpenseApprovals = () => {
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col gap-1 text-left">
-                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
-                  {expense.expense_number}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
+                    {expense.expense_number}
+                  </span>
+                  {expense.scan_id ? (
+                    <span
+                      className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
+                      title="Generated via OCR Receipt Scanner"
+                    >
+                      <ScanText size={10} /> OCR
+                    </span>
+                  ) : expense.receipt_url ? (
+                    <Paperclip
+                      size={14}
+                      className="text-amber-500"
+                      title="Attachment Present"
+                    />
+                  ) : null}
+                </div>
                 <span className="text-[9px] font-bold text-slate-500 tracking-widest uppercase">
                   {expense.branch_name}
                 </span>
@@ -231,13 +261,11 @@ const ExpenseApprovals = () => {
               </span>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span
-                className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusBadge(
-                  expense.status,
-                )}`}
-              >
-                {expense.status.replace("_", " ")}
-              </span>
+              <StatusBadge
+                label={expense.status.replace("_", " ")}
+                variant={getBadgeVariant(expense.status)}
+                icon={getBadgeIcon(expense.status)}
+              />
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <button
@@ -267,6 +295,33 @@ const ExpenseApprovals = () => {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={resetFilters}
+        title="Advanced Filters"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Branch Location
+            </label>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+            >
+              <option value="all">All Branches</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.branch_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </FilterModal>
 
       <ExpenseApprovalDrawer
         isOpen={isDrawerOpen}
