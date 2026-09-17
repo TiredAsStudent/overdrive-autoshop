@@ -20,6 +20,7 @@ import {
   FileText,
   Paperclip,
   Download,
+  ClipboardList,
 } from "lucide-react";
 import { expenseApprovalService } from "../../../services/manager/expenseApproval.service";
 import { useApp } from "../../../context/AppContext";
@@ -111,8 +112,9 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
 
     if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
     const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    const normalizedPath = cleanPath.replace(/\\/g, "/");
 
-    return `${baseUrl}/${cleanPath}`;
+    return `${baseUrl}/${normalizedPath}`;
   };
 
   const isPdf = (path) => path?.toLowerCase().endsWith(".pdf");
@@ -128,7 +130,7 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-3xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
+            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-4xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
           >
             {/* MODAL HEADER */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
@@ -167,7 +169,7 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
             </div>
 
             {/* MODAL BODY */}
-            <div className="px-4 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 sm:space-y-8">
+            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 sm:space-y-8">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400 opacity-70">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
@@ -192,73 +194,75 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
 
               {expense && !loading && (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
                     {/* Category & Payee */}
-                    <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
+                    <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20 flex flex-col justify-between">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                         <Store size={14} /> Category & Payee
                       </h3>
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
                           {expense.category}
                         </p>
-                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
+                        <div className="p-4 sm:p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
                             Target Vendor
                           </p>
-                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
                             {expense.vendor_name || "Unregistered Entity"}
+                          </p>
+                          <p className="text-[10px] text-slate-500 truncate mt-3 flex items-center gap-1.5 font-bold border-t border-slate-100 dark:border-slate-700/50 pt-3">
+                            <Building2 size={12} /> {expense.branch_name}
                           </p>
                         </div>
                       </div>
                     </section>
 
                     {/* Operational Details */}
-                    <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
+                    <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20 flex flex-col justify-between">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                         <FileText size={14} /> Transaction Details
                       </h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-500 font-medium">
+                      <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                        <div>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                             Expense Date
-                          </span>
-                          <span className="font-bold text-slate-900 dark:text-white">
-                            {new Date(
-                              expense.expense_date,
-                            ).toLocaleDateString()}
-                          </span>
+                          </p>
+                          <p className="text-xs font-black text-slate-700 dark:text-slate-300 truncate mt-0.5">
+                            {new Date(expense.expense_date).toLocaleDateString(
+                              undefined,
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              },
+                            )}
+                          </p>
                         </div>
-                        <div className="flex justify-between items-center text-xs border-t border-slate-200 dark:border-slate-700 pt-2">
-                          <span className="text-slate-500 font-medium">
+                        <div>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                             Payment Method
-                          </span>
-                          <span className="font-bold text-slate-900 dark:text-white uppercase">
+                          </p>
+                          <p className="text-xs font-black text-slate-700 dark:text-slate-300 truncate mt-0.5">
                             {expense.payment_method.replace("_", " ")}
-                          </span>
+                          </p>
                         </div>
-                        <div className="flex justify-between items-center text-xs border-t border-slate-200 dark:border-slate-700 pt-2">
-                          <span className="text-slate-500 font-medium">
-                            Reference No.
-                          </span>
-                          <span className="font-bold text-slate-900 dark:text-white uppercase">
-                            {expense.reference_number || "N/A"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs border-t border-slate-200 dark:border-slate-700 pt-2">
-                          <span className="text-slate-500 font-medium">
-                            Branch Location
-                          </span>
-                          <span className="font-bold text-slate-900 dark:text-white uppercase">
-                            {expense.branch_name}
-                          </span>
-                        </div>
+                        {expense.reference_number && (
+                          <div>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                              Reference No.
+                            </p>
+                            <p className="text-xs font-black text-slate-700 dark:text-slate-300 truncate mt-0.5 uppercase">
+                              {expense.reference_number}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </section>
                   </div>
 
                   {/* Financial Lock */}
-                  <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
+                  <div className="bg-slate-900 dark:bg-black rounded-[24px] p-5 sm:p-6 text-white shadow-xl flex flex-col justify-center">
                     <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3">
                       Requested Financial Commitment
                     </p>
@@ -284,7 +288,7 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                         </span>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/50">
+                    <div className="flex justify-between items-center pt-4 sm:pt-5 mt-2 border-t border-slate-700/50">
                       <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
                         Grand Total
                       </span>
@@ -300,9 +304,9 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
 
                   {/* Receipt Image / PDF Viewer */}
                   {expense.receipt_url && (
-                    <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                    <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
                       <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700/50 pb-3">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 flex items-center gap-1.5">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500 flex items-center gap-2">
                           {expense.scan_id ? (
                             <>
                               <ScanText size={14} /> Scanned Receipt Evidence
@@ -312,7 +316,7 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                               <Paperclip size={14} /> Documentary Proof
                             </>
                           )}
-                        </p>
+                        </h3>
                         {isPdf(expense.receipt_url) ? (
                           <a
                             href={getAttachmentUrl(expense.receipt_url)}
@@ -368,34 +372,40 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                     </section>
                   )}
 
-                  {/* Staff Notes */}
-                  {staffNotes && (
-                    <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Staff Justification
-                      </p>
-                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">
-                        "{staffNotes}"
-                      </p>
-                    </section>
-                  )}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+                    {/* Staff Notes */}
+                    {staffNotes ? (
+                      <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 flex items-center gap-2">
+                          <ClipboardList size={14} /> Staff Justification
+                        </h3>
+                        <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+                          <p className="text-xs text-slate-600 dark:text-slate-300 italic leading-relaxed whitespace-pre-wrap break-words">
+                            "{staffNotes}"
+                          </p>
+                        </div>
+                      </section>
+                    ) : (
+                      <div className="hidden lg:block"></div>
+                    )}
 
-                  {/* Manager Remarks Input */}
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 space-y-4">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-3">
-                      <MessageSquare size={14} /> Manager Remarks
-                      <span className="text-red-500 ml-1 lowercase">
-                        (Required for Rejection)
-                      </span>
-                    </label>
-                    <textarea
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="Provide feedback or justification..."
-                      rows="3"
-                      disabled={isSubmitting}
-                      className="w-full h-full min-h-[100px] px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-50 shadow-sm transition-all"
-                    />
+                    {/* Manager Remarks Input */}
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 flex flex-col">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-3">
+                        <MessageSquare size={14} /> Manager Remarks
+                        <span className="text-red-500 ml-1 lowercase">
+                          (Required for Rejection)
+                        </span>
+                      </label>
+                      <textarea
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                        placeholder="Provide feedback or justification..."
+                        rows="4"
+                        disabled={isSubmitting}
+                        className="w-full h-full min-h-[100px] px-5 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-50 shadow-sm transition-all"
+                      />
+                    </div>
                   </div>
                 </>
               )}
@@ -403,7 +413,7 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
 
             {/* MODAL FOOTER */}
             {expense && !loading && (
-              <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+              <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => handleDecision("REJECTED")}
