@@ -102,12 +102,17 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
     return "default";
   };
 
-  const getBaseUrl = () => {
-    if (api.defaults.baseURL)
-      return api.defaults.baseURL.replace("/api/v1", "");
-    return import.meta.env.VITE_API_URL
-      ? import.meta.env.VITE_API_URL.replace("/api/v1", "")
-      : "http://localhost:5000";
+  const getAttachmentUrl = (path) => {
+    if (!path) return null;
+    let baseUrl = api.defaults.baseURL
+      ? api.defaults.baseURL.replace("/api/v1", "")
+      : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+        "http://localhost:5000";
+
+    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+
+    return `${baseUrl}/${cleanPath}`;
   };
 
   const isPdf = (path) => path?.toLowerCase().endsWith(".pdf");
@@ -293,7 +298,7 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                     </div>
                   </div>
 
-                  {/* Receipt Evidence Viewer */}
+                  {/* Receipt Image / PDF Viewer */}
                   {expense.receipt_url && (
                     <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
                       <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700/50 pb-3">
@@ -310,7 +315,7 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                         </p>
                         {isPdf(expense.receipt_url) ? (
                           <a
-                            href={`${getBaseUrl()}${expense.receipt_url}`}
+                            href={getAttachmentUrl(expense.receipt_url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 dark:bg-blue-500/10 px-3 py-1.5 rounded-lg"
@@ -321,7 +326,7 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                           !imageError && (
                             <button
                               onClick={() => setIsZoomed(!isZoomed)}
-                              className="text-[10px] font-bold text-amber-500 flex items-center gap-1 hover:text-amber-600 transition-colors"
+                              className="text-[10px] font-bold text-amber-500 flex items-center gap-1 hover:text-amber-600 transition-colors cursor-pointer"
                             >
                               <ZoomIn size={12} />{" "}
                               {isZoomed ? "Shrink" : "Zoom"}
@@ -347,12 +352,12 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                             <div className="flex flex-col items-center justify-center text-slate-400 space-y-2">
                               <ImageOff size={32} className="opacity-50" />
                               <p className="text-[10px] font-bold uppercase tracking-widest">
-                                Image unavailable
+                                Image file unavailable
                               </p>
                             </div>
                           ) : (
                             <img
-                              src={`${getBaseUrl()}${expense.receipt_url}`}
+                              src={getAttachmentUrl(expense.receipt_url)}
                               alt="Expense Receipt"
                               onError={() => setImageError(true)}
                               className="w-full h-full object-contain rounded-lg shadow-sm"
