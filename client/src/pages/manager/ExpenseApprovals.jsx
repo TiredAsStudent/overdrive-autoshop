@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Search,
   Loader2,
   ReceiptText,
   Eye,
@@ -16,12 +15,14 @@ import { inventoryService } from "../../services/manager/inventory.service";
 import ExpenseApprovalDrawer from "../../features/manager/components/ExpenseApprovalDrawer";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
-import { useApp } from "../../context/AppContext";
-import { useDebounce } from "../../hooks/useDebounce";
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
 import StatusBadge from "../../components/ui/StatusBadge";
 import FilterButton from "../../components/ui/FilterButton";
 import FilterModal from "../../components/shared/FilterModal";
 import StatusToggle from "../../components/ui/StatusToggle";
+import { useApp } from "../../context/AppContext";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const EXPENSE_CATEGORIES = [
   "Utility Expense",
@@ -76,7 +77,6 @@ const ExpenseApprovals = () => {
   const loadExpenses = async () => {
     try {
       setLoading(true);
-
       const res =
         viewMode === "PENDING"
           ? await expenseApprovalService.getPendingApprovals(
@@ -153,57 +153,32 @@ const ExpenseApprovals = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <ReceiptText className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Expense Approvals
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Operational Expense Governance
-            </p>
-          </div>
-        </div>
+      <PageHeader
+        title="Expense Approvals"
+        subtitle="Operational Expense Governance"
+        icon={ReceiptText}
+      >
+        <StatusToggle
+          activeValue={viewMode}
+          onToggle={setViewMode}
+          options={[
+            { label: "Pending", value: "PENDING" },
+            { label: "History", value: "HISTORY" },
+          ]}
+        />
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          {/* Tab Toggle */}
-          <StatusToggle
-            activeValue={viewMode}
-            onToggle={setViewMode}
-            options={[
-              { label: "Pending", value: "PENDING" },
-              { label: "History", value: "HISTORY" },
-            ]}
-          />
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
 
-          <FilterButton
-            onClick={() => setIsFilterModalOpen(true)}
-            activeCount={activeFilterCount}
-          />
-
-          {/* Search Bar */}
-          <div className="relative w-full sm:max-w-[200px] flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search Document..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-            />
-          </div>
-        </div>
-      </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search Document..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
+      </PageHeader>
 
       {/* DATA TABLE */}
       <DataTable
