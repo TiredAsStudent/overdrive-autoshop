@@ -20,6 +20,7 @@ import {
   FileText,
   Paperclip,
   Download,
+  BadgeCheck,
 } from "lucide-react";
 import { expenseApprovalService } from "../../../services/manager/expenseApproval.service";
 import { useApp } from "../../../context/AppContext";
@@ -163,12 +164,19 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
                     {expense?.expense_number || "Loading..."}
                   </h2>
                   {expense && (
-                    <div className="mt-1">
+                    <div className="flex flex-col items-start gap-1.5 mt-1.5">
                       <StatusBadge
                         label={expense.status.replace("_", " ")}
                         variant={getBadgeVariant(expense.status)}
                         icon={getBadgeIcon(expense.status)}
                       />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
+                        <BadgeCheck size={12} className="text-amber-500" />
+                        Drafted by:{" "}
+                        <span className="text-slate-600 dark:text-slate-300">
+                          {expense.created_by_name || "System"}
+                        </span>
+                      </span>
                     </div>
                   )}
                 </div>
@@ -208,27 +216,6 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
 
               {expense && !loading && (
                 <div className="space-y-8">
-                  {/* Historical Remarks */}
-                  {managerNotes && expense.status !== "PENDING_APPROVAL" && (
-                    <div
-                      className={`p-4 rounded-xl border flex items-start gap-3 ${
-                        expense.status === "REJECTED"
-                          ? "bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:border-rose-500/20 text-rose-800 dark:text-rose-300"
-                          : "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300"
-                      }`}
-                    >
-                      <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">
-                          Managerial Feedback
-                        </p>
-                        <p className="text-xs font-bold leading-relaxed whitespace-pre-wrap">
-                          {managerNotes}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Metadata Linkages */}
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -336,7 +323,7 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
                       <span className="text-sm font-black uppercase tracking-widest text-slate-300">
                         Total Amount
                       </span>
-                      <span className="text-2xl font-black text-amber-500">
+                      <span className="text-2xl font-black text-amber-500 font-mono">
                         ₱
                         {parseFloat(expense.total_amount).toLocaleString(
                           undefined,
@@ -417,7 +404,43 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId, onSuccess }) => {
                     </section>
                   )}
 
-                  {/* Decision Area (Only visible if PENDING_APPROVAL) */}
+                  {/* Manager Resolution Area (Read-Only for History) */}
+                  {expense.status !== "PENDING_APPROVAL" && (
+                    <section
+                      className={`p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm ${
+                        expense.status === "APPROVED"
+                          ? "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20"
+                          : "bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/20"
+                      }`}
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                        Manager Resolution
+                      </p>
+                      <div>
+                        <p
+                          className={`text-xs font-black uppercase tracking-widest mb-1.5 ${
+                            expense.status === "APPROVED"
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-rose-600 dark:text-rose-400"
+                          }`}
+                        >
+                          {expense.status.replace("_", " ")} BY{" "}
+                          {expense.resolved_by_name || expense.created_by_name}
+                        </p>
+                        <p className="text-[10px] font-bold text-slate-500 mb-4 uppercase tracking-widest">
+                          On{" "}
+                          {new Date(
+                            expense.resolved_at || expense.updated_at,
+                          ).toLocaleString()}
+                        </p>
+                        <div className="text-xs text-slate-700 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-4 rounded-[16px] border border-slate-100 dark:border-slate-800 shadow-sm leading-relaxed">
+                          "{managerNotes || "No additional remarks provided."}"
+                        </div>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Decision Input Area (Only visible if PENDING_APPROVAL) */}
                   {expense.status === "PENDING_APPROVAL" && (
                     <div className="p-5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-4">
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">

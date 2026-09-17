@@ -3,7 +3,7 @@ import {
   Search,
   Loader2,
   ReceiptText,
-  FileSearch,
+  Eye,
   ScanText,
   Paperclip,
   CheckCircle,
@@ -187,11 +187,12 @@ const ExpenseApprovals = () => {
       {/* DATA TABLE */}
       <DataTable
         headers={[
-          "Document Ref",
-          "Expense Detail",
-          viewMode === "PENDING" ? "Expense Date" : "Processed At",
+          "Expense No.",
+          viewMode === "PENDING" ? "Expense Date" : "Date Processed",
+          "Particulars",
+          viewMode === "PENDING" ? "Branch & Staff" : "Branch & Decision",
           "Total Amount",
-          "Status",
+          viewMode === "PENDING" ? "Status" : "Decision",
           "Actions",
         ]}
         data={expenses}
@@ -212,31 +213,35 @@ const ExpenseApprovals = () => {
             className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col gap-1 text-left">
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
-                    {expense.expense_number}
-                  </span>
-                  {expense.scan_id ? (
-                    <span
-                      className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
-                      title="Generated via OCR Receipt Scanner"
-                    >
-                      <ScanText size={10} /> OCR
-                    </span>
-                  ) : expense.receipt_url ? (
-                    <Paperclip
-                      size={14}
-                      className="text-amber-500"
-                      title="Attachment Present"
-                    />
-                  ) : null}
-                </div>
-                <span className="text-[9px] font-bold text-slate-500 tracking-widest uppercase">
-                  {expense.branch_name}
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
+                  {expense.expense_number}
                 </span>
+                {expense.scan_id ? (
+                  <span
+                    className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
+                    title="Generated via OCR Receipt Scanner"
+                  >
+                    <ScanText size={10} /> OCR
+                  </span>
+                ) : expense.receipt_url ? (
+                  <Paperclip
+                    size={14}
+                    className="text-amber-500"
+                    title="Attachment Present"
+                  />
+                ) : null}
               </div>
             </td>
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                {viewMode === "PENDING"
+                  ? new Date(expense.expense_date).toLocaleDateString()
+                  : new Date(expense.processed_at).toLocaleString()}
+              </p>
+            </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
                 {expense.category}
@@ -245,21 +250,29 @@ const ExpenseApprovals = () => {
                 {expense.vendor_name || expense.description}
               </p>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                {viewMode === "PENDING"
-                  ? new Date(expense.expense_date).toLocaleDateString()
-                  : new Date(expense.processed_at).toLocaleString()}
-              </p>
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[150px]">
+                  {expense.branch_name}
+                </span>
+                <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+                  {viewMode === "PENDING"
+                    ? `BY: ${expense.created_by_name || "System"}`
+                    : `BY: ${expense.resolved_by_name || expense.created_by_name || "System"}`}
+                </span>
+              </div>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black text-slate-900 dark:text-white">
+              <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
                 ₱
                 {parseFloat(expense.total_amount).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                 })}
               </span>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <StatusBadge
                 label={expense.status.replace("_", " ")}
@@ -267,6 +280,7 @@ const ExpenseApprovals = () => {
                 icon={getBadgeIcon(expense.status)}
               />
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <button
                 onClick={() => {
@@ -274,16 +288,12 @@ const ExpenseApprovals = () => {
                   setIsDrawerOpen(true);
                 }}
                 title={
-                  viewMode === "PENDING" ? "Review & Decide" : "View Details"
+                  viewMode === "PENDING" ? "Review Request" : "View Details"
                 }
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer ${
-                  viewMode === "PENDING"
-                    ? "bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
-                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
-                }`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
               >
-                <FileSearch size={14} />
-                {viewMode === "PENDING" ? "Review" : "View"}
+                <Eye size={14} />
+                {viewMode === "PENDING" ? "Review" : "Details"}
               </button>
             </td>
           </tr>
