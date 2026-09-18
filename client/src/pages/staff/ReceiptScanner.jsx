@@ -8,16 +8,12 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
-  X,
-  ArrowRight,
-  Store,
-  Calendar,
-  Receipt as ReceiptIcon,
-  Calculator,
   Trash2,
+  ArrowRight,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { receiptService } from "../../services/staff/receipt.service";
+import PageHeader from "../../components/shared/PageHeader";
 
 const ReceiptScanner = () => {
   const { showToast } = useApp();
@@ -156,22 +152,11 @@ const ReceiptScanner = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full max-w-[1600px] mx-auto">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <ScanLine className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Receipt Scanner
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Intelligent Document Processing (OCR)
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Receipt Scanner"
+        subtitle="Intelligent Document Processing (OCR)"
+        icon={ScanLine}
+      />
 
       {/* DUAL PANE WORKSPACE */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 min-h-[600px]">
@@ -402,7 +387,7 @@ const ReceiptScanner = () => {
 
                   <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
                     <div className="flex items-center gap-2 mb-2 text-indigo-500">
-                      <ReceiptIcon size={14} />{" "}
+                      <ReceiptText size={14} />{" "}
                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
                         Receipt Ref
                       </span>
@@ -426,7 +411,7 @@ const ReceiptScanner = () => {
 
                   <div className="p-4 bg-slate-900 dark:bg-black border border-slate-800 rounded-xl shadow-lg relative overflow-hidden">
                     <div className="flex items-center gap-2 mb-2 text-amber-500">
-                      <Calculator size={14} />{" "}
+                      <ScanLine size={14} />{" "}
                       <span className="text-[9px] font-black uppercase tracking-widest">
                         Financial Total
                       </span>
@@ -438,7 +423,7 @@ const ReceiptScanner = () => {
                     </p>
                     {/* Faded accent pattern */}
                     <div className="absolute -right-4 -bottom-4 opacity-10">
-                      <Calculator size={64} className="text-amber-500" />
+                      <ScanLine size={64} className="text-amber-500" />
                     </div>
                   </div>
                 </div>
