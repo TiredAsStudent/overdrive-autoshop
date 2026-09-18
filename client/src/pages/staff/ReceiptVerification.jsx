@@ -54,7 +54,7 @@ const ReceiptVerification = () => {
   // Form State
   const [formData, setFormData] = useState({
     vendor_name: "",
-    receipt_number: "",
+    reference_number: "",
     expense_date: "",
     category: "",
     payment_method: "CASH",
@@ -130,7 +130,8 @@ const ReceiptVerification = () => {
         // Auto-fill form
         setFormData({
           vendor_name: parsed.vendor_name || "",
-          receipt_number: parsed.receipt_number || "",
+          reference_number:
+            parsed.receipt_number || parsed.reference_number || "",
           expense_date:
             parsed.receipt_date || new Date().toISOString().split("T")[0],
           category: "",
@@ -249,6 +250,8 @@ const ReceiptVerification = () => {
 
       const payload = {
         ...formData,
+        vendor_name: formData.vendor_name?.trim() || null,
+        reference_number: formData.reference_number?.trim() || null,
         subtotal: parseFloat(formData.subtotal),
         vat_amount: parseFloat(formData.vat_amount),
         total_amount: parseFloat(formData.total_amount),
@@ -471,7 +474,7 @@ const ReceiptVerification = () => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                    Receipt / Invoice No.
+                    Reference / Receipt No.
                   </label>
                   <div className="relative group">
                     <ReceiptIcon
@@ -480,8 +483,8 @@ const ReceiptVerification = () => {
                     />
                     <input
                       type="text"
-                      name="receipt_number"
-                      value={formData.receipt_number}
+                      name="reference_number"
+                      value={formData.reference_number}
                       onChange={handleInputChange}
                       className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-sm"
                     />
