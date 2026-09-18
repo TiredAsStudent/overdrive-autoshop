@@ -241,16 +241,20 @@ const ReceiptVerification = () => {
 
     setIsSubmitting(true);
     try {
+      const validLineItems = lineItems.filter(
+        (item) => item.description && item.description.trim() !== "",
+      );
+
       const payload = {
         ...formData,
         subtotal: parseFloat(formData.subtotal),
         vat_amount: parseFloat(formData.vat_amount),
         total_amount: parseFloat(formData.total_amount),
-        line_items: lineItems.map((item) => ({
+        line_items: validLineItems.map((item) => ({
           ...item,
-          quantity: parseFloat(item.quantity),
-          unit_price: parseFloat(item.unit_price),
-          total_price: parseFloat(item.total_price),
+          quantity: parseFloat(item.quantity) || 0,
+          unit_price: parseFloat(item.unit_price) || 0,
+          total_price: parseFloat(item.total_price) || 0,
         })),
       };
 
