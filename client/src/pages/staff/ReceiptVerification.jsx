@@ -21,6 +21,8 @@ import { useApp } from "../../context/AppContext";
 import { receiptService } from "../../services/staff/receipt.service";
 import { catalogService } from "../../services/staff/catalog.service";
 import ConfirmModal from "../../components/shared/ConfirmModal";
+import PageHeader from "../../components/shared/PageHeader";
+import api from "../../services/api";
 
 // Standard GL Expense Categories for the Staff
 const EXPENSE_CATEGORIES = [
@@ -154,6 +156,20 @@ const ReceiptVerification = () => {
     };
   }, [id, navigate, showToast]);
 
+  const getAttachmentUrl = (path) => {
+    if (!path) return null;
+    let baseUrl = api.defaults.baseURL
+      ? api.defaults.baseURL.replace("/api/v1", "")
+      : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+        "http://localhost:5000";
+
+    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    const normalizedPath = cleanPath.replace(/\\/g, "/");
+
+    return `${baseUrl}/${normalizedPath}`;
+  };
+
   // Handle Form Inputs
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -272,9 +288,10 @@ const ReceiptVerification = () => {
 
   // UI Helpers
   const getConfidenceBadge = (score) => {
-    if (score >= 85)
+    const numScore = parseFloat(score);
+    if (numScore >= 85)
       return "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
-    if (score >= 60)
+    if (numScore >= 60)
       return "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
     return "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20";
   };
@@ -292,25 +309,19 @@ const ReceiptVerification = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full max-w-[1600px] mx-auto">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <button
-            onClick={handleCancel}
-            className="p-2 sm:p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl sm:rounded-2xl transition-colors text-slate-600 dark:text-slate-300 cursor-pointer"
-          >
-            <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Receipt Verification
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Human-In-The-Loop Document Review
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Receipt Verification"
+        subtitle="Human-In-The-Loop Document Review"
+        icon={FileText}
+      >
+        <button
+          onClick={handleCancel}
+          className="p-2 sm:p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl sm:rounded-2xl transition-colors text-slate-600 dark:text-slate-300 cursor-pointer"
+          title="Go Back / Discard"
+        >
+          <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+        </button>
+      </PageHeader>
 
       {/* DUAL PANE WORKSPACE */}
       <form
@@ -372,13 +383,13 @@ const ReceiptVerification = () => {
               >
                 {scanData.mime_type === "application/pdf" ? (
                   <iframe
-                    src={`${import.meta.env.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:5000"}${scanData.file_path}`}
+                    src={getAttachmentUrl(scanData.file_path)}
                     className="w-full h-[80%] rounded-xl shadow-lg bg-white pointer-events-none"
                     title="Document PDF"
                   />
                 ) : (
                   <img
-                    src={`${import.meta.env.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:5000"}${scanData.file_path}`}
+                    src={getAttachmentUrl(scanData.file_path)}
                     alt="Receipt"
                     className="max-w-full max-h-full object-contain shadow-lg rounded-xl pointer-events-none"
                   />
@@ -436,7 +447,7 @@ const ReceiptVerification = () => {
                     name="vendor_name"
                     value={formData.vendor_name}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 ${confidenceScore < 80 && !formData.vendor_name ? "border-amber-400 focus:border-amber-500" : "border-slate-200 dark:border-slate-700 focus:border-blue-500"}`}
+                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 ${confidenceScore < 80 && !formData.vendor_name ? "border-amber-400 focus:border-amber-500 focus:ring-amber-500" : "border-slate-200 dark:border-slate-700 focus:border-amber-500 focus:ring-amber-500"}`}
                   />
                 </div>
                 <div>
@@ -453,7 +464,7 @@ const ReceiptVerification = () => {
                       name="receipt_number"
                       value={formData.receipt_number}
                       onChange={handleInputChange}
-                      className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
@@ -472,7 +483,7 @@ const ReceiptVerification = () => {
                       name="expense_date"
                       value={formData.expense_date}
                       onChange={handleInputChange}
-                      className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
@@ -494,7 +505,7 @@ const ReceiptVerification = () => {
                     name="category"
                     value={formData.category}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="">-- Select GL Category --</option>
                     {EXPENSE_CATEGORIES.map((cat) => (
@@ -513,7 +524,7 @@ const ReceiptVerification = () => {
                     name="payment_method"
                     value={formData.payment_method}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="CASH">Cash</option>
                     <option value="PETTY_CASH">Petty Cash</option>
@@ -580,7 +591,7 @@ const ReceiptVerification = () => {
                               e.target.value,
                             )
                           }
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                         />
                       </div>
                       <div className="w-[30%] sm:w-20">
@@ -599,7 +610,7 @@ const ReceiptVerification = () => {
                               e.target.value,
                             )
                           }
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-center focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-center focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                         />
                       </div>
                       <div className="w-[45%] sm:w-28">
@@ -618,7 +629,7 @@ const ReceiptVerification = () => {
                               e.target.value,
                             )
                           }
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-right focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-right focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                         />
                       </div>
                       <div className="w-[45%] sm:w-32">
@@ -637,7 +648,7 @@ const ReceiptVerification = () => {
                               e.target.value,
                             )
                           }
-                          className="w-full px-3 py-2 bg-slate-100 dark:bg-black border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-black text-amber-600 dark:text-amber-500 text-right focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-slate-100 dark:bg-black border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-black text-amber-600 dark:text-amber-500 text-right focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                         />
                       </div>
                       <button
@@ -681,7 +692,7 @@ const ReceiptVerification = () => {
                       name="subtotal"
                       value={formData.subtotal}
                       onChange={handleInputChange}
-                      className="w-full bg-slate-800/50 border border-slate-700 rounded-lg py-1.5 pr-3 pl-8 text-right font-mono text-white focus:outline-none focus:border-amber-500"
+                      className="w-full bg-slate-800/50 border border-slate-700 rounded-lg py-1.5 pr-3 pl-8 text-right font-mono text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
@@ -697,7 +708,7 @@ const ReceiptVerification = () => {
                       name="vat_amount"
                       value={formData.vat_amount}
                       onChange={handleInputChange}
-                      className="w-full bg-slate-800/50 border border-slate-700 rounded-lg py-1.5 pr-3 pl-8 text-right font-mono text-white focus:outline-none focus:border-amber-500"
+                      className="w-full bg-slate-800/50 border border-slate-700 rounded-lg py-1.5 pr-3 pl-8 text-right font-mono text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
@@ -728,7 +739,7 @@ const ReceiptVerification = () => {
             </div>
           </div>
 
-          {/* Footer Actions */}
+          {/* Footer Action Button */}
           <div className="p-5 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800 flex gap-3 mt-auto">
             <button
               type="button"
