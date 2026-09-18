@@ -524,7 +524,7 @@ class Expense {
         data.vendor_name,
         data.category,
         description,
-        data.receipt_number || null,
+        data.reference_number || data.receipt_number || null,
         data.expense_date,
         data.is_vatable,
         data.subtotal,

@@ -1,5 +1,6 @@
 const fs = require("fs").promises;
 const path = require("path");
+const { query } = require("../../config/db");
 const ExpenseModel = require("../../models/Expense");
 const ReceiptScanModel = require("../../models/ReceiptScan");
 const OCRService = require("../ocr.service");
@@ -140,6 +141,39 @@ class ReceiptService {
   }
 
   static async verifyAndPostExpense(scanId, data, activeUser, ipAddress) {
+    const vendorName = data.vendor_name ? data.vendor_name.trim() : null;
+    const refNumber = data.reference_number
+      ? data.reference_number.trim()
+      : data.receipt_number
+        ? data.receipt_number.trim()
+        : null;
+
+    if (vendorName && refNumber) {
+      const duplicateCheckQuery = `
+        SELECT expense_number 
+        FROM expenses
+        WHERE branch_id = $1 
+          AND LOWER(TRIM(vendor_name)) = LOWER($2)
+          AND LOWER(TRIM(reference_number)) = LOWER($3)
+          AND status NOT IN ('DISCARDED', 'REJECTED')
+        LIMIT 1
+      `;
+
+      const duplicateResult = await query(duplicateCheckQuery, [
+        activeUser.branchId,
+        vendorName.toLowerCase(),
+        refNumber.toLowerCase(),
+      ]);
+
+      if (duplicateResult.rows.length > 0) {
+        const existingExpenseNo = duplicateResult.rows[0].expense_number;
+
+        throw new Error(
+          `The Receipt Number '${refNumber}' has already been recorded for this vendor under ${existingExpenseNo}.`,
+        );
+      }
+    }
+
     try {
       const { newExpense, scan } = await ExpenseModel.createFromVerification(
         scanId,
@@ -170,7 +204,7 @@ class ReceiptService {
         error.constraint === "idx_unique_expense_ref"
       ) {
         throw new Error(
-          `The Receipt Number '${data.receipt_number}' has already been recorded for this vendor.`,
+          `The Receipt Number '${data.reference_number || data.receipt_number}' has already been recorded for this vendor.`,
         );
       }
       throw error;
