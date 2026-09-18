@@ -257,10 +257,10 @@ const ReceiptScanner = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   className="h-full w-full flex items-center justify-center bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative shadow-inner"
                 >
-                  {scanData?.file_path &&
-                  scanData.mime_type === "application/pdf" ? (
+                  {scanResult?.file_path &&
+                  scanResult.mime_type === "application/pdf" ? (
                     <iframe
-                      src={getAttachmentUrl(scanData.file_path)}
+                      src={getAttachmentUrl(scanResult.file_path)}
                       className="w-full h-full"
                       title="PDF Preview"
                     />
@@ -270,9 +270,9 @@ const ReceiptScanner = () => {
                       className="w-full h-full"
                       title="PDF Preview"
                     />
-                  ) : scanData?.file_path ? (
+                  ) : scanResult?.file_path ? (
                     <img
-                      src={getAttachmentUrl(scanData.file_path)}
+                      src={getAttachmentUrl(scanResult.file_path)}
                       alt="Receipt Preview"
                       className="max-w-full max-h-full object-contain p-2"
                     />
