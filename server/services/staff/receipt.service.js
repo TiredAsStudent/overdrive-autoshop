@@ -19,7 +19,13 @@ class ReceiptService {
       status: "PROCESSING",
     };
 
-    const initialScan = await ReceiptScanModel.create(scanData);
+    let initialScan;
+    try {
+      initialScan = await ReceiptScanModel.create(scanData);
+    } catch (dbError) {
+      await fs.unlink(file.path).catch(console.error);
+      throw new Error("Failed to initialize scan session in database.");
+    }
 
     try {
       const ocrResult = await OCRService.processDocument(

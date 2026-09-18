@@ -10,10 +10,15 @@ import {
   AlertCircle,
   Trash2,
   ArrowRight,
+  Store,
+  ReceiptText,
+  Calendar,
+  Calculator,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { receiptService } from "../../services/staff/receipt.service";
 import PageHeader from "../../components/shared/PageHeader";
+import api from "../../services/api";
 
 const ReceiptScanner = () => {
   const { showToast } = useApp();
@@ -32,9 +37,25 @@ const ReceiptScanner = () => {
   // Cleanup ObjectURLs to prevent memory leaks
   useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (previewUrl && !previewUrl.startsWith("http")) {
+        URL.revokeObjectURL(previewUrl);
+      }
     };
   }, [previewUrl]);
+
+  const getAttachmentUrl = (path) => {
+    if (!path) return null;
+    let baseUrl = api.defaults.baseURL
+      ? api.defaults.baseURL.replace("/api/v1", "")
+      : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+        "http://localhost:5000";
+
+    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    const normalizedPath = cleanPath.replace(/\\/g, "/");
+
+    return `${baseUrl}/${normalizedPath}`;
+  };
 
   // --- Drag & Drop Handlers ---
   const handleDragOver = (e) => {
@@ -152,6 +173,7 @@ const ReceiptScanner = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full max-w-[1600px] mx-auto">
+      {/* UNIVERSAL PAGE HEADER */}
       <PageHeader
         title="Receipt Scanner"
         subtitle="Intelligent Document Processing (OCR)"
@@ -235,11 +257,24 @@ const ReceiptScanner = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   className="h-full w-full flex items-center justify-center bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative shadow-inner"
                 >
-                  {file.type === "application/pdf" ? (
+                  {scanData?.file_path &&
+                  scanData.mime_type === "application/pdf" ? (
+                    <iframe
+                      src={getAttachmentUrl(scanData.file_path)}
+                      className="w-full h-full"
+                      title="PDF Preview"
+                    />
+                  ) : file.type === "application/pdf" ? (
                     <iframe
                       src={previewUrl}
                       className="w-full h-full"
                       title="PDF Preview"
+                    />
+                  ) : scanData?.file_path ? (
+                    <img
+                      src={getAttachmentUrl(scanData.file_path)}
+                      alt="Receipt Preview"
+                      className="max-w-full max-h-full object-contain p-2"
                     />
                   ) : (
                     <img
