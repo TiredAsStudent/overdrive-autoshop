@@ -68,8 +68,9 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId }) => {
 
     if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
     const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    const normalizedPath = cleanPath.replace(/\\/g, "/");
 
-    return `${baseUrl}/${cleanPath}`;
+    return `${baseUrl}/${normalizedPath}`;
   };
 
   const isPdf = (path) => path?.toLowerCase().endsWith(".pdf");
@@ -95,7 +96,7 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId }) => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer"
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer z-40"
           />
 
           {/* Drawer Panel */}
@@ -109,7 +110,7 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId }) => {
               stiffness: 300,
               mass: 0.8,
             }}
-            className="relative w-full sm:w-[500px] lg:w-[600px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
+            className="relative w-full sm:w-[500px] lg:w-[600px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 z-50"
           >
             {/* Header */}
             <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
@@ -119,7 +120,7 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId }) => {
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
-                    {expense?.expense_number || "Loading..."}
+                    {loading ? "Loading..." : expense?.expense_number}
                   </h2>
                   {expense && (
                     <div className="flex flex-col items-start gap-1.5 mt-1.5">
@@ -142,6 +143,7 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId }) => {
               <button
                 onClick={onClose}
                 className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
+                aria-label="Close panel"
               >
                 <X size={20} />
               </button>
@@ -274,11 +276,11 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId }) => {
                     </div>
                   </section>
 
-                  {/* Receipt Evidence Viewer */}
+                  {/* DOCUMENTARY PROOF VIEWER */}
                   {expense.receipt_url && (
-                    <section className="bg-white dark:bg-slate-800 p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                    <section className="bg-white dark:bg-slate-800 p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
                       <div className="flex justify-between items-center mb-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
                           {expense.scan_id ? (
                             <>
                               <ScanText size={14} className="text-blue-500" />{" "}
@@ -304,10 +306,20 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId }) => {
                       </div>
 
                       {isPdf(expense.receipt_url) ? (
-                        <div className="w-full h-40 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-                          <FileText size={48} className="text-red-500 mb-3" />
+                        <div className="w-full h-32 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <FileText size={40} className="text-red-500 mb-2" />
                           <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                             PDF Document Attached
+                          </span>
+                        </div>
+                      ) : imageError ? (
+                        <div className="w-full h-48 sm:h-56 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700">
+                          <ImageOff
+                            size={32}
+                            className="text-slate-400 mb-3 opacity-50"
+                          />
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            Image File Unavailable
                           </span>
                         </div>
                       ) : (
@@ -317,28 +329,17 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId }) => {
                           rel="noopener noreferrer"
                           className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
                         >
-                          {imageError ? (
-                            <div className="w-full h-48 sm:h-64 flex flex-col items-center justify-center text-slate-400 space-y-2">
-                              <ImageOff size={32} className="opacity-50" />
-                              <p className="text-[10px] font-bold uppercase tracking-widest">
-                                Image file unavailable
-                              </p>
-                            </div>
-                          ) : (
-                            <>
-                              <img
-                                src={getAttachmentUrl(expense.receipt_url)}
-                                alt="Expense Receipt"
-                                onError={() => setImageError(true)}
-                                className="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-500"
-                              />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
-                                  Click to enlarge
-                                </span>
-                              </div>
-                            </>
-                          )}
+                          <img
+                            src={getAttachmentUrl(expense.receipt_url)}
+                            alt="Expense Receipt"
+                            onError={() => setImageError(true)}
+                            className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                            <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm flex items-center gap-1.5">
+                              Click to Enlarge
+                            </span>
+                          </div>
                         </a>
                       )}
                     </section>
