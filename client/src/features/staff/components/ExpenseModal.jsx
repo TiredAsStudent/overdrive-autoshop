@@ -17,6 +17,7 @@ import {
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
 import { expenseService } from "../../../services/staff/expense.service";
+import api from "../../../services/api";
 
 const formatToLocalDateInput = (date = new Date()) => {
   if (!date) return "";
@@ -173,10 +174,16 @@ const ExpenseModal = ({
 
   const getAttachmentUrl = (path) => {
     if (!path) return null;
-    const baseUrl =
-      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
-      "http://localhost:5000";
-    return `${baseUrl}/${path}`;
+    let baseUrl = api.defaults.baseURL
+      ? api.defaults.baseURL.replace("/api/v1", "")
+      : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+        "http://localhost:5000";
+
+    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    const normalizedPath = cleanPath.replace(/\\/g, "/");
+
+    return `${baseUrl}/${normalizedPath}`;
   };
 
   useEffect(() => {

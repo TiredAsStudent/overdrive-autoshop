@@ -21,6 +21,7 @@ import {
 import { expenseService } from "../../../services/staff/expense.service";
 import { catalogService } from "../../../services/staff/catalog.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import api from "../../../services/api";
 
 const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
   const [expense, setExpense] = useState(null);
@@ -65,10 +66,16 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
 
   const getAttachmentUrl = (path) => {
     if (!path) return null;
-    const baseUrl =
-      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
-      "http://localhost:5000";
-    return `${baseUrl}/${path}`;
+    let baseUrl = api.defaults.baseURL
+      ? api.defaults.baseURL.replace("/api/v1", "")
+      : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+        "http://localhost:5000";
+
+    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    const normalizedPath = cleanPath.replace(/\\/g, "/");
+
+    return `${baseUrl}/${normalizedPath}`;
   };
 
   const isPdf = (path) => {
@@ -344,7 +351,7 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
               ) : null}
             </div>
 
-            {/* Print Footer */}
+            {/* Print Footer Stub */}
             <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
               <button
                 disabled={!expense || loading}
