@@ -250,8 +250,10 @@ const ReceiptVerification = () => {
 
       const payload = {
         ...formData,
-        vendor_name: formData.vendor_name?.trim() || null,
-        reference_number: formData.reference_number?.trim() || null,
+
+        vendor_name: formData.vendor_name?.trim().toUpperCase() || null,
+        reference_number:
+          formData.reference_number?.trim().toUpperCase() || null,
         subtotal: parseFloat(formData.subtotal),
         vat_amount: parseFloat(formData.vat_amount),
         total_amount: parseFloat(formData.total_amount),
