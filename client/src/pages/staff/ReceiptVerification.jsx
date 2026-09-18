@@ -26,13 +26,14 @@ import api from "../../services/api";
 
 // Standard GL Expense Categories for the Staff
 const EXPENSE_CATEGORIES = [
-  "Auto Parts Inventory",
-  "Shop Supplies & Tools",
-  "Utilities (Water, Elec, Internet)",
-  "Marketing & Advertising",
+  "Utility Expense",
+  "Parts & Supplies Expense",
+  "Equipment Maintenance",
+  "Uncategorized Expense",
+  "Rent Expense",
+  "Transportation Expense",
+  "Meals & Entertainment",
   "Office Supplies",
-  "Repairs & Maintenance",
-  "Miscellaneous",
 ];
 
 const ReceiptVerification = () => {
@@ -309,6 +310,7 @@ const ReceiptVerification = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full max-w-[1600px] mx-auto">
+      {/* UNIVERSAL PAGE HEADER */}
       <PageHeader
         title="Receipt Verification"
         subtitle="Human-In-The-Loop Document Review"
@@ -424,7 +426,7 @@ const ReceiptVerification = () => {
                   {confidenceScore}%
                 </p>
               </div>
-              {confidenceScore < 80 && (
+              {confidenceScore < 60 && (
                 <AlertCircle size={18} className="opacity-80" />
               )}
             </div>
@@ -529,7 +531,9 @@ const ReceiptVerification = () => {
                     <option value="CASH">Cash</option>
                     <option value="PETTY_CASH">Petty Cash</option>
                     <option value="GCASH">GCash</option>
+                    <option value="MAYA">Maya</option>
                     <option value="BANK_TRANSFER">Bank Transfer</option>
+                    <option value="CHECK">Check</option>
                   </select>
                 </div>
                 <div className="flex items-center pt-6">
