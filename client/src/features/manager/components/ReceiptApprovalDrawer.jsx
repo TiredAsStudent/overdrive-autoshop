@@ -86,7 +86,7 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
         await receiptApprovalService.rejectReceipt(receipt.id, remarks);
         showToast("OCR Receipt Rejected.", "success");
       }
-      onSuccess();
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       setValidationError(err.message);
@@ -304,13 +304,12 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                             className="w-full h-full rounded-xl shadow-md bg-white"
                             title="PDF Receipt Scan"
                           />
-                          {/* Fallback button to open PDF in a new tab */}
                           <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                             <a
                               href={fileUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl hover:bg-amber-500 dark:hover:bg-amber-500 transition-colors"
+                              className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl hover:bg-amber-500 transition-colors"
                             >
                               <FileText size={14} />
                               Open PDF in New Tab
@@ -349,273 +348,318 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                   </div>
 
                   {/* RIGHT PANE: Extracted Data & Approval Workspace */}
-                  <div className="w-full lg:w-1/2 flex flex-col h-full overflow-y-auto custom-scrollbar p-6 space-y-6 bg-white dark:bg-slate-900">
-                    {validationError && (
-                      <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-xs font-bold">
-                        <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                        <span>{validationError}</span>
-                      </div>
-                    )}
+                  <div className="w-full lg:w-1/2 flex flex-col h-full bg-slate-50 dark:bg-slate-900">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8">
+                      {validationError && (
+                        <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-xs font-bold">
+                          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                          <span>{validationError}</span>
+                        </div>
+                      )}
 
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                      <div>
-                        <h2 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
-                          <CheckCircle2 size={16} className="text-blue-500" />{" "}
-                          Data Validation
-                        </h2>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                          Review AI outputs and accounting categories.
-                        </p>
-                      </div>
-
-                      {/* Premium Confidence Banner */}
-                      <div
-                        className={`px-5 py-2.5 rounded-[16px] border flex items-center gap-4 shadow-sm transition-all ${getConfidenceBannerClasses(
-                          receipt.confidence_score,
-                        )}`}
-                      >
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
-                          <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-0.5">
-                            AI Confidence
-                          </p>
-                          <p className="text-base font-black tracking-tight leading-none">
-                            {receipt.confidence_score}%
+                          <h2 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
+                            <CheckCircle2 size={16} className="text-blue-500" />{" "}
+                            Data Validation
+                          </h2>
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                            Review AI outputs and accounting categories.
                           </p>
                         </div>
-                        {parseFloat(receipt.confidence_score) < 60 && (
-                          <div className="flex items-center gap-1.5 text-[9px] font-black uppercase bg-rose-500/10 px-2 py-1.5 rounded-lg border border-rose-500/20">
-                            <AlertCircle size={14} /> Low Accuracy
+
+                        {/* Premium Confidence Banner */}
+                        <div
+                          className={`px-5 py-2.5 rounded-[16px] border flex items-center gap-4 shadow-sm transition-all ${getConfidenceBannerClasses(
+                            receipt.confidence_score,
+                          )}`}
+                        >
+                          <div>
+                            <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-0.5">
+                              AI Confidence
+                            </p>
+                            <p className="text-base font-black tracking-tight leading-none">
+                              {receipt.confidence_score}%
+                            </p>
                           </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Vendor & General Info */}
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
-                      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 pb-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                          <Store size={14} className="text-amber-500" /> Vendor
-                          Information
-                        </span>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase">
-                          Ref: {receipt.reference_number || "N/A"}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
-                          {receipt.vendor_name ||
-                            receipt.vendor_name_db ||
-                            "Unregistered Vendor"}
-                        </p>
-                        <div className="flex items-center justify-between mt-2 text-xs font-bold text-slate-600 dark:text-slate-400">
-                          <span className="flex items-center gap-1">
-                            <Calendar size={12} className="text-slate-400" />{" "}
-                            {new Date(
-                              receipt.expense_date,
-                            ).toLocaleDateString()}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Building2 size={12} className="text-slate-400" />{" "}
-                            {receipt.branch_name}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <User size={12} className="text-slate-400" /> By{" "}
-                            {receipt.created_by_name || "Staff"}
-                          </span>
+                          {parseFloat(receipt.confidence_score) < 60 && (
+                            <div className="flex items-center gap-1.5 text-[9px] font-black uppercase bg-rose-500/10 px-2 py-1.5 rounded-lg border border-rose-500/20">
+                              <AlertCircle size={14} /> Low Accuracy
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
 
-                    {/* Line Items Breakdown */}
-                    <div className="space-y-3">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5 px-1">
-                        <Calculator size={12} className="text-amber-500" />{" "}
-                        Verified Itemized Line Items
-                      </h3>
-                      <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
-                        {Array.isArray(receipt.line_items) &&
-                        receipt.line_items.length > 0 ? (
-                          receipt.line_items.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="p-3 flex justify-between items-center text-xs"
-                            >
-                              <div className="min-w-0 flex-1 pr-3">
-                                <p className="font-bold text-slate-900 dark:text-white uppercase truncate">
-                                  {item.description}
-                                </p>
-                                <p className="text-[9px] font-bold text-slate-500 mt-0.5">
-                                  {item.quantity}x @ ₱
+                      {/* Vendor & General Info Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                        <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                          <Store size={16} className="text-slate-400 mb-3" />
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                              Category & Vendor
+                            </p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate uppercase">
+                              {receipt.category}
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
+                              {receipt.vendor_name ||
+                                receipt.vendor_name_db ||
+                                "Unregistered Vendor"}
+                            </p>
+                          </div>
+                        </section>
+                        <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 rounded-[20px] sm:rounded-[24px] border border-amber-100 dark:border-amber-500/20 shadow-sm flex flex-col justify-between">
+                          <Calendar size={16} className="text-amber-400 mb-3" />
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-1">
+                              Expense Date
+                            </p>
+                            <p className="text-sm font-bold text-amber-900 dark:text-amber-400 truncate">
+                              {new Date(
+                                receipt.expense_date,
+                              ).toLocaleDateString()}
+                            </p>
+                            <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70 flex items-center gap-1 font-medium truncate mt-0.5">
+                              <Building2 size={10} /> {receipt.branch_name}
+                            </p>
+                          </div>
+                        </section>
+                      </div>
+
+                      {/* Operational Details */}
+                      <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Transaction Details
+                          </h3>
+                        </div>
+                        <div className="p-5 sm:p-6 space-y-4">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-500 font-medium">
+                              Payment Method
+                            </span>
+                            <span className="font-black text-slate-900 dark:text-white uppercase">
+                              {receipt.payment_method.replace("_", " ")}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs border-t border-slate-100 dark:border-slate-700/50 pt-3">
+                            <span className="text-slate-500 font-medium">
+                              Reference No.
+                            </span>
+                            <span className="font-black text-slate-900 dark:text-white">
+                              {receipt.reference_number || "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Line Items Breakdown */}
+                      <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                            <Calculator size={14} /> Verified Line Items
+                          </h3>
+                        </div>
+                        <div className="p-5 sm:p-6 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                          {Array.isArray(receipt.line_items) &&
+                          receipt.line_items.length > 0 ? (
+                            receipt.line_items.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between items-center text-xs p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800"
+                              >
+                                <div className="min-w-0 flex-1 pr-3">
+                                  <p className="font-bold text-slate-900 dark:text-white uppercase truncate">
+                                    {item.description}
+                                  </p>
+                                  <p className="text-[9px] font-bold text-slate-500 mt-0.5">
+                                    {item.quantity}x @ ₱
+                                    {parseFloat(
+                                      item.unit_price || 0,
+                                    ).toLocaleString(undefined, {
+                                      minimumFractionDigits: 2,
+                                    })}
+                                  </p>
+                                </div>
+                                <span className="font-black font-mono text-slate-900 dark:text-white shrink-0">
+                                  ₱
                                   {parseFloat(
-                                    item.unit_price || 0,
+                                    item.total_price || 0,
                                   ).toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                   })}
-                                </p>
+                                </span>
                               </div>
-                              <span className="font-black font-mono text-slate-900 dark:text-white shrink-0">
-                                ₱
-                                {parseFloat(
-                                  item.total_price || 0,
-                                ).toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                })}
-                              </span>
+                            ))
+                          ) : (
+                            <div className="text-center text-xs text-slate-400 italic">
+                              No individual line items parsed.
                             </div>
-                          ))
-                        ) : (
-                          <div className="p-4 text-center text-xs text-slate-400 italic">
-                            No individual line items parsed.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Financial Posting Summary */}
-                    <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 text-white shadow-xl relative overflow-hidden ring-1 ring-amber-500/30">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-amber-500 border-b border-slate-800 pb-2 mb-3">
-                        Financial Statement Impact
-                      </p>
-                      <div className="flex justify-between text-xs font-medium text-slate-400">
-                        <span>Net Subtotal</span>
-                        <span className="font-mono">
-                          ₱
-                          {parseFloat(receipt.subtotal || 0).toLocaleString(
-                            undefined,
-                            { minimumFractionDigits: 2 },
                           )}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs font-medium text-slate-400 mt-2">
-                        <span>
-                          Input VAT{" "}
-                          {receipt.is_vatable ? "(Inclusive)" : "(Exempt)"}
-                        </span>
-                        <span className="font-mono">
-                          ₱
-                          {parseFloat(receipt.vat_amount || 0).toLocaleString(
-                            undefined,
-                            { minimumFractionDigits: 2 },
-                          )}
-                        </span>
-                      </div>
-                      <div className="pt-3 border-t border-slate-800 flex justify-between items-center mt-3">
-                        <span className="text-xs font-black uppercase tracking-widest text-white">
-                          Grand Total
-                        </span>
-                        <span className="text-xl font-black font-mono text-amber-500">
-                          ₱
-                          {parseFloat(receipt.total_amount || 0).toLocaleString(
-                            undefined,
-                            { minimumFractionDigits: 2 },
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Staff Notes */}
-                    {staffNotes && (
-                      <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-                          <ClipboardList size={14} className="text-amber-500" />{" "}
-                          Staff Justification
-                        </p>
-                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">
-                          "{staffNotes}"
-                        </p>
-                      </section>
-                    )}
-
-                    {/* Remarks Input Area (Only if PENDING_APPROVAL) */}
-                    {receipt.status === "PENDING_APPROVAL" ? (
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-3">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                          <MessageSquare size={14} /> Manager Remarks (Required
-                          for Rejection)
-                        </label>
-                        <textarea
-                          value={remarks}
-                          onChange={(e) => setRemarks(e.target.value)}
-                          placeholder="Provide approval justification or reason for rejection..."
-                          rows="3"
-                          disabled={isSubmitting}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-50"
-                        />
-                      </div>
-                    ) : (
-                      <section
-                        className={`p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm ${
-                          receipt.status === "APPROVED"
-                            ? "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20"
-                            : "bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/20"
-                        }`}
-                      >
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
-                          <CheckCircle2
-                            size={14}
-                            className={
-                              receipt.status === "APPROVED"
-                                ? "text-emerald-500"
-                                : "text-rose-500"
-                            }
-                          />{" "}
-                          Manager Resolution
-                        </p>
-                        <div>
-                          <p
-                            className={`text-xs font-black uppercase tracking-widest mb-1.5 ${
-                              receipt.status === "APPROVED"
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-rose-600 dark:text-rose-400"
-                            }`}
-                          >
-                            {receipt.status.replace("_", " ")} BY{" "}
-                            {receipt.resolved_by_name ||
-                              receipt.created_by_name}
-                          </p>
-                          <p className="text-[10px] font-bold text-slate-500 mb-4 uppercase tracking-widest">
-                            On{" "}
-                            {new Date(
-                              receipt.resolved_at || receipt.updated_at,
-                            ).toLocaleString()}
-                          </p>
-                          <div className="text-xs text-slate-700 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-4 rounded-[16px] border border-slate-100 dark:border-slate-800 shadow-sm leading-relaxed">
-                            "{managerNotes || "No additional remarks provided."}
-                            "
-                          </div>
                         </div>
                       </section>
-                    )}
 
-                    {/* Action Buttons */}
+                      {/* Financial Posting Summary */}
+                      <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
+                        <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3 flex items-center gap-1.5">
+                          <Calculator size={14} /> Financial Statement Impact
+                        </p>
+                        <div className="space-y-3 mb-5 text-sm font-medium text-slate-400">
+                          <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                            <span>Net Subtotal</span>
+                            <span className="font-bold text-slate-200 font-mono">
+                              ₱
+                              {parseFloat(receipt.subtotal || 0).toLocaleString(
+                                undefined,
+                                {
+                                  minimumFractionDigits: 2,
+                                },
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                            <span>
+                              Input VAT{" "}
+                              {receipt.is_vatable ? "(Inclusive)" : "(Exempt)"}
+                            </span>
+                            <span className="font-bold text-slate-200 font-mono">
+                              ₱
+                              {parseFloat(
+                                receipt.vat_amount || 0,
+                              ).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/50">
+                          <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
+                            Grand Total
+                          </span>
+                          <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight font-mono">
+                            ₱
+                            {parseFloat(
+                              receipt.total_amount || 0,
+                            ).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+                      </section>
+
+                      {/* Staff Notes */}
+                      {staffNotes && (
+                        <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                            <ClipboardList
+                              size={14}
+                              className="text-amber-500"
+                            />{" "}
+                            Staff Justification
+                          </p>
+                          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">
+                            "{staffNotes}"
+                          </p>
+                        </section>
+                      )}
+
+                      {/* Manager Resolution / Remarks Area */}
+                      {receipt.status === "PENDING_APPROVAL" ? (
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 flex flex-col">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-3">
+                            <MessageSquare size={14} /> Manager Remarks
+                            <span className="text-red-500 ml-1 lowercase">
+                              (Required for Rejection)
+                            </span>
+                          </label>
+                          <textarea
+                            value={remarks}
+                            onChange={(e) => setRemarks(e.target.value)}
+                            placeholder="Provide feedback or justification..."
+                            rows="4"
+                            disabled={isSubmitting}
+                            className="w-full h-full min-h-[100px] px-5 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-50 shadow-sm transition-all"
+                          />
+                        </div>
+                      ) : (
+                        <section
+                          className={`p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm ${
+                            receipt.status === "APPROVED"
+                              ? "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20"
+                              : "bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/20"
+                          }`}
+                        >
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                            <CheckCircle2
+                              size={14}
+                              className={
+                                receipt.status === "APPROVED"
+                                  ? "text-emerald-500"
+                                  : "text-rose-500"
+                              }
+                            />{" "}
+                            Manager Resolution
+                          </p>
+                          <div>
+                            <p
+                              className={`text-xs font-black uppercase tracking-widest mb-1.5 ${
+                                receipt.status === "APPROVED"
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-rose-600 dark:text-rose-400"
+                              }`}
+                            >
+                              {receipt.status.replace("_", " ")} BY{" "}
+                              {receipt.resolved_by_name ||
+                                receipt.created_by_name}
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-500 mb-4 uppercase tracking-widest">
+                              On{" "}
+                              {new Date(
+                                receipt.resolved_at || receipt.updated_at,
+                              ).toLocaleString()}
+                            </p>
+                            <div className="text-xs text-slate-700 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-4 rounded-[16px] border border-slate-100 dark:border-slate-800 shadow-sm leading-relaxed">
+                              "
+                              {managerNotes ||
+                                "No additional remarks provided."}
+                              "
+                            </div>
+                          </div>
+                        </section>
+                      )}
+                    </div>
+
+                    {/* FIXED ACTION FOOTER (Only for Pending) */}
                     {receipt.status === "PENDING_APPROVAL" && (
-                      <div className="pt-2 flex flex-col sm:flex-row gap-3 mt-auto">
-                        <button
-                          type="button"
-                          onClick={() => handleDecision("REJECTED")}
-                          disabled={isSubmitting}
-                          className="flex-1 py-3.5 bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-50 cursor-pointer"
-                        >
-                          {isSubmitting ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <XCircle size={16} />
-                          )}
-                          Reject Request
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDecision("APPROVED")}
-                          disabled={isSubmitting}
-                          className="flex-[2] py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
-                        >
-                          {isSubmitting ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <CheckCircle2 size={16} />
-                          )}
-                          Approve Receipt & Post
-                        </button>
+                      <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800/30 shrink-0">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleDecision("REJECTED")}
+                            disabled={isSubmitting}
+                            className="flex-1 py-3.5 sm:py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-500 hover:text-red-500 text-slate-600 dark:text-slate-300 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+                          >
+                            {isSubmitting ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <XCircle size={16} />
+                            )}
+                            Reject Request
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDecision("APPROVED")}
+                            disabled={isSubmitting}
+                            className="flex-[1.5] py-3.5 sm:py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                          >
+                            {isSubmitting ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <CheckCircle2 size={16} />
+                            )}
+                            Approve Receipt & Post
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
