@@ -155,7 +155,7 @@ class ReceiptService {
         WHERE branch_id = $1 
           AND LOWER(TRIM(vendor_name)) = LOWER($2)
           AND LOWER(TRIM(reference_number)) = LOWER($3)
-          AND status NOT IN ('DISCARDED', 'REJECTED')
+          AND status != 'REJECTED'
         LIMIT 1
       `;
 
@@ -167,7 +167,6 @@ class ReceiptService {
 
       if (duplicateResult.rows.length > 0) {
         const existingExpenseNo = duplicateResult.rows[0].expense_number;
-
         throw new Error(
           `The Receipt Number '${refNumber}' has already been recorded for this vendor under ${existingExpenseNo}.`,
         );
