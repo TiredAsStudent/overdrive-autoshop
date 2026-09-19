@@ -340,14 +340,14 @@ class Expense {
   }
 
   static async countReceiptApprovals(search, status, branchId) {
-    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e WHERE e.scan_id IS NOT NULL`;
+    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id WHERE e.scan_id IS NOT NULL`;
     const conditions = [];
     const values = [];
     let paramIdx = 1;
 
     if (search) {
       conditions.push(
-        `(e.expense_number ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`,
+        `(e.expense_number ILIKE $${paramIdx} OR COALESCE(v.business_name, e.vendor_name) ILIKE $${paramIdx})`,
       );
       values.push(`%${search}%`);
       paramIdx++;
@@ -377,17 +377,21 @@ class Expense {
   ) {
     let sql = `
       SELECT e.id, e.expense_number, e.expense_date, e.category, 
-             e.total_amount, e.status, e.vendor_name, b.branch_name, rs.confidence_score, rs.created_at as scan_date
+             e.total_amount, e.status, COALESCE(v.business_name, e.vendor_name) as vendor_name, 
+             b.branch_name, rs.confidence_score, rs.created_at as scan_date,
+             u.first_name as created_by_name
       FROM expenses e
+      LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       JOIN receipt_scans rs ON e.scan_id = rs.id
+      LEFT JOIN users u ON e.created_by = u.id
       WHERE e.scan_id IS NOT NULL
     `;
     const values = [];
     let paramIdx = 1;
 
     if (search) {
-      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR COALESCE(v.business_name, e.vendor_name) ILIKE $${paramIdx})`;
       values.push(`%${search}%`);
       paramIdx++;
     }
@@ -411,11 +415,14 @@ class Expense {
 
   static async findReceiptApprovalById(id) {
     const sql = `
-      SELECT e.*, b.branch_name, u.first_name as created_by_name,
+      SELECT e.*, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
+             u.first_name as created_by_name, r.first_name as resolved_by_name,
              rs.file_path, rs.confidence_score, rs.original_filename, rs.extracted_data
       FROM expenses e
+      LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       LEFT JOIN users u ON e.created_by = u.id
+      LEFT JOIN users r ON e.resolved_by = r.id
       JOIN receipt_scans rs ON e.scan_id = rs.id
       WHERE e.id = $1 AND e.scan_id IS NOT NULL
     `;
@@ -424,12 +431,12 @@ class Expense {
   }
 
   static async countReceiptApprovalHistory(search, branchId) {
-    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e WHERE e.scan_id IS NOT NULL AND e.status IN ('APPROVED', 'REJECTED')`;
+    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id WHERE e.scan_id IS NOT NULL AND e.status IN ('APPROVED', 'REJECTED')`;
     const values = [];
     let paramIdx = 1;
 
     if (search) {
-      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR COALESCE(v.business_name, e.vendor_name) ILIKE $${paramIdx})`;
       values.push(`%${search}%`);
       paramIdx++;
     }
@@ -450,19 +457,23 @@ class Expense {
     branchId,
   ) {
     let sql = `
-      SELECT e.id, e.expense_number, e.expense_date, e.category, e.total_amount, e.status, e.vendor_name, e.resolved_at as processed_at,
-             b.branch_name, rs.confidence_score, u.first_name as resolved_by_name
+      SELECT e.id, e.expense_number, e.expense_date, e.category, e.total_amount, e.status, 
+             COALESCE(v.business_name, e.vendor_name) as vendor_name, e.resolved_at as processed_at,
+             b.branch_name, rs.confidence_score, 
+             c.first_name as created_by_name, r.first_name as resolved_by_name
       FROM expenses e
+      LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       JOIN receipt_scans rs ON e.scan_id = rs.id
-      LEFT JOIN users u ON e.resolved_by = u.id
+      LEFT JOIN users c ON e.created_by = c.id
+      LEFT JOIN users r ON e.resolved_by = r.id
       WHERE e.scan_id IS NOT NULL AND e.status IN ('APPROVED', 'REJECTED')
     `;
     const values = [];
     let paramIdx = 1;
 
     if (search) {
-      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR COALESCE(v.business_name, e.vendor_name) ILIKE $${paramIdx})`;
       values.push(`%${search}%`);
       paramIdx++;
     }
