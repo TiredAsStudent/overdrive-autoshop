@@ -20,6 +20,7 @@ import {
   FileText,
 } from "lucide-react";
 import { receiptApprovalService } from "../../../services/manager/receiptApproval.service";
+import StatusBadge from "../../../components/ui/StatusBadge";
 import { useApp } from "../../../context/AppContext";
 import api from "../../../services/api";
 
@@ -92,26 +93,27 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "PENDING_APPROVAL":
-        return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
-      case "APPROVED":
-        return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
-      case "REJECTED":
-        return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
-      default:
-        return "text-slate-600 bg-slate-50 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20";
-    }
+  const getBadgeVariant = (status) => {
+    if (status === "APPROVED") return "success";
+    if (status === "REJECTED") return "danger";
+    if (status === "PENDING_APPROVAL") return "warning";
+    return "default";
   };
 
-  const getConfidenceBadge = (score) => {
+  const getConfidenceVariant = (score) => {
+    const num = parseFloat(score || 0);
+    if (num >= 85) return "success";
+    if (num >= 60) return "warning";
+    return "danger";
+  };
+
+  const getConfidenceBannerClasses = (score) => {
     const num = parseFloat(score || 0);
     if (num >= 85)
-      return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
+      return "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
     if (num >= 60)
-      return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
-    return "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
+      return "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
+    return "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
   };
 
   const getBaseUrl = () => {
@@ -138,47 +140,52 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer z-40"
+            aria-hidden="true"
           />
+
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 right-0 w-full lg:w-[900px] xl:w-[1100px] bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800"
+            transition={{
+              type: "spring",
+              damping: 30,
+              stiffness: 300,
+              mass: 0.8,
+            }}
+            className="relative w-full lg:w-[900px] xl:w-[1100px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800"
+            role="dialog"
+            aria-modal="true"
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
-                  <ScanLine size={20} />
+            <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
+                  <ScanLine size={24} />
                 </div>
-                <div>
-                  <h2 className="text-lg font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[350px]">
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
                     {receipt?.expense_number || "Loading..."}
                   </h2>
                   {receipt && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <span
-                        className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${getStatusBadge(
-                          receipt.status,
-                        )}`}
-                      >
-                        {receipt.status.replace("_", " ")}
-                      </span>
-                      <span
-                        className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${getConfidenceBadge(
-                          receipt.confidence_score,
-                        )}`}
-                      >
-                        AI Accuracy: {receipt.confidence_score}%
-                      </span>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <StatusBadge
+                        label={receipt.status.replace("_", " ")}
+                        variant={getBadgeVariant(receipt.status)}
+                      />
+                      <StatusBadge
+                        label={`AI Accuracy: ${receipt.confidence_score}%`}
+                        variant={getConfidenceVariant(receipt.confidence_score)}
+                      />
                     </div>
                   )}
                 </div>
@@ -186,14 +193,15 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 transition-colors rounded-xl cursor-pointer"
+                className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
+                aria-label="Close panel"
               >
                 <X size={20} />
               </button>
-            </div>
+            </header>
 
             {/* Content Body: Split Workspace */}
-            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row bg-slate-50/50 dark:bg-transparent">
               {loading && (
                 <div className="w-full h-full flex flex-col items-center justify-center py-20 text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
@@ -345,6 +353,39 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                       </div>
                     )}
 
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <h2 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-blue-500" />{" "}
+                          Data Validation
+                        </h2>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                          Review AI outputs and accounting categories.
+                        </p>
+                      </div>
+
+                      {/* Premium Confidence Banner */}
+                      <div
+                        className={`px-5 py-2.5 rounded-[16px] border flex items-center gap-4 shadow-sm transition-all ${getConfidenceBannerClasses(
+                          receipt.confidence_score,
+                        )}`}
+                      >
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-0.5">
+                            AI Confidence
+                          </p>
+                          <p className="text-base font-black tracking-tight leading-none">
+                            {receipt.confidence_score}%
+                          </p>
+                        </div>
+                        {parseFloat(receipt.confidence_score) < 60 && (
+                          <div className="flex items-center gap-1.5 text-[9px] font-black uppercase bg-rose-500/10 px-2 py-1.5 rounded-lg border border-rose-500/20">
+                            <AlertCircle size={14} /> Low Accuracy
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Vendor & General Info */}
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
                       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 pb-2">
@@ -427,7 +468,7 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                     </div>
 
                     {/* Financial Posting Summary */}
-                    <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 text-white shadow-xl space-y-2">
+                    <div className="bg-slate-900 dark:bg-black rounded-2xl p-5 text-white shadow-xl relative overflow-hidden ring-1 ring-amber-500/30">
                       <p className="text-[9px] font-black uppercase tracking-widest text-amber-500 border-b border-slate-800 pb-2 mb-3">
                         Financial Statement Impact
                       </p>
@@ -441,7 +482,7 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                           )}
                         </span>
                       </div>
-                      <div className="flex justify-between text-xs font-medium text-slate-400">
+                      <div className="flex justify-between text-xs font-medium text-slate-400 mt-2">
                         <span>
                           Input VAT{" "}
                           {receipt.is_vatable ? "(Inclusive)" : "(Exempt)"}
@@ -454,7 +495,7 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                           )}
                         </span>
                       </div>
-                      <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
+                      <div className="pt-3 border-t border-slate-800 flex justify-between items-center mt-3">
                         <span className="text-xs font-black uppercase tracking-widest text-white">
                           Grand Total
                         </span>
@@ -522,7 +563,7 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
               )}
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
