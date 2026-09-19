@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Loader2, ScanLine, FileSearch } from "lucide-react";
+import {
+  Loader2,
+  ScanLine,
+  Eye,
+  CheckCircle,
+  Clock,
+  XCircle,
+  FileText,
+  ScanText,
+} from "lucide-react";
 import { receiptApprovalService } from "../../services/manager/receiptApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 import ReceiptApprovalDrawer from "../../features/manager/components/ReceiptApprovalDrawer";
@@ -108,6 +117,19 @@ const ReceiptApprovals = () => {
     }
   };
 
+  const getBadgeIcon = (status) => {
+    switch (status) {
+      case "APPROVED":
+        return CheckCircle;
+      case "PENDING_APPROVAL":
+        return Clock;
+      case "REJECTED":
+        return XCircle;
+      default:
+        return FileText;
+    }
+  };
+
   const getConfidenceVariant = (score) => {
     const num = parseFloat(score || 0);
     if (num >= 85) return "success";
@@ -149,11 +171,12 @@ const ReceiptApprovals = () => {
       <DataTable
         headers={[
           "Document Ref",
+          viewMode === "PENDING" ? "Expense Date" : "Date Processed",
           "Vendor & Category",
-          viewMode === "PENDING" ? "Date & Staff" : "Date & Decision",
+          viewMode === "PENDING" ? "Branch & Staff" : "Branch & Decision",
           "AI Accuracy",
           "Total Amount",
-          "Status",
+          viewMode === "PENDING" ? "Status" : "Decision",
           "Actions",
         ]}
         data={receipts}
@@ -174,32 +197,43 @@ const ReceiptApprovals = () => {
             className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
           >
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col gap-1 text-left">
+              <div className="flex items-center gap-1.5">
                 <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
                   {receipt.expense_number}
                 </span>
-                <span className="text-[9px] font-bold text-slate-500 tracking-widest uppercase">
-                  {receipt.branch_name}
+                <span
+                  className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
+                  title="Generated via OCR Receipt Scanner"
+                >
+                  <ScanText size={10} /> OCR
                 </span>
               </div>
             </td>
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                {viewMode === "PENDING"
+                  ? new Date(receipt.expense_date).toLocaleDateString()
+                  : receipt.processed_at
+                    ? new Date(receipt.processed_at).toLocaleString()
+                    : "--"}
+              </p>
+            </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
                 {receipt.vendor_name || "Unregistered Vendor"}
               </p>
-              <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase mt-0.5 truncate max-w-[200px]">
+              <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 truncate max-w-[200px]">
                 {receipt.category}
               </p>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-1">
-                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                  {viewMode === "PENDING"
-                    ? new Date(receipt.expense_date).toLocaleDateString()
-                    : receipt.processed_at
-                      ? new Date(receipt.processed_at).toLocaleString()
-                      : "--"}
-                </p>
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[150px]">
+                  {receipt.branch_name}
+                </span>
                 <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
                   {viewMode === "PENDING"
                     ? `BY: ${receipt.created_by_name || "System"}`
@@ -207,12 +241,14 @@ const ReceiptApprovals = () => {
                 </span>
               </div>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <StatusBadge
                 label={`${receipt.confidence_score}%`}
                 variant={getConfidenceVariant(receipt.confidence_score)}
               />
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <span className="text-sm font-black font-mono text-slate-900 dark:text-white">
                 ₱
@@ -221,12 +257,15 @@ const ReceiptApprovals = () => {
                 })}
               </span>
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <StatusBadge
                 label={receipt.status.replace("_", " ")}
                 variant={getBadgeVariant(receipt.status)}
+                icon={getBadgeIcon(receipt.status)}
               />
             </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <button
                 onClick={() => {
@@ -234,16 +273,12 @@ const ReceiptApprovals = () => {
                   setIsDrawerOpen(true);
                 }}
                 title={
-                  viewMode === "PENDING" ? "Review & Decide" : "View Details"
+                  viewMode === "PENDING" ? "Review Request" : "View Details"
                 }
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer ${
-                  viewMode === "PENDING"
-                    ? "bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
-                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
-                }`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
               >
-                <FileSearch size={14} />
-                {viewMode === "PENDING" ? "Review" : "View"}
+                <Eye size={14} />
+                {viewMode === "PENDING" ? "Review" : "Details"}
               </button>
             </td>
           </tr>
