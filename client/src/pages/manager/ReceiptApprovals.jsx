@@ -150,7 +150,7 @@ const ReceiptApprovals = () => {
         headers={[
           "Document Ref",
           "Vendor & Category",
-          viewMode === "PENDING" ? "Expense Date" : "Processed At",
+          viewMode === "PENDING" ? "Date & Staff" : "Date & Decision",
           "AI Accuracy",
           "Total Amount",
           "Status",
@@ -192,13 +192,20 @@ const ReceiptApprovals = () => {
               </p>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                {viewMode === "PENDING"
-                  ? new Date(receipt.expense_date).toLocaleDateString()
-                  : receipt.processed_at
-                    ? new Date(receipt.processed_at).toLocaleString()
-                    : "--"}
-              </p>
+              <div className="flex flex-col items-start gap-1">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                  {viewMode === "PENDING"
+                    ? new Date(receipt.expense_date).toLocaleDateString()
+                    : receipt.processed_at
+                      ? new Date(receipt.processed_at).toLocaleString()
+                      : "--"}
+                </p>
+                <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+                  {viewMode === "PENDING"
+                    ? `BY: ${receipt.created_by_name || "System"}`
+                    : `BY: ${receipt.resolved_by_name || receipt.created_by_name || "System"}`}
+                </span>
+              </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               <StatusBadge

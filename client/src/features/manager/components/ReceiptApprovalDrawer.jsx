@@ -18,6 +18,8 @@ import {
   ImageOff,
   Calculator,
   FileText,
+  BadgeCheck,
+  ClipboardList,
 } from "lucide-react";
 import { receiptApprovalService } from "../../../services/manager/receiptApproval.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -130,6 +132,9 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
     ? `${getBaseUrl()}${receipt.file_path}`
     : "";
 
+  const staffNotes = receipt?.notes
+    ? receipt.notes.split("\n\n[Manager")[0].trim()
+    : "";
   const managerNotes =
     receipt?.status === "REJECTED"
       ? receipt.rejection_remarks
@@ -177,15 +182,35 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                     {receipt?.expense_number || "Loading..."}
                   </h2>
                   {receipt && (
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <StatusBadge
-                        label={receipt.status.replace("_", " ")}
-                        variant={getBadgeVariant(receipt.status)}
-                      />
-                      <StatusBadge
-                        label={`AI Accuracy: ${receipt.confidence_score}%`}
-                        variant={getConfidenceVariant(receipt.confidence_score)}
-                      />
+                    <div className="flex flex-col items-start gap-1.5 mt-1.5">
+                      <div className="flex items-center gap-2">
+                        <StatusBadge
+                          label={receipt.status.replace("_", " ")}
+                          variant={getBadgeVariant(receipt.status)}
+                        />
+                        <StatusBadge
+                          label={`AI Accuracy: ${receipt.confidence_score}%`}
+                          variant={getConfidenceVariant(
+                            receipt.confidence_score,
+                          )}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-0.5 mt-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <BadgeCheck size={12} className="text-amber-500" />
+                          Drafted by:{" "}
+                          <span className="text-slate-600 dark:text-slate-300">
+                            {receipt.created_by_name || "System"}
+                          </span>
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <Calendar size={12} className="text-slate-400" />
+                          Submitted:{" "}
+                          <span className="text-slate-600 dark:text-slate-300">
+                            {new Date(receipt.created_at).toLocaleString()}
+                          </span>
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -329,27 +354,6 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                       <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-xs font-bold">
                         <AlertCircle size={16} className="shrink-0 mt-0.5" />
                         <span>{validationError}</span>
-                      </div>
-                    )}
-
-                    {/* Manager Feedback (if already decided) */}
-                    {managerNotes && receipt.status !== "PENDING_APPROVAL" && (
-                      <div
-                        className={`p-4 rounded-2xl border flex items-start gap-3 ${
-                          receipt.status === "REJECTED"
-                            ? "bg-rose-50 border-rose-200 dark:bg-rose-500/10 dark:border-rose-500/20 text-rose-800 dark:text-rose-300"
-                            : "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300"
-                        }`}
-                      >
-                        <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-1 opacity-80">
-                            Manager Decision Remarks
-                          </p>
-                          <p className="text-xs font-bold leading-relaxed whitespace-pre-wrap">
-                            {managerNotes}
-                          </p>
-                        </div>
                       </div>
                     )}
 
@@ -509,8 +513,21 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                       </div>
                     </div>
 
+                    {/* Staff Notes */}
+                    {staffNotes && (
+                      <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                          <ClipboardList size={14} className="text-amber-500" />{" "}
+                          Staff Justification
+                        </p>
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">
+                          "{staffNotes}"
+                        </p>
+                      </section>
+                    )}
+
                     {/* Remarks Input Area (Only if PENDING_APPROVAL) */}
-                    {receipt.status === "PENDING_APPROVAL" && (
+                    {receipt.status === "PENDING_APPROVAL" ? (
                       <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-3">
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
                           <MessageSquare size={14} /> Manager Remarks (Required
@@ -525,6 +542,49 @@ const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
                           className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-50"
                         />
                       </div>
+                    ) : (
+                      <section
+                        className={`p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm ${
+                          receipt.status === "APPROVED"
+                            ? "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20"
+                            : "bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/20"
+                        }`}
+                      >
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                          <CheckCircle2
+                            size={14}
+                            className={
+                              receipt.status === "APPROVED"
+                                ? "text-emerald-500"
+                                : "text-rose-500"
+                            }
+                          />{" "}
+                          Manager Resolution
+                        </p>
+                        <div>
+                          <p
+                            className={`text-xs font-black uppercase tracking-widest mb-1.5 ${
+                              receipt.status === "APPROVED"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-rose-600 dark:text-rose-400"
+                            }`}
+                          >
+                            {receipt.status.replace("_", " ")} BY{" "}
+                            {receipt.resolved_by_name ||
+                              receipt.created_by_name}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-500 mb-4 uppercase tracking-widest">
+                            On{" "}
+                            {new Date(
+                              receipt.resolved_at || receipt.updated_at,
+                            ).toLocaleString()}
+                          </p>
+                          <div className="text-xs text-slate-700 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-4 rounded-[16px] border border-slate-100 dark:border-slate-800 shadow-sm leading-relaxed">
+                            "{managerNotes || "No additional remarks provided."}
+                            "
+                          </div>
+                        </div>
+                      </section>
                     )}
 
                     {/* Action Buttons */}
