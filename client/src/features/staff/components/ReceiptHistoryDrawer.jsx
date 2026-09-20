@@ -110,6 +110,16 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
   const refNumber =
     parsedData?.receipt_number || parsedData?.reference_number || "N/A";
 
+  const staffNotes = data?.notes
+    ? data.notes.split("\n\n[Manager")[0].trim()
+    : "";
+  const managerNotes =
+    data?.expense_status === "REJECTED"
+      ? data.rejection_remarks
+      : data?.notes?.includes("[Manager Approval Notes]:")
+        ? data.notes.split("[Manager Approval Notes]:")[1]?.trim()
+        : "";
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -478,8 +488,21 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                         </div>
                       </section>
 
-                      {/* Status / Staff Verification Audit Area */}
-                      <section className="p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700">
+                      {/* Staff Justification / Notes */}
+                      {staffNotes && (
+                        <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                            <FileText size={14} className="text-amber-500" />{" "}
+                            Staff Justification
+                          </p>
+                          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">
+                            "{staffNotes}"
+                          </p>
+                        </section>
+                      )}
+
+                      {/* Human Verification Trace */}
+                      <section className="p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
                           <ClipboardList size={14} className="text-slate-400" />{" "}
                           Human Verification Trace
@@ -495,6 +518,65 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                           </p>
                         </div>
                       </section>
+
+                      {/* Manager Resolution Area */}
+                      {data.expense_status === "PENDING_APPROVAL" ? (
+                        <section className="p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border flex items-center gap-3 shadow-sm bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 text-blue-800 dark:text-blue-300">
+                          <Clock size={20} className="shrink-0" />
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">
+                              Manager Review
+                            </p>
+                            <p className="text-xs font-bold leading-relaxed">
+                              Pending Approval Process
+                            </p>
+                          </div>
+                        </section>
+                      ) : (
+                        <section
+                          className={`p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm ${
+                            data.expense_status === "APPROVED"
+                              ? "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20"
+                              : "bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/20"
+                          }`}
+                        >
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                            {data.expense_status === "APPROVED" ? (
+                              <CheckCircle2
+                                size={14}
+                                className="text-emerald-500"
+                              />
+                            ) : (
+                              <XCircle size={14} className="text-rose-500" />
+                            )}{" "}
+                            Manager Resolution
+                          </p>
+                          <div>
+                            <p
+                              className={`text-xs font-black uppercase tracking-widest mb-1.5 ${
+                                data.expense_status === "APPROVED"
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-rose-600 dark:text-rose-400"
+                              }`}
+                            >
+                              {data.expense_status.replace("_", " ")} BY{" "}
+                              {data.resolved_by_name || "Manager"}
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-500 mb-4 uppercase tracking-widest">
+                              On{" "}
+                              {new Date(
+                                data.resolved_at || data.updated_at,
+                              ).toLocaleString()}
+                            </p>
+                            <div className="text-xs text-slate-700 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-4 rounded-[16px] border border-slate-100 dark:border-slate-800 shadow-sm leading-relaxed">
+                              "
+                              {managerNotes ||
+                                "No additional remarks provided."}
+                              "
+                            </div>
+                          </div>
+                        </section>
+                      )}
                     </div>
                   </div>
                 </>
