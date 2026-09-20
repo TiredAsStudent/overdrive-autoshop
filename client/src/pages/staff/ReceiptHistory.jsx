@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { Search, Loader2, History, Calendar, FileSearch } from "lucide-react";
+import {
+  History,
+  FileSearch,
+  CheckCircle,
+  Clock,
+  XCircle,
+  FileText,
+} from "lucide-react";
 import { receiptService } from "../../services/staff/receipt.service";
+import { vendorService } from "../../services/staff/vendor.service";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import FilterButton from "../../components/ui/FilterButton";
+import FilterModal from "../../components/shared/FilterModal";
+import StatusBadge from "../../components/ui/StatusBadge";
 import ReceiptHistoryDrawer from "../../features/staff/components/ReceiptHistoryDrawer";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -11,6 +24,7 @@ const ReceiptHistory = () => {
   const { showToast } = useApp();
 
   const [records, setRecords] = useState([]);
+  const [vendorList, setVendorList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -18,6 +32,8 @@ const ReceiptHistory = () => {
   const debouncedSearchQuery = useDebounce(searchQuery, 400);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [vendorFilter, setVendorFilter] = useState("all");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,9 +44,19 @@ const ReceiptHistory = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedScanId, setSelectedScanId] = useState(null);
 
+  const activeFilterCount =
+    (startDate ? 1 : 0) + (endDate ? 1 : 0) + (vendorFilter !== "all" ? 1 : 0);
+
+  useEffect(() => {
+    vendorService
+      .getActiveLookup()
+      .then((res) => setVendorList(res.data || []))
+      .catch((err) => console.error("Failed to load vendors", err));
+  }, []);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, startDate, endDate]);
+  }, [debouncedSearchQuery, startDate, endDate, vendorFilter]);
 
   const loadHistory = async () => {
     try {
@@ -39,7 +65,7 @@ const ReceiptHistory = () => {
         currentPage,
         ITEMS_PER_PAGE,
         debouncedSearchQuery,
-        "all",
+        vendorFilter,
         startDate,
         endDate,
       );
@@ -54,93 +80,47 @@ const ReceiptHistory = () => {
 
   useEffect(() => {
     loadHistory();
-  }, [currentPage, debouncedSearchQuery, startDate, endDate]);
+  }, [currentPage, debouncedSearchQuery, startDate, endDate, vendorFilter]);
+
+  const resetFilters = () => {
+    setStartDate("");
+    setEndDate("");
+    setVendorFilter("all");
+    setIsFilterModalOpen(false);
+  };
 
   const openDrawer = (id) => {
     setSelectedScanId(id);
     setIsDrawerOpen(true);
   };
 
-  const getConfidenceBadge = (score) => {
-    const num = parseFloat(score);
-    if (num >= 85)
-      return "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
-    if (num >= 60)
-      return "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
-    return "text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20";
+  const getConfidenceVariant = (score) => {
+    const num = parseFloat(score || 0);
+    if (num >= 85) return "success";
+    if (num >= 60) return "warning";
+    return "danger";
   };
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <History className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Receipt History
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Verified Documents & Audit Trail
-            </p>
-          </div>
-        </div>
+      {/* UNIVERSAL PAGE HEADER */}
+      <PageHeader
+        title="Receipt History"
+        subtitle="Verified Documents & Audit Trail"
+        icon={History}
+      >
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search Ref, Vendor, File..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          {/* Date Filters */}
-          <div className="flex items-center bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-36">
-              <Calendar
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer"
-                title="Start Date"
-              />
-            </div>
-            <span className="text-slate-300 dark:text-slate-600 px-1 font-bold">
-              -
-            </span>
-            <div className="relative flex-1 sm:w-36">
-              <Calendar
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer"
-                title="End Date"
-              />
-            </div>
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative w-full sm:max-w-[250px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search Ref, Vendor, File..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-            />
-          </div>
-        </div>
-      </div>
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
+      </PageHeader>
 
       {/* DATA TABLE */}
       <DataTable
@@ -166,7 +146,7 @@ const ReceiptHistory = () => {
                 <span className="text-xs font-black text-slate-900 dark:text-white truncate w-full uppercase italic">
                   {record.vendor_name || "N/A"}
                 </span>
-                <span className="text-[9px] font-bold text-slate-500 tracking-widest truncate w-full">
+                <span className="text-[9px] font-bold text-slate-500 tracking-widest truncate w-full uppercase">
                   FILE: {record.original_filename}
                 </span>
               </div>
@@ -198,17 +178,16 @@ const ReceiptHistory = () => {
               </span>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <span
-                className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black tracking-widest border ${getConfidenceBadge(record.confidence_score)}`}
-              >
-                {record.confidence_score}%
-              </span>
+              <StatusBadge
+                label={`${record.confidence_score}%`}
+                variant={getConfidenceVariant(record.confidence_score)}
+              />
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
               <button
                 onClick={() => openDrawer(record.id)}
                 title="View Document Details"
-                className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
+                className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer inline-flex items-center justify-center"
               >
                 <FileSearch size={16} />
               </button>
@@ -222,6 +201,58 @@ const ReceiptHistory = () => {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      {/* FILTER MODAL */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={resetFilters}
+        title="Advanced Filters"
+      >
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-all cursor-pointer"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-all cursor-pointer"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Select Vendor
+            </label>
+            <select
+              value={vendorFilter}
+              onChange={(e) => setVendorFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+            >
+              <option value="all">All Vendors</option>
+              {vendorList.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.business_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </FilterModal>
 
       <ReceiptHistoryDrawer
         isOpen={isDrawerOpen}
