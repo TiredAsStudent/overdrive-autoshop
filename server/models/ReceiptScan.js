@@ -147,12 +147,14 @@ class ReceiptScan {
       SELECT 
         rs.id, rs.original_filename, rs.file_path, rs.confidence_score, rs.created_at as verification_date, rs.extracted_data,
         e.expense_number, e.expense_date, COALESCE(v.business_name, e.vendor_name) as vendor_name, e.subtotal, e.vat_amount, e.total_amount as grand_total, 
-        e.status as expense_status, e.line_items,
-        u.first_name as verified_by_first, u.last_name as verified_by_last
+        e.status as expense_status, e.line_items, e.notes, e.rejection_remarks, e.resolved_at, e.updated_at,
+        u.first_name as verified_by_first, u.last_name as verified_by_last, u.first_name as created_by_name,
+        r.first_name as resolved_by_name
       FROM receipt_scans rs
       INNER JOIN expenses e ON e.scan_id = rs.id
       LEFT JOIN vendors v ON e.vendor_id = v.id
       LEFT JOIN users u ON e.created_by = u.id
+      LEFT JOIN users r ON e.resolved_by = r.id
       WHERE rs.id = $1 AND rs.status = 'VERIFIED'
     `;
     const result = await query(sql, [id]);
