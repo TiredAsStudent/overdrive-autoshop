@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { History, FileSearch } from "lucide-react";
+import { History, FileSearch, FileText } from "lucide-react";
 import { receiptService } from "../../services/staff/receipt.service";
 import { vendorService } from "../../services/staff/vendor.service";
 import DataTable from "../../components/shared/DataTable";
@@ -118,12 +118,12 @@ const ReceiptHistory = () => {
       {/* DATA TABLE */}
       <DataTable
         headers={[
-          "Receipt / Vendor",
+          "Ledger Linkage & File",
           "Date Records",
-          "Ledger Linkage",
+          "Vendor Identity",
           "Grand Total",
-          "AI Confidence",
-          "Action",
+          "AI Accuracy",
+          "Actions",
         ]}
         data={records}
         loading={loading}
@@ -134,17 +134,24 @@ const ReceiptHistory = () => {
             key={record.id}
             className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
           >
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="flex flex-col items-start gap-1 max-w-[200px] sm:max-w-[250px]">
-                <span className="text-xs font-black text-slate-900 dark:text-white truncate w-full uppercase italic">
-                  {record.vendor_name || "N/A"}
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <div className="flex flex-col">
+                <span className="inline-flex w-fit px-2.5 py-1 rounded-md text-xs font-black tracking-widest uppercase bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  {record.expense_number}
                 </span>
-                <span className="text-[9px] font-bold text-slate-500 tracking-widest truncate w-full uppercase">
-                  FILE: {record.original_filename}
-                </span>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1 truncate max-w-[180px] sm:max-w-[220px]">
+                    <FileText size={12} className="text-amber-500 shrink-0" />
+                    FILE:{" "}
+                    <span className="text-slate-700 dark:text-slate-300 truncate">
+                      {record.original_filename}
+                    </span>
+                  </span>
+                </div>
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
               <div className="flex flex-col items-start gap-1">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Rcpt:{" "}
@@ -160,26 +167,35 @@ const ReceiptHistory = () => {
                 </span>
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <span className="inline-flex px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-sky-600 dark:text-sky-400">
-                {record.expense_number}
-              </span>
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <div className="min-w-0 max-w-[200px] sm:max-w-[250px]">
+                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase truncate">
+                  {record.vendor_name || "Unregistered Vendor"}
+                </p>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1 truncate">
+                  Supplier Entity
+                </p>
+              </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <span className="text-sm font-mono font-black text-slate-900 dark:text-white">
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <span className="text-sm font-black font-mono text-slate-900 dark:text-white">
                 ₱
                 {parseFloat(record.grand_total).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                 })}
               </span>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
               <StatusBadge
                 label={`${record.confidence_score}%`}
                 variant={getConfidenceVariant(record.confidence_score)}
               />
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
               <button
                 onClick={() => openDrawer(record.id)}
                 title="View Document Details"
