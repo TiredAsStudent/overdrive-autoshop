@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  History,
-  FileSearch,
-  CheckCircle,
-  Clock,
-  XCircle,
-  FileText,
-} from "lucide-react";
+import { History, FileSearch } from "lucide-react";
 import { receiptService } from "../../services/staff/receipt.service";
 import { vendorService } from "../../services/staff/vendor.service";
 import DataTable from "../../components/shared/DataTable";
@@ -126,7 +119,7 @@ const ReceiptHistory = () => {
       <DataTable
         headers={[
           "Receipt / Vendor",
-          "Verification Date",
+          "Date Records",
           "Ledger Linkage",
           "Grand Total",
           "AI Confidence",
@@ -153,14 +146,17 @@ const ReceiptHistory = () => {
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex flex-col items-start gap-1">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {new Date(record.verification_date).toLocaleDateString()}
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  Rcpt:{" "}
+                  <span className="text-slate-700 dark:text-slate-300 ml-1">
+                    {new Date(record.expense_date).toLocaleDateString()}
+                  </span>
                 </span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                  {new Date(record.verification_date).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
+                  Vrfy:{" "}
+                  <span className="text-emerald-600 dark:text-emerald-400 ml-1">
+                    {new Date(record.verification_date).toLocaleDateString()}
+                  </span>
                 </span>
               </div>
             </td>

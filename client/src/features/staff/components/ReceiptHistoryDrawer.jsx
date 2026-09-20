@@ -102,6 +102,14 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
   const isPdf = data?.original_filename?.toLowerCase().endsWith(".pdf");
   const fileUrl = data?.file_path ? `${getBaseUrl()}${data.file_path}` : "";
 
+  const parsedData = data?.extracted_data
+    ? typeof data.extracted_data === "string"
+      ? JSON.parse(data.extracted_data)
+      : data.extracted_data
+    : {};
+  const refNumber =
+    parsedData?.receipt_number || parsedData?.reference_number || "N/A";
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -359,6 +367,9 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                             <p className="text-sm font-bold text-slate-900 dark:text-white truncate uppercase">
                               {data.vendor_name || "Unregistered Vendor"}
                             </p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                              REF: {refNumber}
+                            </p>
                           </div>
                         </section>
                         <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 rounded-[20px] sm:rounded-[24px] border border-amber-100 dark:border-amber-500/20 shadow-sm flex flex-col justify-between">
@@ -394,7 +405,12 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                                     {item.description}
                                   </p>
                                   <p className="text-[9px] font-bold text-slate-500 mt-0.5">
-                                    {item.quantity}x
+                                    {item.quantity}x @ ₱
+                                    {parseFloat(
+                                      item.unit_price || 0,
+                                    ).toLocaleString(undefined, {
+                                      minimumFractionDigits: 2,
+                                    })}
                                   </p>
                                 </div>
                                 <span className="font-black font-mono text-slate-900 dark:text-white shrink-0">
