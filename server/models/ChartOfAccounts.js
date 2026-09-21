@@ -201,9 +201,8 @@ class ChartOfAccounts {
         queries.push(
           `SELECT COUNT(*) as cnt FROM expenses WHERE vat_amount > 0 AND status = 'APPROVED'`,
         );
-        queries.push(
-          `SELECT COUNT(*) as cnt FROM bills WHERE vat_amount > 0 AND status != 'CANCELLED'`,
-        );
+
+        queries.push(`SELECT COUNT(*) as cnt FROM bills WHERE vat_amount > 0`);
       }
 
       if (account_code === "1030") {
@@ -220,9 +219,7 @@ class ChartOfAccounts {
       }
 
       if (account_code === "2010") {
-        queries.push(
-          `SELECT COUNT(*) as cnt FROM bills WHERE status != 'CANCELLED'`,
-        );
+        queries.push(`SELECT COUNT(*) as cnt FROM bills`);
         queries.push(
           `SELECT COUNT(*) as cnt FROM vendor_payments WHERE status != 'VOID'`,
         );
@@ -321,7 +318,7 @@ class ChartOfAccounts {
         queries.push(`
            SELECT 'INPUT VAT (Supplier Bill)' as transaction_type, bill_number as reference, bill_date as transaction_date, 
            vat_amount as amount, status::text as status
-           FROM bills WHERE vat_amount > 0 AND status != 'CANCELLED'
+           FROM bills WHERE vat_amount > 0
          `);
       }
 
@@ -348,7 +345,7 @@ class ChartOfAccounts {
         queries.push(`
            SELECT 'SUPPLIER BILL (A/P Liability)' as transaction_type, bill_number as reference, created_at as transaction_date, 
            grand_total as amount, status::text as status
-           FROM bills WHERE status != 'CANCELLED'
+           FROM bills
          `);
         queries.push(`
            SELECT 'VENDOR PAYMENT (A/P Liquidation)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
