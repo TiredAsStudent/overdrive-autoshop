@@ -168,10 +168,12 @@ class ChartOfAccounts {
         WHERE e.category = $2 AND e.status = 'APPROVED'
       `);
 
-      if (account_code === "1100")
+      if (account_code === "1040")
         queries.push(`SELECT COUNT(*) as cnt FROM invoices`);
-      if (account_code === "1200")
+
+      if (account_code === "1100")
         queries.push(`SELECT COUNT(*) as cnt FROM inventory_movements`);
+
       if (account_code === "2020")
         queries.push(
           `SELECT COUNT(*) as cnt FROM invoices WHERE vat_amount > 0`,
@@ -261,7 +263,7 @@ class ChartOfAccounts {
         WHERE e.category = $2 AND e.status = 'APPROVED'
       `);
 
-      if (account_code === "1100") {
+      if (account_code === "1040") {
         queries.push(`
            SELECT 'A/R (Invoice)' as transaction_type, invoice_number as reference, created_at as transaction_date, 
            grand_total as amount, status::text as status
@@ -269,7 +271,7 @@ class ChartOfAccounts {
          `);
       }
 
-      if (account_code === "1200") {
+      if (account_code === "1100") {
         queries.push(`
            SELECT 'INVENTORY' as transaction_type, transaction_reference as reference, created_at as transaction_date, 
            ((quantity_added - quantity_deducted) * recorded_unit_cost) as amount, 
