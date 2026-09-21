@@ -158,20 +158,77 @@ const AccountUsageDrawer = ({ isOpen, onClose, accountId }) => {
               ) : data ? (
                 <div className="space-y-6 sm:space-y-8">
                   {/* Account Profile Summary Card */}
-                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm flex flex-col justify-between">
-                    <div className="flex items-center gap-2 mb-3 text-slate-400">
-                      <BookOpen size={16} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">
-                        Account Profile
-                      </span>
+                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm flex flex-col gap-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2 text-slate-400">
+                          <BookOpen size={16} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">
+                            Account Profile
+                          </span>
+                        </div>
+                        <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight flex items-center gap-3">
+                          {data.account.account_code}
+                          <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg font-sans">
+                            {data.account.account_type}
+                          </span>
+                        </h3>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white uppercase mt-1">
+                          {data.account.account_name}
+                        </p>
+                      </div>
+                      <StatusBadge
+                        label={data.account.is_active ? "Active" : "Inactive"}
+                        variant={data.account.is_active ? "success" : "default"}
+                      />
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
-                        {data.account.account_code}
-                      </span>
-                      <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg">
-                        {data.account.account_type}
-                      </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                      {data.account.parent_account_name && (
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                            Parent Account
+                          </p>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white uppercase">
+                            {data.account.parent_account_name}
+                          </p>
+                        </div>
+                      )}
+                      <div
+                        className={
+                          !data.account.parent_account_name
+                            ? "sm:col-span-2"
+                            : ""
+                        }
+                      >
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Description
+                        </p>
+                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                          {data.account.description ||
+                            "No description provided."}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Date Created
+                        </p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">
+                          {new Date(
+                            data.account.created_at,
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Last Updated
+                        </p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">
+                          {new Date(
+                            data.account.updated_at,
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
                   </section>
 

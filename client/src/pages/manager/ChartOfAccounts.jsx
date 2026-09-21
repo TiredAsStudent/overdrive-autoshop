@@ -219,7 +219,7 @@ const ChartOfAccounts = () => {
         headers={[
           "Account Profile",
           "Classification",
-          "Rules",
+          "Rules & Dates",
           "Status",
           "Actions",
         ]}
@@ -282,6 +282,9 @@ const ChartOfAccounts = () => {
                     <Lock size={10} /> System Locked
                   </span>
                 )}
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                  Created: {new Date(account.created_at).toLocaleDateString()}
+                </span>
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6">
