@@ -62,7 +62,9 @@ class ChartOfAccountsService {
       );
     }
 
-    if (data.account_name) {
+    let nameChanged = false;
+    if (data.account_name && data.account_name !== oldAccount.account_name) {
+      nameChanged = true;
       const duplicate = await COAModel.checkDuplicate(
         null,
         data.account_name,
@@ -85,6 +87,13 @@ class ChartOfAccountsService {
     }
 
     const updatedAccount = await COAModel.update(id, data);
+
+    if (nameChanged) {
+      await COAModel.syncExpenseCategoryName(
+        oldAccount.account_name,
+        data.account_name,
+      );
+    }
 
     await logSecureAction(
       activeUser.id,

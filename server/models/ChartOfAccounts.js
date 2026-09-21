@@ -67,6 +67,11 @@ class ChartOfAccounts {
     return result.rows[0];
   }
 
+  static async syncExpenseCategoryName(oldName, newName) {
+    const sql = `UPDATE expenses SET category = $1, updated_at = NOW() WHERE category = $2`;
+    await query(sql, [newName, oldName]);
+  }
+
   static async toggleStatus(id, isActive) {
     const sql = `UPDATE chart_of_accounts SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
     const result = await query(sql, [isActive, id]);
