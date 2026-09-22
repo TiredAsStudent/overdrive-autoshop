@@ -173,16 +173,31 @@ class ChartOfAccounts {
         WHERE e.category = $2 AND e.status = 'APPROVED'
       `);
 
-      if (account_code === "1040")
+      if (account_code === "1040") {
         queries.push(`SELECT COUNT(*) as cnt FROM invoices`);
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM payments WHERE status != 'VOID'`,
+        );
+      }
 
-      if (account_code === "1100")
+      if (account_code === "1100") {
         queries.push(`SELECT COUNT(*) as cnt FROM inventory_movements`);
+      }
 
-      if (account_code === "2020")
+      if (account_code === "2020") {
         queries.push(
           `SELECT COUNT(*) as cnt FROM invoices WHERE vat_amount > 0`,
         );
+      }
+
+      if (account_code === "4020") {
+        queries.push(`
+          SELECT COUNT(DISTINCT i.id) as cnt 
+          FROM invoices i 
+          JOIN invoice_items ii ON i.id = ii.invoice_id 
+          WHERE ii.line_type = 'PART'
+        `);
+      }
 
       if (account_code === "1010") {
         queries.push(
@@ -201,7 +216,6 @@ class ChartOfAccounts {
         queries.push(
           `SELECT COUNT(*) as cnt FROM expenses WHERE vat_amount > 0 AND status = 'APPROVED'`,
         );
-
         queries.push(`SELECT COUNT(*) as cnt FROM bills WHERE vat_amount > 0`);
       }
 
@@ -249,7 +263,7 @@ class ChartOfAccounts {
       const params = [accountId, account_name];
 
       queries.push(`
-        SELECT 'INVOICE (Revenue)' as transaction_type, i.invoice_number as reference, i.created_at as transaction_date, 
+        SELECT 'INVOICE (Service Revenue)' as transaction_type, i.invoice_number as reference, i.created_at as transaction_date, 
         SUM(ii.recorded_selling_price * ii.quantity - ii.discount_amount) as amount, i.status::text as status
         FROM invoices i
         JOIN invoice_items ii ON i.id = ii.invoice_id
@@ -271,6 +285,11 @@ class ChartOfAccounts {
            grand_total as amount, status::text as status
            FROM invoices
          `);
+        queries.push(`
+           SELECT 'A/R (Liquidation)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
+           amount_received as amount, status::text as status
+           FROM payments WHERE status != 'VOID'
+         `);
       }
 
       if (account_code === "1100") {
@@ -287,6 +306,17 @@ class ChartOfAccounts {
            SELECT 'OUTPUT VAT' as transaction_type, invoice_number as reference, created_at as transaction_date, 
            vat_amount as amount, status::text as status
            FROM invoices WHERE vat_amount > 0
+         `);
+      }
+
+      if (account_code === "4020") {
+        queries.push(`
+           SELECT 'INVOICE (Parts Revenue)' as transaction_type, i.invoice_number as reference, i.created_at as transaction_date, 
+           SUM(ii.recorded_selling_price * ii.quantity - ii.discount_amount) as amount, i.status::text as status
+           FROM invoices i
+           JOIN invoice_items ii ON i.id = ii.invoice_id
+           WHERE ii.line_type = 'PART'
+           GROUP BY i.id, i.invoice_number, i.created_at, i.status
          `);
       }
 
