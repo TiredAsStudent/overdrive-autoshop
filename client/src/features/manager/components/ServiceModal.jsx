@@ -12,6 +12,7 @@ import {
   Calendar,
   Save,
   BookOpen,
+  Lock,
 } from "lucide-react";
 import { serviceCatalogService } from "../../../services/manager/serviceCatalog.service";
 import { chartOfAccountsService } from "../../../services/manager/chartOfAccounts.service";
@@ -53,6 +54,9 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     is_vatable: true,
     income_account_id: "",
   });
+
+  const isAccountLocked =
+    initialData && parseInt(initialData.usage_count, 10) > 0;
 
   useEffect(() => {
     if (isOpen) {
@@ -361,7 +365,7 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                             name="income_account_id"
                             value={formData.income_account_id}
                             onChange={handleChange}
-                            disabled={isFetchingAccounts}
+                            disabled={isFetchingAccounts || isAccountLocked}
                             className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
                           >
                             <option value="" disabled>
@@ -375,6 +379,12 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                               </option>
                             ))}
                           </select>
+                          {isAccountLocked && (
+                            <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-2 font-bold flex items-center gap-1.5">
+                              <Lock size={12} /> Mapping locked to preserve
+                              historical ledgers.
+                            </p>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">

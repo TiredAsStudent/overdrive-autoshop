@@ -1,4 +1,5 @@
 const ServiceModel = require("../../models/Service");
+const COAModel = require("../../models/ChartOfAccounts");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class ServiceCatalogService {
@@ -31,6 +32,16 @@ class ServiceCatalogService {
 
   static async createService(data, userId, ipAddress) {
     if (data.service_name) data.service_name = data.service_name.trim();
+
+    const account = await COAModel.findById(data.income_account_id);
+    if (!account) {
+      throw new Error("The selected revenue account does not exist.");
+    }
+    if (account.account_type !== "INCOME") {
+      throw new Error(
+        "Services must be explicitly mapped to an INCOME account type to ensure accurate General Ledger routing.",
+      );
+    }
 
     const existing = await ServiceModel.findByCategoryAndName(
       data.category,
@@ -86,6 +97,28 @@ class ServiceCatalogService {
     const oldService = await ServiceModel.findById(id);
     if (!oldService) throw new Error("Service not found.");
 
+    if (
+      data.income_account_id &&
+      parseInt(data.income_account_id, 10) !==
+        parseInt(oldService.income_account_id, 10)
+    ) {
+      if (parseInt(oldService.usage_count, 10) > 0) {
+        throw new Error(
+          "Cannot change the revenue account mapping because this service has already been billed on historical invoices. Doing so would alter historical financial ledgers.",
+        );
+      }
+
+      const account = await COAModel.findById(data.income_account_id);
+      if (!account) {
+        throw new Error("The selected revenue account does not exist.");
+      }
+      if (account.account_type !== "INCOME") {
+        throw new Error(
+          "Services must be explicitly mapped to an INCOME account type to ensure accurate General Ledger routing.",
+        );
+      }
+    }
+
     if (data.service_name || data.category) {
       const checkCategory = data.category || oldService.category;
       const checkName = data.service_name || oldService.service_name;
@@ -105,7 +138,12 @@ class ServiceCatalogService {
     const updatedService = await ServiceModel.update(id, data);
 
     let severity = "INFO";
-    if (parseFloat(oldService.price) !== parseFloat(updatedService.price)) {
+    if (
+      parseFloat(oldService.price) !== parseFloat(updatedService.price) ||
+      (data.income_account_id &&
+        parseInt(data.income_account_id, 10) !==
+          parseInt(oldService.income_account_id, 10))
+    ) {
       severity = "WARNING";
     }
 
