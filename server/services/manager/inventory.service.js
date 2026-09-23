@@ -1,5 +1,6 @@
 const { pool } = require("../../config/db");
 const InventoryModel = require("../../models/Inventory");
+const COAModel = require("../../models/ChartOfAccounts");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class InventoryService {
@@ -11,6 +12,21 @@ class InventoryService {
       );
     }
 
+    const assetAcc = await COAModel.findById(data.asset_account_id);
+    const incAcc = await COAModel.findById(data.income_account_id);
+    const expAcc = await COAModel.findById(data.expense_account_id);
+
+    if (!assetAcc || assetAcc.account_type !== "ASSET")
+      throw new Error("Inventory items must map strictly to an ASSET account.");
+    if (!incAcc || incAcc.account_type !== "INCOME")
+      throw new Error(
+        "Inventory items must map strictly to an INCOME account for sales revenue.",
+      );
+    if (!expAcc || expAcc.account_type !== "EXPENSE")
+      throw new Error(
+        "Inventory items must map strictly to an EXPENSE account for shrinkage/loss.",
+      );
+
     const client = await pool.connect();
     let newItem = null;
 
@@ -18,8 +34,8 @@ class InventoryService {
       await client.query("BEGIN");
 
       const insertItemSql = `
-        INSERT INTO inventory_items (sku, item_name, category, uom, description, unit_cost, selling_price, default_reorder_level)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO inventory_items (sku, item_name, category, uom, description, unit_cost, selling_price, default_reorder_level, asset_account_id, income_account_id, expense_account_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
       `;
       const itemValues = [
@@ -31,6 +47,9 @@ class InventoryService {
         data.unit_cost,
         data.selling_price,
         data.default_reorder_level || 5,
+        data.asset_account_id,
+        data.income_account_id,
+        data.expense_account_id,
       ];
       const itemResult = await client.query(insertItemSql, itemValues);
       newItem = itemResult.rows[0];
@@ -82,6 +101,54 @@ class InventoryService {
   static async updateMasterItem(id, data, userId, ipAddress) {
     const oldItem = await InventoryModel.findById(id);
     if (!oldItem) throw new Error("Inventory item not found.");
+
+    const hasMovements = parseInt(oldItem.usage_count, 10) > 0;
+
+    if (hasMovements) {
+      if (
+        data.asset_account_id &&
+        parseInt(data.asset_account_id, 10) !==
+          parseInt(oldItem.asset_account_id, 10)
+      ) {
+        throw new Error(
+          "Cannot change Asset Account mapping because this item has historical movements.",
+        );
+      }
+      if (
+        data.income_account_id &&
+        parseInt(data.income_account_id, 10) !==
+          parseInt(oldItem.income_account_id, 10)
+      ) {
+        throw new Error(
+          "Cannot change Income Account mapping because this item has historical sales.",
+        );
+      }
+      if (
+        data.expense_account_id &&
+        parseInt(data.expense_account_id, 10) !==
+          parseInt(oldItem.expense_account_id, 10)
+      ) {
+        throw new Error(
+          "Cannot change Expense Account mapping because this item has historical adjustments/loss.",
+        );
+      }
+    }
+
+    const checkAssetId = data.asset_account_id || oldItem.asset_account_id;
+    const checkIncomeId = data.income_account_id || oldItem.income_account_id;
+    const checkExpenseId =
+      data.expense_account_id || oldItem.expense_account_id;
+
+    const assetAcc = await COAModel.findById(checkAssetId);
+    const incAcc = await COAModel.findById(checkIncomeId);
+    const expAcc = await COAModel.findById(checkExpenseId);
+
+    if (!assetAcc || assetAcc.account_type !== "ASSET")
+      throw new Error("Asset mapping must use an ASSET account.");
+    if (!incAcc || incAcc.account_type !== "INCOME")
+      throw new Error("Income mapping must use an INCOME account.");
+    if (!expAcc || expAcc.account_type !== "EXPENSE")
+      throw new Error("Expense mapping must use an EXPENSE account.");
 
     const updatedItem = await InventoryModel.update(id, data);
 

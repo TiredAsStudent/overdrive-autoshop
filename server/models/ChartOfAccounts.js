@@ -168,6 +168,28 @@ class ChartOfAccounts {
       `);
 
       queries.push(`
+        SELECT COUNT(DISTINCT i.id) as cnt 
+        FROM invoices i 
+        JOIN invoice_items ii ON i.id = ii.invoice_id 
+        JOIN inventory_items inv ON ii.item_id = inv.id
+        WHERE ii.line_type = 'PART' AND inv.income_account_id = $1
+      `);
+
+      queries.push(`
+        SELECT COUNT(*) as cnt 
+        FROM inventory_movements im
+        JOIN inventory_items inv ON im.item_id = inv.id
+        WHERE inv.asset_account_id = $1
+      `);
+
+      queries.push(`
+        SELECT COUNT(*) as cnt 
+        FROM inventory_movements im
+        JOIN inventory_items inv ON im.item_id = inv.id
+        WHERE im.transaction_type = 'MANUAL_ADJUSTMENT' AND im.quantity_deducted > 0 AND inv.expense_account_id = $1
+      `);
+
+      queries.push(`
         SELECT COUNT(*) as cnt
         FROM expenses e
         WHERE e.category = $2 AND e.status = 'APPROVED'
@@ -180,23 +202,10 @@ class ChartOfAccounts {
         );
       }
 
-      if (account_code === "1100") {
-        queries.push(`SELECT COUNT(*) as cnt FROM inventory_movements`);
-      }
-
       if (account_code === "2020") {
         queries.push(
           `SELECT COUNT(*) as cnt FROM invoices WHERE vat_amount > 0`,
         );
-      }
-
-      if (account_code === "4020") {
-        queries.push(`
-          SELECT COUNT(DISTINCT i.id) as cnt 
-          FROM invoices i 
-          JOIN invoice_items ii ON i.id = ii.invoice_id 
-          WHERE ii.line_type = 'PART'
-        `);
       }
 
       if (account_code === "1010") {
@@ -206,7 +215,6 @@ class ChartOfAccounts {
         queries.push(
           `SELECT COUNT(*) as cnt FROM vendor_payments WHERE payment_method = 'CASH' AND status != 'VOID'`,
         );
-
         queries.push(
           `SELECT COUNT(*) as cnt FROM expenses WHERE payment_method IN ('CASH', 'PETTY_CASH') AND status = 'APPROVED'`,
         );
@@ -226,7 +234,6 @@ class ChartOfAccounts {
         queries.push(
           `SELECT COUNT(*) as cnt FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'`,
         );
-
         queries.push(
           `SELECT COUNT(*) as cnt FROM expenses WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER', 'CHECK') AND status = 'APPROVED'`,
         );
@@ -273,6 +280,34 @@ class ChartOfAccounts {
       `);
 
       queries.push(`
+        SELECT 'INVOICE (Parts Revenue)' as transaction_type, i.invoice_number as reference, i.created_at as transaction_date, 
+        SUM(ii.recorded_selling_price * ii.quantity - ii.discount_amount) as amount, i.status::text as status
+        FROM invoices i
+        JOIN invoice_items ii ON i.id = ii.invoice_id
+        JOIN inventory_items inv ON ii.item_id = inv.id
+        WHERE ii.line_type = 'PART' AND inv.income_account_id = $1
+        GROUP BY i.id, i.invoice_number, i.created_at, i.status
+      `);
+
+      queries.push(`
+        SELECT 'INVENTORY (Asset)' as transaction_type, im.transaction_reference as reference, im.created_at as transaction_date, 
+        ((im.quantity_added - im.quantity_deducted) * im.recorded_unit_cost) as amount, 
+        im.transaction_type::text as status
+        FROM inventory_movements im
+        JOIN inventory_items inv ON im.item_id = inv.id
+        WHERE inv.asset_account_id = $1
+      `);
+
+      queries.push(`
+        SELECT 'INVENTORY (Adjustment)' as transaction_type, im.transaction_reference as reference, im.created_at as transaction_date, 
+        ((im.quantity_deducted - im.quantity_added) * im.recorded_unit_cost) as amount, 
+        COALESCE(im.adjustment_reason::text, im.transaction_type::text) as status
+        FROM inventory_movements im
+        JOIN inventory_items inv ON im.item_id = inv.id
+        WHERE im.transaction_type = 'MANUAL_ADJUSTMENT' AND inv.expense_account_id = $1
+      `);
+
+      queries.push(`
         SELECT 'EXPENSE' as transaction_type, e.expense_number as reference, e.expense_date as transaction_date, 
         e.total_amount as amount, e.status::text as status
         FROM expenses e
@@ -292,31 +327,11 @@ class ChartOfAccounts {
          `);
       }
 
-      if (account_code === "1100") {
-        queries.push(`
-           SELECT 'INVENTORY' as transaction_type, transaction_reference as reference, created_at as transaction_date, 
-           ((quantity_added - quantity_deducted) * recorded_unit_cost) as amount, 
-           transaction_type::text as status
-           FROM inventory_movements
-         `);
-      }
-
       if (account_code === "2020") {
         queries.push(`
            SELECT 'OUTPUT VAT' as transaction_type, invoice_number as reference, created_at as transaction_date, 
            vat_amount as amount, status::text as status
            FROM invoices WHERE vat_amount > 0
-         `);
-      }
-
-      if (account_code === "4020") {
-        queries.push(`
-           SELECT 'INVOICE (Parts Revenue)' as transaction_type, i.invoice_number as reference, i.created_at as transaction_date, 
-           SUM(ii.recorded_selling_price * ii.quantity - ii.discount_amount) as amount, i.status::text as status
-           FROM invoices i
-           JOIN invoice_items ii ON i.id = ii.invoice_id
-           WHERE ii.line_type = 'PART'
-           GROUP BY i.id, i.invoice_number, i.created_at, i.status
          `);
       }
 
@@ -331,7 +346,6 @@ class ChartOfAccounts {
            amount_paid as amount, status::text as status
            FROM vendor_payments WHERE payment_method = 'CASH' AND status != 'VOID'
          `);
-
         queries.push(`
            SELECT 'EXPENSE (Cash Outflow)' as transaction_type, expense_number as reference, expense_date as transaction_date, 
            total_amount as amount, status::text as status
@@ -363,7 +377,6 @@ class ChartOfAccounts {
            amount_paid as amount, status::text as status
            FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'
          `);
-
         queries.push(`
            SELECT 'EXPENSE (Bank/E-Wallet Outflow)' as transaction_type, expense_number as reference, expense_date as transaction_date, 
            total_amount as amount, status::text as status

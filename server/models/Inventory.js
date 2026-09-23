@@ -88,6 +88,7 @@ class Inventory {
     let sql = `
       SELECT 
         i.*,
+        (SELECT COUNT(id) FROM inventory_movements WHERE item_id = i.id AND transaction_type != 'INITIALIZATION') AS usage_count,
         COALESCE(SUM(bi.quantity), 0) AS total_company_quantity,
         COALESCE(SUM(bi.reorder_point), 0) AS total_company_reorder,
         CASE
@@ -245,7 +246,11 @@ class Inventory {
   }
 
   static async findById(id) {
-    const sql = `SELECT * FROM inventory_items WHERE id = $1`;
+    const sql = `
+      SELECT i.*, 
+      (SELECT COUNT(id) FROM inventory_movements WHERE item_id = i.id AND transaction_type != 'INITIALIZATION') AS usage_count
+      FROM inventory_items i WHERE id = $1
+    `;
     const result = await query(sql, [id]);
     return result.rows[0];
   }
@@ -269,8 +274,11 @@ class Inventory {
         unit_cost = COALESCE($5, unit_cost),
         selling_price = COALESCE($6, selling_price),
         default_reorder_level = COALESCE($7, default_reorder_level),
+        asset_account_id = COALESCE($8, asset_account_id),
+        income_account_id = COALESCE($9, income_account_id),
+        expense_account_id = COALESCE($10, expense_account_id),
         updated_at = NOW()
-      WHERE id = $8
+      WHERE id = $11
       RETURNING *
     `;
     const values = [
@@ -281,6 +289,9 @@ class Inventory {
       data.unit_cost,
       data.selling_price,
       data.default_reorder_level,
+      data.asset_account_id,
+      data.income_account_id,
+      data.expense_account_id,
       id,
     ];
     const result = await query(sql, values);

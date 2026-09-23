@@ -25,6 +25,18 @@ const createInventoryItemSchema = z.object({
       .int()
       .min(0, "Reorder level cannot be negative")
       .default(5),
+    asset_account_id: z
+      .number()
+      .int()
+      .positive("Asset account mapping is required"),
+    income_account_id: z
+      .number()
+      .int()
+      .positive("Income account mapping is required"),
+    expense_account_id: z
+      .number()
+      .int()
+      .positive("Expense account mapping is required"),
   }),
 });
 
@@ -38,6 +50,9 @@ const updateInventoryItemSchema = z.object({
       unit_cost: z.number().min(0).optional(),
       selling_price: z.number().min(0).optional(),
       default_reorder_level: z.number().int().min(0).optional(),
+      asset_account_id: z.number().int().positive().optional(),
+      income_account_id: z.number().int().positive().optional(),
+      expense_account_id: z.number().int().positive().optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {
       message: "At least one field must be provided for update.",
