@@ -211,26 +211,26 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-4xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+            className="bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[32px] w-full max-w-4xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95dvh] sm:max-h-[90vh]"
           >
             {/* MODAL HEADER */}
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
-                  <Package size={20} />
+            <div className="flex justify-between items-start sm:items-center p-4 sm:p-6 md:p-8 pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0 gap-4">
+              <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                <div className="p-2 sm:p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500 shrink-0">
+                  <Package className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate">
                     {initialData
                       ? "Update Master Item"
                       : "Register Master Item"}
                   </h2>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
                     {initialData
                       ? `SKU: ${initialData.sku}`
                       : "Stock Catalog Management"}
@@ -240,14 +240,14 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50 cursor-pointer shrink-0"
               >
                 <X size={24} />
               </button>
             </div>
 
             {/* MODAL BODY */}
-            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+            <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -258,11 +258,11 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               <form
                 id="masterItemForm"
                 onSubmit={handleSubmit}
-                className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+                className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6"
               >
                 {/* LEFT COLUMN: Identification */}
-                <div className="space-y-6">
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                       <Package size={14} /> Item Identification
                     </h3>
@@ -277,14 +277,13 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           name="item_name"
                           value={formData.item_name}
                           onChange={handleChange}
-                          placeholder="e.g., Premium DOT 4 Brake Fluid (1L)"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                          placeholder="e.g., Premium DOT 4 Brake Fluid"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                         />
                       </div>
                       <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Stock Keeping Unit (SKU){" "}
-                          <span className="text-red-500">*</span>
+                          SKU <span className="text-red-500">*</span>
                         </label>
                         <input
                           required
@@ -293,8 +292,8 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.sku}
                           onChange={handleChange}
                           disabled={!!initialData}
-                          placeholder="e.g., BRK-FLUID-DOT4"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black tracking-widest uppercase disabled:opacity-50 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                          placeholder="e.g., BRK-FLUID"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black tracking-widest uppercase disabled:opacity-50 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                         />
                       </div>
                       <div>
@@ -306,7 +305,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           name="category"
                           value={formData.category}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                         >
                           {ITEM_CATEGORIES.map((cat) => (
                             <option key={cat} value={cat}>
@@ -317,15 +316,14 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       </div>
                       <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Unit of Measure (UOM){" "}
-                          <span className="text-red-500">*</span>
+                          UOM <span className="text-red-500">*</span>
                         </label>
                         <select
                           required
                           name="uom"
                           value={formData.uom}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                         >
                           {UOM_OPTIONS.map((uom) => (
                             <option key={uom.value} value={uom.value}>
@@ -346,7 +344,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           name="default_reorder_level"
                           value={formData.default_reorder_level}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                         />
                       </div>
                       <div className="md:col-span-2">
@@ -358,7 +356,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.description}
                           onChange={handleChange}
                           rows="2"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
                         />
                       </div>
                     </div>
@@ -366,16 +364,19 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </div>
 
                 {/* RIGHT COLUMN: Financials & Accounting */}
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Base Financials */}
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative overflow-hidden">
-                    <div className="absolute top-4 right-4 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-lg flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase">
-                      <Percent size={12} /> System Markup: {systemMarkup}%
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 flex items-center gap-2">
+                        <DollarSign size={14} /> Base Financials
+                      </h3>
+                      <div className="self-start sm:self-auto bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-lg flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase">
+                        <Percent size={12} /> System Markup: {systemMarkup}%
+                      </div>
                     </div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
-                      <DollarSign size={14} /> Base Financials
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                           Base Unit Cost (PHP){" "}
@@ -390,12 +391,12 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.unit_cost}
                           onChange={handleChange}
                           placeholder="0.00"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                       <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                          Default Selling Price (PHP){" "}
+                          Selling Price (PHP){" "}
                           <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -407,14 +408,14 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.selling_price}
                           onChange={handleChange}
                           placeholder="0.00"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Chart of Accounts Linkage */}
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-4 flex items-center gap-2">
                       <BookOpen size={14} /> Chart of Accounts Linkage
                     </h3>
@@ -431,7 +432,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.asset_account_id}
                           onChange={handleChange}
                           disabled={isFetchingAccounts || isAccountLocked}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           <option value="" disabled>
                             {isFetchingAccounts
@@ -458,7 +459,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.income_account_id}
                           onChange={handleChange}
                           disabled={isFetchingAccounts || isAccountLocked}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           <option value="" disabled>
                             {isFetchingAccounts
@@ -485,7 +486,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           value={formData.expense_account_id}
                           onChange={handleChange}
                           disabled={isFetchingAccounts || isAccountLocked}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           <option value="" disabled>
                             {isFetchingAccounts
@@ -502,10 +503,18 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
 
                       {/* Immutability Alert */}
                       {isAccountLocked && (
-                        <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-2 font-bold flex items-center gap-1.5">
-                          <Lock size={12} className="shrink-0" /> COA mapping
-                          locked to preserve historical movement ledger logic.
-                        </p>
+                        <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-200 dark:border-amber-500/20">
+                          <p className="text-[10px] text-amber-600 dark:text-amber-500 font-bold flex items-start sm:items-center gap-2">
+                            <Lock
+                              size={12}
+                              className="shrink-0 mt-0.5 sm:mt-0"
+                            />
+                            <span>
+                              COA mapping locked to preserve historical movement
+                              ledger logic.
+                            </span>
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -514,7 +523,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             </div>
 
             {/* MODAL FOOTER */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+            <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
               <button
                 type="submit"
                 form="masterItemForm"
