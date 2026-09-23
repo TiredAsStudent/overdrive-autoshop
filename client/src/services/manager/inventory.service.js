@@ -39,6 +39,9 @@ export const inventoryService = {
         unit_cost: parseFloat(itemData.unit_cost),
         selling_price: parseFloat(itemData.selling_price),
         default_reorder_level: parseInt(itemData.default_reorder_level, 10),
+        asset_account_id: parseInt(itemData.asset_account_id, 10),
+        income_account_id: parseInt(itemData.income_account_id, 10),
+        expense_account_id: parseInt(itemData.expense_account_id, 10),
       };
       const response = await api.post("/manager/inventory", payload);
       return response.data;
@@ -57,6 +60,9 @@ export const inventoryService = {
         unit_cost: parseFloat(itemData.unit_cost),
         selling_price: parseFloat(itemData.selling_price),
         default_reorder_level: parseInt(itemData.default_reorder_level, 10),
+        asset_account_id: parseInt(itemData.asset_account_id, 10),
+        income_account_id: parseInt(itemData.income_account_id, 10),
+        expense_account_id: parseInt(itemData.expense_account_id, 10),
       };
       delete payload.sku;
       const response = await api.put(`/manager/inventory/${id}`, payload);

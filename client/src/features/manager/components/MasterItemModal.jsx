@@ -8,8 +8,11 @@ import {
   AlertCircle,
   Percent,
   Save,
+  BookOpen,
+  Lock,
 } from "lucide-react";
 import { inventoryService } from "../../../services/manager/inventory.service";
+import { chartOfAccountsService } from "../../../services/manager/chartOfAccounts.service";
 
 const ITEM_CATEGORIES = [
   "Fluids",
@@ -43,6 +46,11 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [validationError, setValidationError] = useState("");
   const [systemMarkup, setSystemMarkup] = useState(0);
 
+  const [assetAccounts, setAssetAccounts] = useState([]);
+  const [incomeAccounts, setIncomeAccounts] = useState([]);
+  const [expenseAccounts, setExpenseAccounts] = useState([]);
+  const [isFetchingAccounts, setIsFetchingAccounts] = useState(false);
+
   const [formData, setFormData] = useState({
     sku: "",
     item_name: "",
@@ -52,17 +60,63 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     unit_cost: "",
     selling_price: "",
     default_reorder_level: 5,
+    asset_account_id: "",
+    income_account_id: "",
+    expense_account_id: "",
   });
 
+  const isAccountLocked =
+    initialData && parseInt(initialData.usage_count, 10) > 0;
+
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchDependencies = async () => {
       if (isOpen) {
         const markup = await inventoryService.getSystemMarkup();
         setSystemMarkup(markup);
+
+        setIsFetchingAccounts(true);
+        try {
+          const res = await chartOfAccountsService.getAccounts(
+            1,
+            500,
+            "",
+            "all",
+            "active",
+          );
+          const allAccounts = res.data?.accounts || res.accounts || [];
+
+          const assets = allAccounts.filter((a) => a.account_type === "ASSET");
+          const incomes = allAccounts.filter(
+            (a) => a.account_type === "INCOME",
+          );
+          const expenses = allAccounts.filter(
+            (a) => a.account_type === "EXPENSE",
+          );
+
+          setAssetAccounts(assets);
+          setIncomeAccounts(incomes);
+          setExpenseAccounts(expenses);
+
+          if (!initialData) {
+            setFormData((prev) => ({
+              ...prev,
+              asset_account_id:
+                assets.length > 0 ? assets[0].id.toString() : "",
+              income_account_id:
+                incomes.length > 0 ? incomes[0].id.toString() : "",
+              expense_account_id:
+                expenses.length > 0 ? expenses[0].id.toString() : "",
+            }));
+          }
+        } catch (error) {
+          console.error("Failed to fetch accounting matrix", error);
+        } finally {
+          setIsFetchingAccounts(false);
+        }
       }
     };
-    fetchSettings();
-  }, [isOpen]);
+    fetchDependencies();
+  }, [isOpen, initialData]);
 
   useEffect(() => {
     if (initialData) {
@@ -75,9 +129,13 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
         unit_cost: initialData.unit_cost || "",
         selling_price: initialData.selling_price || "",
         default_reorder_level: initialData.default_reorder_level ?? 5,
+        asset_account_id: initialData.asset_account_id?.toString() || "",
+        income_account_id: initialData.income_account_id?.toString() || "",
+        expense_account_id: initialData.expense_account_id?.toString() || "",
       });
     } else {
-      setFormData({
+      setFormData((prev) => ({
+        ...prev,
         sku: "",
         item_name: "",
         category: "Fluids",
@@ -86,7 +144,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
         unit_cost: "",
         selling_price: "",
         default_reorder_level: 5,
-      });
+      }));
     }
     setValidationError("");
   }, [initialData, isOpen]);
@@ -131,6 +189,15 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       return;
     }
 
+    if (
+      !formData.asset_account_id ||
+      !formData.income_account_id ||
+      !formData.expense_account_id
+    ) {
+      setValidationError("All three Chart of Accounts mappings are required.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
@@ -149,7 +216,7 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-4xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
             {/* MODAL HEADER */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
@@ -191,153 +258,255 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               <form
                 id="masterItemForm"
                 onSubmit={handleSubmit}
-                className="space-y-6"
+                className="grid grid-cols-1 lg:grid-cols-2 gap-6"
               >
-                {/* Identification */}
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
-                    <Package size={14} /> Item Identification
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Item Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        required
-                        type="text"
-                        name="item_name"
-                        value={formData.item_name}
-                        onChange={handleChange}
-                        placeholder="e.g., Premium DOT 4 Brake Fluid (1L)"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Stock Keeping Unit (SKU){" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        required
-                        type="text"
-                        name="sku"
-                        value={formData.sku}
-                        onChange={handleChange}
-                        disabled={!!initialData}
-                        placeholder="e.g., BRK-FLUID-DOT4"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black tracking-widest uppercase disabled:opacity-50 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Category <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        required
-                        name="category"
-                        value={formData.category}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                      >
-                        {ITEM_CATEGORIES.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Unit of Measure (UOM){" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        required
-                        name="uom"
-                        value={formData.uom}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                      >
-                        {UOM_OPTIONS.map((uom) => (
-                          <option key={uom.value} value={uom.value}>
-                            {uom.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Default Reorder Level{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        required
-                        type="number"
-                        min="0"
-                        name="default_reorder_level"
-                        value={formData.default_reorder_level}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Description
-                      </label>
-                      <textarea
-                        name="description"
-                        value={formData.description}
-                        onChange={handleChange}
-                        rows="2"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
-                      />
+                {/* LEFT COLUMN: Identification */}
+                <div className="space-y-6">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                      <Package size={14} /> Item Identification
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Item Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          name="item_name"
+                          value={formData.item_name}
+                          onChange={handleChange}
+                          placeholder="e.g., Premium DOT 4 Brake Fluid (1L)"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Stock Keeping Unit (SKU){" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          name="sku"
+                          value={formData.sku}
+                          onChange={handleChange}
+                          disabled={!!initialData}
+                          placeholder="e.g., BRK-FLUID-DOT4"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black tracking-widest uppercase disabled:opacity-50 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Category <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          name="category"
+                          value={formData.category}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                        >
+                          {ITEM_CATEGORIES.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Unit of Measure (UOM){" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          name="uom"
+                          value={formData.uom}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                        >
+                          {UOM_OPTIONS.map((uom) => (
+                            <option key={uom.value} value={uom.value}>
+                              {uom.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Default Reorder Level{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="number"
+                          min="0"
+                          name="default_reorder_level"
+                          value={formData.default_reorder_level}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Description
+                        </label>
+                        <textarea
+                          name="description"
+                          value={formData.description}
+                          onChange={handleChange}
+                          rows="2"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Financials with Markup */}
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative overflow-hidden">
-                  <div className="absolute top-4 right-4 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-lg flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase">
-                    <Percent size={12} /> System Markup: {systemMarkup}%
-                  </div>
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
-                    <DollarSign size={14} /> Base Financials
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Base Unit Cost (PHP){" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        required
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        name="unit_cost"
-                        value={formData.unit_cost}
-                        onChange={handleChange}
-                        placeholder="0.00"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                      />
+                {/* RIGHT COLUMN: Financials & Accounting */}
+                <div className="space-y-6">
+                  {/* Base Financials */}
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 relative overflow-hidden">
+                    <div className="absolute top-4 right-4 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-lg flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase">
+                      <Percent size={12} /> System Markup: {systemMarkup}%
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Default Selling Price (PHP){" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        required
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        name="selling_price"
-                        value={formData.selling_price}
-                        onChange={handleChange}
-                        placeholder="0.00"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                      />
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
+                      <DollarSign size={14} /> Base Financials
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Base Unit Cost (PHP){" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          name="unit_cost"
+                          value={formData.unit_cost}
+                          onChange={handleChange}
+                          placeholder="0.00"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Default Selling Price (PHP){" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          name="selling_price"
+                          value={formData.selling_price}
+                          onChange={handleChange}
+                          placeholder="0.00"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chart of Accounts Linkage */}
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-4 flex items-center gap-2">
+                      <BookOpen size={14} /> Chart of Accounts Linkage
+                    </h3>
+                    <div className="space-y-4">
+                      {/* Asset Account */}
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Asset Account (Valuation){" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          name="asset_account_id"
+                          value={formData.asset_account_id}
+                          onChange={handleChange}
+                          disabled={isFetchingAccounts || isAccountLocked}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <option value="" disabled>
+                            {isFetchingAccounts
+                              ? "Loading..."
+                              : "-- Select Asset Account --"}
+                          </option>
+                          {assetAccounts.map((acc) => (
+                            <option key={acc.id} value={acc.id}>
+                              {acc.account_code} - {acc.account_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Income Account */}
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Income Account (Sales Revenue){" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          name="income_account_id"
+                          value={formData.income_account_id}
+                          onChange={handleChange}
+                          disabled={isFetchingAccounts || isAccountLocked}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <option value="" disabled>
+                            {isFetchingAccounts
+                              ? "Loading..."
+                              : "-- Select Income Account --"}
+                          </option>
+                          {incomeAccounts.map((acc) => (
+                            <option key={acc.id} value={acc.id}>
+                              {acc.account_code} - {acc.account_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Expense Account */}
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                          Expense Account (Shrinkage/Loss){" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          name="expense_account_id"
+                          value={formData.expense_account_id}
+                          onChange={handleChange}
+                          disabled={isFetchingAccounts || isAccountLocked}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <option value="" disabled>
+                            {isFetchingAccounts
+                              ? "Loading..."
+                              : "-- Select Expense Account --"}
+                          </option>
+                          {expenseAccounts.map((acc) => (
+                            <option key={acc.id} value={acc.id}>
+                              {acc.account_code} - {acc.account_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Immutability Alert */}
+                      {isAccountLocked && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-2 font-bold flex items-center gap-1.5">
+                          <Lock size={12} className="shrink-0" /> COA mapping
+                          locked to preserve historical movement ledger logic.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
