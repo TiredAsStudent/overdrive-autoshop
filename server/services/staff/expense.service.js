@@ -80,7 +80,7 @@ class ExpenseService {
         branch_id: branchId,
         vendor_id: parsedVendorId,
         vendor_name: parsedVendorName,
-        category: data.category,
+        expense_account_id: parseInt(data.expense_account_id, 10),
         description: data.description,
         reference_number: parsedRefNumber,
         expense_date: data.expense_date,
@@ -231,6 +231,10 @@ class ExpenseService {
 
       const payload = {
         ...data,
+        expense_account_id:
+          data.expense_account_id !== undefined
+            ? parseInt(data.expense_account_id, 10)
+            : oldExpense.expense_account_id,
         vendor_id: parsedVendorId,
         vendor_name: parsedVendorName,
         reference_number: parsedRefNumber,
@@ -357,19 +361,19 @@ class ExpenseService {
     limit = 10,
     search = "",
     status = "all",
-    category = "all",
+    expenseAccountId = "all",
     branchId = "all",
   ) {
     const offset = (page - 1) * limit;
 
     const [totalItems, expenses] = await Promise.all([
-      ExpenseModel.countFiltered(search, status, category, branchId),
+      ExpenseModel.countFiltered(search, status, expenseAccountId, branchId),
       ExpenseModel.findPaginatedFiltered(
         limit,
         offset,
         search,
         status,
-        category,
+        expenseAccountId,
         branchId,
       ),
     ]);

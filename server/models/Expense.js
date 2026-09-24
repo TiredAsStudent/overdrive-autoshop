@@ -23,7 +23,7 @@ class Expense {
   static async create(data) {
     const sql = `
       INSERT INTO expenses (
-        expense_number, branch_id, vendor_id, category, description, reference_number,
+        expense_number, branch_id, vendor_id, expense_account_id, description, reference_number,
         expense_date, is_vatable, subtotal, vat_amount, total_amount, payment_method, 
         status, notes, created_by, vendor_name, receipt_url
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
@@ -33,7 +33,7 @@ class Expense {
       data.expense_number,
       data.branch_id,
       data.vendor_id,
-      data.category,
+      data.expense_account_id,
       data.description,
       data.reference_number,
       data.expense_date,
@@ -58,7 +58,7 @@ class Expense {
     let paramIdx = 1;
 
     const fields = [
-      "category",
+      "expense_account_id",
       "description",
       "reference_number",
       "expense_date",
@@ -102,9 +102,10 @@ class Expense {
 
   static async findById(id) {
     const sql = `
-      SELECT e.*, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
+      SELECT e.*, coa.account_name AS category, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
              u.first_name as created_by_name, r.first_name as resolved_by_name
       FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       LEFT JOIN users u ON e.created_by = u.id
@@ -118,7 +119,7 @@ class Expense {
   static async countFiltered(
     search,
     status,
-    category,
+    expenseAccountId,
     branchId,
     excludeOcr = false,
   ) {
@@ -144,9 +145,9 @@ class Expense {
       values.push(status.toUpperCase());
       paramIdx++;
     }
-    if (category && category !== "all") {
-      conditions.push(`e.category ILIKE $${paramIdx}`);
-      values.push(`%${category}%`);
+    if (expenseAccountId && expenseAccountId !== "all") {
+      conditions.push(`e.expense_account_id = $${paramIdx}`);
+      values.push(expenseAccountId);
       paramIdx++;
     }
     if (branchId && branchId !== "all") {
@@ -165,16 +166,17 @@ class Expense {
     offset,
     search,
     status,
-    category,
+    expenseAccountId,
     branchId,
     excludeOcr = false,
   ) {
     let sql = `
-      SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
+      SELECT e.id, e.expense_number, e.expense_date, coa.account_name AS category, e.description, 
              e.total_amount, e.status, e.scan_id, e.receipt_url, 
              COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name,
              u.first_name as created_by_name
       FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       LEFT JOIN users u ON e.created_by = u.id
@@ -200,9 +202,9 @@ class Expense {
       values.push(status.toUpperCase());
       paramIdx++;
     }
-    if (category && category !== "all") {
-      conditions.push(`e.category ILIKE $${paramIdx}`);
-      values.push(`%${category}%`);
+    if (expenseAccountId && expenseAccountId !== "all") {
+      conditions.push(`e.expense_account_id = $${paramIdx}`);
+      values.push(expenseAccountId);
       paramIdx++;
     }
     if (branchId && branchId !== "all") {
@@ -221,7 +223,7 @@ class Expense {
 
   static async countApprovalHistory(
     search,
-    category,
+    expenseAccountId,
     branchId,
     excludeOcr = false,
   ) {
@@ -238,9 +240,9 @@ class Expense {
       values.push(`%${search}%`);
       paramIdx++;
     }
-    if (category && category !== "all") {
-      sql += ` AND e.category ILIKE $${paramIdx}`;
-      values.push(`%${category}%`);
+    if (expenseAccountId && expenseAccountId !== "all") {
+      sql += ` AND e.expense_account_id = $${paramIdx}`;
+      values.push(expenseAccountId);
       paramIdx++;
     }
     if (branchId && branchId !== "all") {
@@ -257,16 +259,17 @@ class Expense {
     limit,
     offset,
     search,
-    category,
+    expenseAccountId,
     branchId,
     excludeOcr = false,
   ) {
     let sql = `
-      SELECT e.id, e.expense_number, e.expense_date, e.category, e.description, 
+      SELECT e.id, e.expense_number, e.expense_date, coa.account_name AS category, e.description, 
              e.total_amount, e.status, e.resolved_at as processed_at, e.scan_id, e.receipt_url,
              COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
              c.first_name as created_by_name, r.first_name as resolved_by_name
       FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       LEFT JOIN users c ON e.created_by = c.id
@@ -285,9 +288,9 @@ class Expense {
       values.push(`%${search}%`);
       paramIdx++;
     }
-    if (category && category !== "all") {
-      sql += ` AND e.category ILIKE $${paramIdx}`;
-      values.push(`%${category}%`);
+    if (expenseAccountId && expenseAccountId !== "all") {
+      sql += ` AND e.expense_account_id = $${paramIdx}`;
+      values.push(expenseAccountId);
       paramIdx++;
     }
     if (branchId && branchId !== "all") {
@@ -376,11 +379,12 @@ class Expense {
     branchId,
   ) {
     let sql = `
-      SELECT e.id, e.expense_number, e.expense_date, e.category, 
+      SELECT e.id, e.expense_number, e.expense_date, coa.account_name AS category, 
              e.total_amount, e.status, COALESCE(v.business_name, e.vendor_name) as vendor_name, 
              b.branch_name, rs.confidence_score, rs.created_at as scan_date,
              u.first_name as created_by_name
       FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       JOIN receipt_scans rs ON e.scan_id = rs.id
@@ -415,10 +419,11 @@ class Expense {
 
   static async findReceiptApprovalById(id) {
     const sql = `
-      SELECT e.*, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
+      SELECT e.*, coa.account_name AS category, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
              u.first_name as created_by_name, r.first_name as resolved_by_name,
              rs.file_path, rs.confidence_score, rs.original_filename, rs.extracted_data
       FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       LEFT JOIN users u ON e.created_by = u.id
@@ -457,11 +462,12 @@ class Expense {
     branchId,
   ) {
     let sql = `
-      SELECT e.id, e.expense_number, e.expense_date, e.category, e.total_amount, e.status, 
+      SELECT e.id, e.expense_number, e.expense_date, coa.account_name AS category, e.total_amount, e.status, 
              COALESCE(v.business_name, e.vendor_name) as vendor_name, e.resolved_at as processed_at,
              b.branch_name, rs.confidence_score, 
              c.first_name as created_by_name, r.first_name as resolved_by_name
       FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
       LEFT JOIN vendors v ON e.vendor_id = v.id
       JOIN branches b ON e.branch_id = b.id
       JOIN receipt_scans rs ON e.scan_id = rs.id
@@ -521,7 +527,7 @@ class Expense {
 
       const insertSql = `
         INSERT INTO expenses (
-          expense_number, branch_id, vendor_id, vendor_name, category, description,
+          expense_number, branch_id, vendor_id, vendor_name, expense_account_id, description,
           reference_number, expense_date, is_vatable, subtotal, vat_amount, total_amount,
           payment_method, status, scan_id, receipt_url, line_items, created_by
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) 
@@ -533,7 +539,7 @@ class Expense {
         scan.branch_id,
         data.vendor_id || null,
         data.vendor_name,
-        data.category,
+        data.expense_account_id,
         description,
         data.reference_number || data.receipt_number || null,
         data.expense_date,

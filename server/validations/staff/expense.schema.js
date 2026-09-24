@@ -7,7 +7,10 @@ const createExpenseSchema = z.object({
     expense_date: z
       .string()
       .refine((val) => !isNaN(Date.parse(val)), "Invalid expense date format"),
-    category: z.string().trim().min(2, "Expense category is required").max(100),
+    expense_account_id: z.coerce
+      .number()
+      .int()
+      .positive("Expense account selection is required"),
     description: z.string().trim().min(3, "Description is required"),
 
     total_amount: z.coerce
@@ -48,7 +51,7 @@ const updateExpenseSchema = z.object({
         .string()
         .refine((val) => !isNaN(Date.parse(val)), "Invalid date format")
         .optional(),
-      category: z.string().trim().min(2).max(100).optional(),
+      expense_account_id: z.coerce.number().int().positive().optional(),
       description: z.string().trim().min(3).optional(),
       total_amount: z.coerce.number().positive().optional(),
       is_vatable: z.preprocess(parseBoolean, z.boolean()).optional(),
@@ -97,7 +100,7 @@ const getExpensesSchema = z.object({
       limit: z.string().regex(/^\d+$/).optional(),
       search: z.string().optional(),
       status: z.string().optional(),
-      category: z.string().optional(),
+      expense_account_id: z.string().optional(),
       branch: z.string().optional(),
     })
     .optional(),
