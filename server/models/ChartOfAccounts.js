@@ -150,12 +150,20 @@ class ChartOfAccounts {
 
   static async countAccountUsage(accountId) {
     try {
+      const targetId = parseInt(accountId, 10);
       const accRes = await query(
-        `SELECT account_code, account_name FROM chart_of_accounts WHERE id = $1`,
-        [accountId],
+        `SELECT account_name FROM chart_of_accounts WHERE id = $1`,
+        [targetId],
       );
       if (!accRes.rows[0]) return 0;
-      const { account_code, account_name } = accRes.rows[0];
+      const { account_name } = accRes.rows[0];
+
+      const sysRes = await query(`
+        SELECT ap_account_id, ar_account_id, input_vat_account_id, 
+               output_vat_account_id, cash_on_hand_account_id, digital_payment_account_id 
+        FROM system_settings WHERE id = 1
+      `);
+      const sys = sysRes.rows[0] || {};
 
       const queries = [];
 
@@ -195,20 +203,20 @@ class ChartOfAccounts {
         WHERE e.category = $2 AND e.status = 'APPROVED'
       `);
 
-      if (account_code === "1040") {
+      if (targetId === sys.ar_account_id) {
         queries.push(`SELECT COUNT(*) as cnt FROM invoices`);
         queries.push(
           `SELECT COUNT(*) as cnt FROM payments WHERE status != 'VOID'`,
         );
       }
 
-      if (account_code === "2020") {
+      if (targetId === sys.output_vat_account_id) {
         queries.push(
           `SELECT COUNT(*) as cnt FROM invoices WHERE vat_amount > 0`,
         );
       }
 
-      if (account_code === "1010") {
+      if (targetId === sys.cash_on_hand_account_id) {
         queries.push(
           `SELECT COUNT(*) as cnt FROM payments WHERE payment_method = 'CASH' AND status != 'VOID'`,
         );
@@ -220,14 +228,14 @@ class ChartOfAccounts {
         );
       }
 
-      if (account_code === "1020") {
+      if (targetId === sys.input_vat_account_id) {
         queries.push(
           `SELECT COUNT(*) as cnt FROM expenses WHERE vat_amount > 0 AND status = 'APPROVED'`,
         );
         queries.push(`SELECT COUNT(*) as cnt FROM bills WHERE vat_amount > 0`);
       }
 
-      if (account_code === "1030") {
+      if (targetId === sys.digital_payment_account_id) {
         queries.push(
           `SELECT COUNT(*) as cnt FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'`,
         );
@@ -239,7 +247,7 @@ class ChartOfAccounts {
         );
       }
 
-      if (account_code === "2010") {
+      if (targetId === sys.ap_account_id) {
         queries.push(`SELECT COUNT(*) as cnt FROM bills`);
         queries.push(
           `SELECT COUNT(*) as cnt FROM vendor_payments WHERE status != 'VOID'`,
@@ -248,7 +256,7 @@ class ChartOfAccounts {
 
       const sql =
         `SELECT SUM(cnt) as total FROM (` + queries.join(" UNION ALL ") + `) t`;
-      const result = await query(sql, [accountId, account_name]);
+      const result = await query(sql, [targetId, account_name]);
 
       return parseInt(result.rows[0].total || 0, 10);
     } catch (error) {
@@ -259,15 +267,23 @@ class ChartOfAccounts {
 
   static async getAccountUsage(accountId, limit, offset) {
     try {
+      const targetId = parseInt(accountId, 10);
       const accRes = await query(
-        `SELECT account_code, account_name FROM chart_of_accounts WHERE id = $1`,
-        [accountId],
+        `SELECT account_name FROM chart_of_accounts WHERE id = $1`,
+        [targetId],
       );
       if (!accRes.rows[0]) return [];
-      const { account_code, account_name } = accRes.rows[0];
+      const { account_name } = accRes.rows[0];
+
+      const sysRes = await query(`
+        SELECT ap_account_id, ar_account_id, input_vat_account_id, 
+               output_vat_account_id, cash_on_hand_account_id, digital_payment_account_id 
+        FROM system_settings WHERE id = 1
+      `);
+      const sys = sysRes.rows[0] || {};
 
       const queries = [];
-      const params = [accountId, account_name];
+      const params = [targetId, account_name];
 
       queries.push(`
         SELECT 'INVOICE (Service Revenue)' as transaction_type, i.invoice_number as reference, i.created_at as transaction_date, 
@@ -314,7 +330,7 @@ class ChartOfAccounts {
         WHERE e.category = $2 AND e.status = 'APPROVED'
       `);
 
-      if (account_code === "1040") {
+      if (targetId === sys.ar_account_id) {
         queries.push(`
            SELECT 'A/R (Invoice)' as transaction_type, invoice_number as reference, created_at as transaction_date, 
            grand_total as amount, status::text as status
@@ -327,7 +343,7 @@ class ChartOfAccounts {
          `);
       }
 
-      if (account_code === "2020") {
+      if (targetId === sys.output_vat_account_id) {
         queries.push(`
            SELECT 'OUTPUT VAT' as transaction_type, invoice_number as reference, created_at as transaction_date, 
            vat_amount as amount, status::text as status
@@ -335,7 +351,7 @@ class ChartOfAccounts {
          `);
       }
 
-      if (account_code === "1010") {
+      if (targetId === sys.cash_on_hand_account_id) {
         queries.push(`
            SELECT 'PAYMENT (Cash Inflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_received as amount, status::text as status
@@ -353,7 +369,7 @@ class ChartOfAccounts {
          `);
       }
 
-      if (account_code === "1020") {
+      if (targetId === sys.input_vat_account_id) {
         queries.push(`
            SELECT 'INPUT VAT (Operational Expense)' as transaction_type, expense_number as reference, expense_date as transaction_date, 
            vat_amount as amount, status::text as status
@@ -366,7 +382,7 @@ class ChartOfAccounts {
          `);
       }
 
-      if (account_code === "1030") {
+      if (targetId === sys.digital_payment_account_id) {
         queries.push(`
            SELECT 'PAYMENT (Bank/E-Wallet Inflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
            amount_received as amount, status::text as status
@@ -384,7 +400,7 @@ class ChartOfAccounts {
          `);
       }
 
-      if (account_code === "2010") {
+      if (targetId === sys.ap_account_id) {
         queries.push(`
            SELECT 'SUPPLIER BILL (A/P Liability)' as transaction_type, bill_number as reference, created_at as transaction_date, 
            grand_total as amount, status::text as status
