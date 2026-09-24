@@ -93,7 +93,7 @@ const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 5 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-56 sm:max-h-64 overflow-y-auto custom-scrollbar z-[100]"
+            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-48 sm:max-h-64 overflow-y-auto custom-scrollbar z-[100]"
           >
             {filtered.length > 0 ? (
               filtered.map((v) => (
@@ -283,7 +283,6 @@ const ExpenseModal = ({
     }));
   };
 
-  // --- DROPZONE HANDLERS ---
   const processFile = (file) => {
     if (!file) return;
     const allowedTypes = [
@@ -415,14 +414,14 @@ const ExpenseModal = ({
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                className="p-3 sm:p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50 shrink-0"
               >
                 <X size={24} />
               </button>
             </div>
 
             {/* Scrollable Body */}
-            <div className="px-3 sm:px-6 md:px-8 py-4 sm:py-6 overflow-y-auto custom-scrollbar flex-1 space-y-4 sm:space-y-6">
+            <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 overflow-y-auto custom-scrollbar flex-1 space-y-4 sm:space-y-6">
               {validationError && (
                 <div className="p-3 sm:p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-xs sm:text-sm font-bold mx-1 sm:mx-0">
                   <AlertCircle size={16} className="shrink-0 mt-0.5" />

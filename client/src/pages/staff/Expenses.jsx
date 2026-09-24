@@ -208,34 +208,42 @@ const Expenses = () => {
         subtitle="Branch Cost Registry"
         icon={ReceiptText}
       >
-        <StatusToggle
-          activeValue={statusFilter}
-          onToggle={setStatusFilter}
-          options={STATUS_FILTERS}
-          className="overflow-x-auto custom-scrollbar"
-        />
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 w-full mt-2 lg:mt-0">
+          <div className="w-full xl:w-auto overflow-x-auto custom-scrollbar pb-2 xl:pb-0">
+            <StatusToggle
+              activeValue={statusFilter}
+              onToggle={setStatusFilter}
+              options={STATUS_FILTERS}
+            />
+          </div>
 
-        <SearchBar
-          value={searchQuery}
-          onChange={handleSearchChange}
-          placeholder="Search Expense No. or Desc..."
-          isSearching={searchQuery !== debouncedSearchQuery}
-        />
-
-        <FilterButton
-          onClick={() => setIsFilterModalOpen(true)}
-          activeCount={activeFilterCount}
-        />
-
-        <ActionButton
-          onClick={() => {
-            setModalMode("CREATE");
-            setSelectedExpenseData(null);
-            setIsModalOpen(true);
-          }}
-          label="Record Expense"
-          icon={Plus}
-        />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto xl:ml-auto">
+            <SearchBar
+              value={searchQuery}
+              onChange={handleSearchChange}
+              placeholder="Search Expense No. or Desc..."
+              isSearching={searchQuery !== debouncedSearchQuery}
+              className="w-full sm:w-64 shrink-0"
+            />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <FilterButton
+                onClick={() => setIsFilterModalOpen(true)}
+                activeCount={activeFilterCount}
+                className="flex-1 sm:flex-none"
+              />
+              <ActionButton
+                onClick={() => {
+                  setModalMode("CREATE");
+                  setSelectedExpenseData(null);
+                  setIsModalOpen(true);
+                }}
+                label="Record Expense"
+                icon={Plus}
+                className="flex-1 sm:flex-none"
+              />
+            </div>
+          </div>
+        </div>
       </PageHeader>
 
       <DataTable
@@ -255,8 +263,8 @@ const Expenses = () => {
             key={expense.id}
             className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
           >
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="flex flex-col items-start gap-1 w-max">
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle">
+              <div className="flex flex-col items-start gap-1 min-w-[140px]">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
                     {expense.expense_number}
@@ -282,42 +290,42 @@ const Expenses = () => {
                 </span>
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="flex flex-col items-start gap-1 max-w-[150px] sm:max-w-[200px]">
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate w-full">
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle">
+              <div className="flex flex-col items-start gap-1 min-w-[180px] max-w-[200px] sm:max-w-[280px] whitespace-normal">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-snug">
                   {expense.description}
                 </p>
-                <p className="text-[9px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest truncate">
+                <p className="text-[9px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest mt-0.5">
                   {expense.category}
                 </p>
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest truncate max-w-[120px] sm:max-w-[150px]">
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle">
+              <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest truncate min-w-[120px] max-w-[150px]">
                 {expense.vendor_name || "N/A"}
               </p>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <span className="text-sm font-mono font-black text-slate-900 dark:text-white">
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle">
+              <span className="text-sm font-mono font-black text-slate-900 dark:text-white min-w-[100px] block">
                 ₱
                 {parseFloat(expense.total_amount).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                 })}
               </span>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5 w-max">
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle w-max">
               <StatusBadge
                 label={expense.status.replace("_", " ")}
                 variant={getStatusBadgeVariant(expense.status)}
                 icon={getStatusBadgeIcon(expense.status)}
               />
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 text-right align-top sm:align-middle">
               <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                 <button
                   onClick={() => openDrawer(expense.id)}
                   title="View Details"
-                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
+                  className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
                 >
                   <FileSearch size={16} />
                 </button>
@@ -332,14 +340,14 @@ const Expenses = () => {
                         setIsModalOpen(true);
                       }}
                       title="Edit Expense"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
+                      className="p-2 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
                     >
                       <Edit2 size={16} />
                     </button>
                     <button
                       onClick={() => handleDirectSubmitForApproval(expense)}
                       title="Submit to Manager"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
+                      className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
                     >
                       <ArrowUpRight size={16} />
                     </button>
