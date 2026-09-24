@@ -252,7 +252,6 @@ router.post(
 );
 router.get("/bills", validate(getBillsSchema), BillController.getBills);
 router.get("/bills/:id", BillController.getBillDetails);
-
 router.patch("/bills/:id/receive", BillController.confirmReceipt);
 
 // ==========================================
@@ -263,6 +262,10 @@ router.post(
   uploadExpenseAttachment.single("attachment"),
   validate(createExpenseSchema),
   ExpenseController.createExpense,
+);
+router.get(
+  "/expenses/active-categories",
+  ExpenseController.getActiveCategories,
 );
 router.get(
   "/expenses",

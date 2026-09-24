@@ -31,17 +31,6 @@ import ConfirmModal from "../../components/shared/ConfirmModal";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
-const EXPENSE_CATEGORIES = [
-  "Utility Expense",
-  "Parts & Supplies Expense",
-  "Equipment Maintenance",
-  "Uncategorized Expense",
-  "Rent Expense",
-  "Transportation Expense",
-  "Meals & Entertainment",
-  "Office Supplies",
-];
-
 const STATUS_FILTERS = [
   { value: "all", label: "All" },
   { value: "DRAFT", label: "Draft" },
@@ -55,6 +44,7 @@ const Expenses = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [expenses, setExpenses] = useState([]);
+  const [expenseCategories, setExpenseCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -63,7 +53,7 @@ const Expenses = () => {
   );
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [expenseAccountIdFilter, setExpenseAccountIdFilter] = useState("all");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -87,7 +77,14 @@ const Expenses = () => {
     onConfirm: () => {},
   });
 
-  const activeFilterCount = categoryFilter !== "all" ? 1 : 0;
+  const activeFilterCount = expenseAccountIdFilter !== "all" ? 1 : 0;
+
+  useEffect(() => {
+    expenseService
+      .getActiveCategories()
+      .then((res) => setExpenseCategories(res.data || []))
+      .catch((err) => console.error("Failed to load COA categories", err));
+  }, []);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -101,7 +98,7 @@ const Expenses = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter, categoryFilter]);
+  }, [debouncedSearchQuery, statusFilter, expenseAccountIdFilter]);
 
   const loadExpenses = useCallback(async () => {
     try {
@@ -111,7 +108,7 @@ const Expenses = () => {
         ITEMS_PER_PAGE,
         debouncedSearchQuery,
         statusFilter,
-        categoryFilter,
+        expenseAccountIdFilter,
         "all",
       );
       setExpenses(response.data?.expenses || []);
@@ -125,7 +122,7 @@ const Expenses = () => {
     currentPage,
     debouncedSearchQuery,
     statusFilter,
-    categoryFilter,
+    expenseAccountIdFilter,
     showToast,
   ]);
 
@@ -186,7 +183,7 @@ const Expenses = () => {
   };
 
   const resetFilters = () => {
-    setCategoryFilter("all");
+    setExpenseAccountIdFilter("all");
     setIsFilterModalOpen(false);
   };
 
@@ -259,15 +256,15 @@ const Expenses = () => {
             className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
           >
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="flex flex-col items-start gap-1">
-                <div className="flex items-center gap-1.5">
+              <div className="flex flex-col items-start gap-1 w-max">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
                     {expense.expense_number}
                   </span>
                   {/* Visual Evidence Indicators */}
                   {expense.scan_id ? (
                     <span
-                      className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
+                      className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0"
                       title="Generated via OCR Receipt Scanner"
                     >
                       <ScanText size={10} /> OCR
@@ -275,7 +272,7 @@ const Expenses = () => {
                   ) : expense.receipt_url ? (
                     <Paperclip
                       size={14}
-                      className="text-amber-500"
+                      className="text-amber-500 shrink-0"
                       title="Attachment Present"
                     />
                   ) : null}
@@ -286,17 +283,17 @@ const Expenses = () => {
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="flex flex-col items-start gap-1 max-w-[200px]">
+              <div className="flex flex-col items-start gap-1 max-w-[150px] sm:max-w-[200px]">
                 <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate w-full">
                   {expense.description}
                 </p>
-                <p className="text-[9px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest">
+                <p className="text-[9px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest truncate">
                   {expense.category}
                 </p>
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+              <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest truncate max-w-[120px] sm:max-w-[150px]">
                 {expense.vendor_name || "N/A"}
               </p>
             </td>
@@ -308,7 +305,7 @@ const Expenses = () => {
                 })}
               </span>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
+            <td className="px-4 sm:px-8 py-4 sm:py-5 w-max">
               <StatusBadge
                 label={expense.status.replace("_", " ")}
                 variant={getStatusBadgeVariant(expense.status)}
@@ -316,11 +313,11 @@ const Expenses = () => {
               />
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
-              <div className="flex items-center justify-end gap-1 sm:gap-2">
+              <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                 <button
                   onClick={() => openDrawer(expense.id)}
                   title="View Details"
-                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
                 >
                   <FileSearch size={16} />
                 </button>
@@ -335,14 +332,14 @@ const Expenses = () => {
                         setIsModalOpen(true);
                       }}
                       title="Edit Expense"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
                     >
                       <Edit2 size={16} />
                     </button>
                     <button
                       onClick={() => handleDirectSubmitForApproval(expense)}
                       title="Submit to Manager"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
                     >
                       <ArrowUpRight size={16} />
                     </button>
@@ -369,17 +366,17 @@ const Expenses = () => {
         <div className="space-y-6">
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Filter by Category
+              Filter by COA Category
             </label>
             <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              value={expenseAccountIdFilter}
+              onChange={(e) => setExpenseAccountIdFilter(e.target.value)}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
             >
-              <option value="all">All Categories</option>
-              {EXPENSE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
+              <option value="all">All Expense Accounts</option>
+              {expenseCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.account_name}
                 </option>
               ))}
             </select>
@@ -393,6 +390,7 @@ const Expenses = () => {
         onSubmit={handleModalSubmit}
         mode={modalMode}
         initialData={selectedExpenseData}
+        categories={expenseCategories}
       />
       <ExpenseDrawer
         isOpen={isDrawerOpen}

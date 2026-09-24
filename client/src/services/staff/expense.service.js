@@ -1,12 +1,24 @@
 import api from "../api";
 
 export const expenseService = {
+  getActiveCategories: async () => {
+    try {
+      const response = await api.get("/staff/expenses/active-categories");
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to load expense categories.",
+      );
+    }
+  },
+
   getExpenses: async (
     page = 1,
     limit = 10,
     search = "",
     status = "all",
-    category = "all",
+    expenseAccountId = "all",
     branchId = "all",
   ) => {
     try {
@@ -16,7 +28,7 @@ export const expenseService = {
           limit,
           search,
           status,
-          category,
+          expense_account_id: expenseAccountId,
           branch: branchId,
         },
       });

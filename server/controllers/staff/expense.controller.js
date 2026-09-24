@@ -1,8 +1,33 @@
 const ExpenseService = require("../../services/staff/expense.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
+const { query } = require("../../config/db");
 
 class ExpenseController {
+  static async getActiveCategories(req, res) {
+    try {
+      const sql = `
+        SELECT id, account_code, account_name 
+        FROM chart_of_accounts 
+        WHERE account_type = 'EXPENSE' AND is_active = TRUE 
+        ORDER BY account_name ASC
+      `;
+      const result = await query(sql);
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        result.rows,
+        "Categories loaded.",
+      );
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to load categories.",
+      );
+    }
+  }
+
   static async createExpense(req, res) {
     try {
       const expense = await ExpenseService.createExpense(
