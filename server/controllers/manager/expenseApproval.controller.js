@@ -8,13 +8,13 @@ class ExpenseApprovalController {
       const branchId = req.query.branch || "all";
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
-      const { search, category } = req.query;
+      const { search, expense_account_id } = req.query;
 
       const result = await ExpenseApprovalService.getPendingApprovals(
         page,
         limit,
         search,
-        category,
+        expense_account_id,
         branchId,
       );
 
@@ -39,13 +39,13 @@ class ExpenseApprovalController {
       const branchId = req.query.branch || "all";
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
-      const { search, category } = req.query;
+      const { search, expense_account_id } = req.query;
 
       const result = await ExpenseApprovalService.getApprovalHistory(
         page,
         limit,
         search,
-        category,
+        expense_account_id,
         branchId,
       );
 

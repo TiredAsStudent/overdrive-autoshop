@@ -6,7 +6,7 @@ class ExpenseApprovalService {
     page = 1,
     limit = 10,
     search = "",
-    category = "all",
+    expenseAccountId = "all",
     branchId = "all",
   ) {
     const offset = (page - 1) * limit;
@@ -15,7 +15,7 @@ class ExpenseApprovalService {
       ExpenseModel.countFiltered(
         search,
         "PENDING_APPROVAL",
-        category,
+        expenseAccountId,
         branchId,
         true,
       ),
@@ -24,7 +24,7 @@ class ExpenseApprovalService {
         offset,
         search,
         "PENDING_APPROVAL",
-        category,
+        expenseAccountId,
         branchId,
         true,
       ),
@@ -45,18 +45,23 @@ class ExpenseApprovalService {
     page = 1,
     limit = 10,
     search = "",
-    category = "all",
+    expenseAccountId = "all",
     branchId = "all",
   ) {
     const offset = (page - 1) * limit;
 
     const [totalItems, expenses] = await Promise.all([
-      ExpenseModel.countApprovalHistory(search, category, branchId, true),
+      ExpenseModel.countApprovalHistory(
+        search,
+        expenseAccountId,
+        branchId,
+        true,
+      ),
       ExpenseModel.findPaginatedApprovalHistory(
         limit,
         offset,
         search,
-        category,
+        expenseAccountId,
         branchId,
         true,
       ),

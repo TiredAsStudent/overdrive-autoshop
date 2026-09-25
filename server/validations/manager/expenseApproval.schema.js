@@ -6,7 +6,7 @@ const getExpenseApprovalsSchema = z.object({
       page: z.string().regex(/^\d+$/).optional(),
       limit: z.string().regex(/^\d+$/).optional(),
       search: z.string().optional(),
-      category: z.string().optional(),
+      expense_account_id: z.string().optional(),
       branch: z.string().optional(),
     })
     .optional(),
