@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { expenseApprovalService } from "../../services/manager/expenseApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
+import { chartOfAccountsService } from "../../services/manager/chartOfAccounts.service";
 
 import ExpenseApprovalModal from "../../features/manager/components/ExpenseApprovalModal";
 import ExpenseApprovalDrawer from "../../features/manager/components/ExpenseApprovalDrawer";
@@ -27,22 +28,12 @@ import StatusToggle from "../../components/ui/StatusToggle";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
-const EXPENSE_CATEGORIES = [
-  "Utility Expense",
-  "Parts & Supplies Expense",
-  "Equipment Maintenance",
-  "Uncategorized Expense",
-  "Rent Expense",
-  "Transportation Expense",
-  "Meals & Entertainment",
-  "Office Supplies",
-];
-
 const ExpenseApprovals = () => {
   const { showToast } = useApp();
 
   const [expenses, setExpenses] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [expenseCategories, setExpenseCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // View Mode: 'PENDING' | 'HISTORY'
@@ -52,7 +43,7 @@ const ExpenseApprovals = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [branchFilter, setBranchFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [expenseAccountIdFilter, setExpenseAccountIdFilter] = useState("all");
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -65,18 +56,24 @@ const ExpenseApprovals = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const activeFilterCount =
-    (branchFilter !== "all" ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
+    (branchFilter !== "all" ? 1 : 0) +
+    (expenseAccountIdFilter !== "all" ? 1 : 0);
 
   useEffect(() => {
     inventoryService
       .getActiveBranches()
       .then((res) => setBranches(res.data || []))
       .catch((err) => console.error("Failed to load branches", err));
+
+    chartOfAccountsService
+      .getAccounts(1, 500, "", "EXPENSE", "active")
+      .then((res) => setExpenseCategories(res.data?.accounts || res.data || []))
+      .catch((err) => console.error("Failed to load COA categories", err));
   }, []);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, viewMode, branchFilter, categoryFilter]);
+  }, [debouncedSearchQuery, viewMode, branchFilter, expenseAccountIdFilter]);
 
   const loadExpenses = async () => {
     try {
@@ -87,14 +84,14 @@ const ExpenseApprovals = () => {
               currentPage,
               ITEMS_PER_PAGE,
               debouncedSearchQuery,
-              categoryFilter,
+              expenseAccountIdFilter,
               branchFilter,
             )
           : await expenseApprovalService.getApprovalHistory(
               currentPage,
               ITEMS_PER_PAGE,
               debouncedSearchQuery,
-              categoryFilter,
+              expenseAccountIdFilter,
               branchFilter,
             );
 
@@ -114,7 +111,7 @@ const ExpenseApprovals = () => {
     debouncedSearchQuery,
     viewMode,
     branchFilter,
-    categoryFilter,
+    expenseAccountIdFilter,
   ]);
 
   useEffect(() => {
@@ -160,7 +157,7 @@ const ExpenseApprovals = () => {
 
   const resetFilters = () => {
     setBranchFilter("all");
-    setCategoryFilter("all");
+    setExpenseAccountIdFilter("all");
     setIsFilterModalOpen(false);
   };
 
@@ -321,17 +318,17 @@ const ExpenseApprovals = () => {
         <div className="space-y-5">
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Expense Category
+              COA Expense Category
             </label>
             <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              value={expenseAccountIdFilter}
+              onChange={(e) => setExpenseAccountIdFilter(e.target.value)}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
             >
               <option value="all">All Categories</option>
-              {EXPENSE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
+              {expenseCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.account_name}
                 </option>
               ))}
             </select>

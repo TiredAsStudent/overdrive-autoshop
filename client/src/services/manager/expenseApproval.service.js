@@ -5,12 +5,18 @@ export const expenseApprovalService = {
     page = 1,
     limit = 10,
     search = "",
-    category = "all",
+    expenseAccountId = "all",
     branchId = "all",
   ) => {
     try {
       const response = await api.get("/manager/approvals/expenses/pending", {
-        params: { page, limit, search, category, branch: branchId },
+        params: {
+          page,
+          limit,
+          search,
+          expense_account_id: expenseAccountId,
+          branch: branchId,
+        },
       });
       return response.data;
     } catch (error) {
@@ -25,12 +31,18 @@ export const expenseApprovalService = {
     page = 1,
     limit = 10,
     search = "",
-    category = "all",
+    expenseAccountId = "all",
     branchId = "all",
   ) => {
     try {
       const response = await api.get("/manager/approvals/expenses/history", {
-        params: { page, limit, search, category, branch: branchId },
+        params: {
+          page,
+          limit,
+          search,
+          expense_account_id: expenseAccountId,
+          branch: branchId,
+        },
       });
       return response.data;
     } catch (error) {
