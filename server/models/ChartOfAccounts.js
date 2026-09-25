@@ -170,7 +170,6 @@ class ChartOfAccounts {
         [targetId],
       );
       if (!accRes.rows[0]) return 0;
-      const { account_name } = accRes.rows[0];
 
       const sysRes = await query(`
         SELECT ap_account_id, ar_account_id, input_vat_account_id, 
@@ -270,7 +269,8 @@ class ChartOfAccounts {
 
       const sql =
         `SELECT SUM(cnt) as total FROM (` + queries.join(" UNION ALL ") + `) t`;
-      const result = await query(sql, [targetId, account_name]);
+
+      const result = await query(sql, [targetId]);
 
       return parseInt(result.rows[0].total || 0, 10);
     } catch (error) {
@@ -287,7 +287,6 @@ class ChartOfAccounts {
         [targetId],
       );
       if (!accRes.rows[0]) return [];
-      const { account_name } = accRes.rows[0];
 
       const sysRes = await query(`
         SELECT ap_account_id, ar_account_id, input_vat_account_id, 
@@ -297,7 +296,8 @@ class ChartOfAccounts {
       const sys = sysRes.rows[0] || {};
 
       const queries = [];
-      const params = [targetId, account_name];
+
+      const params = [targetId];
 
       queries.push(`
         SELECT 'INVOICE (Service Revenue)' as transaction_type, i.invoice_number as reference, i.created_at as transaction_date, 
@@ -429,7 +429,8 @@ class ChartOfAccounts {
 
       const sql =
         queries.join(" UNION ALL ") +
-        ` ORDER BY transaction_date DESC LIMIT $3 OFFSET $4`;
+        ` ORDER BY transaction_date DESC LIMIT $2 OFFSET $3`;
+
       params.push(limit, offset);
 
       const result = await query(sql, params);

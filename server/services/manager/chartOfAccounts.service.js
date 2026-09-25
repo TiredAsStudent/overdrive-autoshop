@@ -52,14 +52,25 @@ class ChartOfAccountsService {
     const oldAccount = await COAModel.findById(id);
     if (!oldAccount) throw new Error("Account not found.");
 
-    if (
-      oldAccount.is_system &&
-      data.account_name &&
-      data.account_name !== oldAccount.account_name
-    ) {
-      throw new Error(
-        "System accounts cannot be renamed to prevent automated workflow failures.",
-      );
+    if (oldAccount.is_system) {
+      if (data.account_name && data.account_name !== oldAccount.account_name) {
+        throw new Error(
+          "System accounts cannot be renamed to prevent automated workflow failures.",
+        );
+      }
+      if (data.account_type && data.account_type !== oldAccount.account_type) {
+        throw new Error(
+          "Critical system accounts cannot have their account type altered.",
+        );
+      }
+      if (
+        data.is_vat_applicable !== undefined &&
+        data.is_vat_applicable !== oldAccount.is_vat_applicable
+      ) {
+        throw new Error(
+          "Critical system accounts cannot have their VAT tracking rules altered.",
+        );
+      }
     }
 
     let nameChanged = false;
@@ -88,13 +99,6 @@ class ChartOfAccountsService {
 
     const updatedAccount = await COAModel.update(id, data);
 
-    if (nameChanged) {
-      await COAModel.syncExpenseCategoryName(
-        oldAccount.account_name,
-        data.account_name,
-      );
-    }
-
     await logSecureAction(
       activeUser.id,
       null,
@@ -114,8 +118,15 @@ class ChartOfAccountsService {
     const account = await COAModel.findById(id);
     if (!account) throw new Error("Account not found.");
 
-    if (!isActive && account.is_system) {
-      throw new Error("Critical system accounts cannot be deactivated.");
+    if (!isActive) {
+      if (account.is_system) {
+        throw new Error("Critical system accounts cannot be deactivated.");
+      }
+
+      const dependencyError = await COAModel.checkActiveDependencies(id);
+      if (dependencyError) {
+        throw new Error(`Cannot deactivate account: ${dependencyError}`);
+      }
     }
 
     const updatedAccount = await COAModel.toggleStatus(id, isActive);
