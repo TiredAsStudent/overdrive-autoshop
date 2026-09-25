@@ -18,6 +18,7 @@ import {
   Receipt as ReceiptIcon,
   CreditCard,
   Image as ImageIcon,
+  ImageOff,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { receiptService } from "../../services/staff/receipt.service";
