@@ -14,6 +14,25 @@ class ChartOfAccounts {
     return result.rows[0];
   }
 
+  static async checkActiveDependencies(accountId) {
+    const svcSql = `SELECT id FROM services WHERE income_account_id = $1 AND is_active = TRUE LIMIT 1`;
+    const svcRes = await query(svcSql, [accountId]);
+    if (svcRes.rows.length > 0)
+      return "Active services are currently mapped to this account.";
+
+    const invSql = `
+      SELECT id FROM inventory_items 
+      WHERE (asset_account_id = $1 OR income_account_id = $1 OR expense_account_id = $1) 
+        AND is_active = TRUE 
+      LIMIT 1
+    `;
+    const invRes = await query(invSql, [accountId]);
+    if (invRes.rows.length > 0)
+      return "Active inventory items are currently mapped to this account.";
+
+    return null;
+  }
+
   static async create(data) {
     const sql = `
       INSERT INTO chart_of_accounts (
