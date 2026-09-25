@@ -18,7 +18,10 @@ const verifyReceiptSchema = z.object({
     expense_date: z
       .string()
       .refine((val) => !isNaN(Date.parse(val)), "Invalid date format"),
-    category: z.string().trim().min(2, "Expense category is required"),
+    expense_account_id: z
+      .number()
+      .int()
+      .positive("Expense category is required"),
     payment_method: z.enum([
       "CASH",
       "PETTY_CASH",
