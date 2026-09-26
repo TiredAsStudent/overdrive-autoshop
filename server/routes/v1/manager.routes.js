@@ -13,6 +13,7 @@ const ReceiptApprovalController = require("../../controllers/manager/receiptAppr
 const ChartOfAccountsController = require("../../controllers/manager/chartOfAccounts.controller");
 const ManagerVendorController = require("../../controllers/manager/vendor.controller");
 const VendorPaymentController = require("../../controllers/manager/vendorPayment.controller");
+const JournalEntryController = require("../../controllers/manager/journalEntry.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -83,6 +84,10 @@ const {
   createVendorPaymentSchema,
   getVendorPaymentsSchema,
 } = require("../../validations/manager/vendorPayment.schema");
+const {
+  saveJournalEntrySchema,
+  getJournalEntriesSchema,
+} = require("../../validations/manager/journalEntry.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -300,6 +305,33 @@ router.patch(
   "/accounting/accounts/:id/status",
   validate(toggleAccountStatusSchema),
   ChartOfAccountsController.toggleStatus,
+);
+
+// ==========================================
+// MODULE: ACCOUNTING - JOURNAL ENTRIES
+// ==========================================
+router.post(
+  "/accounting/journal-entries",
+  validate(saveJournalEntrySchema),
+  JournalEntryController.saveEntry,
+);
+router.put(
+  "/accounting/journal-entries/:id",
+  validate(saveJournalEntrySchema),
+  JournalEntryController.saveEntry,
+);
+router.get(
+  "/accounting/journal-entries",
+  validate(getJournalEntriesSchema),
+  JournalEntryController.getEntries,
+);
+router.get(
+  "/accounting/journal-entries/:id",
+  JournalEntryController.getEntryDetails,
+);
+router.delete(
+  "/accounting/journal-entries/:id",
+  JournalEntryController.deleteDraft,
 );
 
 // ==========================================
