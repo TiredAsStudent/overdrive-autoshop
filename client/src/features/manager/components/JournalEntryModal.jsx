@@ -5,7 +5,6 @@ import {
   BookOpen,
   AlertCircle,
   Loader2,
-  Save,
   Send,
   Calendar,
   Building2,
@@ -219,7 +218,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -227,7 +226,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-5xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
           >
             {/* HEADER */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
                   <BookOpen size={20} />
@@ -244,14 +243,14 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 rounded-xl transition-colors disabled:opacity-50"
+                className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
               >
                 <X size={24} />
               </button>
             </div>
 
             {/* BODY */}
-            <div className="px-6 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6 bg-slate-50/50 dark:bg-transparent">
+            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -260,7 +259,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               )}
 
               {/* Header Info */}
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
@@ -273,7 +272,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       onChange={(e) =>
                         setHeader({ ...header, entry_date: e.target.value })
                       }
-                      className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                     />
                   </div>
                   <div>
@@ -290,7 +289,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                           reference_number: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                     />
                   </div>
                   <div>
@@ -302,7 +301,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       onChange={(e) =>
                         setHeader({ ...header, branch_id: e.target.value })
                       }
-                      className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
                     >
                       <option value="">Enterprise Global (No Branch)</option>
                       {branches.map((b) => (
@@ -325,41 +324,41 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                     onChange={(e) =>
                       setHeader({ ...header, description: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
               </div>
 
               {/* Line Items Matrix */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-[24px] shadow-sm overflow-hidden flex flex-col">
+                <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
                     <Scale size={14} className="text-amber-500" /> Accounting
-                    Distribution
+                    Distribution Matrix
                   </h3>
                 </div>
                 <div className="overflow-x-auto custom-scrollbar">
                   <table className="w-full text-left whitespace-nowrap min-w-[700px]">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-700">
-                        <th className="px-4 py-3 w-1/3">Account *</th>
-                        <th className="px-4 py-3 w-1/4">Line Description</th>
-                        <th className="px-4 py-3 w-1/6 text-right">
+                        <th className="px-5 py-4 w-1/3">Account *</th>
+                        <th className="px-5 py-4 w-1/4">Line Description</th>
+                        <th className="px-5 py-4 w-1/6 text-right">
                           Debit (₱) *
                         </th>
-                        <th className="px-4 py-3 w-1/6 text-right">
+                        <th className="px-5 py-4 w-1/6 text-right">
                           Credit (₱) *
                         </th>
-                        <th className="px-4 py-3 w-12 text-center"></th>
+                        <th className="px-5 py-4 w-12 text-center"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                      {lines.map((line, idx) => (
+                      {lines.map((line) => (
                         <tr
                           key={line.rowId}
-                          className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
+                          className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
                         >
-                          <td className="px-4 py-3">
+                          <td className="px-5 py-3">
                             <select
                               value={line.account_id}
                               onChange={(e) =>
@@ -370,7 +369,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                 )
                               }
                               disabled={loadingLookups}
-                              className="w-full px-3 py-2 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold focus:border-amber-500"
+                              className="w-full px-3 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold focus:border-amber-500 cursor-pointer"
                             >
                               <option value="" disabled>
                                 -- Select Account --
@@ -382,7 +381,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                               ))}
                             </select>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-5 py-3">
                             <input
                               type="text"
                               placeholder="Memo"
@@ -394,10 +393,10 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                   e.target.value,
                                 )
                               }
-                              className="w-full px-3 py-2 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium focus:border-amber-500"
+                              className="w-full px-3 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium focus:border-amber-500"
                             />
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-5 py-3 text-right">
                             <input
                               type="number"
                               min="0"
@@ -411,10 +410,10 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                   e.target.value,
                                 )
                               }
-                              className="w-full px-3 py-2 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-black text-right focus:border-amber-500 text-slate-800 dark:text-slate-200 placeholder:font-sans"
+                              className="w-full px-3 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-black text-right focus:border-amber-500 text-slate-800 dark:text-slate-200 placeholder:font-sans"
                             />
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-5 py-3 text-right">
                             <input
                               type="number"
                               min="0"
@@ -428,14 +427,14 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                   e.target.value,
                                 )
                               }
-                              className="w-full px-3 py-2 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-black text-right focus:border-amber-500 text-slate-800 dark:text-slate-200 placeholder:font-sans"
+                              className="w-full px-3 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-black text-right focus:border-amber-500 text-slate-800 dark:text-slate-200 placeholder:font-sans"
                             />
                           </td>
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-5 py-3 text-center">
                             <button
                               type="button"
                               onClick={() => removeLine(line.rowId)}
-                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
                               title="Remove Line"
                             >
                               <Trash2 size={16} />
@@ -446,11 +445,11 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                     </tbody>
                   </table>
                 </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
                   <button
                     type="button"
                     onClick={addLine}
-                    className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 cursor-pointer px-2"
+                    className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 cursor-pointer px-2 transition-colors"
                   >
                     <Plus size={14} /> Add Line Item
                   </button>
@@ -459,9 +458,9 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             </div>
 
             {/* BALANCE FOOTER & ACTIONS */}
-            <div className="p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 shrink-0 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0 flex flex-col md:flex-row justify-between items-center gap-6">
               {/* Mathematics Engine */}
-              <div className="flex items-center gap-6 w-full md:w-auto">
+              <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto">
                 <div className="flex flex-col text-right">
                   <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
                     Total Debits
@@ -507,7 +506,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   type="button"
                   onClick={() => processPayload("DRAFT")}
                   disabled={isSubmitting}
-                  className="flex-1 md:flex-none py-3 px-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 cursor-pointer"
+                  className="flex-1 md:flex-none py-3.5 px-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 cursor-pointer"
                 >
                   Save as Draft
                 </button>
@@ -515,7 +514,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   type="button"
                   onClick={() => processPayload("POSTED")}
                   disabled={isSubmitting || !totals.isBalanced}
-                  className="flex-1 md:flex-none py-3 px-8 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-amber-500/20 disabled:shadow-none cursor-pointer flex justify-center items-center gap-2"
+                  className="flex-1 md:flex-none py-3.5 px-8 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-amber-500/20 disabled:shadow-none cursor-pointer flex justify-center items-center gap-2"
                 >
                   {isSubmitting ? (
                     <Loader2 size={16} className="animate-spin" />

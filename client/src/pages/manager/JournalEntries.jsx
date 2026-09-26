@@ -268,7 +268,7 @@ const JournalEntries = () => {
               />
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-1.5">
+              <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                 {entry.status === "POSTED" ? (
                   <button
                     onClick={() => handleOpenDrawer(entry.id)}
@@ -282,7 +282,7 @@ const JournalEntries = () => {
                     <button
                       onClick={() => handleEditDraft(entry.id)}
                       title="Edit Draft"
-                      className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
                     >
                       <Edit2 size={16} />
                     </button>
@@ -291,7 +291,7 @@ const JournalEntries = () => {
                         handleDeleteDraft(entry.id, entry.journal_number)
                       }
                       title="Discard Draft"
-                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
                     >
                       <Trash2 size={16} />
                     </button>
