@@ -187,7 +187,6 @@ class ChartOfAccounts {
         JOIN services s ON ii.service_id = s.id
         WHERE s.income_account_id = $1
       `);
-
       queries.push(`
         SELECT COUNT(DISTINCT i.id) as cnt 
         FROM invoices i 
@@ -202,7 +201,6 @@ class ChartOfAccounts {
         JOIN inventory_items inv ON im.item_id = inv.id
         WHERE inv.asset_account_id = $1
       `);
-
       queries.push(`
         SELECT COUNT(*) as cnt 
         FROM inventory_movements im
@@ -216,19 +214,24 @@ class ChartOfAccounts {
         WHERE e.expense_account_id = $1 AND e.status = 'APPROVED'
       `);
 
+      queries.push(`
+        SELECT COUNT(*) as cnt
+        FROM journal_entry_items ji
+        JOIN journal_entries je ON ji.journal_entry_id = je.id
+        WHERE ji.account_id = $1 AND je.status = 'POSTED'
+      `);
+
       if (targetId === sys.ar_account_id) {
         queries.push(`SELECT COUNT(*) as cnt FROM invoices`);
         queries.push(
           `SELECT COUNT(*) as cnt FROM payments WHERE status != 'VOID'`,
         );
       }
-
       if (targetId === sys.output_vat_account_id) {
         queries.push(
           `SELECT COUNT(*) as cnt FROM invoices WHERE vat_amount > 0`,
         );
       }
-
       if (targetId === sys.cash_on_hand_account_id) {
         queries.push(
           `SELECT COUNT(*) as cnt FROM payments WHERE payment_method = 'CASH' AND status != 'VOID'`,
@@ -240,14 +243,12 @@ class ChartOfAccounts {
           `SELECT COUNT(*) as cnt FROM expenses WHERE payment_method IN ('CASH', 'PETTY_CASH') AND status = 'APPROVED'`,
         );
       }
-
       if (targetId === sys.input_vat_account_id) {
         queries.push(
           `SELECT COUNT(*) as cnt FROM expenses WHERE vat_amount > 0 AND status = 'APPROVED'`,
         );
         queries.push(`SELECT COUNT(*) as cnt FROM bills WHERE vat_amount > 0`);
       }
-
       if (targetId === sys.digital_payment_account_id) {
         queries.push(
           `SELECT COUNT(*) as cnt FROM payments WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'`,
@@ -259,7 +260,6 @@ class ChartOfAccounts {
           `SELECT COUNT(*) as cnt FROM expenses WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER', 'CHECK') AND status = 'APPROVED'`,
         );
       }
-
       if (targetId === sys.ap_account_id) {
         queries.push(`SELECT COUNT(*) as cnt FROM bills`);
         queries.push(
@@ -269,7 +269,6 @@ class ChartOfAccounts {
 
       const sql =
         `SELECT SUM(cnt) as total FROM (` + queries.join(" UNION ALL ") + `) t`;
-
       const result = await query(sql, [targetId]);
 
       return parseInt(result.rows[0].total || 0, 10);
@@ -294,9 +293,7 @@ class ChartOfAccounts {
         FROM system_settings WHERE id = 1
       `);
       const sys = sysRes.rows[0] || {};
-
       const queries = [];
-
       const params = [targetId];
 
       queries.push(`
@@ -342,6 +339,14 @@ class ChartOfAccounts {
         e.total_amount as amount, e.status::text as status
         FROM expenses e
         WHERE e.expense_account_id = $1 AND e.status = 'APPROVED'
+      `);
+
+      queries.push(`
+        SELECT 'JOURNAL ENTRY (' || ji.entry_type || ')' as transaction_type, je.journal_number as reference, je.entry_date as transaction_date, 
+        ji.amount as amount, je.status::text as status
+        FROM journal_entry_items ji
+        JOIN journal_entries je ON ji.journal_entry_id = je.id
+        WHERE ji.account_id = $1 AND je.status = 'POSTED'
       `);
 
       if (targetId === sys.ar_account_id) {
