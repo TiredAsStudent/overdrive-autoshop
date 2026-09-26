@@ -250,7 +250,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             </div>
 
             {/* BODY */}
-            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
+            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 sm:space-y-8 bg-white dark:bg-slate-800">
               {validationError && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -258,211 +258,217 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </div>
               )}
 
-              {/* Header Info */}
-              <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <form className="space-y-6 sm:space-y-8">
+                {/* Header Info Section */}
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
+                    <FileText size={14} /> Journal Particulars
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                        <Calendar size={12} /> Journal Date{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={header.entry_date}
+                        onChange={(e) =>
+                          setHeader({ ...header, entry_date: e.target.value })
+                        }
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                        <Hash size={12} /> Reference Number
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., ADJ-2026-001"
+                        value={header.reference_number}
+                        onChange={(e) =>
+                          setHeader({
+                            ...header,
+                            reference_number: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                        <Building2 size={12} /> Branch Allocation
+                      </label>
+                      <select
+                        value={header.branch_id}
+                        onChange={(e) =>
+                          setHeader({ ...header, branch_id: e.target.value })
+                        }
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm cursor-pointer"
+                      >
+                        <option value="">Enterprise Global (No Branch)</option>
+                        {branches.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.branch_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-                      <Calendar size={12} /> Journal Date{" "}
+                      <FileText size={12} className="opacity-0" /> Description{" "}
                       <span className="text-red-500">*</span>
                     </label>
                     <input
-                      type="date"
-                      value={header.entry_date}
-                      onChange={(e) =>
-                        setHeader({ ...header, entry_date: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-                      <Hash size={12} /> Reference Number
-                    </label>
-                    <input
                       type="text"
-                      placeholder="e.g., ADJ-2026-001"
-                      value={header.reference_number}
+                      placeholder="Provide a clear business reason for this adjustment..."
+                      value={header.description}
                       onChange={(e) =>
-                        setHeader({
-                          ...header,
-                          reference_number: e.target.value,
-                        })
+                        setHeader({ ...header, description: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-                      <Building2 size={12} /> Branch Allocation
-                    </label>
-                    <select
-                      value={header.branch_id}
-                      onChange={(e) =>
-                        setHeader({ ...header, branch_id: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                </div>
+
+                {/* Line Items Matrix Section */}
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 flex flex-col">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                      <Scale size={14} /> Accounting Distribution Matrix
+                    </h3>
+                  </div>
+
+                  <div className="overflow-x-auto custom-scrollbar bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-[16px] shadow-sm">
+                    <table className="w-full text-left whitespace-nowrap min-w-[700px]">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-700">
+                          <th className="px-5 py-4 w-1/3">Account *</th>
+                          <th className="px-5 py-4 w-1/4">Line Description</th>
+                          <th className="px-5 py-4 w-1/6 text-right">
+                            Debit (₱) *
+                          </th>
+                          <th className="px-5 py-4 w-1/6 text-right">
+                            Credit (₱) *
+                          </th>
+                          <th className="px-5 py-4 w-12 text-center"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                        {lines.map((line) => (
+                          <tr
+                            key={line.rowId}
+                            className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+                          >
+                            <td className="px-5 py-3">
+                              <select
+                                value={line.account_id}
+                                onChange={(e) =>
+                                  handleLineChange(
+                                    line.rowId,
+                                    "account_id",
+                                    e.target.value,
+                                  )
+                                }
+                                disabled={loadingLookups}
+                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm cursor-pointer disabled:opacity-60"
+                              >
+                                <option value="" disabled>
+                                  -- Select Account --
+                                </option>
+                                {!accounts.some(
+                                  (acc) =>
+                                    acc.id.toString() === line.account_id,
+                                ) &&
+                                  line.account_id && (
+                                    <option value={line.account_id}>
+                                      [Archived Account - Must Change]
+                                    </option>
+                                  )}
+                                {accounts.map((acc) => (
+                                  <option key={acc.id} value={acc.id}>
+                                    [{acc.account_code}] {acc.account_name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-5 py-3">
+                              <input
+                                type="text"
+                                placeholder="Memo"
+                                value={line.line_description}
+                                onChange={(e) =>
+                                  handleLineChange(
+                                    line.rowId,
+                                    "line_description",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
+                              />
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={line.debit}
+                                onChange={(e) =>
+                                  handleLineChange(
+                                    line.rowId,
+                                    "debit",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-black text-right text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm placeholder:font-sans"
+                              />
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={line.credit}
+                                onChange={(e) =>
+                                  handleLineChange(
+                                    line.rowId,
+                                    "credit",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-black text-right text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm placeholder:font-sans"
+                              />
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => removeLine(line.rowId)}
+                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                title="Remove Line"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="pt-4 mt-2 border-t border-slate-200 dark:border-slate-700/50 flex justify-start">
+                    <button
+                      type="button"
+                      onClick={addLine}
+                      className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 cursor-pointer px-2 transition-colors"
                     >
-                      <option value="">Enterprise Global (No Branch)</option>
-                      {branches.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.branch_name}
-                        </option>
-                      ))}
-                    </select>
+                      <Plus size={14} /> Add Line Item
+                    </button>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-                    <FileText size={12} /> Description{" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Provide a clear business reason for this adjustment..."
-                    value={header.description}
-                    onChange={(e) =>
-                      setHeader({ ...header, description: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-              </div>
-
-              {/* Line Items Matrix */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-[24px] shadow-sm overflow-hidden flex flex-col">
-                <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                    <Scale size={14} className="text-amber-500" /> Accounting
-                    Distribution Matrix
-                  </h3>
-                </div>
-                <div className="overflow-x-auto custom-scrollbar">
-                  <table className="w-full text-left whitespace-nowrap min-w-[700px]">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-700">
-                        <th className="px-5 py-4 w-1/3">Account *</th>
-                        <th className="px-5 py-4 w-1/4">Line Description</th>
-                        <th className="px-5 py-4 w-1/6 text-right">
-                          Debit (₱) *
-                        </th>
-                        <th className="px-5 py-4 w-1/6 text-right">
-                          Credit (₱) *
-                        </th>
-                        <th className="px-5 py-4 w-12 text-center"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                      {lines.map((line) => (
-                        <tr
-                          key={line.rowId}
-                          className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
-                        >
-                          <td className="px-5 py-3">
-                            <select
-                              value={line.account_id}
-                              onChange={(e) =>
-                                handleLineChange(
-                                  line.rowId,
-                                  "account_id",
-                                  e.target.value,
-                                )
-                              }
-                              disabled={loadingLookups}
-                              className="w-full px-3 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold focus:border-amber-500 cursor-pointer"
-                            >
-                              <option value="" disabled>
-                                -- Select Account --
-                              </option>
-                              {!accounts.some(
-                                (acc) => acc.id.toString() === line.account_id,
-                              ) &&
-                                line.account_id && (
-                                  <option value={line.account_id}>
-                                    [Archived Account - Must Change]
-                                  </option>
-                                )}
-                              {accounts.map((acc) => (
-                                <option key={acc.id} value={acc.id}>
-                                  [{acc.account_code}] {acc.account_name}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-5 py-3">
-                            <input
-                              type="text"
-                              placeholder="Memo"
-                              value={line.line_description}
-                              onChange={(e) =>
-                                handleLineChange(
-                                  line.rowId,
-                                  "line_description",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full px-3 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium focus:border-amber-500"
-                            />
-                          </td>
-                          <td className="px-5 py-3 text-right">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={line.debit}
-                              onChange={(e) =>
-                                handleLineChange(
-                                  line.rowId,
-                                  "debit",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full px-3 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-black text-right focus:border-amber-500 text-slate-800 dark:text-slate-200 placeholder:font-sans"
-                            />
-                          </td>
-                          <td className="px-5 py-3 text-right">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={line.credit}
-                              onChange={(e) =>
-                                handleLineChange(
-                                  line.rowId,
-                                  "credit",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full px-3 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-black text-right focus:border-amber-500 text-slate-800 dark:text-slate-200 placeholder:font-sans"
-                            />
-                          </td>
-                          <td className="px-5 py-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => removeLine(line.rowId)}
-                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                              title="Remove Line"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
-                  <button
-                    type="button"
-                    onClick={addLine}
-                    className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 cursor-pointer px-2 transition-colors"
-                  >
-                    <Plus size={14} /> Add Line Item
-                  </button>
-                </div>
-              </div>
+              </form>
             </div>
 
             {/* BALANCE FOOTER & ACTIONS */}
