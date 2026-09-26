@@ -11,6 +11,8 @@ import {
   Scale,
   FileText,
   Printer,
+  BadgeCheck,
+  Calculator,
 } from "lucide-react";
 import { journalEntryService } from "../../../services/manager/journalEntry.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -66,19 +68,19 @@ const JournalEntryDrawer = ({ isOpen, onClose, journalId }) => {
                   <BookOpen size={24} />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
                     {loading ? "Loading..." : entry?.journal_number}
                   </h2>
                   {entry && (
-                    <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex flex-col items-start gap-1.5 mt-1.5">
                       <StatusBadge
                         label={entry.status}
                         variant={
                           entry.status === "POSTED" ? "success" : "warning"
                         }
                       />
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                        <User size={12} className="text-amber-500" />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
+                        <BadgeCheck size={12} className="text-amber-500" />
                         By:{" "}
                         <span className="text-slate-600 dark:text-slate-300">
                           {entry.created_by_name || "System"}
@@ -127,30 +129,36 @@ const JournalEntryDrawer = ({ isOpen, onClose, journalId }) => {
                 <div className="space-y-6 sm:space-y-8">
                   {/* Meta Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-3 print:border-none print:shadow-none print:p-0">
-                      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black">
-                        <Calendar
-                          size={14}
-                          className="text-amber-500 print:hidden"
-                        />{" "}
-                        Journal Date
+                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between print:border-none print:shadow-none print:p-0">
+                      <Calendar
+                        size={16}
+                        className="text-amber-400 mb-3 print:hidden"
+                      />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black mb-1">
+                          Journal Date
+                        </p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white print:text-black truncate">
+                          {new Date(entry.entry_date).toLocaleDateString()}
+                        </p>
                       </div>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white print:text-black">
-                        {new Date(entry.entry_date).toLocaleDateString()}
-                      </p>
                     </section>
-                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-3 print:border-none print:shadow-none print:p-0">
-                      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black">
-                        <Hash
-                          size={14}
-                          className="text-blue-500 print:hidden"
-                        />{" "}
-                        Reference No.
+
+                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between print:border-none print:shadow-none print:p-0">
+                      <Hash
+                        size={16}
+                        className="text-blue-400 mb-3 print:hidden"
+                      />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black mb-1">
+                          Reference No.
+                        </p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white uppercase print:text-black truncate">
+                          {entry.reference_number || "N/A"}
+                        </p>
                       </div>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white uppercase print:text-black">
-                        {entry.reference_number || "N/A"}
-                      </p>
                     </section>
+
                     <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-3 sm:col-span-2 print:border-none print:shadow-none print:p-0 print:mt-4">
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black">
@@ -236,35 +244,34 @@ const JournalEntryDrawer = ({ isOpen, onClose, journalId }) => {
                             </tr>
                           ))}
                         </tbody>
-                        <tfoot className="bg-slate-50 dark:bg-slate-900/50 print:bg-white print:border-t-2 print:border-slate-900">
-                          <tr>
-                            <td
-                              colSpan="2"
-                              className="px-5 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black"
-                            >
-                              Balanced Totals
-                            </td>
-                            <td className="px-5 py-4 text-right border-t-2 border-slate-200 dark:border-slate-600 print:border-slate-900">
-                              <span className="text-sm font-black font-mono text-amber-600 dark:text-amber-500 print:text-black">
-                                ₱
-                                {parseFloat(entry.total_amount).toLocaleString(
-                                  undefined,
-                                  { minimumFractionDigits: 2 },
-                                )}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4 text-right border-t-2 border-slate-200 dark:border-slate-600 print:border-slate-900">
-                              <span className="text-sm font-black font-mono text-amber-600 dark:text-amber-500 print:text-black">
-                                ₱
-                                {parseFloat(entry.total_amount).toLocaleString(
-                                  undefined,
-                                  { minimumFractionDigits: 2 },
-                                )}
-                              </span>
-                            </td>
-                          </tr>
-                        </tfoot>
                       </table>
+                    </div>
+                  </section>
+
+                  {/* Financial Posting Summary */}
+                  <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
+                    <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3 flex items-center gap-1.5">
+                      <Calculator size={14} /> Balanced Totals
+                    </p>
+                    <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-3">
+                      <span>Total Debits</span>
+                      <span className="font-bold text-slate-200 font-mono">
+                        ₱
+                        {parseFloat(entry.total_amount).toLocaleString(
+                          undefined,
+                          { minimumFractionDigits: 2 },
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-4 pb-4 border-b border-white/10">
+                      <span>Total Credits</span>
+                      <span className="font-bold text-slate-200 font-mono">
+                        ₱
+                        {parseFloat(entry.total_amount).toLocaleString(
+                          undefined,
+                          { minimumFractionDigits: 2 },
+                        )}
+                      </span>
                     </div>
                   </section>
 
