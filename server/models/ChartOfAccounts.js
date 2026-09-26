@@ -343,9 +343,16 @@ class ChartOfAccounts {
 
       queries.push(`
         SELECT 'JOURNAL ENTRY (' || ji.entry_type || ')' as transaction_type, je.journal_number as reference, je.entry_date as transaction_date, 
-        ji.amount as amount, je.status::text as status
+        CASE
+          WHEN c.account_type IN ('ASSET', 'EXPENSE') THEN
+            CASE WHEN ji.entry_type = 'DEBIT' THEN ji.amount ELSE -ji.amount END
+          WHEN c.account_type IN ('LIABILITY', 'EQUITY', 'INCOME') THEN
+            CASE WHEN ji.entry_type = 'CREDIT' THEN ji.amount ELSE -ji.amount END
+          ELSE ji.amount
+        END as amount, je.status::text as status
         FROM journal_entry_items ji
         JOIN journal_entries je ON ji.journal_entry_id = je.id
+        JOIN chart_of_accounts c ON ji.account_id = c.id
         WHERE ji.account_id = $1 AND je.status = 'POSTED'
       `);
 

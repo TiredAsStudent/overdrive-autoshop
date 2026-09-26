@@ -53,7 +53,8 @@ const AccountUsageDrawer = ({ isOpen, onClose, accountId }) => {
       s.includes("APPROVED") ||
       s.includes("RECEIVED") ||
       s.includes("PAID") ||
-      s.includes("TRANSFER_IN")
+      s.includes("TRANSFER_IN") ||
+      s.includes("POSTED")
     )
       return "success";
     if (s.includes("PENDING") || s.includes("DRAFT") || s.includes("PARTIALLY"))
