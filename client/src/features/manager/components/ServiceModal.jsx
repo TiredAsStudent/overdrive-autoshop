@@ -373,6 +373,15 @@ const ServiceModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                                 ? "Loading Income Accounts..."
                                 : "-- Select Income Account --"}
                             </option>
+                            {!incomeAccounts.some(
+                              (a) =>
+                                a.id.toString() === formData.income_account_id,
+                            ) &&
+                              formData.income_account_id && (
+                                <option value={formData.income_account_id}>
+                                  [Archived/Locked Account]
+                                </option>
+                              )}
                             {incomeAccounts.map((acc) => (
                               <option key={acc.id} value={acc.id}>
                                 {acc.account_code} - {acc.account_name}

@@ -439,6 +439,15 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                               ? "Loading..."
                               : "-- Select Asset Account --"}
                           </option>
+                          {!assetAccounts.some(
+                            (a) =>
+                              a.id.toString() === formData.asset_account_id,
+                          ) &&
+                            formData.asset_account_id && (
+                              <option value={formData.asset_account_id}>
+                                [Archived/Locked Account]
+                              </option>
+                            )}
                           {assetAccounts.map((acc) => (
                             <option key={acc.id} value={acc.id}>
                               {acc.account_code} - {acc.account_name}
@@ -466,6 +475,15 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                               ? "Loading..."
                               : "-- Select Income Account --"}
                           </option>
+                          {!incomeAccounts.some(
+                            (a) =>
+                              a.id.toString() === formData.income_account_id,
+                          ) &&
+                            formData.income_account_id && (
+                              <option value={formData.income_account_id}>
+                                [Archived/Locked Account]
+                              </option>
+                            )}
                           {incomeAccounts.map((acc) => (
                             <option key={acc.id} value={acc.id}>
                               {acc.account_code} - {acc.account_name}
@@ -493,6 +511,15 @@ const MasterItemModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                               ? "Loading..."
                               : "-- Select Expense Account --"}
                           </option>
+                          {!expenseAccounts.some(
+                            (a) =>
+                              a.id.toString() === formData.expense_account_id,
+                          ) &&
+                            formData.expense_account_id && (
+                              <option value={formData.expense_account_id}>
+                                [Archived/Locked Account]
+                              </option>
+                            )}
                           {expenseAccounts.map((acc) => (
                             <option key={acc.id} value={acc.id}>
                               {acc.account_code} - {acc.account_name}

@@ -53,6 +53,28 @@ class ChartOfAccounts {
   }
 
   static async update(id, data) {
+    if (data.parent_id) {
+      const targetIdInt = parseInt(id, 10);
+      const parentIdInt = parseInt(data.parent_id, 10);
+
+      if (targetIdInt === parentIdInt) {
+        throw new Error(
+          "Accounting Rule Violation: An account cannot be its own parent.",
+        );
+      }
+
+      const childCheckSql = `SELECT id FROM chart_of_accounts WHERE parent_id = $1 AND id = $2`;
+      const childCheckRes = await query(childCheckSql, [
+        targetIdInt,
+        parentIdInt,
+      ]);
+      if (childCheckRes.rows.length > 0) {
+        throw new Error(
+          "Accounting Rule Violation: Circular hierarchy detected. Cannot set a direct child account as the parent.",
+        );
+      }
+    }
+
     const setClauses = [];
     const values = [];
     let paramIdx = 1;
@@ -364,7 +386,7 @@ class ChartOfAccounts {
          `);
         queries.push(`
            SELECT 'A/R (Liquidation)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
-           amount_received as amount, status::text as status
+           -amount_received as amount, status::text as status
            FROM payments WHERE status != 'VOID'
          `);
       }
@@ -385,12 +407,12 @@ class ChartOfAccounts {
          `);
         queries.push(`
            SELECT 'DISBURSEMENT (Cash Outflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
-           amount_paid as amount, status::text as status
+           -amount_paid as amount, status::text as status
            FROM vendor_payments WHERE payment_method = 'CASH' AND status != 'VOID'
          `);
         queries.push(`
            SELECT 'EXPENSE (Cash Outflow)' as transaction_type, expense_number as reference, expense_date as transaction_date, 
-           total_amount as amount, status::text as status
+           -total_amount as amount, status::text as status
            FROM expenses WHERE payment_method IN ('CASH', 'PETTY_CASH') AND status = 'APPROVED'
          `);
       }
@@ -416,12 +438,12 @@ class ChartOfAccounts {
          `);
         queries.push(`
            SELECT 'DISBURSEMENT (Bank/E-Wallet Outflow)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
-           amount_paid as amount, status::text as status
+           -amount_paid as amount, status::text as status
            FROM vendor_payments WHERE payment_method IN ('CHECK', 'GCASH', 'MAYA', 'BANK_TRANSFER') AND status != 'VOID'
          `);
         queries.push(`
            SELECT 'EXPENSE (Bank/E-Wallet Outflow)' as transaction_type, expense_number as reference, expense_date as transaction_date, 
-           total_amount as amount, status::text as status
+           -total_amount as amount, status::text as status
            FROM expenses WHERE payment_method IN ('GCASH', 'MAYA', 'BANK_TRANSFER', 'CHECK') AND status = 'APPROVED'
          `);
       }
@@ -434,7 +456,7 @@ class ChartOfAccounts {
          `);
         queries.push(`
            SELECT 'VENDOR PAYMENT (A/P Liquidation)' as transaction_type, payment_number as reference, payment_date as transaction_date, 
-           amount_paid as amount, status::text as status
+           -amount_paid as amount, status::text as status
            FROM vendor_payments WHERE status != 'VOID'
          `);
       }

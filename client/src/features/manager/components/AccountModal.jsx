@@ -106,9 +106,26 @@ const AccountModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     }
   };
 
-  // Filter parent candidates to match selected account_type and exclude self
-  const filteredParents = parentCandidates.filter(
-    (p) => p.account_type === formData.account_type && p.id !== initialData?.id,
+  const currentParentOption =
+    initialData?.parent_id &&
+    !parentCandidates.some((p) => p.id === initialData.parent_id)
+      ? {
+          id: initialData.parent_id,
+          account_code: "ARCHIVED",
+          account_name: initialData.parent_account_name || "Unknown Parent",
+          account_type: initialData.account_type,
+        }
+      : null;
+
+  const allParentOptions = currentParentOption
+    ? [...parentCandidates, currentParentOption]
+    : parentCandidates;
+
+  const filteredParents = allParentOptions.filter(
+    (p) =>
+      p.account_type === formData.account_type &&
+      p.id !== initialData?.id &&
+      p.parent_id !== initialData?.id,
   );
 
   return (

@@ -374,6 +374,14 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                               <option value="" disabled>
                                 -- Select Account --
                               </option>
+                              {!accounts.some(
+                                (acc) => acc.id.toString() === line.account_id,
+                              ) &&
+                                line.account_id && (
+                                  <option value={line.account_id}>
+                                    [Archived Account - Must Change]
+                                  </option>
+                                )}
                               {accounts.map((acc) => (
                                 <option key={acc.id} value={acc.id}>
                                   [{acc.account_code}] {acc.account_name}
