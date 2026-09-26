@@ -192,9 +192,9 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       });
     }
 
-    if (status === "POSTED" && !totals.isBalanced) {
+    if (!totals.isBalanced) {
       return setValidationError(
-        "Cannot post: Debits and Credits must exactly balance.",
+        "Cannot save: Debits and Credits must exactly balance and total must be greater than zero.",
       );
     }
 
@@ -505,7 +505,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 <button
                   type="button"
                   onClick={() => processPayload("DRAFT")}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !totals.isBalanced}
                   className="flex-1 md:flex-none py-3.5 px-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 cursor-pointer"
                 >
                   Save as Draft
