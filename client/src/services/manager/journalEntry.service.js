@@ -18,8 +18,8 @@ export const journalEntryService = {
           search,
           status,
           branch,
-          start_date: startDate,
-          end_date: endDate,
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
         },
       });
       return response.data;

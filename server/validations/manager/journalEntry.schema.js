@@ -43,12 +43,14 @@ const getJournalEntriesSchema = z.object({
       branch: z.string().optional(),
       start_date: z
         .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional(),
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid start date")
+        .optional()
+        .or(z.literal("")),
       end_date: z
         .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional(),
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid end date")
+        .optional()
+        .or(z.literal("")),
     })
     .optional(),
 });
