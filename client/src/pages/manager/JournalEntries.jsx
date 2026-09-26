@@ -7,7 +7,6 @@ import {
   Trash2,
   ShieldCheck,
   FileText,
-  Lock,
 } from "lucide-react";
 import { journalEntryService } from "../../services/manager/journalEntry.service";
 import { inventoryService } from "../../services/manager/inventory.service";
@@ -211,8 +210,8 @@ const JournalEntries = () => {
       <DataTable
         headers={[
           "Journal No.",
-          "Date & Reference",
-          "Description / Memo",
+          "Journal Date & Ref",
+          "Description",
           "Branch Allocation",
           "Total Amount",
           "Status",

@@ -98,6 +98,7 @@ const JournalEntryDrawer = ({ isOpen, onClose, journalId }) => {
 
             {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent print:p-0 print:overflow-visible">
+              {/* PRINT HEADER ONLY (Hidden on screen) */}
               <div className="hidden print:block mb-8 text-center border-b-2 border-slate-900 pb-4">
                 <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">
                   Journal Voucher
@@ -132,7 +133,7 @@ const JournalEntryDrawer = ({ isOpen, onClose, journalId }) => {
                           size={14}
                           className="text-amber-500 print:hidden"
                         />{" "}
-                        Posting Date
+                        Journal Date
                       </div>
                       <p className="text-sm font-bold text-slate-900 dark:text-white print:text-black">
                         {new Date(entry.entry_date).toLocaleDateString()}
@@ -157,7 +158,7 @@ const JournalEntryDrawer = ({ isOpen, onClose, journalId }) => {
                             size={14}
                             className="text-emerald-500 print:hidden"
                           />{" "}
-                          Memo / Description
+                          Description
                         </div>
                         {entry.branch_name && (
                           <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded-lg print:bg-transparent print:p-0 print:text-black">
@@ -266,6 +267,31 @@ const JournalEntryDrawer = ({ isOpen, onClose, journalId }) => {
                       </table>
                     </div>
                   </section>
+
+                  {/* AUDIT INFORMATION */}
+                  <div className="border-t border-slate-200 dark:border-slate-700/50 pt-6 mt-4 print:hidden">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                      Audit Information
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                          Date Created
+                        </p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-300">
+                          {new Date(entry.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                          Last Updated
+                        </p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-300">
+                          {new Date(entry.updated_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* PRINT FOOTER SIGNATURES (Hidden on screen) */}
                   <div className="hidden print:flex justify-between items-end mt-16 px-10">

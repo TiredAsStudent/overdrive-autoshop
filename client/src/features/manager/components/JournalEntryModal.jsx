@@ -263,7 +263,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-                      <Calendar size={12} /> Entry Date{" "}
+                      <Calendar size={12} /> Journal Date{" "}
                       <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -314,7 +314,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-                    <FileText size={12} /> Memo / Description{" "}
+                    <FileText size={12} /> Description{" "}
                     <span className="text-red-500">*</span>
                   </label>
                   <input
