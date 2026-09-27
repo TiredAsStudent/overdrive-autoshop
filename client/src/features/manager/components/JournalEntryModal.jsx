@@ -209,10 +209,13 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     };
 
     setIsSubmitting(true);
-    onSubmit(payload).catch((err) => {
-      setValidationError(err.message || "Failed to process entry.");
-      setIsSubmitting(false);
-    });
+    onSubmit(payload)
+      .catch((err) => {
+        setValidationError(err.message || "Failed to process entry.");
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   };
 
   return (
