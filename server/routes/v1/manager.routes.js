@@ -14,6 +14,7 @@ const ChartOfAccountsController = require("../../controllers/manager/chartOfAcco
 const ManagerVendorController = require("../../controllers/manager/vendor.controller");
 const VendorPaymentController = require("../../controllers/manager/vendorPayment.controller");
 const JournalEntryController = require("../../controllers/manager/journalEntry.controller");
+const GeneralLedgerController = require("../../controllers/manager/generalLedger.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -88,6 +89,9 @@ const {
   saveJournalEntrySchema,
   getJournalEntriesSchema,
 } = require("../../validations/manager/journalEntry.schema");
+const {
+  getGeneralLedgerSchema,
+} = require("../../validations/manager/generalLedger.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -332,6 +336,15 @@ router.get(
 router.delete(
   "/accounting/journal-entries/:id",
   JournalEntryController.deleteDraft,
+);
+
+// ==========================================
+// MODULE: ACCOUNTING - GENERAL LEDGER
+// ==========================================
+router.get(
+  "/accounting/general-ledger/:accountId",
+  validate(getGeneralLedgerSchema),
+  GeneralLedgerController.getAccountLedger,
 );
 
 // ==========================================
