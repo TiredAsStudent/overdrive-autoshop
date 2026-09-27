@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   BookOpen,
   Printer,
@@ -78,7 +78,6 @@ const GeneralLedger = () => {
         setAccounts(fetchedAccounts);
         setBranches(brRes.data || []);
 
-        // Auto-select the first account to populate the ledger immediately
         if (fetchedAccounts.length > 0) {
           setSelectedAccountId(fetchedAccounts[0].id.toString());
         }
@@ -89,17 +88,6 @@ const GeneralLedger = () => {
     };
     fetchDependencies();
   }, []);
-
-  // Reset pagination on filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    debouncedSearchQuery,
-    branchFilter,
-    startDate,
-    endDate,
-    selectedAccountId,
-  ]);
 
   // 2. Fetch Ledger Data
   const loadLedger = async () => {
@@ -137,7 +125,33 @@ const GeneralLedger = () => {
     selectedAccountId,
   ]);
 
-  // Reset Filters
+  // Reset pagination on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    debouncedSearchQuery,
+    branchFilter,
+    startDate,
+    endDate,
+    selectedAccountId,
+  ]);
+
+  const groupedAccounts = useMemo(() => {
+    const groups = {
+      ASSET: [],
+      LIABILITY: [],
+      EQUITY: [],
+      INCOME: [],
+      EXPENSE: [],
+    };
+    accounts.forEach((acc) => {
+      if (groups[acc.account_type]) {
+        groups[acc.account_type].push(acc);
+      }
+    });
+    return groups;
+  }, [accounts]);
+
   const resetFilters = () => {
     setBranchFilter("all");
     setStartDate("");
@@ -145,7 +159,6 @@ const GeneralLedger = () => {
     setIsFilterModalOpen(false);
   };
 
-  // Helper: Open the correct document drawer based on the source type
   const handleViewSource = (sourceType, sourceId, referenceNumber) => {
     switch (sourceType) {
       case "EXPENSE":
@@ -161,7 +174,6 @@ const GeneralLedger = () => {
         setActiveDrawer("VENDOR_PAYMENT");
         break;
       default:
-        // For operational documents without a direct Manager Drawer (like Invoices), instruct navigation
         showToast(
           `Navigate to the respective operational module to view document ${referenceNumber}.`,
           "info",
@@ -192,20 +204,27 @@ const GeneralLedger = () => {
         subtitle="Immutable Accounting Master Record"
         icon={BookOpen}
       >
-        {/* Dynamic Account Selector */}
+        {/* Categorized Account Selector */}
         <select
           value={selectedAccountId}
           onChange={(e) => setSelectedAccountId(e.target.value)}
-          className="w-full sm:w-[250px] px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider focus:outline-none focus:border-amber-500 cursor-pointer shadow-sm"
+          className="w-full sm:w-[280px] px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider focus:outline-none focus:border-amber-500 cursor-pointer shadow-sm"
         >
           {accounts.length === 0 && (
             <option value="">Loading Accounts...</option>
           )}
-          {accounts.map((acc) => (
-            <option key={acc.id} value={acc.id}>
-              [{acc.account_code}] {acc.account_name}
-            </option>
-          ))}
+          {Object.entries(groupedAccounts).map(
+            ([type, accList]) =>
+              accList.length > 0 && (
+                <optgroup key={type} label={`-- ${type} --`}>
+                  {accList.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.account_code} - {acc.account_name}
+                    </option>
+                  ))}
+                </optgroup>
+              ),
+          )}
         </select>
 
         <SearchBar
