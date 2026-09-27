@@ -68,7 +68,7 @@ const GeneralLedger = () => {
     const fetchDependencies = async () => {
       try {
         const [accRes, brRes] = await Promise.all([
-          chartOfAccountsService.getAccounts(1, 500, "", "all", "active"),
+          chartOfAccountsService.getAccounts(1, 500, "", "all", "all"),
           inventoryService.getActiveBranches(),
         ]);
 
@@ -217,7 +217,8 @@ const GeneralLedger = () => {
                 <optgroup key={type} label={`-- ${type} --`}>
                   {accList.map((acc) => (
                     <option key={acc.id} value={acc.id}>
-                      {acc.account_code} - {acc.account_name}
+                      {acc.account_code} - {acc.account_name}{" "}
+                      {!acc.is_active && "(Archived)"}
                     </option>
                   ))}
                 </optgroup>

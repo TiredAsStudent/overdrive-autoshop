@@ -32,26 +32,21 @@ class GeneralLedgerService {
       : parseFloat(openingRaw.total_credit) -
         parseFloat(openingRaw.total_debit);
 
-    const { transactions, totalCount } = await GeneralLedgerModel.getLedgerData(
-      accountId,
-      targetBranch,
-      startDate,
-      endDate,
-      search,
-      limit,
-      offset,
-    );
-
-    let periodDebit = 0;
-    let periodCredit = 0;
+    const { transactions, totalCount, periodDebit, periodCredit } =
+      await GeneralLedgerModel.getLedgerData(
+        accountId,
+        targetBranch,
+        startDate,
+        endDate,
+        search,
+        limit,
+        offset,
+      );
 
     const formattedTransactions = transactions.map((row) => {
       const debit = parseFloat(row.debit);
       const credit = parseFloat(row.credit);
       const rawRunBal = parseFloat(row.raw_running_balance);
-
-      periodDebit += debit;
-      periodCredit += credit;
 
       let accurateRunningBalance = 0;
       if (isDebitNormal) {

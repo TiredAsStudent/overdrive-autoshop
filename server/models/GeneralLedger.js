@@ -9,7 +9,7 @@ class GeneralLedger {
 
     const branchFilter = `($2::int IS NULL OR branch_id = $2::int)`;
 
-    //  Accounts Receivable (AR)
+    // Accounts Receivable (AR)
     if (targetId === sys.ar_account_id) {
       queries.push(
         `SELECT 'INVOICE' as source_type, id as source_id, invoice_number as reference_number, created_at::date as transaction_date, created_at, grand_total as debit, 0 as credit, branch_id, 'Customer Invoice' as description FROM invoices WHERE status != 'VOID' AND ${branchFilter}`,
@@ -152,7 +152,10 @@ class GeneralLedger {
         WHERE ($3::text IS NULL OR reference_number ILIKE $3 OR description ILIKE $3)
           AND ($5::date IS NULL OR transaction_date >= $5::date)
       )
-      SELECT *, COUNT(*) OVER() as total_filtered_count 
+      SELECT *, 
+             COUNT(*) OVER() as total_filtered_count,
+             SUM(debit) OVER() as total_period_debit,
+             SUM(credit) OVER() as total_period_credit 
       FROM SearchFiltered 
       ORDER BY transaction_date ASC, created_at ASC 
       LIMIT $6 OFFSET $7;
@@ -171,17 +174,28 @@ class GeneralLedger {
     ];
 
     const result = await query(sql, values);
+
     const totalCount =
       result.rows.length > 0
         ? parseInt(result.rows[0].total_filtered_count, 10)
         : 0;
+    const periodDebit =
+      result.rows.length > 0
+        ? parseFloat(result.rows[0].total_period_debit)
+        : 0;
+    const periodCredit =
+      result.rows.length > 0
+        ? parseFloat(result.rows[0].total_period_credit)
+        : 0;
 
     const transactions = result.rows.map((row) => {
       delete row.total_filtered_count;
+      delete row.total_period_debit;
+      delete row.total_period_credit;
       return row;
     });
 
-    return { transactions, totalCount };
+    return { transactions, totalCount, periodDebit, periodCredit };
   }
 
   static async getOpeningBalance(accountId, branchId, startDate) {
