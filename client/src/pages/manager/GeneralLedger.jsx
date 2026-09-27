@@ -3,11 +3,9 @@ import {
   BookOpen,
   Printer,
   Eye,
-  FileText,
   Calculator,
   ArrowUpRight,
   ArrowDownRight,
-  TrendingUp,
 } from "lucide-react";
 
 // Services
@@ -87,7 +85,18 @@ const GeneralLedger = () => {
       }
     };
     fetchDependencies();
-  }, []);
+  }, [showToast]);
+
+  // Reset pagination on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    debouncedSearchQuery,
+    branchFilter,
+    startDate,
+    endDate,
+    selectedAccountId,
+  ]);
 
   // 2. Fetch Ledger Data
   const loadLedger = async () => {
@@ -125,17 +134,7 @@ const GeneralLedger = () => {
     selectedAccountId,
   ]);
 
-  // Reset pagination on filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    debouncedSearchQuery,
-    branchFilter,
-    startDate,
-    endDate,
-    selectedAccountId,
-  ]);
-
+  // Group accounts by type for the dropdown
   const groupedAccounts = useMemo(() => {
     const groups = {
       ASSET: [],
@@ -204,7 +203,6 @@ const GeneralLedger = () => {
         subtitle="Immutable Accounting Master Record"
         icon={BookOpen}
       >
-        {/* Categorized Account Selector */}
         <select
           value={selectedAccountId}
           onChange={(e) => setSelectedAccountId(e.target.value)}
@@ -386,7 +384,7 @@ const GeneralLedger = () => {
               </span>
             </td>
 
-            <td className="px-4 sm:px-8 py-4 text-right print:hidden">
+            <td className="px-4 sm:px-8 py-4 text-right">
               <button
                 onClick={() =>
                   handleViewSource(
@@ -395,7 +393,7 @@ const GeneralLedger = () => {
                     txn.reference_number,
                   )
                 }
-                className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer print:hidden"
                 title="View Source Document"
               >
                 <Eye size={16} />
