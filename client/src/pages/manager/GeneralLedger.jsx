@@ -24,10 +24,7 @@ import SearchBar from "../../components/ui/SearchBar";
 import FilterButton from "../../components/ui/FilterButton";
 import ActionButton from "../../components/ui/ActionButton";
 
-// Drawers for Drill-down
-import ExpenseApprovalDrawer from "../../features/manager/components/ExpenseApprovalDrawer";
-import JournalEntryDrawer from "../../features/manager/components/JournalEntryDrawer";
-import VendorPaymentDrawer from "../../features/manager/components/VendorPaymentDrawer";
+import GeneralLedgerSourceDrawer from "../../features/manager/components/GeneralLedgerSourceDrawer";
 
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -56,9 +53,8 @@ const GeneralLedger = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 20;
 
-  // Drill-down Drawer States
-  const [activeDrawer, setActiveDrawer] = useState(null); // 'EXPENSE', 'JOURNAL', 'VENDOR_PAYMENT'
-  const [drawerSourceId, setDrawerSourceId] = useState(null);
+  // Unified Audit Drawer State
+  const [selectedSource, setSelectedSource] = useState(null);
 
   const activeFilterCount =
     (branchFilter !== "all" ? 1 : 0) + (startDate ? 1 : 0) + (endDate ? 1 : 0);
@@ -159,31 +155,11 @@ const GeneralLedger = () => {
   };
 
   const handleViewSource = (sourceType, sourceId, referenceNumber) => {
-    switch (sourceType) {
-      case "EXPENSE":
-        setDrawerSourceId(sourceId);
-        setActiveDrawer("EXPENSE");
-        break;
-      case "JOURNAL_ENTRY":
-        setDrawerSourceId(sourceId);
-        setActiveDrawer("JOURNAL");
-        break;
-      case "VENDOR_PAYMENT":
-        setDrawerSourceId(sourceId);
-        setActiveDrawer("VENDOR_PAYMENT");
-        break;
-      default:
-        showToast(
-          `Navigate to the respective operational module to view document ${referenceNumber}.`,
-          "info",
-        );
-        break;
-    }
+    setSelectedSource({ type: sourceType, id: sourceId, ref: referenceNumber });
   };
 
-  const closeDrawers = () => {
-    setActiveDrawer(null);
-    setDrawerSourceId(null);
+  const closeDrawer = () => {
+    setSelectedSource(null);
   };
 
   const formatCurrency = (amount) => {
@@ -462,23 +438,10 @@ const GeneralLedger = () => {
         </div>
       </FilterModal>
 
-      {/* SOURCE DOCUMENT DRILL-DOWN DRAWERS */}
-      <ExpenseApprovalDrawer
-        isOpen={activeDrawer === "EXPENSE"}
-        onClose={closeDrawers}
-        expenseId={drawerSourceId}
-      />
-
-      <JournalEntryDrawer
-        isOpen={activeDrawer === "JOURNAL"}
-        onClose={closeDrawers}
-        journalId={drawerSourceId}
-      />
-
-      <VendorPaymentDrawer
-        isOpen={activeDrawer === "VENDOR_PAYMENT"}
-        onClose={closeDrawers}
-        paymentId={drawerSourceId}
+      <GeneralLedgerSourceDrawer
+        isOpen={!!selectedSource}
+        onClose={closeDrawer}
+        source={selectedSource}
       />
     </div>
   );

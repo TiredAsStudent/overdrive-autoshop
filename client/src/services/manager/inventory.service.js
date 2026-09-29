@@ -111,6 +111,20 @@ export const inventoryService = {
     }
   },
 
+  getSingleMovement: async (movementId) => {
+    try {
+      const response = await api.get(
+        `/manager/inventory/movement/${movementId}`,
+      );
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message ||
+        "Failed to load movement details.";
+      throw new Error(message);
+    }
+  },
+
   getSystemMarkup: async () => {
     try {
       const response = await api.get("/manager/settings/markup");
