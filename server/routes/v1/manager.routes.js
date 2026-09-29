@@ -165,6 +165,8 @@ router.patch(
 router.get("/inventory/:id/breakdown", InventoryController.getBranchBreakdown);
 router.get("/inventory/:id/movements", InventoryController.getMovementHistory);
 
+router.get("/inventory/movement/:id", InventoryController.getSingleMovement);
+
 // ==========================================
 // MODULE: STOCK ADJUSTMENTS (APPROVAL WORKFLOW)
 // ==========================================

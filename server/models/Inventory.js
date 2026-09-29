@@ -351,6 +351,36 @@ class Inventory {
     return result.rows;
   }
 
+  static async getSingleMovement(movementId) {
+    const sql = `
+      SELECT 
+        m.id,
+        m.transaction_type,
+        m.transaction_reference,
+        m.quantity_added,
+        m.quantity_deducted,
+        m.remaining_quantity,
+        m.remarks,
+        m.adjustment_reason,
+        m.recorded_unit_cost,
+        m.created_at,
+        b.branch_name,
+        u.first_name,
+        u.last_name,
+        i.item_name,
+        i.sku,
+        i.uom,
+        i.category
+      FROM inventory_movements m
+      JOIN inventory_items i ON m.item_id = i.id
+      JOIN branches b ON m.branch_id = b.id
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.id = $1
+    `;
+    const result = await query(sql, [movementId]);
+    return result.rows[0];
+  }
+
   static async getBranchMovementHistory(itemId, branchId) {
     const sql = `
       SELECT 

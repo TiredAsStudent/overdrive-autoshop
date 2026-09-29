@@ -138,6 +138,23 @@ class InventoryController {
     }
   }
 
+  static async getSingleMovement(req, res) {
+    try {
+      const movement = await InventoryService.getSingleMovement(req.params.id);
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        movement,
+        "Movement details retrieved successfully.",
+      );
+    } catch (error) {
+      const statusCode = error.message.includes("not found")
+        ? STATUS_CODES.NOT_FOUND
+        : STATUS_CODES.BAD_REQUEST;
+      return sendError(res, statusCode, error.message);
+    }
+  }
+
   static async adjustStock(req, res) {
     try {
       const adjustmentData = req.body;

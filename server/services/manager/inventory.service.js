@@ -248,6 +248,31 @@ class InventoryService {
     return await InventoryModel.getMovementHistory(itemId);
   }
 
+  static async getSingleMovement(movementId) {
+    const movement = await InventoryModel.getSingleMovement(movementId);
+    if (!movement) throw new Error("Inventory movement record not found.");
+    return movement;
+  }
+
+  static async getSystemMarkup() {
+    try {
+      const response = await api.get("/manager/settings/markup");
+      return parseFloat(response.data.data.markup_percentage) || 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  static async getActiveBranches() {
+    try {
+      const response = await api.get("/manager/branches/active");
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch branches for filter:", error);
+      return { data: [] };
+    }
+  }
+
   static async adjustStock(data, userId, ipAddress) {
     const movementRecord = await InventoryModel.adjustStockTransaction(
       data,
