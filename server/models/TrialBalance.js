@@ -13,6 +13,7 @@ class TrialBalance {
 
     const queries = [];
 
+    // --- AR & AP Control Accounts ---
     if (sys.ar_account_id) {
       queries.push(
         `SELECT ${sys.ar_account_id} as account_id, grand_total as debit, 0 as credit FROM invoices WHERE status != 'VOID' AND ${branchFilter} AND ${dateFilter("created_at::date")}`,
@@ -30,6 +31,7 @@ class TrialBalance {
       );
     }
 
+    // --- Liquid Accounts (Cash & Digital) ---
     if (sys.cash_on_hand_account_id) {
       queries.push(
         `SELECT ${sys.cash_on_hand_account_id} as account_id, amount_received as debit, 0 as credit FROM payments WHERE payment_method = 'CASH' AND status != 'VOID' AND ${branchFilter} AND ${dateFilter("payment_date")}`,
@@ -53,6 +55,7 @@ class TrialBalance {
       );
     }
 
+    // --- Tax Control Accounts ---
     if (sys.output_vat_account_id) {
       queries.push(
         `SELECT ${sys.output_vat_account_id} as account_id, 0 as debit, vat_amount as credit FROM invoices WHERE vat_amount > 0 AND status != 'VOID' AND ${branchFilter} AND ${dateFilter("created_at::date")}`,
@@ -67,6 +70,7 @@ class TrialBalance {
       );
     }
 
+    // --- Dynamic Chart of Accounts Mappings ---
     queries.push(`
       SELECT s.income_account_id as account_id, 0 as debit, SUM(ii.recorded_selling_price * ii.quantity - ii.discount_amount) as credit
       FROM invoices i JOIN invoice_items ii ON i.id = ii.invoice_id JOIN services s ON ii.service_id = s.id
@@ -113,7 +117,6 @@ class TrialBalance {
         COALESCE(SUM(t.credit), 0) as raw_credit_total
       FROM chart_of_accounts c
       LEFT JOIN AllTransactions t ON c.id = t.account_id
-      WHERE c.is_active = TRUE
       GROUP BY c.id, c.account_code, c.account_name, c.account_type
       ORDER BY c.account_code ASC
     `;
