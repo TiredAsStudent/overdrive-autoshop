@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
-  Printer,
   Eye,
   Calculator,
   ArrowUpRight,
   ArrowDownRight,
+  Download,
+  Search,
 } from "lucide-react";
 
 // Services
@@ -28,6 +30,132 @@ import GeneralLedgerSourceDrawer from "../../features/manager/components/General
 
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
+
+const AccountSearchableSelect = ({ value, accounts, onChange, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (value) {
+      const selected = accounts.find(
+        (a) => a.id.toString() === value.toString(),
+      );
+      if (selected)
+        setSearchTerm(`${selected.account_code} - ${selected.account_name}`);
+    } else {
+      setSearchTerm("");
+    }
+  }, [value, accounts]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setIsOpen(false);
+        const selected = accounts.find(
+          (a) => a.id.toString() === value?.toString(),
+        );
+        setSearchTerm(
+          selected ? `${selected.account_code} - ${selected.account_name}` : "",
+        );
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value, accounts]);
+
+  const filteredAccounts = accounts.filter(
+    (a) =>
+      a.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.account_code.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const grouped = {
+    ASSET: [],
+    LIABILITY: [],
+    EQUITY: [],
+    INCOME: [],
+    EXPENSE: [],
+  };
+  filteredAccounts.forEach((acc) => {
+    if (grouped[acc.account_type]) {
+      grouped[acc.account_type].push(acc);
+    }
+  });
+
+  return (
+    <div ref={wrapperRef} className="relative z-[60] w-full sm:w-[320px]">
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search size={16} className="text-slate-400" />
+        </div>
+        <input
+          type="text"
+          disabled={disabled}
+          value={isOpen ? searchTerm : value ? searchTerm : ""}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="Search by code or name..."
+          className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all disabled:opacity-60 cursor-text"
+        />
+      </div>
+      <AnimatePresence>
+        {isOpen && !disabled && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-80 overflow-y-auto custom-scrollbar z-[100]"
+          >
+            {filteredAccounts.length > 0 ? (
+              Object.entries(grouped).map(
+                ([type, accList]) =>
+                  accList.length > 0 && (
+                    <div key={type}>
+                      <div className="sticky top-0 bg-slate-50 dark:bg-slate-900/90 px-4 py-2 border-b border-slate-100 dark:border-slate-700/50 backdrop-blur-md z-10">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                          {type}
+                        </span>
+                      </div>
+                      {accList.map((acc) => (
+                        <div
+                          key={acc.id}
+                          onClick={() => {
+                            onChange(acc.id.toString());
+                            setSearchTerm(
+                              `${acc.account_code} - ${acc.account_name}`,
+                            );
+                            setIsOpen(false);
+                          }}
+                          className="p-3 sm:p-4 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                        >
+                          <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                            {acc.account_code} {!acc.is_active && "(ARCHIVED)"}
+                          </p>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                            {acc.account_name}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ),
+              )
+            ) : (
+              <div className="p-6 text-center">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  No matching accounts found.
+                </p>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const GeneralLedger = () => {
   const { showToast } = useApp();
@@ -130,23 +258,6 @@ const GeneralLedger = () => {
     selectedAccountId,
   ]);
 
-  // Group accounts by type for the dropdown
-  const groupedAccounts = useMemo(() => {
-    const groups = {
-      ASSET: [],
-      LIABILITY: [],
-      EQUITY: [],
-      INCOME: [],
-      EXPENSE: [],
-    };
-    accounts.forEach((acc) => {
-      if (groups[acc.account_type]) {
-        groups[acc.account_type].push(acc);
-      }
-    });
-    return groups;
-  }, [accounts]);
-
   const resetFilters = () => {
     setBranchFilter("all");
     setStartDate("");
@@ -179,28 +290,12 @@ const GeneralLedger = () => {
         subtitle="Immutable Accounting Master Record"
         icon={BookOpen}
       >
-        <select
+        <AccountSearchableSelect
           value={selectedAccountId}
-          onChange={(e) => setSelectedAccountId(e.target.value)}
-          className="w-full sm:w-[280px] px-4 py-2.5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider focus:outline-none focus:border-amber-500 cursor-pointer shadow-sm"
-        >
-          {accounts.length === 0 && (
-            <option value="">Loading Accounts...</option>
-          )}
-          {Object.entries(groupedAccounts).map(
-            ([type, accList]) =>
-              accList.length > 0 && (
-                <optgroup key={type} label={`-- ${type} --`}>
-                  {accList.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.account_code} - {acc.account_name}{" "}
-                      {!acc.is_active && "(Archived)"}
-                    </option>
-                  ))}
-                </optgroup>
-              ),
-          )}
-        </select>
+          accounts={accounts}
+          onChange={setSelectedAccountId}
+          disabled={accounts.length === 0}
+        />
 
         <SearchBar
           value={searchQuery}
@@ -215,10 +310,11 @@ const GeneralLedger = () => {
         />
 
         <ActionButton
-          label="Print Ledger"
-          icon={Printer}
-          onClick={() => window.print()}
-          className="bg-slate-800 hover:bg-slate-900 text-white dark:bg-white dark:hover:bg-slate-200 dark:text-slate-900 shadow-none"
+          label="Export Ledger"
+          icon={Download}
+          onClick={() =>
+            showToast("Excel export module queued for reporting phase.", "info")
+          }
         />
       </PageHeader>
 
@@ -268,21 +364,6 @@ const GeneralLedger = () => {
           </div>
         </div>
       )}
-
-      {/* PRINT HEADER ONLY (Hidden on screen) */}
-      <div className="hidden print:block mb-6 text-center border-b-2 border-slate-900 pb-4">
-        <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">
-          General Ledger
-        </h1>
-        <p className="text-sm font-bold text-slate-600 mt-1 uppercase">
-          {ledgerData?.account_info?.account_name} (
-          {ledgerData?.account_info?.account_code})
-        </p>
-        <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-widest">
-          Opening Balance:{" "}
-          {formatCurrency(ledgerData?.summary?.opening_balance)}
-        </p>
-      </div>
 
       {/* DATA TABLE */}
       <DataTable
