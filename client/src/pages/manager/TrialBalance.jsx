@@ -302,11 +302,19 @@ const TrialBalance = () => {
 
               <td className="px-4 sm:px-8 py-4 text-right">
                 <button
-                  onClick={() =>
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    params.append("accountId", acc.id);
+                    if (branchFilter && branchFilter !== "all") {
+                      params.append("branch", branchFilter);
+                    }
+                    if (endDate) {
+                      params.append("endDate", endDate);
+                    }
                     navigate(
-                      `/manager/accounting/general-ledger?accountId=${acc.id}`,
-                    )
-                  }
+                      `/manager/accounting/general-ledger?${params.toString()}`,
+                    );
+                  }}
                   className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer print:hidden"
                   title="View Account Ledger"
                 >

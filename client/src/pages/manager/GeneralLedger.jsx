@@ -190,7 +190,7 @@ const GeneralLedger = () => {
   const activeFilterCount =
     (branchFilter !== "all" ? 1 : 0) + (startDate ? 1 : 0) + (endDate ? 1 : 0);
 
-  // 1. Initial Load: Fetch Accounts and Branches with URL Drilling
+  // 1. Initial Load: Fetch Accounts and Branches
   useEffect(() => {
     const fetchDependencies = async () => {
       try {
@@ -205,6 +205,8 @@ const GeneralLedger = () => {
 
         const queryParams = new URLSearchParams(location.search);
         const urlAccountId = queryParams.get("accountId");
+        const urlBranch = queryParams.get("branch");
+        const urlEndDate = queryParams.get("endDate");
 
         if (
           urlAccountId &&
@@ -213,6 +215,13 @@ const GeneralLedger = () => {
           setSelectedAccountId(urlAccountId);
         } else if (fetchedAccounts.length > 0) {
           setSelectedAccountId(fetchedAccounts[0].id.toString());
+        }
+
+        if (urlBranch) {
+          setBranchFilter(urlBranch);
+        }
+        if (urlEndDate) {
+          setEndDate(urlEndDate);
         }
       } catch (error) {
         showToast("Failed to load ledger dependencies.", "error");
