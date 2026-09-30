@@ -158,7 +158,7 @@ const TrialBalance = () => {
         />
 
         <ActionButton
-          label="Export Report"
+          label="Export Trial Balance"
           icon={Download}
           onClick={() =>
             showToast("Excel export queued for reporting phase.", "info")
@@ -170,13 +170,13 @@ const TrialBalance = () => {
       {data && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 print:hidden">
           <StatCard
-            title="Total Debits"
+            title="Total Debit"
             value={`₱${formatCurrency(data.summary.total_debits)}`}
             icon={Calculator}
             variant="default"
           />
           <StatCard
-            title="Total Credits"
+            title="Total Credit"
             value={`₱${formatCurrency(data.summary.total_credits)}`}
             icon={Calculator}
             variant="default"
@@ -218,7 +218,7 @@ const TrialBalance = () => {
         headers={[
           "Account Code",
           "Account Name",
-          "Classification",
+          "Account Type",
           "Debit Balance (₱)",
           "Credit Balance (₱)",
           "Action",
