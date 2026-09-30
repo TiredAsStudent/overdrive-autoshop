@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
@@ -25,6 +25,7 @@ import FilterModal from "../../components/shared/FilterModal";
 import SearchBar from "../../components/ui/SearchBar";
 import FilterButton from "../../components/ui/FilterButton";
 import ActionButton from "../../components/ui/ActionButton";
+import StatCard from "../../components/ui/StatCard";
 
 import GeneralLedgerSourceDrawer from "../../features/manager/components/GeneralLedgerSourceDrawer";
 
@@ -321,47 +322,24 @@ const GeneralLedger = () => {
       {/* SUMMARY DASHBOARD */}
       {ledgerData && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 print:hidden">
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                Opening Balance
-              </span>
-              <div className="p-2 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg">
-                <Calculator size={16} />
-              </div>
-            </div>
-            <span className="text-2xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
-              {formatCurrency(ledgerData.summary.opening_balance)}
-            </span>
-          </div>
-
-          <div className="bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-200 dark:border-emerald-500/20 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500">
-                Period Debits
-              </span>
-              <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 rounded-lg">
-                <ArrowDownRight size={16} />
-              </div>
-            </div>
-            <span className="text-2xl font-black text-emerald-700 dark:text-emerald-400 font-mono tracking-tight">
-              {formatCurrency(ledgerData.summary.period_debit)}
-            </span>
-          </div>
-
-          <div className="bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500">
-                Period Credits
-              </span>
-              <div className="p-2 bg-amber-100 dark:bg-amber-500/20 text-amber-600 rounded-lg">
-                <ArrowUpRight size={16} />
-              </div>
-            </div>
-            <span className="text-2xl font-black text-amber-700 dark:text-amber-400 font-mono tracking-tight">
-              {formatCurrency(ledgerData.summary.period_credit)}
-            </span>
-          </div>
+          <StatCard
+            title="Opening Balance"
+            value={formatCurrency(ledgerData.summary.opening_balance)}
+            icon={Calculator}
+            variant="default"
+          />
+          <StatCard
+            title="Period Debits"
+            value={formatCurrency(ledgerData.summary.period_debit)}
+            icon={ArrowDownRight}
+            variant="success"
+          />
+          <StatCard
+            title="Period Credits"
+            value={formatCurrency(ledgerData.summary.period_credit)}
+            icon={ArrowUpRight}
+            variant="warning"
+          />
         </div>
       )}
 
