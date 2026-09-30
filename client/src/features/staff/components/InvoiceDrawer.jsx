@@ -22,7 +22,7 @@ import {
 import { invoiceService } from "../../../services/staff/invoice.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
 
-const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
+const InvoiceDrawer = ({ isOpen, onClose, invoiceId, readOnly = false }) => {
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -73,7 +73,6 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
     }
   };
 
-  // Timezone-Safe Formatter
   const formatCalendarDate = (dateString) => {
     if (!dateString) return "N/A";
     const [year, month, day] = dateString.split("T")[0].split("-");
@@ -230,33 +229,29 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
                             key={item.id}
                             className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-[16px] sm:rounded-[20px] flex items-center justify-between group transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-800"
                           >
-                            <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                              <div className="flex flex-col min-w-0">
-                                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate uppercase italic">
-                                  {isService
-                                    ? item.service_name
-                                    : item.item_name}
-                                </p>
-                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-widest mt-0.5">
-                                  {item.quantity}x @ ₱
-                                  {parseFloat(
-                                    item.recorded_selling_price,
-                                  ).toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                  })}
-                                  {parseFloat(item.discount_amount) > 0 && (
-                                    <span className="text-amber-500 ml-1.5 font-bold">
-                                      (Disc: -₱
-                                      {parseFloat(
-                                        item.discount_amount,
-                                      ).toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                      })}
-                                      )
-                                    </span>
-                                  )}
-                                </p>
-                              </div>
+                            <div className="flex flex-col min-w-0 flex-1 pr-4">
+                              <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate uppercase italic">
+                                {isService ? item.service_name : item.item_name}
+                              </p>
+                              <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-widest mt-0.5">
+                                {item.quantity}x @ ₱
+                                {parseFloat(
+                                  item.recorded_selling_price,
+                                ).toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                })}
+                                {parseFloat(item.discount_amount) > 0 && (
+                                  <span className="text-amber-500 ml-1.5 font-bold">
+                                    (Disc: -₱
+                                    {parseFloat(
+                                      item.discount_amount,
+                                    ).toLocaleString(undefined, {
+                                      minimumFractionDigits: 2,
+                                    })}
+                                    )
+                                  </span>
+                                )}
+                              </p>
                             </div>
                             <span className="text-sm font-black text-slate-900 dark:text-white font-mono shrink-0">
                               ₱
@@ -426,30 +421,29 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId }) => {
               )}
             </div>
 
-            <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex gap-3 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
-              <button
-                disabled={!invoice || loading}
-                className="flex-1 py-3.5 sm:py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <Printer size={16} /> Print Document
-              </button>
-              <button
-                onClick={() =>
-                  navigate("/staff/sales/payments", {
-                    state: { invoiceId: invoice.id },
-                  })
-                }
-                disabled={
-                  !invoice ||
-                  loading ||
-                  invoice.status === "PAID" ||
-                  invoice.status === "VOID"
-                }
-                className="flex-1 py-3.5 sm:py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
-              >
-                <CreditCard size={16} /> Record Payment
-              </button>
-            </div>
+            {!readOnly && invoice && !loading && (
+              <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex gap-3 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
+                <button
+                  onClick={() => window.print()}
+                  className="flex-1 py-3.5 sm:py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Printer size={16} /> Print Document
+                </button>
+                <button
+                  onClick={() =>
+                    navigate("/staff/sales/payments", {
+                      state: { invoiceId: invoice.id },
+                    })
+                  }
+                  disabled={
+                    invoice.status === "PAID" || invoice.status === "VOID"
+                  }
+                  className="flex-1 py-3.5 sm:py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+                >
+                  <CreditCard size={16} /> Record Payment
+                </button>
+              </div>
+            )}
           </motion.div>
         </div>
       )}

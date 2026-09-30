@@ -19,7 +19,7 @@ import {
 import { paymentService } from "../../../services/staff/payment.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
 
-const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
+const PaymentDrawer = ({ isOpen, onClose, paymentId, readOnly = false }) => {
   const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -97,7 +97,6 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
             role="dialog"
             aria-modal="true"
           >
-            {/* Header */}
             <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
@@ -140,7 +139,6 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
               </button>
             </header>
 
-            {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 opacity-70">
@@ -158,7 +156,6 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
 
               {payment && !loading && (
                 <div className="space-y-6 sm:space-y-8">
-                  {/* Meta Source & Client Link */}
                   <div className="grid grid-cols-2 gap-4 sm:gap-5">
                     <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
                       <User size={16} className="text-slate-400 mb-3" />
@@ -191,7 +188,6 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                     </section>
                   </div>
 
-                  {/* Transaction Details */}
                   <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
                     <div className="p-5 sm:p-6 flex flex-col sm:flex-row justify-between gap-5 sm:items-center">
                       <div>
@@ -225,7 +221,6 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                     )}
                   </section>
 
-                  {/* PHOTO EVIDENCE VIEWER */}
                   {payment.proof_of_payment_url && (
                     <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
@@ -269,7 +264,6 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                     </section>
                   )}
 
-                  {/* Receipt Math */}
                   <section
                     className={`bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95 ${
                       payment.status === "VOID"
@@ -288,7 +282,7 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                         ? "Voided Transaction"
                         : "Financial Liquidation"}
                     </p>
-                    <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-4">
+                    <div className="flex justify-between items-center text-sm font-medium text-slate-400 mb-3">
                       <span>Associated Invoice Total</span>
                       <span className="font-mono">
                         ₱
@@ -324,7 +318,6 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
                     </div>
                   </section>
 
-                  {/* Notes */}
                   {payment.notes && (
                     <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
                       <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
@@ -339,15 +332,17 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId }) => {
               )}
             </div>
 
-            {/* Print Footer Stub */}
-            <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex gap-3 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
-              <button
-                disabled={!payment || loading || payment.status === "VOID"}
-                className="w-full py-3.5 sm:py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <Printer size={16} /> Print Official Receipt
-              </button>
-            </div>
+            {!readOnly && payment && !loading && (
+              <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex gap-3 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
+                <button
+                  onClick={() => window.print()}
+                  disabled={payment.status === "VOID"}
+                  className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Printer size={16} /> Print Official Receipt
+                </button>
+              </div>
+            )}
           </motion.div>
         </div>
       )}

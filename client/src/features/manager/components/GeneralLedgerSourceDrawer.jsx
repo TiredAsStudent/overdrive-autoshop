@@ -224,28 +224,55 @@ const GeneralLedgerSourceDrawer = ({ isOpen, onClose, source }) => {
           isOpen={isOpen}
           onClose={onClose}
           expenseId={id}
+          readOnly={true}
         />
       )}
       {type === "JOURNAL_ENTRY" && (
-        <JournalEntryDrawer isOpen={isOpen} onClose={onClose} journalId={id} />
+        <JournalEntryDrawer
+          isOpen={isOpen}
+          onClose={onClose}
+          journalId={id}
+          readOnly={true}
+        />
       )}
       {type === "VENDOR_PAYMENT" && (
-        <VendorPaymentDrawer isOpen={isOpen} onClose={onClose} paymentId={id} />
+        <VendorPaymentDrawer
+          isOpen={isOpen}
+          onClose={onClose}
+          paymentId={id}
+          readOnly={true}
+        />
       )}
       {type === "INVOICE" && (
-        <InvoiceDrawer isOpen={isOpen} onClose={onClose} invoiceId={id} />
+        <InvoiceDrawer
+          isOpen={isOpen}
+          onClose={onClose}
+          invoiceId={id}
+          readOnly={true}
+        />
       )}
       {type === "PAYMENT" && (
-        <PaymentDrawer isOpen={isOpen} onClose={onClose} paymentId={id} />
+        <PaymentDrawer
+          isOpen={isOpen}
+          onClose={onClose}
+          paymentId={id}
+          readOnly={true}
+        />
       )}
       {type === "BILL" && (
-        <BillDrawer isOpen={isOpen} onClose={onClose} billId={id} />
+        <BillDrawer
+          isOpen={isOpen}
+          onClose={onClose}
+          billId={id}
+          readOnly={true}
+        />
       )}
       {(type === "INVENTORY_MOVEMENT" || type === "INVENTORY_ADJUSTMENT") && (
         <InventoryMovementDrawer
           isOpen={isOpen}
           onClose={onClose}
           movementId={id}
+          readOnly={true}
         />
       )}
     </AnimatePresence>
