@@ -15,6 +15,7 @@ const ManagerVendorController = require("../../controllers/manager/vendor.contro
 const VendorPaymentController = require("../../controllers/manager/vendorPayment.controller");
 const JournalEntryController = require("../../controllers/manager/journalEntry.controller");
 const GeneralLedgerController = require("../../controllers/manager/generalLedger.controller");
+const TrialBalanceController = require("../../controllers/manager/trialBalance.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -92,6 +93,9 @@ const {
 const {
   getGeneralLedgerSchema,
 } = require("../../validations/manager/generalLedger.schema");
+const {
+  getTrialBalanceSchema,
+} = require("../../validations/manager/trialBalance.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -341,8 +345,14 @@ router.delete(
 );
 
 // ==========================================
-// MODULE: ACCOUNTING - GENERAL LEDGER
+// MODULE: ACCOUNTING - GENERAL LEDGER & TRIAL BALANCE
 // ==========================================
+router.get(
+  "/accounting/trial-balance",
+  validate(getTrialBalanceSchema),
+  TrialBalanceController.getTrialBalance,
+);
+
 router.get(
   "/accounting/general-ledger/:accountId",
   validate(getGeneralLedgerSchema),
