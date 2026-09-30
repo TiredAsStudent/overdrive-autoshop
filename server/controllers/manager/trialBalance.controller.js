@@ -7,7 +7,6 @@ class TrialBalanceController {
     try {
       const filters = {
         branch: req.query.branch || "all",
-        start_date: req.query.start_date || null,
         end_date: req.query.end_date || null,
         search: req.query.search || "",
         type: req.query.type || "all",

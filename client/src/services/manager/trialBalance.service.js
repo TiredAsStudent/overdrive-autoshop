@@ -8,7 +8,6 @@ export const trialBalanceService = {
           search: filters.search || undefined,
           type: filters.type !== "all" ? filters.type : undefined,
           branch: filters.branch !== "all" ? filters.branch : undefined,
-          start_date: filters.start_date || undefined,
           end_date: filters.end_date || undefined,
           hide_zero: filters.hide_zero ? "true" : "false",
         },

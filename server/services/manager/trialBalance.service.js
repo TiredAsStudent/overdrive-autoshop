@@ -3,13 +3,12 @@ const { logSecureAction } = require("../../utils/auditLogger");
 
 class TrialBalanceService {
   static async generateTrialBalance(filters, activeUser, ipAddress) {
-    const { branch, start_date, end_date, search, type, hide_zero } = filters;
+    const { branch, end_date, search, type, hide_zero } = filters;
     const targetBranch = branch === "all" ? null : branch;
 
-    // 1. Fetch Aggregated Data
+    // 1. Fetch Aggregated Data (Cumulative As Of End Date)
     const rawAccounts = await TrialBalanceModel.getAggregatedBalances(
       targetBranch,
-      start_date,
       end_date,
     );
 
@@ -77,7 +76,7 @@ class TrialBalanceService {
       "VIEW_TRIAL_BALANCE",
       "INFO",
       ipAddress,
-      "general_ledger", // Logical target representing accounting data
+      "general_ledger",
       null,
       null,
       { filters, is_balanced: isBalanced },

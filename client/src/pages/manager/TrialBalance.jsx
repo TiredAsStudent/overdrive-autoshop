@@ -51,16 +51,14 @@ const TrialBalance = () => {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [typeFilter, setTypeFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
-  const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [hideZero, setHideZero] = useState(true); // Default true for cleaner FRS reporting
+  const [hideZero, setHideZero] = useState(true);
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const activeFilterCount =
     (typeFilter !== "all" ? 1 : 0) +
     (branchFilter !== "all" ? 1 : 0) +
-    (startDate ? 1 : 0) +
     (endDate ? 1 : 0) +
     (hideZero ? 1 : 0);
 
@@ -80,7 +78,6 @@ const TrialBalance = () => {
         search: debouncedSearchQuery,
         type: typeFilter,
         branch: branchFilter,
-        start_date: startDate,
         end_date: endDate,
         hide_zero: hideZero,
       });
@@ -96,19 +93,11 @@ const TrialBalance = () => {
   useEffect(() => {
     loadTrialBalance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    debouncedSearchQuery,
-    typeFilter,
-    branchFilter,
-    startDate,
-    endDate,
-    hideZero,
-  ]);
+  }, [debouncedSearchQuery, typeFilter, branchFilter, endDate, hideZero]);
 
   const resetFilters = () => {
     setTypeFilter("all");
     setBranchFilter("all");
-    setStartDate("");
     setEndDate("");
     setHideZero(true);
     setIsFilterModalOpen(false);
@@ -151,7 +140,6 @@ const TrialBalance = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* PAGE HEADER */}
       <PageHeader
         title="Trial Balance"
         subtitle="Mathematical Parity & Pre-Reporting Audit"
@@ -241,7 +229,6 @@ const TrialBalance = () => {
         emptySubtitle="Try adjusting your filters or search criteria."
         minWidth="min-w-[900px]"
         renderRow={(acc, idx) => {
-          // Render Grand Total Row
           if (acc.is_total_row) {
             return (
               <tr
@@ -268,7 +255,6 @@ const TrialBalance = () => {
             );
           }
 
-          // Render Normal Account Row
           return (
             <tr
               key={`acc-${acc.id}-${idx}`}
@@ -375,29 +361,16 @@ const TrialBalance = () => {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                As Of Date (End)
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-              />
-            </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              As Of Date (Cutoff)
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+            />
           </div>
 
           <div className="pt-2">

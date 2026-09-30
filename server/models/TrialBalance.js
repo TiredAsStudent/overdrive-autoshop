@@ -1,21 +1,18 @@
 const { query } = require("../config/db");
 
 class TrialBalance {
-  static async getAggregatedBalances(branchId, startDate, endDate) {
+  static async getAggregatedBalances(branchId, endDate) {
     const sysRes = await query(`SELECT * FROM system_settings WHERE id = 1`);
     const sys = sysRes.rows[0] || {};
 
     const branchFilter = `($1::int IS NULL OR branch_id = $1::int)`;
 
-    // Date column mapping matches GeneralLedger.js logic
-    const dateFilter = (dateCol) => `
-      ($2::date IS NULL OR ${dateCol} >= $2::date) AND 
-      ($3::date IS NULL OR ${dateCol} <= $3::date)
-    `;
+    // Strict 'As Of Date' cutoff (Cumulative from inception)
+    const dateFilter = (dateCol) =>
+      `($2::date IS NULL OR ${dateCol} <= $2::date)`;
 
     const queries = [];
 
-    // --- AR & AP Control Accounts ---
     if (sys.ar_account_id) {
       queries.push(
         `SELECT ${sys.ar_account_id} as account_id, grand_total as debit, 0 as credit FROM invoices WHERE status != 'VOID' AND ${branchFilter} AND ${dateFilter("created_at::date")}`,
@@ -33,7 +30,6 @@ class TrialBalance {
       );
     }
 
-    // --- Liquid Accounts (Cash & Digital) ---
     if (sys.cash_on_hand_account_id) {
       queries.push(
         `SELECT ${sys.cash_on_hand_account_id} as account_id, amount_received as debit, 0 as credit FROM payments WHERE payment_method = 'CASH' AND status != 'VOID' AND ${branchFilter} AND ${dateFilter("payment_date")}`,
@@ -57,7 +53,6 @@ class TrialBalance {
       );
     }
 
-    // --- Tax Control Accounts ---
     if (sys.output_vat_account_id) {
       queries.push(
         `SELECT ${sys.output_vat_account_id} as account_id, 0 as debit, vat_amount as credit FROM invoices WHERE vat_amount > 0 AND status != 'VOID' AND ${branchFilter} AND ${dateFilter("created_at::date")}`,
@@ -72,7 +67,6 @@ class TrialBalance {
       );
     }
 
-    // --- Dynamic Chart of Accounts Mappings ---
     queries.push(`
       SELECT s.income_account_id as account_id, 0 as debit, SUM(ii.recorded_selling_price * ii.quantity - ii.discount_amount) as credit
       FROM invoices i JOIN invoice_items ii ON i.id = ii.invoice_id JOIN services s ON ii.service_id = s.id
@@ -109,7 +103,6 @@ class TrialBalance {
       WHERE je.status = 'POSTED' AND ${branchFilter.replace(/branch_id/g, "je.branch_id")} AND ${dateFilter("je.entry_date")}
     `);
 
-    // Merge queries into one massive super-aggregate
     const sql = `
       WITH AllTransactions AS (
         ${queries.join("\n UNION ALL \n")}
@@ -125,11 +118,7 @@ class TrialBalance {
       ORDER BY c.account_code ASC
     `;
 
-    const values = [
-      branchId ? parseInt(branchId, 10) : null,
-      startDate || null,
-      endDate || null,
-    ];
+    const values = [branchId ? parseInt(branchId, 10) : null, endDate || null];
 
     const result = await query(sql, values);
     return result.rows;

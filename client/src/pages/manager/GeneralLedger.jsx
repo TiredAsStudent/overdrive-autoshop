@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
@@ -160,6 +161,7 @@ const AccountSearchableSelect = ({ value, accounts, onChange, disabled }) => {
 
 const GeneralLedger = () => {
   const { showToast } = useApp();
+  const location = useLocation();
 
   // Master Data
   const [accounts, setAccounts] = useState([]);
@@ -188,7 +190,7 @@ const GeneralLedger = () => {
   const activeFilterCount =
     (branchFilter !== "all" ? 1 : 0) + (startDate ? 1 : 0) + (endDate ? 1 : 0);
 
-  // 1. Initial Load: Fetch Accounts and Branches
+  // 1. Initial Load: Fetch Accounts and Branches with URL Drilling
   useEffect(() => {
     const fetchDependencies = async () => {
       try {
@@ -201,7 +203,15 @@ const GeneralLedger = () => {
         setAccounts(fetchedAccounts);
         setBranches(brRes.data || []);
 
-        if (fetchedAccounts.length > 0) {
+        const queryParams = new URLSearchParams(location.search);
+        const urlAccountId = queryParams.get("accountId");
+
+        if (
+          urlAccountId &&
+          fetchedAccounts.some((a) => a.id.toString() === urlAccountId)
+        ) {
+          setSelectedAccountId(urlAccountId);
+        } else if (fetchedAccounts.length > 0) {
           setSelectedAccountId(fetchedAccounts[0].id.toString());
         }
       } catch (error) {
@@ -210,7 +220,7 @@ const GeneralLedger = () => {
       }
     };
     fetchDependencies();
-  }, [showToast]);
+  }, [showToast, location.search]);
 
   // Reset pagination on filter changes
   useEffect(() => {
