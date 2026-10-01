@@ -10,6 +10,7 @@ import {
   Network,
   Settings,
   ShieldAlert,
+  Lock,
 } from "lucide-react";
 import { chartOfAccountsService } from "../../../services/manager/chartOfAccounts.service";
 
@@ -128,6 +129,11 @@ const AccountModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       p.parent_id !== initialData?.id,
   );
 
+  const isEdit = !!initialData;
+  const isSystem = initialData?.is_system === true;
+  const usageCount = parseInt(initialData?.usage_count || 0, 10);
+  const hasUsage = usageCount > 0;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -171,13 +177,25 @@ const AccountModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </div>
               )}
 
-              {initialData?.is_system && (
+              {/* Dynamic Warning Banners */}
+              {isSystem && (
                 <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-700 dark:text-blue-400 rounded-xl flex items-start gap-3 text-xs font-bold">
                   <ShieldAlert size={16} className="shrink-0 mt-0.5" />
                   <span>
                     This is a core system account. The Account Code, Name, and
                     Type are locked to ensure automated workflows operate
                     correctly.
+                  </span>
+                </div>
+              )}
+
+              {!isSystem && hasUsage && (
+                <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 rounded-xl flex items-start gap-3 text-xs font-bold">
+                  <Lock size={16} className="shrink-0 mt-0.5" />
+                  <span>
+                    This account has {usageCount} historical transaction(s). Its
+                    Account Type is permanently locked to preserve ledger
+                    integrity.
                   </span>
                 </div>
               )}
@@ -205,7 +223,7 @@ const AccountModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         onChange={handleChange}
                         disabled={!!initialData}
                         placeholder="e.g. 5040"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -217,8 +235,8 @@ const AccountModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         name="account_type"
                         value={formData.account_type}
                         onChange={handleChange}
-                        disabled={!!initialData}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
+                        disabled={isSystem || hasUsage}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {ACCOUNT_TYPES.map((type) => (
                           <option key={type} value={type}>
@@ -237,9 +255,9 @@ const AccountModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         name="account_name"
                         value={formData.account_name}
                         onChange={handleChange}
-                        disabled={initialData?.is_system}
+                        disabled={isSystem}
                         placeholder="e.g. Digital Marketing Expense"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -298,18 +316,21 @@ const AccountModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <Settings size={14} /> Accounting Rules
                   </h3>
-                  <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
+                  <div
+                    className={`flex items-center gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors ${isSystem ? "opacity-60 cursor-not-allowed" : ""}`}
+                  >
                     <input
                       type="checkbox"
                       id="is_vat_applicable"
                       name="is_vat_applicable"
                       checked={formData.is_vat_applicable}
                       onChange={handleChange}
-                      className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                      disabled={isSystem}
+                      className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer disabled:cursor-not-allowed"
                     />
                     <label
                       htmlFor="is_vat_applicable"
-                      className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 cursor-pointer select-none"
+                      className={`text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 select-none ${isSystem ? "cursor-not-allowed" : "cursor-pointer"}`}
                     >
                       Subject to VAT (Automated Posting)
                     </label>
