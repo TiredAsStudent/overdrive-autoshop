@@ -81,6 +81,7 @@ class ChartOfAccounts {
 
     const fields = [
       "account_name",
+      "account_type",
       "parent_id",
       "description",
       "is_vat_applicable",
@@ -116,7 +117,13 @@ class ChartOfAccounts {
 
   static async findById(id) {
     const sql = `
-      SELECT c.*, p.account_name as parent_account_name 
+      SELECT c.*, p.account_name as parent_account_name,
+      (
+        (SELECT COUNT(id) FROM expenses WHERE expense_account_id = c.id AND status = 'APPROVED') +
+        (SELECT COUNT(id) FROM journal_entry_items WHERE account_id = c.id) +
+        (SELECT COUNT(id) FROM services WHERE income_account_id = c.id) +
+        (SELECT COUNT(id) FROM inventory_items WHERE asset_account_id = c.id OR income_account_id = c.id OR expense_account_id = c.id)
+      ) AS usage_count
       FROM chart_of_accounts c
       LEFT JOIN chart_of_accounts p ON c.parent_id = p.id
       WHERE c.id = $1
@@ -153,7 +160,13 @@ class ChartOfAccounts {
 
   static async findPaginatedFiltered(limit, offset, search, type, status) {
     let sql = `
-      SELECT c.*, p.account_name as parent_account_name 
+      SELECT c.*, p.account_name as parent_account_name,
+      (
+        (SELECT COUNT(id) FROM expenses WHERE expense_account_id = c.id AND status = 'APPROVED') +
+        (SELECT COUNT(id) FROM journal_entry_items WHERE account_id = c.id) +
+        (SELECT COUNT(id) FROM services WHERE income_account_id = c.id) +
+        (SELECT COUNT(id) FROM inventory_items WHERE asset_account_id = c.id OR income_account_id = c.id OR expense_account_id = c.id)
+      ) AS usage_count
       FROM chart_of_accounts c
       LEFT JOIN chart_of_accounts p ON c.parent_id = p.id
     `;
@@ -223,11 +236,12 @@ class ChartOfAccounts {
         JOIN inventory_items inv ON im.item_id = inv.id
         WHERE inv.asset_account_id = $1
       `);
+
       queries.push(`
         SELECT COUNT(*) as cnt 
         FROM inventory_movements im
         JOIN inventory_items inv ON im.item_id = inv.id
-        WHERE im.transaction_type = 'MANUAL_ADJUSTMENT' AND im.quantity_deducted > 0 AND inv.expense_account_id = $1
+        WHERE im.transaction_type IN ('MANUAL_ADJUSTMENT', 'SALES_INVOICE') AND im.quantity_deducted > 0 AND inv.expense_account_id = $1
       `);
 
       queries.push(`
@@ -348,12 +362,12 @@ class ChartOfAccounts {
       `);
 
       queries.push(`
-        SELECT 'INVENTORY (Adjustment)' as transaction_type, im.transaction_reference as reference, im.created_at as transaction_date, 
+        SELECT 'INVENTORY (COGS/Adjustment)' as transaction_type, im.transaction_reference as reference, im.created_at as transaction_date, 
         ((im.quantity_deducted - im.quantity_added) * im.recorded_unit_cost) as amount, 
         COALESCE(im.adjustment_reason::text, im.transaction_type::text) as status
         FROM inventory_movements im
         JOIN inventory_items inv ON im.item_id = inv.id
-        WHERE im.transaction_type = 'MANUAL_ADJUSTMENT' AND inv.expense_account_id = $1
+        WHERE im.transaction_type IN ('MANUAL_ADJUSTMENT', 'SALES_INVOICE') AND inv.expense_account_id = $1
       `);
 
       queries.push(`

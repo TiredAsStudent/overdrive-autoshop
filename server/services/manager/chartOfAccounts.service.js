@@ -73,6 +73,15 @@ class ChartOfAccountsService {
       }
     }
 
+    if (data.account_type && data.account_type !== oldAccount.account_type) {
+      const usageCount = await COAModel.countAccountUsage(id);
+      if (usageCount > 0) {
+        throw new Error(
+          "Cannot change Account Type: This account has existing transaction history which would corrupt the ledger.",
+        );
+      }
+    }
+
     let nameChanged = false;
     if (data.account_name && data.account_name !== oldAccount.account_name) {
       nameChanged = true;

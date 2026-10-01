@@ -100,15 +100,14 @@ class GeneralLedger {
       WHERE inv.asset_account_id = $1 AND ($2::int IS NULL OR im.branch_id = $2::int)
     `);
 
-    // Inventory Adjustments (Shrinkage/Gain Expenses)
     queries.push(`
       SELECT 'INVENTORY_ADJUSTMENT' as source_type, im.id as source_id, im.transaction_reference as reference_number, im.created_at::date as transaction_date, im.created_at, 
       (im.quantity_deducted * im.recorded_unit_cost) as debit, (im.quantity_added * im.recorded_unit_cost) as credit, im.branch_id, COALESCE(im.adjustment_reason::text, im.remarks) as description
       FROM inventory_movements im JOIN inventory_items inv ON im.item_id = inv.id
-      WHERE im.transaction_type = 'MANUAL_ADJUSTMENT' AND inv.expense_account_id = $1 AND ($2::int IS NULL OR im.branch_id = $2::int)
+      WHERE im.transaction_type IN ('MANUAL_ADJUSTMENT', 'SALES_INVOICE') AND inv.expense_account_id = $1 AND ($2::int IS NULL OR im.branch_id = $2::int)
     `);
 
-    //  Manual Journal Entries
+    // Manual Journal Entries
     queries.push(`
       SELECT 'JOURNAL_ENTRY' as source_type, je.id as source_id, je.journal_number as reference_number, je.entry_date as transaction_date, je.created_at,
       CASE WHEN ji.entry_type = 'DEBIT' THEN ji.amount ELSE 0 END as debit,

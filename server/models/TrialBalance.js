@@ -98,7 +98,7 @@ class TrialBalance {
     queries.push(`
       SELECT inv.expense_account_id as account_id, (im.quantity_deducted * im.recorded_unit_cost) as debit, (im.quantity_added * im.recorded_unit_cost) as credit
       FROM inventory_movements im JOIN inventory_items inv ON im.item_id = inv.id
-      WHERE im.transaction_type = 'MANUAL_ADJUSTMENT' AND ${branchFilter.replace(/branch_id/g, "im.branch_id")} AND ${dateFilter("im.created_at::date")}
+      WHERE im.transaction_type IN ('MANUAL_ADJUSTMENT', 'SALES_INVOICE') AND ${branchFilter.replace(/branch_id/g, "im.branch_id")} AND ${dateFilter("im.created_at::date")}
     `);
 
     queries.push(`
