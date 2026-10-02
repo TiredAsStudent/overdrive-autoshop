@@ -385,7 +385,9 @@ const BalanceSheet = () => {
                 <span className="uppercase text-[10px] sm:text-[11px] tracking-widest">
                   Total Owner's Equity
                 </span>
-                <span className="font-mono text-sm sm:text-base">
+                <span
+                  className={`font-mono text-sm sm:text-base ${data.summary.total_equity < 0 ? "text-red-500 dark:text-red-400" : ""}`}
+                >
                   {formatCurrency(data.summary.total_equity)}
                 </span>
               </div>
