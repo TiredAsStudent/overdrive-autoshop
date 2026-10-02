@@ -294,7 +294,7 @@ const BalanceSheet = () => {
             As of{" "}
             {new Date(asOfDate).toLocaleDateString("en-US", {
               year: "numeric",
-              month: "long",
+              month: "short",
               day: "numeric",
             })}
           </p>
@@ -347,11 +347,11 @@ const BalanceSheet = () => {
               <div className="pl-2 sm:pl-4 space-y-2">
                 {renderAccountRows(data.assets)}
               </div>
-              <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white print:text-black print:border-black">
-                <span className="uppercase text-[10px] sm:text-[11px] tracking-widest">
+              <div className="flex justify-between items-center mt-8 pt-4 pb-4 border-t-2 border-b-4 border-double border-slate-900 dark:border-white print:border-black">
+                <span className="text-base sm:text-lg font-black uppercase tracking-widest text-slate-900 dark:text-white print:text-black">
                   Total Assets
                 </span>
-                <span className="font-mono text-sm sm:text-base">
+                <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-white print:text-black">
                   {formatCurrency(data.summary.total_assets)}
                 </span>
               </div>
