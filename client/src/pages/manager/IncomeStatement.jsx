@@ -212,7 +212,7 @@ const IncomeStatement = () => {
             onToggle={handlePresetChange}
             options={[
               { label: "This Month", value: "this_month" },
-              { label: "This Qtr", value: "this_quarter" },
+              { label: "This Quarter", value: "this_quarter" },
               { label: "This Year", value: "this_year" },
             ]}
           />
@@ -234,7 +234,7 @@ const IncomeStatement = () => {
             label="Export"
             icon={Download}
             onClick={() =>
-              showToast("Excel export queued for reporting phase.", "info")
+              showToast("CSV export queued for reporting phase.", "info")
             }
             disabled={!data || loading}
           />
@@ -286,8 +286,18 @@ const IncomeStatement = () => {
           </p>
           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-500 mt-1.5 uppercase tracking-widest flex justify-center items-center gap-1.5 print:text-slate-700">
             <Calendar size={12} className="print:hidden" />
-            For the period {new Date(startDate).toLocaleDateString()} to{" "}
-            {new Date(endDate).toLocaleDateString()}
+            For the period{" "}
+            {new Date(startDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            to{" "}
+            {new Date(endDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
           </p>
         </div>
 
@@ -311,7 +321,7 @@ const IncomeStatement = () => {
               No Financial Data Available
             </p>
             <p className="text-[10px] sm:text-xs font-medium mt-1.5 opacity-70 text-slate-400 whitespace-normal">
-              There are no approved transactions for this period.
+              No transactions found for the selected reporting period.
             </p>
           </div>
         ) : (
