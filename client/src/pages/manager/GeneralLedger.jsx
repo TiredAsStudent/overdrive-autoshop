@@ -206,6 +206,7 @@ const GeneralLedger = () => {
         const queryParams = new URLSearchParams(location.search);
         const urlAccountId = queryParams.get("accountId");
         const urlBranch = queryParams.get("branch");
+        const urlStartDate = queryParams.get("startDate");
         const urlEndDate = queryParams.get("endDate");
 
         if (
@@ -219,6 +220,9 @@ const GeneralLedger = () => {
 
         if (urlBranch) {
           setBranchFilter(urlBranch);
+        }
+        if (urlStartDate) {
+          setStartDate(urlStartDate);
         }
         if (urlEndDate) {
           setEndDate(urlEndDate);
