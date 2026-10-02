@@ -16,6 +16,7 @@ const VendorPaymentController = require("../../controllers/manager/vendorPayment
 const JournalEntryController = require("../../controllers/manager/journalEntry.controller");
 const GeneralLedgerController = require("../../controllers/manager/generalLedger.controller");
 const TrialBalanceController = require("../../controllers/manager/trialBalance.controller");
+const IncomeStatementController = require("../../controllers/manager/incomeStatement.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -96,6 +97,9 @@ const {
 const {
   getTrialBalanceSchema,
 } = require("../../validations/manager/trialBalance.schema");
+const {
+  getIncomeStatementSchema,
+} = require("../../validations/manager/incomeStatement.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -315,6 +319,15 @@ router.patch(
   "/accounting/accounts/:id/status",
   validate(toggleAccountStatusSchema),
   ChartOfAccountsController.toggleStatus,
+);
+
+// ==========================================
+// MODULE: REPORTS - FINANCIAL STATEMENTS
+// ==========================================
+router.get(
+  "/reports/income-statement",
+  validate(getIncomeStatementSchema),
+  IncomeStatementController.getIncomeStatement,
 );
 
 // ==========================================
