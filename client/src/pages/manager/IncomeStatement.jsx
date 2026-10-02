@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FileText,
   Download,
@@ -9,6 +10,7 @@ import {
   TrendingDown,
   Calculator,
   Loader2,
+  ArrowRight,
 } from "lucide-react";
 
 // Services
@@ -58,6 +60,7 @@ const getPresetDates = (preset) => {
 
 const IncomeStatement = () => {
   const { showToast } = useApp();
+  const navigate = useNavigate();
 
   const initialDates = getPresetDates("this_month");
 
@@ -149,7 +152,19 @@ const IncomeStatement = () => {
     return num < 0 ? `(₱${formatted})` : `₱${formatted}`;
   };
 
-  // Render Sub-section table rows
+  const handleDrillDown = (accountId) => {
+    const params = new URLSearchParams();
+    params.append("accountId", accountId);
+
+    if (branchFilter && branchFilter !== "all") {
+      params.append("branch", branchFilter);
+    }
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+
+    navigate(`/manager/accounting/general-ledger?${params.toString()}`);
+  };
+
   const renderAccountRows = (accounts) => {
     if (!accounts || accounts.length === 0) {
       return (
@@ -163,11 +178,17 @@ const IncomeStatement = () => {
     return accounts.map((acc) => (
       <div
         key={acc.id}
-        className="flex justify-between py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors border-b border-dashed border-slate-100 dark:border-slate-800 last:border-0 group print:border-none"
+        onClick={() => handleDrillDown(acc.id)}
+        className="flex justify-between items-center py-2.5 px-2 -mx-2 text-sm hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-all cursor-pointer rounded-lg border-b border-dashed border-slate-100 dark:border-slate-800 last:border-0 group print:border-none print:px-0 print:mx-0 print:cursor-auto"
+        title="Click to view detailed General Ledger for this account"
       >
-        <span className="text-slate-700 dark:text-slate-300 font-medium group-hover:text-slate-900 dark:group-hover:text-white print:text-black">
-          {acc.account_name}
-        </span>
+        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 print:text-black print:group-hover:text-black transition-colors">
+          <span>{acc.account_name}</span>
+          <ArrowRight
+            size={14}
+            className="opacity-0 group-hover:opacity-100 transition-opacity print:hidden"
+          />
+        </div>
         <span className="font-mono text-slate-900 dark:text-white print:text-black">
           {formatCurrency(acc.net_balance)}
         </span>
@@ -195,7 +216,7 @@ const IncomeStatement = () => {
               onClick={() =>
                 handlePresetChange({ target: { value: preset.id } })
               }
-              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer ${
                 datePreset === preset.id
                   ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm"
                   : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -224,6 +245,7 @@ const IncomeStatement = () => {
             onClick={() =>
               showToast("Excel export queued for reporting phase.", "info")
             }
+            disabled={!data || loading}
           />
         </div>
       </PageHeader>
@@ -259,13 +281,13 @@ const IncomeStatement = () => {
       )}
 
       {/* FINANCIAL STATEMENT (Printable Document Area) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden print:border-none print:shadow-none print:p-0">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] sm:rounded-[32px] shadow-sm overflow-hidden print:border-none print:shadow-none print:p-0">
         {/* Print & Document Header */}
-        <div className="p-8 pb-6 border-b border-slate-100 dark:border-slate-800/50 text-center bg-slate-50 dark:bg-slate-900/50 print:bg-transparent print:border-b-2 print:border-slate-900">
-          <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white print:text-black">
+        <div className="p-6 sm:p-8 pb-5 sm:pb-6 border-b border-slate-100 dark:border-slate-800/50 text-center bg-slate-50 dark:bg-slate-900/50 print:bg-transparent print:border-b-2 print:border-slate-900">
+          <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white print:text-black">
             Income Statement
           </h1>
-          <p className="text-sm font-bold text-slate-600 dark:text-slate-400 mt-1 uppercase print:text-black">
+          <p className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 mt-1.5 uppercase print:text-black">
             {branchFilter === "all"
               ? "Enterprise Global (Consolidated)"
               : branches.find((b) => b.id.toString() === branchFilter)
@@ -280,31 +302,31 @@ const IncomeStatement = () => {
 
         {/* Loading State Overlay inside document */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 text-slate-400 print:hidden">
+          <div className="flex flex-col items-center justify-center py-20 sm:py-32 text-slate-400 print:hidden">
             <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
             <p className="text-[10px] font-black uppercase tracking-widest">
               Calculating Financials...
             </p>
           </div>
         ) : !data ? (
-          <div className="text-center py-20 text-slate-500 text-sm font-bold print:hidden">
+          <div className="text-center py-16 sm:py-20 text-slate-500 text-sm font-bold print:hidden">
             No financial data available for this period.
           </div>
         ) : (
           <div className="p-6 sm:p-10 lg:px-16 max-w-4xl mx-auto space-y-8 print:p-0 print:pt-6">
             {/* 1. OPERATING REVENUE */}
             <div>
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white border-b-2 border-slate-200 dark:border-slate-700 pb-2 mb-3 print:text-black print:border-black">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white border-b-2 border-slate-200 dark:border-slate-700 pb-2 mb-3 print:text-black print:border-black">
                 Operating Revenue
               </h3>
-              <div className="pl-4">
+              <div className="pl-2 sm:pl-4">
                 {renderAccountRows(data.operating_revenue)}
               </div>
               <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white print:text-black print:border-black">
-                <span className="uppercase text-[11px] tracking-widest">
+                <span className="uppercase text-[10px] sm:text-[11px] tracking-widest">
                   Total Operating Revenue
                 </span>
-                <span className="font-mono text-base">
+                <span className="font-mono text-sm sm:text-base">
                   {formatCurrency(data.summary.total_revenue)}
                 </span>
               </div>
@@ -312,29 +334,29 @@ const IncomeStatement = () => {
 
             {/* 2. COST OF GOODS SOLD */}
             <div>
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white border-b-2 border-slate-200 dark:border-slate-700 pb-2 mb-3 mt-8 print:text-black print:border-black">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white border-b-2 border-slate-200 dark:border-slate-700 pb-2 mb-3 mt-8 print:text-black print:border-black">
                 Cost of Goods Sold
               </h3>
-              <div className="pl-4">
+              <div className="pl-2 sm:pl-4">
                 {renderAccountRows(data.cost_of_goods_sold)}
               </div>
               <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white print:text-black print:border-black">
-                <span className="uppercase text-[11px] tracking-widest">
+                <span className="uppercase text-[10px] sm:text-[11px] tracking-widest">
                   Total Cost of Goods Sold
                 </span>
-                <span className="font-mono text-base">
+                <span className="font-mono text-sm sm:text-base">
                   {formatCurrency(data.summary.total_cogs)}
                 </span>
               </div>
             </div>
 
             {/* 3. GROSS PROFIT (Subtotal) */}
-            <div className="flex justify-between items-center py-4 px-5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 print:bg-transparent print:border-none print:px-0 print:border-t-2 print:border-b-2 print:border-black print:rounded-none">
-              <span className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white print:text-black">
+            <div className="flex justify-between items-center py-4 px-4 sm:px-5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 print:bg-transparent print:border-none print:px-0 print:border-t-2 print:border-b-2 print:border-black print:rounded-none">
+              <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white print:text-black">
                 Gross Profit
               </span>
               <span
-                className={`text-xl font-black font-mono tracking-tight print:text-black ${data.summary.gross_profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
+                className={`text-lg sm:text-xl font-black font-mono tracking-tight print:text-black ${data.summary.gross_profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
               >
                 {formatCurrency(data.summary.gross_profit)}
               </span>
@@ -342,29 +364,29 @@ const IncomeStatement = () => {
 
             {/* 4. OPERATING EXPENSES */}
             <div>
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white border-b-2 border-slate-200 dark:border-slate-700 pb-2 mb-3 mt-8 print:text-black print:border-black">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white border-b-2 border-slate-200 dark:border-slate-700 pb-2 mb-3 mt-8 print:text-black print:border-black">
                 Operating Expenses
               </h3>
-              <div className="pl-4">
+              <div className="pl-2 sm:pl-4">
                 {renderAccountRows(data.operating_expenses)}
               </div>
               <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white print:text-black print:border-black">
-                <span className="uppercase text-[11px] tracking-widest">
+                <span className="uppercase text-[10px] sm:text-[11px] tracking-widest">
                   Total Operating Expenses
                 </span>
-                <span className="font-mono text-base">
+                <span className="font-mono text-sm sm:text-base">
                   {formatCurrency(data.summary.total_opex)}
                 </span>
               </div>
             </div>
 
             {/* 5. NET PROFIT (Grand Total) */}
-            <div className="flex justify-between items-center mt-10 pt-4 border-t-2 border-b-4 border-double border-slate-900 dark:border-white print:border-black py-4">
-              <span className="text-lg font-black uppercase tracking-widest text-slate-900 dark:text-white print:text-black">
+            <div className="flex justify-between items-center mt-10 pt-4 pb-4 border-t-2 border-b-4 border-double border-slate-900 dark:border-white print:border-black">
+              <span className="text-base sm:text-lg font-black uppercase tracking-widest text-slate-900 dark:text-white print:text-black">
                 Net Operating Profit / (Loss)
               </span>
               <span
-                className={`text-3xl font-black font-mono tracking-tight print:text-black ${data.summary.net_profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
+                className={`text-2xl sm:text-3xl font-black font-mono tracking-tight print:text-black ${data.summary.net_profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
               >
                 {formatCurrency(data.summary.net_profit)}
               </span>
@@ -388,7 +410,7 @@ const IncomeStatement = () => {
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
             >
               <option value="all">Enterprise Global (Consolidated)</option>
               {branches.map((b) => (
@@ -406,7 +428,7 @@ const IncomeStatement = () => {
             <select
               value={datePreset}
               onChange={handlePresetChange}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 mb-3"
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 mb-3 cursor-pointer"
             >
               <option value="this_month">This Month</option>
               <option value="this_quarter">This Quarter</option>
@@ -426,7 +448,7 @@ const IncomeStatement = () => {
                     onChange={(e) =>
                       handleCustomDateChange("start", e.target.value)
                     }
-                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
                   />
                 </div>
                 <div>
@@ -439,7 +461,7 @@ const IncomeStatement = () => {
                     onChange={(e) =>
                       handleCustomDateChange("end", e.target.value)
                     }
-                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
                   />
                 </div>
               </div>
