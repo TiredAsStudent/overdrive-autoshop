@@ -334,7 +334,7 @@ const GeneralLedger = () => {
         />
 
         <ActionButton
-          label="Export Ledger"
+          label="Export"
           icon={Download}
           onClick={() =>
             showToast("Excel export module queued for reporting phase.", "info")

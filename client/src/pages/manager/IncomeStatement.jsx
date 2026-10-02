@@ -3,9 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   FileText,
   Download,
-  Printer,
   Calendar,
-  Building2,
   TrendingUp,
   TrendingDown,
   Calculator,
@@ -225,12 +223,6 @@ const IncomeStatement = () => {
 
         <div className="flex gap-2">
           <ActionButton
-            label="Print"
-            icon={Printer}
-            onClick={() => window.print()}
-            className="!bg-slate-100 dark:!bg-slate-800 !text-slate-700 dark:!text-slate-300 hover:!bg-slate-200 dark:hover:!bg-slate-700 shadow-none border border-slate-200 dark:border-slate-700"
-          />
-          <ActionButton
             label="Export"
             icon={Download}
             onClick={() =>
@@ -416,8 +408,8 @@ const IncomeStatement = () => {
       >
         <div className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-              <Building2 size={12} /> Branch Scope
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Branch Scope
             </label>
             <select
               value={branchFilter}
@@ -434,8 +426,8 @@ const IncomeStatement = () => {
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-              <Calendar size={12} /> Reporting Period
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Reporting Period
             </label>
             <select
               value={datePreset}

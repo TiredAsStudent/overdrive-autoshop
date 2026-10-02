@@ -158,7 +158,7 @@ const TrialBalance = () => {
         />
 
         <ActionButton
-          label="Export Trial Balance"
+          label="Export"
           icon={Download}
           onClick={() =>
             showToast("Excel export queued for reporting phase.", "info")
