@@ -25,6 +25,7 @@ import FilterModal from "../../components/shared/FilterModal";
 import FilterButton from "../../components/ui/FilterButton";
 import ActionButton from "../../components/ui/ActionButton";
 import StatCard from "../../components/ui/StatCard";
+import StatusToggle from "../../components/ui/StatusToggle";
 
 import { useApp } from "../../context/AppContext";
 
@@ -117,11 +118,10 @@ const IncomeStatement = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchFilter, startDate, endDate, hideZero]);
 
-  const handlePresetChange = (e) => {
-    const preset = e.target.value;
-    setDatePreset(preset);
-    if (preset !== "custom") {
-      const { start, end } = getPresetDates(preset);
+  const handlePresetChange = (val) => {
+    setDatePreset(val);
+    if (val !== "custom") {
+      const { start, end } = getPresetDates(val);
       setStartDate(start);
       setEndDate(end);
     }
@@ -152,6 +152,7 @@ const IncomeStatement = () => {
     return num < 0 ? `(₱${formatted})` : `₱${formatted}`;
   };
 
+  // --- GENERAL LEDGER DRILL-DOWN ---
   const handleDrillDown = (accountId) => {
     const params = new URLSearchParams();
     params.append("accountId", accountId);
@@ -205,26 +206,16 @@ const IncomeStatement = () => {
         icon={FileText}
       >
         {/* Quick Date Presets (Desktop) */}
-        <div className="hidden lg:flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-          {[
-            { id: "this_month", label: "This Month" },
-            { id: "this_quarter", label: "This Quarter" },
-            { id: "this_year", label: "This Year" },
-          ].map((preset) => (
-            <button
-              key={preset.id}
-              onClick={() =>
-                handlePresetChange({ target: { value: preset.id } })
-              }
-              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer ${
-                datePreset === preset.id
-                  ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              {preset.label}
-            </button>
-          ))}
+        <div className="hidden lg:block">
+          <StatusToggle
+            activeValue={datePreset}
+            onToggle={handlePresetChange}
+            options={[
+              { label: "This Month", value: "this_month" },
+              { label: "This Qtr", value: "this_quarter" },
+              { label: "This Year", value: "this_year" },
+            ]}
+          />
         </div>
 
         <FilterButton
@@ -281,7 +272,7 @@ const IncomeStatement = () => {
       )}
 
       {/* FINANCIAL STATEMENT (Printable Document Area) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] sm:rounded-[32px] shadow-sm overflow-hidden print:border-none print:shadow-none print:p-0">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-[24px] sm:rounded-[32px] shadow-sm overflow-hidden print:border-none print:shadow-none print:p-0">
         {/* Print & Document Header */}
         <div className="p-6 sm:p-8 pb-5 sm:pb-6 border-b border-slate-100 dark:border-slate-800/50 text-center bg-slate-50 dark:bg-slate-900/50 print:bg-transparent print:border-b-2 print:border-slate-900">
           <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white print:text-black">
@@ -300,7 +291,7 @@ const IncomeStatement = () => {
           </p>
         </div>
 
-        {/* Loading State Overlay inside document */}
+        {/* Loading / Empty States inside document */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 sm:py-32 text-slate-400 print:hidden">
             <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
@@ -309,8 +300,19 @@ const IncomeStatement = () => {
             </p>
           </div>
         ) : !data ? (
-          <div className="text-center py-16 sm:py-20 text-slate-500 text-sm font-bold print:hidden">
-            No financial data available for this period.
+          <div className="flex flex-col items-center justify-center py-16 sm:py-20 text-center print:hidden w-full max-w-[250px] sm:max-w-none mx-auto">
+            <div className="p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/50 rounded-full mb-3">
+              <FileText
+                size={28}
+                className="opacity-40 sm:w-8 sm:h-8 w-6 h-6 text-slate-400"
+              />
+            </div>
+            <p className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-normal">
+              No Financial Data Available
+            </p>
+            <p className="text-[10px] sm:text-xs font-medium mt-1.5 opacity-70 text-slate-400 whitespace-normal">
+              There are no approved transactions for this period.
+            </p>
           </div>
         ) : (
           <div className="p-6 sm:p-10 lg:px-16 max-w-4xl mx-auto space-y-8 print:p-0 print:pt-6">
@@ -427,7 +429,7 @@ const IncomeStatement = () => {
             </label>
             <select
               value={datePreset}
-              onChange={handlePresetChange}
+              onChange={(e) => handlePresetChange(e.target.value)}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 mb-3 cursor-pointer"
             >
               <option value="this_month">This Month</option>
@@ -448,7 +450,7 @@ const IncomeStatement = () => {
                     onChange={(e) =>
                       handleCustomDateChange("start", e.target.value)
                     }
-                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
                   />
                 </div>
                 <div>
@@ -461,7 +463,7 @@ const IncomeStatement = () => {
                     onChange={(e) =>
                       handleCustomDateChange("end", e.target.value)
                     }
-                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
                   />
                 </div>
               </div>
