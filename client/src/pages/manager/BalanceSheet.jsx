@@ -9,6 +9,7 @@ import {
   Loader2,
   ArrowRight,
   Landmark,
+  Calendar,
 } from "lucide-react";
 
 // Services
@@ -289,6 +290,7 @@ const BalanceSheet = () => {
                   ?.branch_name || "Branch Specific"}
           </p>
           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-500 mt-1.5 uppercase tracking-widest flex justify-center items-center gap-1.5 print:text-slate-700">
+            <Calendar size={12} className="print:hidden" />
             As of{" "}
             {new Date(asOfDate).toLocaleDateString("en-US", {
               year: "numeric",
@@ -336,16 +338,16 @@ const BalanceSheet = () => {
             </p>
           </div>
         ) : (
-          <div className="p-6 sm:p-10 lg:px-16 max-w-4xl mx-auto space-y-10 print:p-0 print:pt-6">
+          <div className="p-6 sm:p-10 lg:px-16 max-w-4xl mx-auto space-y-8 print:p-0 print:pt-6">
             {/* 1. ASSETS */}
             <div>
-              <h3 className="text-sm sm:text-base font-black uppercase tracking-widest text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2 mb-4 print:text-black print:border-black">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white border-b-2 border-slate-200 dark:border-slate-700 pb-2 mb-3 print:text-black print:border-black">
                 Assets
               </h3>
               <div className="pl-2 sm:pl-4 space-y-2">
                 {renderAccountRows(data.assets)}
               </div>
-              <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white print:text-black print:border-black">
+              <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white print:text-black print:border-black">
                 <span className="uppercase text-[10px] sm:text-[11px] tracking-widest">
                   Total Assets
                 </span>
@@ -357,13 +359,13 @@ const BalanceSheet = () => {
 
             {/* 2. LIABILITIES */}
             <div>
-              <h3 className="text-sm sm:text-base font-black uppercase tracking-widest text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2 mb-4 print:text-black print:border-black">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white border-b-2 border-slate-200 dark:border-slate-700 pb-2 mb-3 mt-8 print:text-black print:border-black">
                 Liabilities
               </h3>
               <div className="pl-2 sm:pl-4 space-y-2">
                 {renderAccountRows(data.liabilities)}
               </div>
-              <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white print:text-black print:border-black">
+              <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white print:text-black print:border-black">
                 <span className="uppercase text-[10px] sm:text-[11px] tracking-widest">
                   Total Liabilities
                 </span>
@@ -375,13 +377,13 @@ const BalanceSheet = () => {
 
             {/* 3. OWNER'S EQUITY */}
             <div>
-              <h3 className="text-sm sm:text-base font-black uppercase tracking-widest text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2 mb-4 print:text-black print:border-black">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white border-b-2 border-slate-200 dark:border-slate-700 pb-2 mb-3 mt-8 print:text-black print:border-black">
                 Owner's Equity
               </h3>
               <div className="pl-2 sm:pl-4 space-y-2">
                 {renderAccountRows(data.equity)}
               </div>
-              <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white print:text-black print:border-black">
+              <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white print:text-black print:border-black">
                 <span className="uppercase text-[10px] sm:text-[11px] tracking-widest">
                   Total Owner's Equity
                 </span>
@@ -394,7 +396,7 @@ const BalanceSheet = () => {
             </div>
 
             {/* 4. TOTAL LIABILITIES & EQUITY (Equation Verification) */}
-            <div className="flex justify-between items-center mt-12 pt-4 pb-4 border-t-2 border-b-4 border-double border-slate-900 dark:border-white print:border-black">
+            <div className="flex justify-between items-center mt-10 pt-4 pb-4 border-t-2 border-b-4 border-double border-slate-900 dark:border-white print:border-black">
               <span className="text-base sm:text-lg font-black uppercase tracking-widest text-slate-900 dark:text-white print:text-black">
                 Total Liabilities & Equity
               </span>
