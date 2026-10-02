@@ -17,6 +17,7 @@ const JournalEntryController = require("../../controllers/manager/journalEntry.c
 const GeneralLedgerController = require("../../controllers/manager/generalLedger.controller");
 const TrialBalanceController = require("../../controllers/manager/trialBalance.controller");
 const IncomeStatementController = require("../../controllers/manager/incomeStatement.controller");
+const BalanceSheetController = require("../../controllers/manager/balanceSheet.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -100,6 +101,9 @@ const {
 const {
   getIncomeStatementSchema,
 } = require("../../validations/manager/incomeStatement.schema");
+const {
+  getBalanceSheetSchema,
+} = require("../../validations/manager/balanceSheet.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -328,6 +332,12 @@ router.get(
   "/reports/income-statement",
   validate(getIncomeStatementSchema),
   IncomeStatementController.getIncomeStatement,
+);
+
+router.get(
+  "/reports/balance-sheet",
+  validate(getBalanceSheetSchema),
+  BalanceSheetController.getBalanceSheet,
 );
 
 // ==========================================
