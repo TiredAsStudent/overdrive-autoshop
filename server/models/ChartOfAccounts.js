@@ -132,7 +132,7 @@ class ChartOfAccounts {
     return result.rows[0];
   }
 
-  static async countFiltered(search, type, status) {
+  static async countFiltered(search, type, status, excludeSystem = false) {
     let sql = `SELECT COUNT(*) FROM chart_of_accounts`;
     const conditions = [];
     const values = [];
@@ -153,12 +153,21 @@ class ChartOfAccounts {
     if (status === "active") conditions.push(`is_active = TRUE`);
     else if (status === "inactive") conditions.push(`is_active = FALSE`);
 
+    if (excludeSystem) conditions.push(`is_system = FALSE`);
+
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
     const result = await query(sql, values);
     return parseInt(result.rows[0].count, 10);
   }
 
-  static async findPaginatedFiltered(limit, offset, search, type, status) {
+  static async findPaginatedFiltered(
+    limit,
+    offset,
+    search,
+    type,
+    status,
+    excludeSystem = false,
+  ) {
     let sql = `
       SELECT c.*, p.account_name as parent_account_name,
       (
@@ -188,6 +197,8 @@ class ChartOfAccounts {
     }
     if (status === "active") conditions.push(`c.is_active = TRUE`);
     else if (status === "inactive") conditions.push(`c.is_active = FALSE`);
+
+    if (excludeSystem) conditions.push(`c.is_system = FALSE`);
 
     if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
     sql += ` ORDER BY c.account_code ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;

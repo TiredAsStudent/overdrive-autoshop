@@ -161,12 +161,20 @@ class ChartOfAccountsService {
     search = "",
     type = "all",
     status = "all",
+    excludeSystem = false,
   ) {
     const offset = (page - 1) * limit;
 
     const [totalItems, accounts] = await Promise.all([
-      COAModel.countFiltered(search, type, status),
-      COAModel.findPaginatedFiltered(limit, offset, search, type, status),
+      COAModel.countFiltered(search, type, status, excludeSystem),
+      COAModel.findPaginatedFiltered(
+        limit,
+        offset,
+        search,
+        type,
+        status,
+        excludeSystem,
+      ),
     ]);
 
     return {

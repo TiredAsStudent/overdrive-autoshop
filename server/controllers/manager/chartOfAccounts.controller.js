@@ -69,12 +69,15 @@ class ChartOfAccountsController {
       const limit = parseInt(req.query.limit, 10) || 10;
       const { search, type, status } = req.query;
 
+      const exclude_system = req.query.exclude_system === "true";
+
       const result = await COAService.getAccounts(
         page,
         limit,
         search,
         type,
         status,
+        exclude_system,
       );
       return sendSuccess(
         res,

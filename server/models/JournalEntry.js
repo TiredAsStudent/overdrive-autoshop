@@ -20,7 +20,32 @@ class JournalEntry {
     return `${prefix}${String(sequence).padStart(4, "0")}`;
   }
 
+  static async validateNonSystemAccounts(items) {
+    if (!items || items.length === 0) return;
+
+    const accountIds = items.map((item) => parseInt(item.account_id, 10));
+
+    const sql = `
+      SELECT account_code, account_name 
+      FROM chart_of_accounts 
+      WHERE id = ANY($1::int[]) AND is_system = true
+    `;
+
+    const result = await query(sql, [accountIds]);
+
+    if (result.rows.length > 0) {
+      const systemAccounts = result.rows
+        .map((r) => `[${r.account_code}] ${r.account_name}`)
+        .join(", ");
+      throw new Error(
+        `Accounting Rule Violation: Manual journal entries cannot post to System Control Accounts (${systemAccounts}). Please use standard operational modules (Bills, Invoices, Payments) to affect these balances.`,
+      );
+    }
+  }
+
   static async createTransaction(data, items, userId) {
+    await this.validateNonSystemAccounts(items);
+
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -79,6 +104,8 @@ class JournalEntry {
   }
 
   static async updateTransaction(id, data, items) {
+    await this.validateNonSystemAccounts(items);
+
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
