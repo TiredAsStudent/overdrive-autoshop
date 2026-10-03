@@ -130,6 +130,11 @@ class Bill {
 
         const newQuantity = invRes.rows[0].quantity;
 
+        const qty = parseInt(item.quantity_received, 10);
+        const grossCost = parseFloat(item.recorded_unit_cost) * qty;
+        const discount = parseFloat(item.discount_amount) || 0;
+        const netUnitCost = qty > 0 ? (grossCost - discount) / qty : 0;
+
         const moveSql = `
           INSERT INTO inventory_movements (
             item_id, branch_id, transaction_type, transaction_reference, 
@@ -142,7 +147,7 @@ class Bill {
           updatedBill.bill_number,
           item.quantity_received,
           newQuantity,
-          item.recorded_unit_cost,
+          netUnitCost, // Injects exact net cost for asset capitalization
           userId,
         ]);
       }

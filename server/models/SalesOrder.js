@@ -127,8 +127,8 @@ class SalesOrder {
 
         const movSql = `
           INSERT INTO inventory_movements 
-          (item_id, branch_id, transaction_type, transaction_reference, quantity_deducted, remaining_quantity, remarks, created_by) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          (item_id, branch_id, transaction_type, transaction_reference, quantity_deducted, remaining_quantity, recorded_unit_cost, remarks, created_by) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         `;
         await client.query(movSql, [
           part.item_id,
@@ -137,6 +137,7 @@ class SalesOrder {
           `SO: ${updatedSO.sales_order_number}`,
           part.quantity,
           invRes.rows[0].quantity,
+          part.recorded_unit_cost,
           "Stock allocated for operational execution.",
           userId,
         ]);
@@ -185,8 +186,8 @@ class SalesOrder {
 
         const movSql = `
           INSERT INTO inventory_movements 
-          (item_id, branch_id, transaction_type, transaction_reference, quantity_added, remaining_quantity, remarks, created_by) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          (item_id, branch_id, transaction_type, transaction_reference, quantity_added, remaining_quantity, recorded_unit_cost, remarks, created_by) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         `;
         await client.query(movSql, [
           part.item_id,
@@ -195,6 +196,7 @@ class SalesOrder {
           `SO: ${cancelledSO.sales_order_number}`,
           part.quantity,
           invRes.rows[0].quantity,
+          part.recorded_unit_cost,
           "Automated Restock: Requisition reversed from cancelled Sales Order.",
           userId,
         ]);
