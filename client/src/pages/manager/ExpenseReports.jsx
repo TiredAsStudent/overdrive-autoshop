@@ -295,7 +295,7 @@ const ExpenseReports = () => {
         <SearchBar
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search ref or vendor..."
+          placeholder="Search Reference or Vendor..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
 
@@ -365,8 +365,18 @@ const ExpenseReports = () => {
           </p>
           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-500 mt-1.5 uppercase tracking-widest flex justify-center items-center gap-1.5 print:text-slate-700">
             <Calendar size={12} className="print:hidden" />
-            For the period {new Date(startDate).toLocaleDateString()} to{" "}
-            {new Date(endDate).toLocaleDateString()}
+            For the period{" "}
+            {new Date(startDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            to{" "}
+            {new Date(endDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
           </p>
         </div>
 
@@ -437,7 +447,7 @@ const ExpenseReports = () => {
               data={data?.transactions || []}
               loading={loading}
               emptyTitle="No transactions found"
-              emptySubtitle="No approved expenses match the selected filters."
+              emptySubtitle="No transactions match the selected filters."
               minWidth="min-w-[800px]"
               renderRow={(txn, idx) => (
                 <tr
