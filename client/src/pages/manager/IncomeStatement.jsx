@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   FileText,
   Download,
@@ -60,8 +60,31 @@ const getPresetDates = (preset) => {
 const IncomeStatement = () => {
   const { showToast } = useApp();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const urlBranch = searchParams.get("branch");
+  const urlStartDate = searchParams.get("startDate");
+  const urlEndDate = searchParams.get("endDate");
 
   const initialDates = getPresetDates("this_month");
+
+  let defaultStart = initialDates.start;
+  let defaultEnd = initialDates.end;
+  let defaultPreset = "this_month";
+
+  if (urlStartDate || urlEndDate) {
+    defaultPreset = "custom";
+    defaultEnd = urlEndDate || initialDates.end;
+
+    if (urlStartDate) {
+      defaultStart = urlStartDate;
+    } else if (urlEndDate) {
+      const endObj = new Date(urlEndDate);
+      if (!isNaN(endObj.getTime())) {
+        defaultStart = `${endObj.getFullYear()}-01-01`;
+      }
+    }
+  }
 
   // State
   const [data, setData] = useState(null);
@@ -69,10 +92,10 @@ const IncomeStatement = () => {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [branchFilter, setBranchFilter] = useState("all");
-  const [datePreset, setDatePreset] = useState("this_month");
-  const [startDate, setStartDate] = useState(initialDates.start);
-  const [endDate, setEndDate] = useState(initialDates.end);
+  const [branchFilter, setBranchFilter] = useState(urlBranch || "all");
+  const [datePreset, setDatePreset] = useState(defaultPreset);
+  const [startDate, setStartDate] = useState(defaultStart);
+  const [endDate, setEndDate] = useState(defaultEnd);
   const [hideZero, setHideZero] = useState(true);
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
