@@ -22,14 +22,14 @@ class SalesReport {
     }
 
     if (filters.start_date) {
-      conditions.push(`i.created_at::date >= $${paramIdx}::date`);
-      values.push(filters.start_date);
+      conditions.push(`i.created_at >= $${paramIdx}::timestamp`);
+      values.push(`${filters.start_date} 00:00:00`);
       paramIdx++;
     }
 
     if (filters.end_date) {
-      conditions.push(`i.created_at::date <= $${paramIdx}::date`);
-      values.push(filters.end_date);
+      conditions.push(`i.created_at <= $${paramIdx}::timestamp`);
+      values.push(`${filters.end_date} 23:59:59.999`);
       paramIdx++;
     }
 
@@ -70,7 +70,6 @@ class SalesReport {
   static async getExecutiveKPIs(filters) {
     const { whereClause, values } = this.buildFilterConditions(filters);
 
-    // Net Revenue Formula: (Quantity * Price) - Discount
     const sql = `
       SELECT 
         COUNT(DISTINCT i.id) as total_invoices,
@@ -151,7 +150,6 @@ class SalesReport {
 
   static async getPaymentStatusDistribution(filters) {
     const { whereClause, values } = this.buildFilterConditions(filters);
-    // Evaluates liquidation metrics against the GROSS grand_total
     const sql = `
       WITH InvoicesList AS (
         SELECT DISTINCT i.id, i.grand_total,
