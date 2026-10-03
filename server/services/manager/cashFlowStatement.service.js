@@ -65,7 +65,7 @@ class CashFlowStatementService {
         net_investing: investing.net,
         net_financing: financing.net,
         net_change_in_cash: netChangeInCash,
-        ending_balance,
+        ending_balance: endingBalance,
       },
     };
 
