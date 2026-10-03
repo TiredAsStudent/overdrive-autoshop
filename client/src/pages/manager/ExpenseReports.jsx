@@ -35,6 +35,7 @@ import FilterButton from "../../components/ui/FilterButton";
 import ActionButton from "../../components/ui/ActionButton";
 import StatCard from "../../components/ui/StatCard";
 import StatusToggle from "../../components/ui/StatusToggle";
+import StatusBadge from "../../components/ui/StatusBadge";
 
 // Drill-Down Drawer
 import GeneralLedgerSourceDrawer from "../../features/manager/components/GeneralLedgerSourceDrawer";
@@ -218,28 +219,23 @@ const ExpenseReports = () => {
   const getSourceBadge = (source) => {
     switch (source) {
       case "MANUAL_EXPENSE":
-        return (
-          <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border border-blue-200 dark:border-blue-500/20 print:bg-transparent print:border-slate-300 print:text-black">
-            <FileText size={10} /> Manual
-          </span>
-        );
+        return <StatusBadge label="Manual" variant="info" icon={FileText} />;
       case "OCR_RECEIPT":
         return (
-          <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border border-amber-200 dark:border-amber-500/20 print:bg-transparent print:border-slate-300 print:text-black">
-            <ScanText size={10} /> OCR Receipt
-          </span>
+          <StatusBadge label="OCR Receipt" variant="warning" icon={ScanText} />
         );
       case "BILL":
         return (
-          <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border border-purple-200 dark:border-purple-500/20 print:bg-transparent print:border-slate-300 print:text-black">
-            <List size={10} /> Supplier Bill
-          </span>
+          <StatusBadge
+            label="Supplier Bill"
+            variant="default"
+            icon={List}
+            className="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/20"
+          />
         );
       case "JOURNAL_ENTRY":
         return (
-          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border border-slate-300 dark:border-slate-600 print:bg-transparent print:border-slate-300 print:text-black">
-            <BookOpen size={10} /> Journal
-          </span>
+          <StatusBadge label="Journal" variant="default" icon={BookOpen} />
         );
       default:
         return <span className="text-[9px] text-slate-400">{source}</span>;
