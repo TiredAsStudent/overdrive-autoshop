@@ -22,7 +22,7 @@ class GeneralLedger {
     // Accounts Payable (AP)
     if (targetId === sys.ap_account_id) {
       queries.push(
-        `SELECT 'BILL' as source_type, id as source_id, vendor_invoice_number as reference_number, bill_date as transaction_date, created_at, 0 as debit, grand_total as credit, branch_id, 'Supplier Bill' as description FROM bills WHERE ${branchFilter}`,
+        `SELECT 'BILL' as source_type, id as source_id, vendor_invoice_number as reference_number, bill_date as transaction_date, created_at, 0 as debit, grand_total as credit, branch_id, 'Supplier Bill' as description FROM bills WHERE status IN ('RECEIVED', 'CLOSED') AND ${branchFilter}`,
       );
       queries.push(
         `SELECT 'VENDOR_PAYMENT' as source_type, id as source_id, payment_number as reference_number, payment_date as transaction_date, created_at, amount_paid as debit, 0 as credit, branch_id, 'Vendor Payment Disbursed' as description FROM vendor_payments WHERE status != 'VOID' AND ${branchFilter}`,
@@ -65,7 +65,7 @@ class GeneralLedger {
     // Input VAT
     if (targetId === sys.input_vat_account_id) {
       queries.push(
-        `SELECT 'BILL' as source_type, id as source_id, vendor_invoice_number as reference_number, bill_date as transaction_date, created_at, vat_amount as debit, 0 as credit, branch_id, 'Input VAT on Purchases' as description FROM bills WHERE vat_amount > 0 AND ${branchFilter}`,
+        `SELECT 'BILL' as source_type, id as source_id, vendor_invoice_number as reference_number, bill_date as transaction_date, created_at, vat_amount as debit, 0 as credit, branch_id, 'Input VAT on Purchases' as description FROM bills WHERE vat_amount > 0 AND status IN ('RECEIVED', 'CLOSED') AND ${branchFilter}`,
       );
       queries.push(
         `SELECT 'EXPENSE' as source_type, id as source_id, expense_number as reference_number, expense_date as transaction_date, created_at, vat_amount as debit, 0 as credit, branch_id, description FROM expenses WHERE vat_amount > 0 AND status = 'APPROVED' AND ${branchFilter}`,
@@ -82,7 +82,7 @@ class GeneralLedger {
     queries.push(`
       SELECT 'INVOICE' as source_type, i.id as source_id, i.invoice_number as reference_number, i.created_at::date as transaction_date, i.created_at, 0 as debit, SUM(ii.recorded_selling_price * ii.quantity - ii.discount_amount) as credit, i.branch_id, 'Parts Revenue' as description
       FROM invoices i JOIN invoice_items ii ON i.id = ii.invoice_id JOIN inventory_items inv ON ii.item_id = inv.id
-      WHERE ii.line_type = 'PART' AND inv.income_account_id = $1 AND i.status != 'VOID' AND ($2::int IS NULL OR i.branch_id = $2::int)
+      WHERE ii.line_type = 'PART' AND i.status != 'VOID' AND ($2::int IS NULL OR i.branch_id = $2::int)
       GROUP BY i.id, i.invoice_number, i.created_at, i.branch_id
     `);
 

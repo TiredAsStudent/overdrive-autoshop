@@ -283,7 +283,10 @@ class ChartOfAccounts {
         queries.push(
           `SELECT COUNT(*) as cnt FROM expenses WHERE vat_amount > 0 AND status = 'APPROVED'`,
         );
-        queries.push(`SELECT COUNT(*) as cnt FROM bills WHERE vat_amount > 0`);
+
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM bills WHERE vat_amount > 0 AND status IN ('RECEIVED', 'CLOSED')`,
+        );
       }
       if (targetId === sys.digital_payment_account_id) {
         queries.push(
@@ -297,7 +300,9 @@ class ChartOfAccounts {
         );
       }
       if (targetId === sys.ap_account_id) {
-        queries.push(`SELECT COUNT(*) as cnt FROM bills`);
+        queries.push(
+          `SELECT COUNT(*) as cnt FROM bills WHERE status IN ('RECEIVED', 'CLOSED')`,
+        );
         queries.push(
           `SELECT COUNT(*) as cnt FROM vendor_payments WHERE status != 'VOID'`,
         );
@@ -437,10 +442,11 @@ class ChartOfAccounts {
            vat_amount as amount, status::text as status
            FROM expenses WHERE vat_amount > 0 AND status = 'APPROVED'
          `);
+
         queries.push(`
            SELECT 'INPUT VAT (Supplier Bill)' as transaction_type, bill_number as reference, bill_date as transaction_date, 
            vat_amount as amount, status::text as status
-           FROM bills WHERE vat_amount > 0
+           FROM bills WHERE vat_amount > 0 AND status IN ('RECEIVED', 'CLOSED')
          `);
       }
 
@@ -466,7 +472,7 @@ class ChartOfAccounts {
         queries.push(`
            SELECT 'SUPPLIER BILL (A/P Liability)' as transaction_type, bill_number as reference, created_at as transaction_date, 
            grand_total as amount, status::text as status
-           FROM bills
+           FROM bills WHERE status IN ('RECEIVED', 'CLOSED')
          `);
         queries.push(`
            SELECT 'VENDOR PAYMENT (A/P Liquidation)' as transaction_type, payment_number as reference, payment_date as transaction_date, 

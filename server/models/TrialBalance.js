@@ -24,7 +24,7 @@ class TrialBalance {
     }
     if (sys.ap_account_id) {
       queries.push(
-        `SELECT ${sys.ap_account_id} as account_id, 0 as debit, grand_total as credit FROM bills WHERE ${branchFilter} AND ${dateFilter("bill_date")}`,
+        `SELECT ${sys.ap_account_id} as account_id, 0 as debit, grand_total as credit FROM bills WHERE status IN ('RECEIVED', 'CLOSED') AND ${branchFilter} AND ${dateFilter("bill_date")}`,
       );
       queries.push(
         `SELECT ${sys.ap_account_id} as account_id, amount_paid as debit, 0 as credit FROM vendor_payments WHERE status != 'VOID' AND ${branchFilter} AND ${dateFilter("payment_date")}`,
@@ -63,7 +63,7 @@ class TrialBalance {
     }
     if (sys.input_vat_account_id) {
       queries.push(
-        `SELECT ${sys.input_vat_account_id} as account_id, vat_amount as debit, 0 as credit FROM bills WHERE vat_amount > 0 AND ${branchFilter} AND ${dateFilter("bill_date")}`,
+        `SELECT ${sys.input_vat_account_id} as account_id, vat_amount as debit, 0 as credit FROM bills WHERE vat_amount > 0 AND status IN ('RECEIVED', 'CLOSED') AND ${branchFilter} AND ${dateFilter("bill_date")}`,
       );
       queries.push(
         `SELECT ${sys.input_vat_account_id} as account_id, vat_amount as debit, 0 as credit FROM expenses WHERE vat_amount > 0 AND status = 'APPROVED' AND ${branchFilter} AND ${dateFilter("expense_date")}`,
