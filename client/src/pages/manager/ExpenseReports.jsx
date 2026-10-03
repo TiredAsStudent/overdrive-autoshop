@@ -219,10 +219,22 @@ const ExpenseReports = () => {
   const getSourceBadge = (source) => {
     switch (source) {
       case "MANUAL_EXPENSE":
-        return <StatusBadge label="Manual" variant="info" icon={FileText} />;
+        return (
+          <StatusBadge
+            label="Manual"
+            variant="info"
+            icon={FileText}
+            className="print:bg-transparent print:border-slate-300 print:text-black"
+          />
+        );
       case "OCR_RECEIPT":
         return (
-          <StatusBadge label="OCR Receipt" variant="warning" icon={ScanText} />
+          <StatusBadge
+            label="OCR Receipt"
+            variant="warning"
+            icon={ScanText}
+            className="print:bg-transparent print:border-slate-300 print:text-black"
+          />
         );
       case "BILL":
         return (
@@ -230,12 +242,17 @@ const ExpenseReports = () => {
             label="Supplier Bill"
             variant="default"
             icon={List}
-            className="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/20"
+            className="!text-purple-600 dark:!text-purple-400 !bg-purple-50 dark:!bg-purple-500/10 !border-purple-200 dark:!border-purple-500/20 print:!bg-transparent print:!border-slate-300 print:!text-black"
           />
         );
       case "JOURNAL_ENTRY":
         return (
-          <StatusBadge label="Journal" variant="default" icon={BookOpen} />
+          <StatusBadge
+            label="Journal"
+            variant="default"
+            icon={BookOpen}
+            className="print:bg-transparent print:border-slate-300 print:text-black"
+          />
         );
       default:
         return <span className="text-[9px] text-slate-400">{source}</span>;
@@ -495,7 +512,7 @@ const ExpenseReports = () => {
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
         onClear={resetFilters}
-        title="Advanced Report Filters"
+        title="Report Parameters"
       >
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-3">
