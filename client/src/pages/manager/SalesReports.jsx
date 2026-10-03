@@ -325,7 +325,7 @@ const SalesReports = () => {
           <div className="mb-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* 1. Sales by Branch */}
             <div>
-              <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-500 mb-5 flex items-center gap-2 print:text-black">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-500 mb-6 flex items-center gap-2 print:text-black">
                 <Building2 size={16} /> Sales by Branch
               </h3>
               {loading ? (
@@ -333,7 +333,7 @@ const SalesReports = () => {
                   <Loader2 className="animate-spin text-emerald-500" />
                 </div>
               ) : !data || data.distributions.by_branch.length === 0 ? (
-                <div className="text-center py-6 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
                   No branch data.
                 </div>
               ) : (
@@ -366,7 +366,7 @@ const SalesReports = () => {
 
             {/* 2. Sales by Service Category */}
             <div>
-              <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-blue-500 dark:text-blue-500 mb-5 flex items-center gap-2 print:text-black">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-blue-500 dark:text-blue-500 mb-6 flex items-center gap-2 print:text-black">
                 <PieChart size={16} /> Labor by Service Category
               </h3>
               {loading ? (
@@ -375,7 +375,7 @@ const SalesReports = () => {
                 </div>
               ) : !data ||
                 data.distributions.by_service_category.length === 0 ? (
-                <div className="text-center py-6 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
                   No service data.
                 </div>
               ) : (
@@ -408,7 +408,7 @@ const SalesReports = () => {
 
             {/* 3. Top Customers */}
             <div>
-              <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-amber-500 dark:text-amber-500 mb-5 flex items-center gap-2 print:text-black mt-2 lg:mt-0">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-amber-500 dark:text-amber-500 mb-6 flex items-center gap-2 print:text-black mt-2 lg:mt-0">
                 <Users size={16} /> Top 10 Customers
               </h3>
               {loading ? (
@@ -416,7 +416,7 @@ const SalesReports = () => {
                   <Loader2 className="animate-spin text-amber-500" />
                 </div>
               ) : !data || data.distributions.top_customers.length === 0 ? (
-                <div className="text-center py-6 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
                   No customer data.
                 </div>
               ) : (
@@ -450,7 +450,7 @@ const SalesReports = () => {
 
             {/* 4. Payment Liquidation Status */}
             <div>
-              <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-purple-500 dark:text-purple-400 mb-5 flex items-center gap-2 print:text-black mt-2 lg:mt-0">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-purple-500 dark:text-purple-400 mb-6 flex items-center gap-2 print:text-black mt-2 lg:mt-0">
                 <CreditCard size={16} /> A/R & Payment Liquidation
               </h3>
               {loading ? (
@@ -458,7 +458,7 @@ const SalesReports = () => {
                   <Loader2 className="animate-spin text-purple-500" />
                 </div>
               ) : !data || data.distributions.payment_status.length === 0 ? (
-                <div className="text-center py-6 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
                   No payment data.
                 </div>
               ) : (
