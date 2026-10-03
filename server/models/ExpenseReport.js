@@ -18,7 +18,7 @@ class ExpenseReport {
           e.vendor_id,
           COALESCE(v.business_name, e.vendor_name, 'N/A') as vendor_name,
           e.subtotal as amount, 
-          e.status as payment_status, 
+          e.status::text as payment_status, 
           e.branch_id
         FROM expenses e 
         JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
@@ -38,7 +38,7 @@ class ExpenseReport {
           e.vendor_id,
           COALESCE(v.business_name, e.vendor_name, 'N/A') as vendor_name,
           e.subtotal as amount, 
-          e.status as payment_status, 
+          e.status::text as payment_status, 
           e.branch_id
         FROM expenses e 
         JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
