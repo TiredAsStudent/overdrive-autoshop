@@ -20,6 +20,7 @@ const IncomeStatementController = require("../../controllers/manager/incomeState
 const BalanceSheetController = require("../../controllers/manager/balanceSheet.controller");
 const CashFlowStatementController = require("../../controllers/manager/cashFlowStatement.controller");
 const ExpenseReportController = require("../../controllers/manager/expenseReport.controller");
+const SalesReportController = require("../../controllers/manager/salesReport.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -112,6 +113,9 @@ const {
 const {
   getExpenseReportSchema,
 } = require("../../validations/manager/expenseReport.schema");
+const {
+  getSalesReportSchema,
+} = require("../../validations/manager/salesReport.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -358,6 +362,12 @@ router.get(
   "/reports/expenses",
   validate(getExpenseReportSchema),
   ExpenseReportController.getExpenseReport,
+);
+
+router.get(
+  "/reports/sales",
+  validate(getSalesReportSchema),
+  SalesReportController.getSalesReport,
 );
 
 // ==========================================
