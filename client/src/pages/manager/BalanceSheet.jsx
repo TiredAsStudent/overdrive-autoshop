@@ -268,7 +268,7 @@ const BalanceSheet = () => {
             value={
               data.summary.is_balanced
                 ? "Perfect Parity"
-                : `Diff: ₱${formatCurrency(data.summary.discrepancy)}`
+                : `Diff: ${formatCurrency(data.summary.discrepancy)}`
             }
             icon={data.summary.is_balanced ? CheckCircle2 : AlertTriangle}
             variant={data.summary.is_balanced ? "success" : "danger"}
@@ -305,7 +305,7 @@ const BalanceSheet = () => {
           <div className="bg-red-50 dark:bg-red-500/10 border-b border-red-200 dark:border-red-500/20 p-4 text-center">
             <p className="text-xs font-black uppercase tracking-widest text-red-600 dark:text-red-500 flex items-center justify-center gap-2">
               <AlertTriangle size={16} /> Warning: The Accounting Equation is
-              out of balance by ₱{formatCurrency(data.summary.discrepancy)}.
+              out of balance by {formatCurrency(data.summary.discrepancy)}.
             </p>
             <p className="text-[10px] text-red-500 dark:text-red-400 mt-1 font-bold">
               Review unmatched manual entries or missing opening balances in the
