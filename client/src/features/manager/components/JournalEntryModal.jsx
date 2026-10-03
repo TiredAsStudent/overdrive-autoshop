@@ -46,7 +46,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     if (isOpen) {
       setLoadingLookups(true);
       Promise.all([
-        chartOfAccountsService.getAccounts(1, 500, "", "all", "active"),
+        chartOfAccountsService.getAccounts(1, 500, "", "all", "active", true),
         inventoryService.getActiveBranches(),
       ])
         .then(([accRes, brRes]) => {

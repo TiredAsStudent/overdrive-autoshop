@@ -7,10 +7,18 @@ export const chartOfAccountsService = {
     search = "",
     type = "all",
     status = "all",
+    excludeSystem = false,
   ) => {
     try {
       const response = await api.get("/manager/accounting/accounts", {
-        params: { page, limit, search, type, status },
+        params: {
+          page,
+          limit,
+          search,
+          type,
+          status,
+          exclude_system: excludeSystem,
+        },
       });
       return response.data;
     } catch (error) {
