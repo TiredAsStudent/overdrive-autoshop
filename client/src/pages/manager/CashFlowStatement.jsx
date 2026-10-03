@@ -407,7 +407,7 @@ const CashFlowStatement = () => {
               </span>
             </div>
 
-            {/* 5. ENDING BALANCE (Grand Total) */}
+            {/* 5. ENDING BALANCE (Grand Total with Typographic Parity) */}
             <div className="flex justify-between items-center mt-8 pt-4 pb-4 border-t-2 border-b-4 border-double border-slate-900 dark:border-white print:border-black">
               <span className="text-base sm:text-lg font-black uppercase tracking-widest text-slate-900 dark:text-white print:text-black">
                 Ending Cash Balance
