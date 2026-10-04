@@ -321,7 +321,7 @@ const SalesReports = () => {
         </div>
 
         <div className="p-6 sm:p-8 lg:px-12 print:px-0">
-          {/* ANALYTICAL DISTRIBUTIONS (2x2 Grid) */}
+          {/* ANALYTICAL DISTRIBUTIONS */}
           <div className="mb-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* 1. Sales by Branch */}
             <div>
@@ -406,14 +406,55 @@ const SalesReports = () => {
               )}
             </div>
 
-            {/* 3. Top Customers */}
+            {/* 3. Sales by Parts Category */}
             <div>
               <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-amber-500 dark:text-amber-500 mb-6 flex items-center gap-2 print:text-black mt-2 lg:mt-0">
-                <Users size={16} /> Top 10 Customers
+                <Package size={16} /> Parts Sales by Category
               </h3>
               {loading ? (
                 <div className="flex justify-center py-6">
                   <Loader2 className="animate-spin text-amber-500" />
+                </div>
+              ) : !data || data.distributions.by_parts_category.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
+                  No parts data.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {data.distributions.by_parts_category.map((p, idx) => (
+                    <div key={idx}>
+                      <div className="flex justify-between items-end">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-black text-slate-900 dark:text-white uppercase print:text-black truncate pr-4">
+                            {p.part_category}
+                          </span>
+                          <span className="text-[9px] font-bold text-slate-400 mt-0.5 tracking-widest uppercase">
+                            {p.transaction_count} Sold
+                          </span>
+                        </div>
+                        <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
+                          ₱{formatCurrency(p.net_revenue)}
+                        </span>
+                      </div>
+                      {renderProgressBar(
+                        p.net_revenue,
+                        data.kpis.parts_revenue.amount,
+                        "bg-amber-500",
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Top Customers */}
+            <div>
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 mb-6 flex items-center gap-2 print:text-black mt-2 lg:mt-0">
+                <Users size={16} /> Top 10 Customers
+              </h3>
+              {loading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="animate-spin text-emerald-500" />
                 </div>
               ) : !data || data.distributions.top_customers.length === 0 ? (
                 <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
@@ -427,7 +468,7 @@ const SalesReports = () => {
                       className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className="text-[10px] font-black text-amber-500 w-4">
+                        <span className="text-[10px] font-black text-emerald-500 w-4">
                           {idx + 1}.
                         </span>
                         <div className="flex flex-col min-w-0">
@@ -448,7 +489,7 @@ const SalesReports = () => {
               )}
             </div>
 
-            {/* 4. Payment Liquidation Status */}
+            {/* 5. Payment Liquidation Status */}
             <div>
               <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-purple-500 dark:text-purple-400 mb-6 flex items-center gap-2 print:text-black mt-2 lg:mt-0">
                 <CreditCard size={16} /> A/R & Payment Liquidation

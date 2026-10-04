@@ -10,6 +10,7 @@ class SalesReportService {
       kpis,
       branchDistribution,
       serviceDistribution,
+      partsDistribution,
       topCustomers,
       paymentDistribution,
       { transactions, totalCount },
@@ -17,6 +18,7 @@ class SalesReportService {
       SalesReportModel.getExecutiveKPIs(filters),
       SalesReportModel.getBranchDistribution(filters),
       SalesReportModel.getServiceDistribution(filters),
+      SalesReportModel.getPartsDistribution(filters),
       SalesReportModel.getTopCustomers(filters),
       SalesReportModel.getPaymentStatusDistribution(filters),
       SalesReportModel.getPaginatedLedger(filters, limit, offset),
@@ -67,6 +69,11 @@ class SalesReportService {
           net_revenue: parseFloat(s.net_revenue),
           transaction_count: parseInt(s.transaction_count, 10),
         })),
+        by_parts_category: partsDistribution.map((p) => ({
+          ...p,
+          net_revenue: parseFloat(p.net_revenue),
+          transaction_count: parseInt(p.transaction_count, 10),
+        })),
         top_customers: topCustomers.map((c) => ({
           ...c,
           net_revenue: parseFloat(c.net_revenue),
@@ -102,7 +109,7 @@ class SalesReportService {
       "VIEW_SALES_REPORT",
       "INFO",
       ipAddress,
-      "general_ledger", // Logical group for analytics
+      "general_ledger",
       null,
       null,
       {

@@ -127,6 +127,26 @@ class SalesReport {
     return result.rows;
   }
 
+  static async getPartsDistribution(filters) {
+    const { whereClause, values } = this.buildFilterConditions(filters);
+    const sql = `
+      SELECT 
+        inv.category as part_category,
+        COUNT(DISTINCT i.id) as transaction_count,
+        COALESCE(SUM(ii.quantity * ii.recorded_selling_price - ii.discount_amount), 0) as net_revenue
+      FROM invoices i
+      JOIN invoice_items ii ON i.id = ii.invoice_id
+      JOIN inventory_items inv ON ii.item_id = inv.id
+      JOIN customers c ON i.customer_id = c.id
+      LEFT JOIN sales_orders so ON i.sales_order_id = so.id
+      ${whereClause} AND ii.line_type = 'PART'
+      GROUP BY inv.category
+      ORDER BY net_revenue DESC
+    `;
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
   static async getTopCustomers(filters) {
     const { whereClause, values } = this.buildFilterConditions(filters);
     const sql = `
