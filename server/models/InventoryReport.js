@@ -1,9 +1,6 @@
 const { query } = require("../config/db");
 
 class InventoryReport {
-  /**
-   * Generates the reusable WHERE clause for Current Snapshot Data (Valuation & Ledger)
-   */
   static buildSnapshotConditions(filters) {
     const conditions = [];
     const values = [];
@@ -48,9 +45,6 @@ class InventoryReport {
     return { whereClause, values, paramIdx };
   }
 
-  /**
-   * Generates the reusable WHERE clause for Historical Velocity Data (Movements)
-   */
   static buildVelocityConditions(filters) {
     const conditions = [];
     const values = [];
@@ -137,25 +131,18 @@ class InventoryReport {
     return result.rows[0];
   }
 
-  static async getLowStockAlerts(filters) {
+  static async getLowStockCount(filters) {
     const { whereClause, values } = this.buildSnapshotConditions(filters);
 
-    // Inject the low stock constraint into the existing WHERE clause safely
     const connector = whereClause ? "AND" : "WHERE";
     const sql = `
-      SELECT 
-        i.sku, i.item_name, i.category, bi.quantity, 
-        COALESCE(bi.reorder_point, i.default_reorder_level) as reorder_point,
-        b.branch_name
+      SELECT COUNT(DISTINCT i.id) as low_stock_count
       FROM branch_inventory bi
       JOIN inventory_items i ON bi.item_id = i.id
-      JOIN branches b ON bi.branch_id = b.id
       ${whereClause} ${connector} bi.quantity <= COALESCE(bi.reorder_point, i.default_reorder_level)
-      ORDER BY bi.quantity ASC
-      LIMIT 50
     `;
     const result = await query(sql, values);
-    return result.rows;
+    return parseInt(result.rows[0].low_stock_count, 10);
   }
 
   static async getPaginatedLedger(filters, limit, offset) {
@@ -171,7 +158,7 @@ class InventoryReport {
         i.unit_cost,
         bi.quantity,
         COALESCE(bi.reorder_point, i.default_reorder_level) as reorder_point,
-        (bi.quantity * i.unit_cost) as total_valuation,
+        (bi.quantity * COALESCE(i.unit_cost, 0)) as total_valuation,
         b.branch_name,
         CASE
           WHEN bi.quantity = 0 THEN 'OUT_OF_STOCK'

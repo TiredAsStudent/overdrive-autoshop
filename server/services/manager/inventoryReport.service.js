@@ -10,13 +10,13 @@ class InventoryReportService {
       kpis,
       branchDistribution,
       movementVelocity,
-      lowStockAlerts,
+      lowStockCount,
       { items, totalCount },
     ] = await Promise.all([
       InventoryReportModel.getExecutiveKPIs(filters),
       InventoryReportModel.getBranchDistribution(filters),
       InventoryReportModel.getMovementVelocity(filters),
-      InventoryReportModel.getLowStockAlerts(filters),
+      InventoryReportModel.getLowStockCount(filters),
       InventoryReportModel.getPaginatedLedger(filters, limit, offset),
     ]);
 
@@ -31,7 +31,7 @@ class InventoryReportService {
         total_asset_value: totalAssetValue,
         total_physical_units: totalPhysicalUnits,
         total_tracked_items: totalTrackedItems,
-        low_stock_count: lowStockAlerts.length,
+        low_stock_count: lowStockCount,
       },
       distributions: {
         by_branch: branchDistribution.map((b) => ({
@@ -66,11 +66,7 @@ class InventoryReportService {
           ),
         },
       },
-      low_stock_alerts: lowStockAlerts.map((a) => ({
-        ...a,
-        quantity: parseInt(a.quantity, 10),
-        reorder_point: parseInt(a.reorder_point, 10),
-      })),
+
       ledger: items.map((i) => ({
         ...i,
         unit_cost: parseFloat(i.unit_cost),
@@ -95,7 +91,7 @@ class InventoryReportService {
       "VIEW_INVENTORY_REPORT",
       "INFO",
       ipAddress,
-      "general_ledger", // Logical group for high-level financial reporting
+      "general_ledger",
       null,
       null,
       {
