@@ -318,19 +318,19 @@ const InventoryReports = () => {
           />
           <StatCard
             title="Total Stock Units On Hand"
-            value={data.kpis.total_physical_units}
+            value={data.kpis.total_physical_units.toLocaleString()}
             icon={Boxes}
             variant="info"
           />
           <StatCard
             title="Active Tracked SKUs"
-            value={data.kpis.total_tracked_items}
+            value={data.kpis.total_tracked_items.toLocaleString()}
             icon={Package}
             variant="default"
           />
           <StatCard
             title="Reorder / Low Stock Alerts"
-            value={data.kpis.low_stock_count}
+            value={data.kpis.low_stock_count.toLocaleString()}
             icon={AlertTriangle}
             variant={data.kpis.low_stock_count > 0 ? "danger" : "default"}
           />
@@ -563,7 +563,7 @@ const InventoryReports = () => {
                       </p>
                     </td>
 
-                    <td className="px-4 sm:px-8 py-4 text-center">
+                    <td className="px-4 sm:px-8 py-4">
                       <span className="text-sm font-black text-slate-900 dark:text-white print:text-black">
                         {item.quantity}{" "}
                         <span className="text-[10px] opacity-70 ml-1">
@@ -596,7 +596,7 @@ const InventoryReports = () => {
                       <button
                         onClick={() => openDetails(item)}
                         className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer print:hidden"
-                        title="Inspect Movement History"
+                        title="View Details & Ledger"
                       >
                         <Eye size={16} />
                       </button>
