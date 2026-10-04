@@ -184,7 +184,7 @@ class ReceivablesReport {
         i.invoice_number
       FROM payments p
       JOIN invoices i ON p.invoice_id = i.id
-      WHERE i.customer_id = $1 AND p.status != 'VOID'
+      WHERE i.customer_id = $1
       ORDER BY p.payment_date DESC, p.created_at DESC
     `;
     const payments = (await query(paySql, [customerId])).rows;

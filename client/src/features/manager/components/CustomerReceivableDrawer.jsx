@@ -249,12 +249,36 @@ const CustomerReceivableDrawer = ({ isOpen, onClose, customerId }) => {
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-[9px] font-bold text-slate-500 flex items-center gap-1 uppercase tracking-widest">
-                                    <CreditCard size={10} />{" "}
-                                    {pay.payment_method.replace("_", " ")} •{" "}
-                                    {new Date(
-                                      pay.payment_date,
-                                    ).toLocaleDateString()}
+
+                                  <p className="text-[9px] font-bold text-slate-500 flex flex-wrap items-center gap-1.5 uppercase tracking-widest mt-0.5">
+                                    <CreditCard
+                                      size={10}
+                                      className="shrink-0"
+                                    />
+                                    <span>
+                                      {pay.payment_method.replace("_", " ")}
+                                    </span>
+                                    <span className="text-slate-300 dark:text-slate-600">
+                                      •
+                                    </span>
+                                    <span>
+                                      {new Date(
+                                        pay.payment_date,
+                                      ).toLocaleDateString()}
+                                    </span>
+                                    {pay.reference_number && (
+                                      <>
+                                        <span className="text-slate-300 dark:text-slate-600">
+                                          •
+                                        </span>
+                                        <span
+                                          className="text-amber-500 font-mono tracking-wider truncate max-w-[120px]"
+                                          title={pay.reference_number}
+                                        >
+                                          {pay.reference_number}
+                                        </span>
+                                      </>
+                                    )}
                                   </p>
                                 </td>
                                 <td className="px-5 py-4">
