@@ -318,19 +318,19 @@ const InventoryReports = () => {
           />
           <StatCard
             title="Total Stock Units On Hand"
-            value={data.kpis.total_physical_units.toLocaleString()}
+            value={(data.kpis.total_physical_units || 0).toLocaleString()}
             icon={Boxes}
             variant="info"
           />
           <StatCard
             title="Active Tracked SKUs"
-            value={data.kpis.total_tracked_items.toLocaleString()}
+            value={(data.kpis.total_tracked_items || 0).toLocaleString()}
             icon={Package}
             variant="default"
           />
           <StatCard
             title="Reorder / Low Stock Alerts"
-            value={data.kpis.low_stock_count.toLocaleString()}
+            value={(data.kpis.low_stock_count || 0).toLocaleString()}
             icon={AlertTriangle}
             variant={data.kpis.low_stock_count > 0 ? "danger" : "default"}
           />
@@ -396,7 +396,8 @@ const InventoryReports = () => {
                             {b.branch_name}
                           </span>
                           <span className="text-[9px] font-bold text-slate-400 mt-0.5 tracking-widest uppercase">
-                            {b.total_units} Units across {b.active_skus} SKUs
+                            {(b.total_units || 0).toLocaleString()} Units across{" "}
+                            {(b.active_skus || 0).toLocaleString()} SKUs
                           </span>
                         </div>
                         <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
@@ -440,7 +441,11 @@ const InventoryReports = () => {
                       </span>
                     </div>
                     <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
-                      +{data.distributions.movements.stock_received} Units
+                      +
+                      {(
+                        data.distributions.movements.stock_received || 0
+                      ).toLocaleString()}{" "}
+                      Units
                     </span>
                   </div>
 
@@ -455,7 +460,11 @@ const InventoryReports = () => {
                       </span>
                     </div>
                     <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
-                      -{data.distributions.movements.stock_issued} Units
+                      -
+                      {(
+                        data.distributions.movements.stock_issued || 0
+                      ).toLocaleString()}{" "}
+                      Units
                     </span>
                   </div>
 
@@ -482,7 +491,10 @@ const InventoryReports = () => {
                       {data.distributions.movements.stock_adjustments_net > 0
                         ? "+"
                         : ""}
-                      {data.distributions.movements.stock_adjustments_net} Units
+                      {(
+                        data.distributions.movements.stock_adjustments_net || 0
+                      ).toLocaleString()}{" "}
+                      Units
                     </span>
                   </div>
 
@@ -493,7 +505,10 @@ const InventoryReports = () => {
                         Transferred In
                       </span>
                       <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
-                        +{data.distributions.movements.stock_transferred_in}{" "}
+                        +
+                        {(
+                          data.distributions.movements.stock_transferred_in || 0
+                        ).toLocaleString()}{" "}
                         Units
                       </span>
                     </div>
@@ -503,7 +518,11 @@ const InventoryReports = () => {
                         Transferred Out
                       </span>
                       <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
-                        -{data.distributions.movements.stock_transferred_out}{" "}
+                        -
+                        {(
+                          data.distributions.movements.stock_transferred_out ||
+                          0
+                        ).toLocaleString()}{" "}
                         Units
                       </span>
                     </div>
@@ -522,13 +541,13 @@ const InventoryReports = () => {
 
             <DataTable
               headers={[
-                "Item Profile",
+                "Item Details",
                 "Category / Branch",
                 "Available Qty & UOM",
                 "Unit Cost (₱)",
                 "Total Valuation (₱)",
                 "Status",
-                "Action",
+                "Actions",
               ]}
               data={data?.ledger || []}
               loading={loading}
@@ -565,7 +584,7 @@ const InventoryReports = () => {
 
                     <td className="px-4 sm:px-8 py-4">
                       <span className="text-sm font-black text-slate-900 dark:text-white print:text-black">
-                        {item.quantity}{" "}
+                        {(item.quantity || 0).toLocaleString()}{" "}
                         <span className="text-[10px] opacity-70 ml-1">
                           {item.uom}
                         </span>
