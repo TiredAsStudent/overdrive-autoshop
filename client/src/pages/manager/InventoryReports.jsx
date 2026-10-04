@@ -135,7 +135,10 @@ const InventoryReports = () => {
     inventoryService
       .getActiveBranches()
       .then((res) => setBranches(res.data || []))
-      .catch((err) => console.error("Failed to fetch branches", err));
+      .catch((err) => {
+        console.error("Failed to fetch branches", err);
+        showToast("Failed to load branches.", "error");
+      });
   }, []);
 
   // Reset pagination on filter change
@@ -153,6 +156,11 @@ const InventoryReports = () => {
   // Load Report Data
   const loadReport = async () => {
     if (!startDate || !endDate) return;
+
+    if (new Date(startDate) > new Date(endDate)) {
+      showToast("Start date cannot be after end date.", "warning");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -263,6 +271,9 @@ const InventoryReports = () => {
     );
   };
 
+  const adjustmentsNet =
+    data?.distributions?.movements?.stock_adjustments_net || 0;
+
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
       {/* PAGE HEADER & CONTROLS */}
@@ -312,27 +323,27 @@ const InventoryReports = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 print:hidden">
           <StatCard
             title="Total Inventory Asset Value"
-            value={`₱${formatCurrency(data.kpis.total_asset_value)}`}
+            value={`₱${formatCurrency(data?.kpis?.total_asset_value)}`}
             icon={Calculator}
             variant="success"
           />
           <StatCard
             title="Total Stock Units On Hand"
-            value={(data.kpis.total_physical_units || 0).toLocaleString()}
+            value={(data?.kpis?.total_physical_units || 0).toLocaleString()}
             icon={Boxes}
             variant="info"
           />
           <StatCard
             title="Active Tracked SKUs"
-            value={(data.kpis.total_tracked_items || 0).toLocaleString()}
+            value={(data?.kpis?.total_tracked_items || 0).toLocaleString()}
             icon={Package}
             variant="default"
           />
           <StatCard
             title="Reorder / Low Stock Alerts"
-            value={(data.kpis.low_stock_count || 0).toLocaleString()}
+            value={(data?.kpis?.low_stock_count || 0).toLocaleString()}
             icon={AlertTriangle}
-            variant={data.kpis.low_stock_count > 0 ? "danger" : "default"}
+            variant={data?.kpis?.low_stock_count > 0 ? "danger" : "default"}
           />
         </div>
       )}
@@ -382,13 +393,13 @@ const InventoryReports = () => {
                 <div className="flex justify-center py-6">
                   <Loader2 className="animate-spin text-emerald-500" />
                 </div>
-              ) : !data || data.distributions.by_branch.length === 0 ? (
+              ) : !data || !data.distributions?.by_branch?.length ? (
                 <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
                   No branch data available.
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {data.distributions.by_branch.map((b) => (
+                  {(data.distributions?.by_branch || []).map((b) => (
                     <div key={b.branch_id}>
                       <div className="flex justify-between items-end">
                         <div className="flex flex-col">
@@ -406,7 +417,7 @@ const InventoryReports = () => {
                       </div>
                       {renderProgressBar(
                         b.asset_value,
-                        data.kpis.total_asset_value,
+                        data.kpis?.total_asset_value || 0,
                         "bg-emerald-500",
                       )}
                     </div>
@@ -443,7 +454,7 @@ const InventoryReports = () => {
                     <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
                       +
                       {(
-                        data.distributions.movements.stock_received || 0
+                        data.distributions?.movements?.stock_received || 0
                       ).toLocaleString()}{" "}
                       Units
                     </span>
@@ -462,7 +473,7 @@ const InventoryReports = () => {
                     <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
                       -
                       {(
-                        data.distributions.movements.stock_issued || 0
+                        data.distributions?.movements?.stock_issued || 0
                       ).toLocaleString()}{" "}
                       Units
                     </span>
@@ -480,21 +491,15 @@ const InventoryReports = () => {
                     </div>
                     <span
                       className={`font-mono text-sm font-black print:text-black ${
-                        data.distributions.movements.stock_adjustments_net > 0
+                        adjustmentsNet > 0
                           ? "text-emerald-600 dark:text-emerald-400"
-                          : data.distributions.movements.stock_adjustments_net <
-                              0
+                          : adjustmentsNet < 0
                             ? "text-rose-600 dark:text-rose-400"
                             : "text-slate-900 dark:text-white"
                       }`}
                     >
-                      {data.distributions.movements.stock_adjustments_net > 0
-                        ? "+"
-                        : ""}
-                      {(
-                        data.distributions.movements.stock_adjustments_net || 0
-                      ).toLocaleString()}{" "}
-                      Units
+                      {adjustmentsNet > 0 ? "+" : ""}
+                      {adjustmentsNet.toLocaleString()} Units
                     </span>
                   </div>
 
@@ -507,7 +512,8 @@ const InventoryReports = () => {
                       <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
                         +
                         {(
-                          data.distributions.movements.stock_transferred_in || 0
+                          data.distributions?.movements?.stock_transferred_in ||
+                          0
                         ).toLocaleString()}{" "}
                         Units
                       </span>
@@ -520,8 +526,8 @@ const InventoryReports = () => {
                       <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
                         -
                         {(
-                          data.distributions.movements.stock_transferred_out ||
-                          0
+                          data.distributions?.movements
+                            ?.stock_transferred_out || 0
                         ).toLocaleString()}{" "}
                         Units
                       </span>
