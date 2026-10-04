@@ -22,6 +22,7 @@ const CashFlowStatementController = require("../../controllers/manager/cashFlowS
 const ExpenseReportController = require("../../controllers/manager/expenseReport.controller");
 const SalesReportController = require("../../controllers/manager/salesReport.controller");
 const InventoryReportController = require("../../controllers/manager/inventoryReport.controller");
+const ReceivablesReportController = require("../../controllers/manager/receivablesReport.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -120,6 +121,10 @@ const {
 const {
   getInventoryReportSchema,
 } = require("../../validations/manager/inventoryReport.schema");
+const {
+  getReceivablesReportSchema,
+  getCustomerReceivableDetailsSchema,
+} = require("../../validations/manager/receivablesReport.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -378,6 +383,18 @@ router.get(
   "/reports/inventory",
   validate(getInventoryReportSchema),
   InventoryReportController.getInventoryReport,
+);
+
+router.get(
+  "/reports/receivables",
+  validate(getReceivablesReportSchema),
+  ReceivablesReportController.getReceivablesReport,
+);
+
+router.get(
+  "/reports/receivables/:customerId/details",
+  validate(getCustomerReceivableDetailsSchema),
+  ReceivablesReportController.getCustomerDetails,
 );
 
 // ==========================================
