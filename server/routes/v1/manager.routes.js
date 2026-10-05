@@ -23,6 +23,7 @@ const ExpenseReportController = require("../../controllers/manager/expenseReport
 const SalesReportController = require("../../controllers/manager/salesReport.controller");
 const InventoryReportController = require("../../controllers/manager/inventoryReport.controller");
 const ReceivablesReportController = require("../../controllers/manager/receivablesReport.controller");
+const PayablesReportController = require("../../controllers/manager/payablesReport.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -125,6 +126,10 @@ const {
   getReceivablesReportSchema,
   getCustomerReceivableDetailsSchema,
 } = require("../../validations/manager/receivablesReport.schema");
+const {
+  getPayablesReportSchema,
+  getVendorPayableDetailsSchema,
+} = require("../../validations/manager/payablesReport.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -395,6 +400,18 @@ router.get(
   "/reports/receivables/:customerId/details",
   validate(getCustomerReceivableDetailsSchema),
   ReceivablesReportController.getCustomerDetails,
+);
+
+router.get(
+  "/reports/payables",
+  validate(getPayablesReportSchema),
+  PayablesReportController.getPayablesReport,
+);
+
+router.get(
+  "/reports/payables/:vendorId/details",
+  validate(getVendorPayableDetailsSchema),
+  PayablesReportController.getVendorDetails,
 );
 
 // ==========================================
