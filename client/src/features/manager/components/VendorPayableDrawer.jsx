@@ -200,8 +200,7 @@ const VendorPayableDrawer = ({ isOpen, onClose, vendorId }) => {
                                   {bill.bill_number}
                                 </p>
                                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest print:text-slate-700">
-                                  Due:{" "}
-                                  {new Date(bill.due_date).toLocaleDateString()}
+                                  Due: {bill.due_date}
                                 </p>
                                 <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest mt-0.5 print:text-slate-600">
                                   Ref: {bill.vendor_invoice_number}
@@ -306,11 +305,7 @@ const VendorPayableDrawer = ({ isOpen, onClose, vendorId }) => {
                                     <span className="text-slate-300 dark:text-slate-600 print:text-slate-400">
                                       •
                                     </span>
-                                    <span>
-                                      {new Date(
-                                        pay.payment_date,
-                                      ).toLocaleDateString()}
-                                    </span>
+                                    <span>{pay.payment_date}</span>
                                     {pay.reference_number && (
                                       <>
                                         <span className="text-slate-300 dark:text-slate-600 print:text-slate-400">

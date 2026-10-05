@@ -214,7 +214,9 @@ const PayablesReports = () => {
           <ActionButton
             label="Export"
             icon={Download}
-            onClick={() => window.print()}
+            onClick={() =>
+              showToast("CSV export queued for reporting phase.", "info")
+            }
             disabled={!data || loading}
           />
         </div>
