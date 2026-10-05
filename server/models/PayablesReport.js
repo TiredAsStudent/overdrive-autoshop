@@ -19,14 +19,14 @@ class PayablesReport {
     }
 
     if (filters.start_date) {
-      conditions.push(`b.created_at >= $${paramIdx}::timestamp`);
-      values.push(`${filters.start_date} 00:00:00`);
+      conditions.push(`b.bill_date >= $${paramIdx}::date`);
+      values.push(filters.start_date);
       paramIdx++;
     }
 
     if (filters.end_date) {
-      conditions.push(`b.created_at <= $${paramIdx}::timestamp`);
-      values.push(`${filters.end_date} 23:59:59.999`);
+      conditions.push(`b.bill_date <= $${paramIdx}::date`);
+      values.push(filters.end_date);
       paramIdx++;
     }
 
