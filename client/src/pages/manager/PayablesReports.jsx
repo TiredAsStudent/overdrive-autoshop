@@ -214,9 +214,7 @@ const PayablesReports = () => {
           <ActionButton
             label="Export"
             icon={Download}
-            onClick={() =>
-              showToast("CSV export queued for reporting phase.", "info")
-            }
+            onClick={() => window.print()}
             disabled={!data || loading}
           />
         </div>
@@ -278,25 +276,26 @@ const PayablesReports = () => {
 
         <div className="p-6 sm:p-8 lg:px-12 print:px-0">
           {/* SECTION A: AGING DISTRIBUTION BREAKDOWN */}
-          <div className="mb-10">
-            <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white mb-6 flex items-center gap-2 print:text-black">
-              <Clock size={16} className="text-amber-500" /> Aging Distribution
+          <div className="mb-10 print:mb-6">
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white mb-6 flex items-center gap-2 print:text-black print:mb-4">
+              <Clock size={16} className="text-amber-500 print:hidden" /> Aging
+              Distribution
             </h3>
 
             {loading ? (
-              <div className="flex justify-center py-6">
+              <div className="flex justify-center py-6 print:hidden">
                 <Loader2 className="animate-spin text-amber-500" />
               </div>
             ) : !data || totalOutstanding === 0 ? (
-              <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+              <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest border border-dashed border-slate-200 dark:border-slate-700 rounded-xl print:text-black print:border-slate-300">
                 No outstanding liabilities found.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 print:grid-cols-5 print:gap-4">
                 {/* Current */}
                 <div>
                   <div className="flex justify-between items-end mb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 print:text-black">
                       Current
                     </span>
                     <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
@@ -313,7 +312,7 @@ const PayablesReports = () => {
                 {/* 1-30 Days */}
                 <div>
                   <div className="flex justify-between items-end mb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-500 print:text-black">
                       1–30 Days
                     </span>
                     <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
@@ -330,7 +329,7 @@ const PayablesReports = () => {
                 {/* 31-60 Days */}
                 <div>
                   <div className="flex justify-between items-end mb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 print:text-black">
                       31–60 Days
                     </span>
                     <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
@@ -347,7 +346,7 @@ const PayablesReports = () => {
                 {/* 61-90 Days */}
                 <div>
                   <div className="flex justify-between items-end mb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-rose-500">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 print:text-black">
                       61–90 Days
                     </span>
                     <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
@@ -364,7 +363,7 @@ const PayablesReports = () => {
                 {/* Over 90 Days */}
                 <div>
                   <div className="flex justify-between items-end mb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-rose-700 dark:text-rose-500">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-rose-700 dark:text-rose-500 print:text-black">
                       Over 90 Days
                     </span>
                     <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
@@ -383,9 +382,9 @@ const PayablesReports = () => {
 
           {/* SECTION B: ITEMIZED A/P LEDGER */}
           <div>
-            <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white mb-6 flex items-center gap-2 print:text-black print:mt-10 border-t border-slate-200 dark:border-slate-700 pt-8">
-              <FileText size={16} className="text-amber-500" /> Itemized
-              Accounts Payable Ledger
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white mb-6 flex items-center gap-2 print:text-black print:mt-10 border-t border-slate-200 dark:border-slate-700 pt-8 print:pt-4">
+              <FileText size={16} className="text-amber-500 print:hidden" />{" "}
+              Itemized Accounts Payable Ledger
             </h3>
 
             <DataTable
@@ -405,7 +404,7 @@ const PayablesReports = () => {
               renderRow={(item, idx) => (
                 <tr
                   key={`${item.bill_id}-${idx}`}
-                  className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors print:hover:bg-transparent"
+                  className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors print:hover:bg-transparent print:break-inside-avoid"
                 >
                   <td className="px-4 sm:px-8 py-4">
                     <div className="min-w-0 max-w-[200px] sm:max-w-[250px]">
@@ -416,7 +415,7 @@ const PayablesReports = () => {
                         <span className="inline-flex w-max px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-800 dark:text-slate-300 font-mono tracking-wider print:bg-transparent print:border print:border-slate-400 print:text-black">
                           {item.bill_number}
                         </span>
-                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate print:text-slate-600">
                           INV: {item.vendor_invoice_number}
                         </span>
                       </div>
@@ -424,14 +423,15 @@ const PayablesReports = () => {
                   </td>
 
                   <td className="px-4 sm:px-8 py-4">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 truncate">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 truncate print:text-slate-600">
                       Issued: {item.bill_date}
                     </p>
-                    <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mt-1 truncate">
+                    <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mt-1 truncate print:text-slate-800">
                       Due: {item.due_date}
                     </p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase truncate flex items-center gap-1 mt-1.5">
-                      <Building2 size={10} /> {item.branch_name}
+                    <p className="text-[9px] font-bold text-slate-400 uppercase truncate flex items-center gap-1 mt-1.5 print:text-slate-600">
+                      <Building2 size={10} className="print:hidden" />{" "}
+                      {item.branch_name}
                     </p>
                   </td>
 
@@ -441,7 +441,7 @@ const PayablesReports = () => {
                         ₱{formatCurrency(item.bill_amount)}
                       </span>
                       {item.amount_paid > 0 && (
-                        <span className="text-[9px] font-black text-emerald-500 mt-1 uppercase tracking-widest">
+                        <span className="text-[9px] font-black text-emerald-500 mt-1 uppercase tracking-widest print:text-slate-700">
                           Paid: ₱{formatCurrency(item.amount_paid)}
                         </span>
                       )}
@@ -467,23 +467,24 @@ const PayablesReports = () => {
                       <StatusBadge
                         label={item.status.replace("_", " ")}
                         variant={getStatusVariant(item.status)}
+                        className="print:bg-transparent print:border-slate-400 print:text-black"
                       />
                       {item.days_overdue > 0 ? (
-                        <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">
+                        <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest print:text-slate-800">
                           {item.days_overdue} Days Overdue
                         </span>
                       ) : (
-                        <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">
+                        <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest print:text-slate-800">
                           In Terms
                         </span>
                       )}
                     </div>
                   </td>
 
-                  <td className="px-4 sm:px-8 py-4 text-right">
+                  <td className="px-4 sm:px-8 py-4 text-right print:hidden">
                     <button
                       onClick={() => setSelectedVendorId(item.vendor_id)}
-                      className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer print:hidden"
+                      className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
                       title="View Vendor Profile & Ledger"
                     >
                       <Eye size={16} />

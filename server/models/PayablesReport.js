@@ -2,7 +2,6 @@ const { query } = require("../config/db");
 
 class PayablesReport {
   static buildFilterConditions(filters) {
-    // Fundamental Rule: Only RECEIVED or CLOSED bills establish an actual AP liability
     const conditions = ["b.status IN ('RECEIVED', 'CLOSED')"];
     const values = [];
     let paramIdx = 1;
@@ -31,7 +30,6 @@ class PayablesReport {
       paramIdx++;
     }
 
-    // Default AP behavior: show outstanding unless "all" or "PAID" is explicitly requested
     if (filters.payment_status && filters.payment_status !== "all") {
       if (filters.payment_status === "OVERDUE") {
         conditions.push(
@@ -46,19 +44,24 @@ class PayablesReport {
       conditions.push(`b.payment_status IN ('UNPAID', 'PARTIALLY_PAID')`);
     }
 
-    // Aging Bucket Filters
     if (filters.aging_category && filters.aging_category !== "all") {
       const bucket = filters.aging_category;
       if (bucket === "CURRENT") {
         conditions.push(`b.due_date >= CURRENT_DATE`);
       } else if (bucket === "1_30_DAYS") {
-        conditions.push(`(CURRENT_DATE - b.due_date) BETWEEN 1 AND 30`);
+        conditions.push(
+          `(CURRENT_DATE - b.due_date::date)::int BETWEEN 1 AND 30`,
+        );
       } else if (bucket === "31_60_DAYS") {
-        conditions.push(`(CURRENT_DATE - b.due_date) BETWEEN 31 AND 60`);
+        conditions.push(
+          `(CURRENT_DATE - b.due_date::date)::int BETWEEN 31 AND 60`,
+        );
       } else if (bucket === "61_90_DAYS") {
-        conditions.push(`(CURRENT_DATE - b.due_date) BETWEEN 61 AND 90`);
+        conditions.push(
+          `(CURRENT_DATE - b.due_date::date)::int BETWEEN 61 AND 90`,
+        );
       } else if (bucket === "OVER_90_DAYS") {
-        conditions.push(`(CURRENT_DATE - b.due_date) > 90`);
+        conditions.push(`(CURRENT_DATE - b.due_date::date)::int > 90`);
       }
     }
 
@@ -84,7 +87,7 @@ class PayablesReport {
         COUNT(DISTINCT b.id) as open_bills_count,
         COALESCE(SUM(b.grand_total - b.amount_paid), 0) as total_outstanding,
         COALESCE(SUM(CASE WHEN b.due_date < CURRENT_DATE THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as total_overdue,
-        COALESCE(SUM(CASE WHEN (CURRENT_DATE - b.due_date) > 90 THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as high_risk_overdue
+        COALESCE(SUM(CASE WHEN (CURRENT_DATE - b.due_date::date)::int > 90 THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as high_risk_overdue
       FROM bills b
       JOIN vendors v ON b.vendor_id = v.id
       ${whereClause}
@@ -98,10 +101,10 @@ class PayablesReport {
     const sql = `
       SELECT 
         COALESCE(SUM(CASE WHEN b.due_date >= CURRENT_DATE THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as current_balance,
-        COALESCE(SUM(CASE WHEN (CURRENT_DATE - b.due_date) BETWEEN 1 AND 30 THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as days_1_30,
-        COALESCE(SUM(CASE WHEN (CURRENT_DATE - b.due_date) BETWEEN 31 AND 60 THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as days_31_60,
-        COALESCE(SUM(CASE WHEN (CURRENT_DATE - b.due_date) BETWEEN 61 AND 90 THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as days_61_90,
-        COALESCE(SUM(CASE WHEN (CURRENT_DATE - b.due_date) > 90 THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as days_over_90
+        COALESCE(SUM(CASE WHEN (CURRENT_DATE - b.due_date::date)::int BETWEEN 1 AND 30 THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as days_1_30,
+        COALESCE(SUM(CASE WHEN (CURRENT_DATE - b.due_date::date)::int BETWEEN 31 AND 60 THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as days_31_60,
+        COALESCE(SUM(CASE WHEN (CURRENT_DATE - b.due_date::date)::int BETWEEN 61 AND 90 THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as days_61_90,
+        COALESCE(SUM(CASE WHEN (CURRENT_DATE - b.due_date::date)::int > 90 THEN (b.grand_total - b.amount_paid) ELSE 0 END), 0) as days_over_90
       FROM bills b
       JOIN vendors v ON b.vendor_id = v.id
       ${whereClause}
@@ -127,7 +130,7 @@ class PayablesReport {
         b.grand_total as bill_amount,
         b.amount_paid,
         (b.grand_total - b.amount_paid) as outstanding_balance,
-        GREATEST(CURRENT_DATE - b.due_date, 0) as days_overdue,
+        GREATEST((CURRENT_DATE - b.due_date::date)::int, 0) as days_overdue,
         CASE 
           WHEN b.payment_status IN ('UNPAID', 'PARTIALLY_PAID') AND b.due_date < CURRENT_DATE THEN 'OVERDUE'
           ELSE b.payment_status::text 
@@ -163,7 +166,13 @@ class PayablesReport {
     );
     if (vendRes.rows.length === 0) return null;
 
-    // 2. Fetch Outstanding Bills (Strict AP Liability only)
+    // 2. Fetch Lifetime Spend
+    const spendRes = await query(
+      `SELECT COALESCE(SUM(grand_total), 0) as total_spend FROM bills WHERE vendor_id = $1 AND status IN ('RECEIVED', 'CLOSED')`,
+      [vendorId],
+    );
+
+    // 3. Fetch Outstanding Bills (Strict AP Liability only)
     const billsSql = `
       SELECT 
         id, bill_number, vendor_invoice_number, TO_CHAR(bill_date, 'YYYY-MM-DD') as bill_date, 
@@ -179,7 +188,7 @@ class PayablesReport {
     `;
     const bills = (await query(billsSql, [vendorId])).rows;
 
-    // 3. Fetch Payment History (Includes VOID for audit integrity)
+    // 4. Fetch Payment History (Includes VOID for audit integrity)
     const paySql = `
       SELECT 
         vp.id, vp.payment_number, TO_CHAR(vp.payment_date, 'YYYY-MM-DD') as payment_date, 
@@ -193,7 +202,10 @@ class PayablesReport {
     const payments = (await query(paySql, [vendorId])).rows;
 
     return {
-      vendor: vendRes.rows[0],
+      vendor: {
+        ...vendRes.rows[0],
+        lifetime_spend: parseFloat(spendRes.rows[0].total_spend),
+      },
       outstanding_bills: bills,
       payment_history: payments,
     };
