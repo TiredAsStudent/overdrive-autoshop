@@ -190,6 +190,7 @@ const TaxVATReports = () => {
           <StatusBadge
             label="Sales Invoice"
             variant="info"
+            icon={FileText}
             className="print:bg-transparent print:border-slate-300 print:text-black"
           />
         );
