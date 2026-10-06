@@ -24,6 +24,7 @@ const SalesReportController = require("../../controllers/manager/salesReport.con
 const InventoryReportController = require("../../controllers/manager/inventoryReport.controller");
 const ReceivablesReportController = require("../../controllers/manager/receivablesReport.controller");
 const PayablesReportController = require("../../controllers/manager/payablesReport.controller");
+const TaxVatReportController = require("../../controllers/manager/taxVatReport.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -130,6 +131,9 @@ const {
   getPayablesReportSchema,
   getVendorPayableDetailsSchema,
 } = require("../../validations/manager/payablesReport.schema");
+const {
+  getTaxVatReportSchema,
+} = require("../../validations/manager/taxVatReport.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
@@ -412,6 +416,12 @@ router.get(
   "/reports/payables/:vendorId/details",
   validate(getVendorPayableDetailsSchema),
   PayablesReportController.getVendorDetails,
+);
+
+router.get(
+  "/reports/tax-vat",
+  validate(getTaxVatReportSchema),
+  TaxVatReportController.getTaxVatReport,
 );
 
 // ==========================================
