@@ -495,7 +495,14 @@ const TaxVATReports = () => {
                 >
                   <td className="px-4 sm:px-8 py-4">
                     <p className="text-xs font-bold text-slate-900 dark:text-white print:text-black">
-                      {new Date(txn.transaction_date).toLocaleDateString()}
+                      {new Date(txn.transaction_date).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        },
+                      )}
                     </p>
                     <div className="mt-1.5">
                       {getSourceBadge(txn.source_module)}
