@@ -19,6 +19,9 @@ class TaxVatReport {
         FROM invoices i
         JOIN customers c ON i.customer_id = c.id
         WHERE i.status != 'VOID' AND i.vat_amount > 0
+          AND ($1::int IS NULL OR i.branch_id = $1::int)
+          AND ($2::date IS NULL OR i.created_at::date >= $2::date)
+          AND ($3::date IS NULL OR i.created_at::date <= $3::date)
 
         UNION ALL
 
@@ -37,6 +40,9 @@ class TaxVatReport {
         FROM bills b
         JOIN vendors v ON b.vendor_id = v.id
         WHERE b.status IN ('RECEIVED', 'CLOSED') AND b.vat_amount > 0
+          AND ($1::int IS NULL OR b.branch_id = $1::int)
+          AND ($2::date IS NULL OR b.bill_date >= $2::date)
+          AND ($3::date IS NULL OR b.bill_date <= $3::date)
 
         UNION ALL
 
@@ -55,6 +61,9 @@ class TaxVatReport {
         FROM expenses e
         LEFT JOIN vendors v ON e.vendor_id = v.id
         WHERE e.status = 'APPROVED' AND e.scan_id IS NULL AND e.vat_amount > 0
+          AND ($1::int IS NULL OR e.branch_id = $1::int)
+          AND ($2::date IS NULL OR e.expense_date >= $2::date)
+          AND ($3::date IS NULL OR e.expense_date <= $3::date)
 
         UNION ALL
 
@@ -73,15 +82,15 @@ class TaxVatReport {
         FROM expenses e
         LEFT JOIN vendors v ON e.vendor_id = v.id
         WHERE e.status = 'APPROVED' AND e.scan_id IS NOT NULL AND e.vat_amount > 0
+          AND ($1::int IS NULL OR e.branch_id = $1::int)
+          AND ($2::date IS NULL OR e.expense_date >= $2::date)
+          AND ($3::date IS NULL OR e.expense_date <= $3::date)
       ),
       FilteredVat AS (
         SELECT r.*, b.branch_name 
         FROM RawVatTransactions r
         JOIN branches b ON r.branch_id = b.id
-        WHERE ($1::int IS NULL OR r.branch_id = $1::int)
-          AND ($2::date IS NULL OR r.transaction_date >= $2::date)
-          AND ($3::date IS NULL OR r.transaction_date <= $3::date)
-          AND ($4::text IS NULL OR r.source_module = $4::text)
+        WHERE ($4::text IS NULL OR r.source_module = $4::text)
           AND ($5::text IS NULL OR r.reference_number ILIKE $5 OR r.counterparty_name ILIKE $5)
       )
     `;

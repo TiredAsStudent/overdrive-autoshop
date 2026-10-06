@@ -5,7 +5,6 @@ class TaxVatReportService {
   static async generateReport(filters, page, limit, activeUser, ipAddress) {
     const offset = (page - 1) * limit;
 
-    // 1. Parallel execution for high-speed reporting
     const [kpis, moduleSummary, systemVatRate, { transactions, totalCount }] =
       await Promise.all([
         TaxVatReportModel.getExecutiveKPIs(filters),
@@ -14,7 +13,6 @@ class TaxVatReportService {
         TaxVatReportModel.getPaginatedLedger(filters, limit, offset),
       ]);
 
-    // 2. Parse and Format KPI Mathematical Values
     const totalTaxableSales = parseFloat(kpis.total_taxable_sales);
     const totalOutputVat = parseFloat(kpis.total_output_vat);
     const totalTaxablePurchases = parseFloat(kpis.total_taxable_purchases);
@@ -22,7 +20,10 @@ class TaxVatReportService {
 
     // Equation: Net VAT = Output VAT - Input VAT
     const netVatPosition = totalOutputVat - totalInputVat;
-    const isPayable = netVatPosition > 0;
+
+    let positionStatus = "NET_VAT_ZERO";
+    if (netVatPosition > 0) positionStatus = "NET_VAT_PAYABLE";
+    else if (netVatPosition < 0) positionStatus = "NET_VAT_CREDIT";
 
     const formattedKpis = {
       system_vat_rate: parseFloat(systemVatRate),
@@ -31,10 +32,9 @@ class TaxVatReportService {
       total_taxable_purchases: totalTaxablePurchases,
       total_input_vat: totalInputVat,
       net_vat_position: Math.abs(netVatPosition),
-      position_status: isPayable ? "NET_VAT_PAYABLE" : "NET_VAT_CREDIT",
+      position_status: positionStatus,
     };
 
-    // 3. Assemble Output Structure
     const report = {
       kpis: formattedKpis,
       distributions: {
@@ -59,7 +59,6 @@ class TaxVatReportService {
       },
     };
 
-    // 4. Immutable Audit Trail Integration
     const targetBranch =
       filters.branch === "all" ? null : parseInt(filters.branch, 10);
     await logSecureAction(
@@ -68,13 +67,13 @@ class TaxVatReportService {
       "VIEW_TAX_VAT_REPORT",
       "INFO",
       ipAddress,
-      "general_ledger", // Logical mapping to financial reports
+      "general_ledger",
       null,
       null,
       {
         filters: filters,
-        net_vat_position: netVatPosition,
-        position_status: formattedKpis.position_status,
+        net_vat_position: Math.abs(netVatPosition),
+        position_status: positionStatus,
       },
     );
 

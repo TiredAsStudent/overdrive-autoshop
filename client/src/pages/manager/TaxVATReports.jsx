@@ -18,17 +18,14 @@ import {
   Scale,
 } from "lucide-react";
 
-// Services
 import { taxVatReportService } from "../../services/manager/taxVatReport.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 
-// Shared Components
 import PageHeader from "../../components/shared/PageHeader";
 import FilterModal from "../../components/shared/FilterModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 
-// UI Components
 import SearchBar from "../../components/ui/SearchBar";
 import FilterButton from "../../components/ui/FilterButton";
 import ActionButton from "../../components/ui/ActionButton";
@@ -36,13 +33,11 @@ import StatCard from "../../components/ui/StatCard";
 import StatusToggle from "../../components/ui/StatusToggle";
 import StatusBadge from "../../components/ui/StatusBadge";
 
-// Drill-Down Drawer
 import GeneralLedgerSourceDrawer from "../../features/manager/components/GeneralLedgerSourceDrawer";
 
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
-// --- Date Utility Helpers ---
 const getPresetDates = (preset) => {
   const today = new Date();
   let start, end;
@@ -74,17 +69,12 @@ const getPresetDates = (preset) => {
 
 const TaxVATReports = () => {
   const { showToast } = useApp();
-
   const initialDates = getPresetDates("this_month");
 
-  // Report State
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Lookups
   const [branches, setBranches] = useState([]);
 
-  // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [datePreset, setDatePreset] = useState("this_month");
@@ -95,12 +85,10 @@ const TaxVATReports = () => {
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // View States
   const [selectedSource, setSelectedSource] = useState(null);
 
   const activeFilterCount =
@@ -108,7 +96,6 @@ const TaxVATReports = () => {
     (sourceModuleFilter !== "all" ? 1 : 0) +
     (datePreset !== "this_month" ? 1 : 0);
 
-  // 1. Initial Load: Branches
   useEffect(() => {
     inventoryService
       .getActiveBranches()
@@ -116,7 +103,6 @@ const TaxVATReports = () => {
       .catch((err) => console.error("Failed to fetch branches", err));
   }, []);
 
-  // Reset pagination on filter change
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -127,10 +113,8 @@ const TaxVATReports = () => {
     endDate,
   ]);
 
-  // 2. Load Report Data
   const loadReport = async () => {
     if (!startDate || !endDate) return;
-
     try {
       setLoading(true);
       const res = await taxVatReportService.getTaxVatReport(
@@ -242,7 +226,6 @@ const TaxVATReports = () => {
   };
 
   const handleDrillDown = (module, id, ref) => {
-    // Map module names from Tax Engine to Universal Drawer Engine
     let targetType = module;
     if (module === "SALES") targetType = "INVOICE";
     if (module === "BILLS") targetType = "BILL";
@@ -256,12 +239,42 @@ const TaxVATReports = () => {
     });
   };
 
-  // Helper for Net VAT Status UI
-  const isPayable = data?.kpis?.position_status === "NET_VAT_PAYABLE";
+  const positionStatus = data?.kpis?.position_status;
+  let bannerClasses =
+    "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700";
+  let titleClasses = "text-slate-600 dark:text-slate-400";
+  let valueClasses = "text-slate-900 dark:text-white";
+  let badgeClasses =
+    "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300";
+  let bannerLabel = "Zero VAT Position";
+  let bannerDesc =
+    "Tax obligations and credits are perfectly balanced or zero for this period.";
+
+  if (positionStatus === "NET_VAT_PAYABLE") {
+    bannerClasses =
+      "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20";
+    titleClasses = "text-rose-600 dark:text-rose-400";
+    valueClasses = "text-rose-700 dark:text-rose-300";
+    badgeClasses =
+      "bg-rose-200 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300";
+    bannerLabel = "Net VAT Payable (Liability)";
+    bannerDesc =
+      "Output tax exceeds input tax. You are liable to remit this balance to the tax authority.";
+  } else if (positionStatus === "NET_VAT_CREDIT") {
+    bannerClasses =
+      "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20";
+    titleClasses = "text-emerald-600 dark:text-emerald-400";
+    valueClasses = "text-emerald-700 dark:text-emerald-300";
+    badgeClasses =
+      "bg-emerald-200 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300";
+    bannerLabel = "Net VAT Credit (Asset)";
+    bannerDesc =
+      "Input tax exceeds output tax. This balance can be carried over as an asset to future periods.";
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* PAGE HEADER & CONTROLS */}
+      {/* PAGE HEADER */}
       <PageHeader
         title="Tax & VAT Reports"
         subtitle="Statutory Output & Input Tax Aggregation"
@@ -335,48 +348,28 @@ const TaxVATReports = () => {
 
           {/* HERO POSITION BANNER */}
           <div
-            className={`p-6 sm:p-8 rounded-[24px] sm:rounded-[32px] border shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 print:hidden ${
-              isPayable
-                ? "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20"
-                : "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20"
-            }`}
+            className={`p-6 sm:p-8 rounded-[24px] sm:rounded-[32px] border shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 print:hidden transition-colors ${bannerClasses}`}
           >
             <div>
               <p
-                className={`text-[10px] font-black uppercase tracking-widest mb-1 ${
-                  isPayable
-                    ? "text-rose-600 dark:text-rose-400"
-                    : "text-emerald-600 dark:text-emerald-400"
-                }`}
+                className={`text-[10px] font-black uppercase tracking-widest mb-1 ${titleClasses}`}
               >
                 Net Fiscal VAT Position
               </p>
               <h2
-                className={`text-3xl sm:text-4xl font-black font-mono tracking-tight ${
-                  isPayable
-                    ? "text-rose-700 dark:text-rose-300"
-                    : "text-emerald-700 dark:text-emerald-300"
-                }`}
+                className={`text-3xl sm:text-4xl font-black font-mono tracking-tight ${valueClasses}`}
               >
                 ₱{formatCurrency(data.kpis.net_vat_position)}
               </h2>
             </div>
             <div className="flex flex-col items-start md:items-end w-full md:w-auto">
               <span
-                className={`inline-flex px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${
-                  isPayable
-                    ? "bg-rose-200 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300"
-                    : "bg-emerald-200 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300"
-                }`}
+                className={`inline-flex px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${badgeClasses}`}
               >
-                {isPayable
-                  ? "Net VAT Payable (Liability)"
-                  : "Net VAT Credit (Asset)"}
+                {bannerLabel}
               </span>
               <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 mt-2 max-w-sm text-left md:text-right">
-                {isPayable
-                  ? "Output tax exceeds input tax. You are liable to remit this balance to the tax authority."
-                  : "Input tax exceeds output tax. This balance can be carried over as an asset to future periods."}
+                {bannerDesc}
               </p>
             </div>
           </div>
@@ -385,7 +378,6 @@ const TaxVATReports = () => {
 
       {/* DOCUMENT BODY */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-[24px] sm:rounded-[32px] shadow-sm overflow-hidden print:border-none print:shadow-none print:p-0">
-        {/* Print & Document Header */}
         <div className="p-6 sm:p-8 pb-5 sm:pb-6 border-b border-slate-100 dark:border-slate-800/50 text-center bg-slate-50 dark:bg-slate-900/50 print:bg-transparent print:border-b-2 print:border-slate-900">
           <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white print:text-black">
             Tax & VAT Statement
@@ -426,7 +418,7 @@ const TaxVATReports = () => {
                 <Loader2 className="animate-spin text-amber-500" />
               </div>
             ) : !data || data.distributions.by_module.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
+              <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest border border-dashed border-slate-200 dark:border-slate-700 rounded-xl print:text-black print:border-slate-300">
                 No VAT-applicable transactions found.
               </div>
             ) : (
@@ -456,15 +448,15 @@ const TaxVATReports = () => {
                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
                           Taxable Base
                         </span>
-                        <span className="font-mono text-sm font-medium text-slate-700 dark:text-slate-300">
+                        <span className="font-mono text-sm font-medium text-slate-700 dark:text-slate-300 print:text-black">
                           ₱{formatCurrency(mod.total_taxable_base)}
                         </span>
                       </div>
                       <div className="flex flex-col text-right">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white print:text-black">
                           Total VAT
                         </span>
-                        <span className="font-mono text-lg font-black text-slate-900 dark:text-white">
+                        <span className="font-mono text-lg font-black text-slate-900 dark:text-white print:text-black">
                           ₱{formatCurrency(mod.total_vat)}
                         </span>
                       </div>
@@ -498,7 +490,7 @@ const TaxVATReports = () => {
               renderRow={(txn, idx) => (
                 <tr
                   key={`${txn.source_module}-${txn.source_id}-${idx}`}
-                  className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors print:hover:bg-transparent"
+                  className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors print:hover:bg-transparent print:break-inside-avoid"
                 >
                   <td className="px-4 sm:px-8 py-4">
                     <p className="text-xs font-bold text-slate-900 dark:text-white print:text-black">
@@ -513,7 +505,7 @@ const TaxVATReports = () => {
                     <p className="text-xs font-black text-slate-700 dark:text-slate-300 font-mono tracking-widest uppercase print:text-black">
                       {txn.reference_number || "N/A"}
                     </p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate max-w-[120px]">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate max-w-[120px] print:text-slate-600">
                       {txn.branch_name}
                     </p>
                   </td>
@@ -536,7 +528,7 @@ const TaxVATReports = () => {
                   </td>
 
                   <td className="px-4 sm:px-8 py-4 text-right">
-                    <span className="text-sm font-black font-mono text-slate-900 dark:text-white print:text-black bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded">
+                    <span className="text-sm font-black font-mono text-slate-900 dark:text-white print:text-black bg-slate-50 dark:bg-slate-900 print:bg-transparent print:border print:border-slate-300 px-2 py-1 rounded">
                       {formatCurrency(txn.vat_amount)}
                     </span>
                   </td>
