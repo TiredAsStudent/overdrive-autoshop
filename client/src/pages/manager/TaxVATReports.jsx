@@ -16,6 +16,7 @@ import {
   FileText,
   AlertTriangle,
   Scale,
+  BookOpen,
 } from "lucide-react";
 
 import { taxVatReportService } from "../../services/manager/taxVatReport.service";
@@ -221,6 +222,16 @@ const TaxVATReports = () => {
             className="print:bg-transparent print:border-slate-300 print:text-black"
           />
         );
+
+      case "JOURNAL_ENTRY":
+        return (
+          <StatusBadge
+            label="Journal Entry"
+            variant="default"
+            icon={BookOpen}
+            className="print:bg-transparent print:border-slate-300 print:text-black"
+          />
+        );
       default:
         return <span className="text-[9px] text-slate-400">{source}</span>;
     }
@@ -232,6 +243,8 @@ const TaxVATReports = () => {
     if (module === "BILLS") targetType = "BILL";
     if (module === "MANUAL_EXPENSE" || module === "OCR_RECEIPT")
       targetType = "EXPENSE";
+
+    if (module === "JOURNAL_ENTRY") targetType = "JOURNAL_ENTRY";
 
     setSelectedSource({
       type: targetType,
@@ -609,6 +622,8 @@ const TaxVATReports = () => {
                 <option value="BILLS">Supplier Bills</option>
                 <option value="MANUAL_EXPENSE">Manual Expenses</option>
                 <option value="OCR_RECEIPT">OCR Receipts</option>
+
+                <option value="JOURNAL_ENTRY">Journal Entries</option>
               </select>
             </div>
           </div>

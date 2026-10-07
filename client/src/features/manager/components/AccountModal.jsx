@@ -332,7 +332,7 @@ const AccountModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       htmlFor="is_vat_applicable"
                       className={`text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 select-none ${isSystem ? "cursor-not-allowed" : "cursor-pointer"}`}
                     >
-                      Subject to VAT (Automated Posting)
+                      Subject to VAT (Tax Reporting)
                     </label>
                   </div>
                 </div>
