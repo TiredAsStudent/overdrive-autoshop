@@ -320,7 +320,7 @@ const TaxVATReports = () => {
 
         <div className="flex gap-2">
           <ActionButton
-            label="Export CSV"
+            label="Export"
             icon={Download}
             onClick={() =>
               showToast("CSV export queued for reporting phase.", "info")
