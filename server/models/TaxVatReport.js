@@ -85,12 +85,48 @@ class TaxVatReport {
           AND ($1::int IS NULL OR e.branch_id = $1::int)
           AND ($2::date IS NULL OR e.expense_date >= $2::date)
           AND ($3::date IS NULL OR e.expense_date <= $3::date)
+
+        UNION ALL
+
+        -- 5. MANUAL JOURNAL ENTRIES (Direct General Ledger VAT Adjustments)
+        SELECT 
+          'JOURNAL_ENTRY' as source_module, 
+          je.id as source_id, 
+          je.entry_date as transaction_date, 
+          je.journal_number as reference_number,
+          'Manual Tax Adjustment' as counterparty_name, 
+          CASE 
+            WHEN ji.account_id = ss.output_vat_account_id THEN 'OUTPUT'
+            ELSE 'INPUT'
+          END as vat_type,
+          0 as taxable_base, -- Taxable base is N/A for manual direct GL adjustments
+          CASE 
+            -- Output VAT (Liability): Credit increases liability, Debit decreases liability.
+            WHEN ji.account_id = ss.output_vat_account_id THEN 
+              CASE WHEN ji.entry_type = 'CREDIT' THEN ji.amount ELSE -ji.amount END
+            -- Input VAT (Asset): Debit increases asset, Credit decreases asset.
+            ELSE 
+              CASE WHEN ji.entry_type = 'DEBIT' THEN ji.amount ELSE -ji.amount END
+          END as vat_amount, 
+          je.branch_id, 
+          je.status::text
+        FROM journal_entries je
+        JOIN journal_entry_items ji ON je.id = ji.journal_entry_id
+        CROSS JOIN system_settings ss
+        WHERE je.status = 'POSTED' 
+          AND ss.id = 1
+          AND (ss.output_vat_account_id IS NOT NULL OR ss.input_vat_account_id IS NOT NULL)
+          AND ji.account_id IN (ss.output_vat_account_id, ss.input_vat_account_id)
+          AND ($1::int IS NULL OR je.branch_id = $1::int)
+          AND ($2::date IS NULL OR je.entry_date >= $2::date)
+          AND ($3::date IS NULL OR je.entry_date <= $3::date)
       ),
       FilteredVat AS (
         SELECT r.*, b.branch_name 
         FROM RawVatTransactions r
         JOIN branches b ON r.branch_id = b.id
-        WHERE ($4::text IS NULL OR r.source_module = $4::text)
+        WHERE r.vat_amount != 0 -- Defensively filters out offsetting/zeroed manual journal adjustments
+          AND ($4::text IS NULL OR r.source_module = $4::text)
           AND ($5::text IS NULL OR r.reference_number ILIKE $5 OR r.counterparty_name ILIKE $5)
       )
     `;
