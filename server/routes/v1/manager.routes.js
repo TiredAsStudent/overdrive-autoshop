@@ -25,6 +25,7 @@ const InventoryReportController = require("../../controllers/manager/inventoryRe
 const ReceivablesReportController = require("../../controllers/manager/receivablesReport.controller");
 const PayablesReportController = require("../../controllers/manager/payablesReport.controller");
 const TaxVatReportController = require("../../controllers/manager/taxVatReport.controller");
+const ManagerDashboardController = require("../../controllers/manager/dashboard.controller");
 
 // Services
 const SettingsService = require("../../services/sysadmin/settings.service");
@@ -134,12 +135,24 @@ const {
 const {
   getTaxVatReportSchema,
 } = require("../../validations/manager/taxVatReport.schema");
+const {
+  getManagerDashboardSchema,
+} = require("../../validations/manager/dashboard.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Manager & Admin Access
 // ==========================================
 router.use(verifyToken, requireRole(ROLES.MANAGER, ROLES.ADMIN));
 router.use(branchGuard);
+
+// ==========================================
+// MODULE: DASHBOARD OVERVIEW
+// ==========================================
+router.get(
+  "/dashboard/overview",
+  validate(getManagerDashboardSchema),
+  ManagerDashboardController.getOverview,
+);
 
 // ==========================================
 // MODULE: SERVICE CATALOG
