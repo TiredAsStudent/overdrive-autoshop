@@ -164,7 +164,7 @@ const Overview = () => {
     return num < 0 ? `-₱${formatted}` : `₱${formatted}`;
   };
 
-  const getSourceBadge = (moduleStr, status) => {
+  const getSourceBadge = (moduleStr) => {
     switch (moduleStr) {
       case "INVOICE":
         return <StatusBadge label="Invoice" variant="info" icon={FileText} />;
@@ -281,7 +281,7 @@ const Overview = () => {
                 {data.alerts.approvals.pending_pos > 0 && (
                   <button
                     onClick={() =>
-                      navigate("/manager/approvals/purchase-orders")
+                      navigate("/manager/approvals/purchase-order-approvals")
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
                   >
@@ -303,7 +303,9 @@ const Overview = () => {
                 )}
                 {data.alerts.approvals.pending_ocr_receipts > 0 && (
                   <button
-                    onClick={() => navigate("/manager/approvals/receipts")}
+                    onClick={() =>
+                      navigate("/manager/approvals/receipt-approvals")
+                    }
                     className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
                   >
                     <ScanText
@@ -324,7 +326,9 @@ const Overview = () => {
                 )}
                 {data.alerts.approvals.pending_manual_expenses > 0 && (
                   <button
-                    onClick={() => navigate("/manager/approvals/expenses")}
+                    onClick={() =>
+                      navigate("/manager/approvals/expense-approvals")
+                    }
                     className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
                   >
                     <ReceiptText
@@ -345,7 +349,9 @@ const Overview = () => {
                 )}
                 {data.alerts.approvals.pending_stock_adjustments > 0 && (
                   <button
-                    onClick={() => navigate("/manager/adjustments")}
+                    onClick={() =>
+                      navigate("/manager/inventory/stock-adjustments")
+                    }
                     className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
                   >
                     <Scale
@@ -369,7 +375,9 @@ const Overview = () => {
                 {data.alerts.inventory.out_of_stock_count > 0 && (
                   <button
                     onClick={() =>
-                      navigate("/manager/inventory?stock_status=out_of_stock")
+                      navigate(
+                        "/manager/inventory/stock-management?stock_status=out_of_stock",
+                      )
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
                   >
@@ -392,7 +400,9 @@ const Overview = () => {
                 {data.alerts.inventory.low_stock_count > 0 && (
                   <button
                     onClick={() =>
-                      navigate("/manager/inventory?stock_status=low_stock")
+                      navigate(
+                        "/manager/inventory/stock-management?stock_status=low_stock",
+                      )
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
                   >
@@ -416,7 +426,7 @@ const Overview = () => {
                   <button
                     onClick={() =>
                       navigate(
-                        "/manager/reports/receivables?payment_status=OVERDUE",
+                        "/manager/reports/receivables-reports?payment_status=OVERDUE",
                       )
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
@@ -441,7 +451,7 @@ const Overview = () => {
                   <button
                     onClick={() =>
                       navigate(
-                        "/manager/reports/payables?payment_status=OVERDUE",
+                        "/manager/reports/payables-reports?payment_status=OVERDUE",
                       )
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
@@ -474,7 +484,7 @@ const Overview = () => {
               icon={TrendingUp}
               variant="success"
               className="cursor-pointer hover:border-emerald-400 transition-colors"
-              onClick={() => navigate("/manager/reports/sales")}
+              onClick={() => navigate("/manager/reports/sales-reports")}
             />
             <StatCard
               title="Operating Expenses"
@@ -482,7 +492,7 @@ const Overview = () => {
               icon={TrendingDown}
               variant="danger"
               className="cursor-pointer hover:border-rose-400 transition-colors"
-              onClick={() => navigate("/manager/reports/expenses")}
+              onClick={() => navigate("/manager/reports/expense-reports")}
             />
             <StatCard
               title="Net Operating Margin"
@@ -500,7 +510,7 @@ const Overview = () => {
               icon={Users}
               variant="warning"
               className="cursor-pointer hover:border-amber-400 transition-colors"
-              onClick={() => navigate("/manager/reports/receivables")}
+              onClick={() => navigate("/manager/reports/receivables-reports")}
             />
             <StatCard
               title="Accounts Payable"
@@ -508,7 +518,7 @@ const Overview = () => {
               icon={Store}
               variant="danger"
               className="cursor-pointer hover:border-rose-400 transition-colors"
-              onClick={() => navigate("/manager/reports/payables")}
+              onClick={() => navigate("/manager/reports/payables-reports")}
             />
             <StatCard
               title="Inventory Asset Value"
@@ -516,7 +526,7 @@ const Overview = () => {
               icon={Boxes}
               variant="info"
               className="cursor-pointer hover:border-blue-400 transition-colors"
-              onClick={() => navigate("/manager/reports/inventory")}
+              onClick={() => navigate("/manager/reports/inventory-reports")}
             />
           </div>
 
