@@ -7,7 +7,7 @@ class ManagerDashboard {
     let paramIdx = 1;
 
     if (filters.branch && filters.branch !== "all") {
-      conditions.push(`${prefix}branch_id = $${paramIdx}`);
+      conditions.push(`${prefix}branch_id = $${paramIdx}::int`);
       values.push(parseInt(filters.branch, 10));
       paramIdx++;
     }
@@ -34,11 +34,11 @@ class ManagerDashboard {
     const expFilters = this.buildFilterConditions(filters, "expense_date", "");
     const billFilters = this.buildFilterConditions(filters, "bill_date", "b.");
 
-    // For inventory, we only filter by branch, ignoring date boundaries for current asset valuation
+    // Inventory only filters by branch for real-time asset snapshot
     const stockFilters =
       filters.branch && filters.branch !== "all"
         ? {
-            whereClause: `WHERE bi.branch_id = $1`,
+            whereClause: `WHERE bi.branch_id = $1::int`,
             values: [parseInt(filters.branch, 10)],
           }
         : { whereClause: "", values: [] };
@@ -108,10 +108,15 @@ class ManagerDashboard {
   }
 
   static async getActionAlerts(branchFilter) {
-    const branchCondition =
-      branchFilter && branchFilter !== "all"
-        ? `AND branch_id = ${parseInt(branchFilter, 10)}`
-        : "";
+    const values = [];
+    let branchCondition = "";
+    let stockBranchCondition = "";
+
+    if (branchFilter && branchFilter !== "all") {
+      branchCondition = `AND branch_id = $1::int`;
+      stockBranchCondition = `WHERE bi.branch_id = $1::int`;
+      values.push(parseInt(branchFilter, 10));
+    }
 
     // 1. Pending Transaction Counts
     const sqlPending = `
@@ -123,10 +128,6 @@ class ManagerDashboard {
     `;
 
     // 2. Inventory Shortage Alerts
-    const stockBranchCondition =
-      branchFilter && branchFilter !== "all"
-        ? `WHERE bi.branch_id = ${parseInt(branchFilter, 10)}`
-        : "";
     const sqlStock = `
       SELECT 
         COALESCE(SUM(CASE WHEN bi.quantity = 0 THEN 1 ELSE 0 END), 0) as out_of_stock_count,
@@ -144,9 +145,9 @@ class ManagerDashboard {
     `;
 
     const [pendingRes, stockRes, overdueRes] = await Promise.all([
-      query(sqlPending),
-      query(sqlStock),
-      query(sqlOverdue),
+      query(sqlPending, values),
+      query(sqlStock, values),
+      query(sqlOverdue, values),
     ]);
 
     return {
@@ -157,12 +158,30 @@ class ManagerDashboard {
   }
 
   static async getBranchPerformanceDistribution(filters) {
-    const invFilters = this.buildFilterConditions(filters, "created_at", "i.");
-    const expFilters = this.buildFilterConditions(
-      filters,
-      "expense_date",
-      "e.",
-    );
+    const values = [];
+    let paramIdx = 1;
+    let dateConditionI = "";
+    let dateConditionE = "";
+
+    if (filters.start_date) {
+      dateConditionI += ` AND i.created_at >= $${paramIdx}::timestamp`;
+      dateConditionE += ` AND e.expense_date >= $${paramIdx}::timestamp`;
+      values.push(`${filters.start_date} 00:00:00`);
+      paramIdx++;
+    }
+    if (filters.end_date) {
+      dateConditionI += ` AND i.created_at <= $${paramIdx}::timestamp`;
+      dateConditionE += ` AND e.expense_date <= $${paramIdx}::timestamp`;
+      values.push(`${filters.end_date} 23:59:59.999`);
+      paramIdx++;
+    }
+
+    let branchCondition = "";
+    if (filters.branch && filters.branch !== "all") {
+      branchCondition = ` AND b.id = $${paramIdx}::int`;
+      values.push(parseInt(filters.branch, 10));
+      paramIdx++;
+    }
 
     const sql = `
       SELECT 
@@ -173,31 +192,32 @@ class ManagerDashboard {
           FROM invoices i
           JOIN invoice_items ii ON i.id = ii.invoice_id
           WHERE i.branch_id = b.id AND i.status != 'VOID'
-            ${filters.start_date ? `AND i.created_at >= '${filters.start_date} 00:00:00'` : ""}
-            ${filters.end_date ? `AND i.created_at <= '${filters.end_date} 23:59:59'` : ""}
+          ${dateConditionI}
         ), 0) as total_sales,
         COALESCE((
           SELECT SUM(e.total_amount)
           FROM expenses e
           WHERE e.branch_id = b.id AND e.status = 'APPROVED'
-            ${filters.start_date ? `AND e.expense_date >= '${filters.start_date} 00:00:00'` : ""}
-            ${filters.end_date ? `AND e.expense_date <= '${filters.end_date} 23:59:59'` : ""}
+          ${dateConditionE}
         ), 0) as total_expenses
       FROM branches b
       WHERE b.is_active = TRUE
-      ${filters.branch && filters.branch !== "all" ? `AND b.id = ${parseInt(filters.branch, 10)}` : ""}
+      ${branchCondition}
       ORDER BY total_sales DESC
     `;
 
-    const result = await query(sql);
+    const result = await query(sql, values);
     return result.rows;
   }
 
   static async getRecentActivityFeed(branchFilter) {
-    const branchCondition =
-      branchFilter && branchFilter !== "all"
-        ? `AND branch_id = ${parseInt(branchFilter, 10)}`
-        : "";
+    const values = [];
+    let branchCondition = "";
+
+    if (branchFilter && branchFilter !== "all") {
+      branchCondition = `AND branch_id = $1::int`;
+      values.push(parseInt(branchFilter, 10));
+    }
 
     const sql = `
       SELECT 'INVOICE' as module, invoice_number as reference, created_at as activity_date, grand_total as amount, status::text, branch_id
@@ -218,7 +238,7 @@ class ManagerDashboard {
       LIMIT 10
     `;
 
-    const result = await query(sql);
+    const result = await query(sql, values);
     return result.rows;
   }
 }
