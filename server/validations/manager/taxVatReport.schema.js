@@ -14,7 +14,14 @@ const getTaxVatReportSchema = z.object({
       search: z.string().optional(),
       branch: z.string().optional().default("all"),
       source_module: z
-        .enum(["SALES", "BILLS", "MANUAL_EXPENSE", "OCR_RECEIPT", "all"])
+        .enum([
+          "SALES",
+          "BILLS",
+          "MANUAL_EXPENSE",
+          "OCR_RECEIPT",
+          "JOURNAL_ENTRY",
+          "all",
+        ])
         .optional()
         .default("all"),
       start_date: z
