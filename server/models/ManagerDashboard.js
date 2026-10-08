@@ -33,8 +33,13 @@ class ManagerDashboard {
     const invFilters = this.buildFilterConditions(filters, "created_at", "i.");
     const expFilters = this.buildFilterConditions(filters, "expense_date", "");
     const billFilters = this.buildFilterConditions(filters, "bill_date", "b.");
+    const cogsFilters = this.buildFilterConditions(
+      filters,
+      "created_at",
+      "im.",
+    );
 
-    // Inventory only filters by branch for real-time asset snapshot
+    // Inventory only filters by branch for real-time asset snapshot (ignoring dates)
     const stockFilters =
       filters.branch && filters.branch !== "all"
         ? {
@@ -43,64 +48,76 @@ class ManagerDashboard {
           }
         : { whereClause: "", values: [] };
 
-    // Parallel execution for the 5 fundamental KPI pillars
-    const [salesRes, expenseRes, arRes, apRes, stockRes] = await Promise.all([
-      // Total Net Sales
-      query(
-        `
+    // Parallel execution for the fundamental KPI pillars
+    const [salesRes, expenseRes, cogsRes, arRes, apRes, stockRes] =
+      await Promise.all([
+        // Total Net Sales
+        query(
+          `
         SELECT COALESCE(SUM(ii.quantity * ii.recorded_selling_price - ii.discount_amount), 0) as total_sales
         FROM invoices i
         JOIN invoice_items ii ON i.id = ii.invoice_id
         ${invFilters.whereClause ? invFilters.whereClause + " AND " : "WHERE "} i.status != 'VOID'
       `,
-        invFilters.values,
-      ),
+          invFilters.values,
+        ),
 
-      // Total Operating Expenses (Manual & OCR)
-      query(
-        `
-        SELECT COALESCE(SUM(total_amount), 0) as total_expenses
+        // Total Operating Expenses (Net of VAT)
+        query(
+          `
+        SELECT COALESCE(SUM(subtotal), 0) as total_expenses
         FROM expenses 
         ${expFilters.whereClause ? expFilters.whereClause + " AND " : "WHERE "} status = 'APPROVED'
       `,
-        expFilters.values,
-      ),
+          expFilters.values,
+        ),
 
-      // Accounts Receivable (Outstanding balances)
-      query(
-        `
+        // Total Cost of Goods Sold (Shrinkage & Consumption)
+        query(
+          `
+        SELECT COALESCE(SUM((im.quantity_deducted - im.quantity_added) * im.recorded_unit_cost), 0) as total_cogs
+        FROM inventory_movements im
+        ${cogsFilters.whereClause ? cogsFilters.whereClause + " AND " : "WHERE "} im.transaction_type IN ('MANUAL_ADJUSTMENT', 'SALES_INVOICE')
+      `,
+          cogsFilters.values,
+        ),
+
+        // Accounts Receivable (Outstanding balances)
+        query(
+          `
         SELECT COALESCE(SUM(grand_total - amount_paid), 0) as total_ar
         FROM invoices i
         ${invFilters.whereClause ? invFilters.whereClause + " AND " : "WHERE "} i.status IN ('UNPAID', 'PARTIALLY_PAID', 'OVERDUE')
       `,
-        invFilters.values,
-      ),
+          invFilters.values,
+        ),
 
-      // Accounts Payable (Outstanding balances)
-      query(
-        `
+        // Accounts Payable (Outstanding balances)
+        query(
+          `
         SELECT COALESCE(SUM(b.grand_total - b.amount_paid), 0) as total_ap
         FROM bills b
         ${billFilters.whereClause ? billFilters.whereClause + " AND " : "WHERE "} b.status IN ('RECEIVED', 'CLOSED') AND b.payment_status IN ('UNPAID', 'PARTIALLY_PAID')
       `,
-        billFilters.values,
-      ),
+          billFilters.values,
+        ),
 
-      // Total Inventory Valuation
-      query(
-        `
+        // Total Inventory Asset Valuation
+        query(
+          `
         SELECT COALESCE(SUM(bi.quantity * i.unit_cost), 0) as total_inventory_value
         FROM branch_inventory bi
         JOIN inventory_items i ON bi.item_id = i.id
         ${stockFilters.whereClause}
       `,
-        stockFilters.values,
-      ),
-    ]);
+          stockFilters.values,
+        ),
+      ]);
 
     return {
       total_sales: parseFloat(salesRes.rows[0].total_sales),
       total_expenses: parseFloat(expenseRes.rows[0].total_expenses),
+      total_cogs: parseFloat(cogsRes.rows[0].total_cogs),
       total_ar: parseFloat(arRes.rows[0].total_ar),
       total_ap: parseFloat(apRes.rows[0].total_ap),
       total_inventory_value: parseFloat(stockRes.rows[0].total_inventory_value),
@@ -195,11 +212,17 @@ class ManagerDashboard {
           ${dateConditionI}
         ), 0) as total_sales,
         COALESCE((
-          SELECT SUM(e.total_amount)
+          SELECT SUM(e.subtotal)
           FROM expenses e
           WHERE e.branch_id = b.id AND e.status = 'APPROVED'
           ${dateConditionE}
-        ), 0) as total_expenses
+        ), 0) as total_expenses,
+        COALESCE((
+          SELECT SUM((im.quantity_deducted - im.quantity_added) * im.recorded_unit_cost)
+          FROM inventory_movements im
+          WHERE im.branch_id = b.id AND im.transaction_type IN ('MANUAL_ADJUSTMENT', 'SALES_INVOICE')
+          ${dateConditionI.replace(/i\./g, "im.")}
+        ), 0) as total_cogs
       FROM branches b
       WHERE b.is_active = TRUE
       ${branchCondition}

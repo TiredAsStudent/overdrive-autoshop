@@ -16,13 +16,15 @@ class ManagerDashboardService {
       ]);
 
     // 2. Mathematical Margin Computations
-    const netOperatingMargin = kpis.total_sales - kpis.total_expenses;
+    // Margin matches Income Statement exactly: Net Sales - COGS - OpEx(Subtotal)
+    const netOperatingMargin =
+      kpis.total_sales - kpis.total_cogs - kpis.total_expenses;
 
     // 3. Construct Payload
     const reportData = {
       kpis: {
         total_sales: kpis.total_sales,
-        total_expenses: kpis.total_expenses,
+        total_expenses: kpis.total_expenses, // Transmits strictly OpEx (Net of VAT) to the UI
         net_operating_margin: netOperatingMargin,
         total_ar: kpis.total_ar,
         total_ap: kpis.total_ap,
@@ -48,13 +50,20 @@ class ManagerDashboardService {
         },
       },
       distributions: {
-        branch_performance: branchPerformance.map((b) => ({
-          branch_id: b.branch_id,
-          branch_name: b.branch_name,
-          total_sales: parseFloat(b.total_sales),
-          total_expenses: parseFloat(b.total_expenses),
-          net_margin: parseFloat(b.total_sales) - parseFloat(b.total_expenses),
-        })),
+        branch_performance: branchPerformance.map((b) => {
+          const sales = parseFloat(b.total_sales);
+          const opex = parseFloat(b.total_expenses);
+          const cogs = parseFloat(b.total_cogs);
+          const totalDeductions = opex + cogs; // Combines COGS + OpEx for accurate 2-bar "Rev vs Exp" graph
+
+          return {
+            branch_id: b.branch_id,
+            branch_name: b.branch_name,
+            total_sales: sales,
+            total_expenses: totalDeductions,
+            net_margin: sales - totalDeductions,
+          };
+        }),
       },
       recent_activities: recentActivities.map((r) => ({
         module: r.module,
@@ -76,7 +85,7 @@ class ManagerDashboardService {
       "system_settings",
       null,
       null,
-      { filters },
+      { filters, derived_margin: netOperatingMargin },
     );
 
     return reportData;
