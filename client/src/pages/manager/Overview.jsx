@@ -271,7 +271,7 @@ const Overview = () => {
         <div className="space-y-6 sm:space-y-8">
           {/* ACTIONABLE ALERT CENTER */}
           {hasAlerts && (
-            <div className="bg-white dark:bg-slate-800 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
                 <AlertTriangle size={14} className="text-amber-500" /> Action
                 Required Center
@@ -478,61 +478,79 @@ const Overview = () => {
 
           {/* KPI GRID */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <StatCard
-              title="Net Sales Revenue"
-              value={formatCurrency(data.kpis.total_sales)}
-              icon={TrendingUp}
-              variant="success"
-              className="cursor-pointer hover:border-emerald-400 transition-colors"
+            <div
               onClick={() => navigate("/manager/reports/sales-reports")}
-            />
-            <StatCard
-              title="Operating Expenses"
-              value={formatCurrency(data.kpis.total_expenses)}
-              icon={TrendingDown}
-              variant="danger"
-              className="cursor-pointer hover:border-rose-400 transition-colors"
+              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+            >
+              <StatCard
+                title="Net Sales Revenue"
+                value={formatCurrency(data.kpis.total_sales)}
+                icon={TrendingUp}
+                variant="success"
+              />
+            </div>
+            <div
               onClick={() => navigate("/manager/reports/expense-reports")}
-            />
-            <StatCard
-              title="Net Operating Margin"
-              value={formatCurrency(data.kpis.net_operating_margin)}
-              icon={Calculator}
-              variant={
-                data.kpis.net_operating_margin >= 0 ? "success" : "danger"
-              }
-              className="cursor-pointer hover:border-blue-400 transition-colors"
+              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+            >
+              <StatCard
+                title="Operating Expenses"
+                value={formatCurrency(data.kpis.total_expenses)}
+                icon={TrendingDown}
+                variant="danger"
+              />
+            </div>
+            <div
               onClick={() => navigate("/manager/reports/income-statement")}
-            />
-            <StatCard
-              title="Accounts Receivable"
-              value={formatCurrency(data.kpis.total_ar)}
-              icon={Users}
-              variant="warning"
-              className="cursor-pointer hover:border-amber-400 transition-colors"
+              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+            >
+              <StatCard
+                title="Net Operating Margin"
+                value={formatCurrency(data.kpis.net_operating_margin)}
+                icon={Calculator}
+                variant={
+                  data.kpis.net_operating_margin >= 0 ? "success" : "danger"
+                }
+              />
+            </div>
+            <div
               onClick={() => navigate("/manager/reports/receivables-reports")}
-            />
-            <StatCard
-              title="Accounts Payable"
-              value={formatCurrency(data.kpis.total_ap)}
-              icon={Store}
-              variant="danger"
-              className="cursor-pointer hover:border-rose-400 transition-colors"
+              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+            >
+              <StatCard
+                title="Accounts Receivable"
+                value={formatCurrency(data.kpis.total_ar)}
+                icon={Users}
+                variant="warning"
+              />
+            </div>
+            <div
               onClick={() => navigate("/manager/reports/payables-reports")}
-            />
-            <StatCard
-              title="Inventory Asset Value"
-              value={formatCurrency(data.kpis.total_inventory_value)}
-              icon={Boxes}
-              variant="info"
-              className="cursor-pointer hover:border-blue-400 transition-colors"
+              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+            >
+              <StatCard
+                title="Accounts Payable"
+                value={formatCurrency(data.kpis.total_ap)}
+                icon={Store}
+                variant="danger"
+              />
+            </div>
+            <div
               onClick={() => navigate("/manager/reports/inventory-reports")}
-            />
+              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+            >
+              <StatCard
+                title="Inventory Asset Value"
+                value={formatCurrency(data.kpis.total_inventory_value)}
+                icon={Boxes}
+                variant="info"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
             {/* BRANCH PERFORMANCE DISTRIBUTION */}
-            <div className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
+            <div className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                   <Building2 size={14} className="text-amber-500" /> Branch
