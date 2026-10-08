@@ -339,7 +339,7 @@ const Overview = () => {
                       {data.alerts.approvals.pending_manual_expenses}
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-500 mt-1 flex items-center justify-between w-full">
-                      Exp Approvals{" "}
+                      Expense Approvals{" "}
                       <ArrowRight
                         size={12}
                         className="opacity-0 group-hover:opacity-100 transition-opacity"
@@ -362,7 +362,7 @@ const Overview = () => {
                       {data.alerts.approvals.pending_stock_adjustments}
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-500 mt-1 flex items-center justify-between w-full">
-                      Stock Audits{" "}
+                      Stock Adjustments{" "}
                       <ArrowRight
                         size={12}
                         className="opacity-0 group-hover:opacity-100 transition-opacity"
@@ -642,7 +642,7 @@ const Overview = () => {
                   "Date & Time",
                   "Module / Activity",
                   "Reference",
-                  "Amount",
+                  "Amount (₱)",
                   "Status",
                 ]}
                 data={data.recent_activities}
@@ -694,7 +694,7 @@ const Overview = () => {
                         <span
                           className={`text-sm font-black font-mono ${isNegative ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"}`}
                         >
-                          {isNegative ? "-" : ""}₱
+                          {isNegative ? "-" : ""}
                           {parseFloat(activity.amount).toLocaleString(
                             undefined,
                             {
@@ -724,7 +724,7 @@ const Overview = () => {
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
         onClear={resetFilters}
-        title="Report Parameters"
+        title="Dashboard Parameters"
       >
         <div className="space-y-5">
           <div>
