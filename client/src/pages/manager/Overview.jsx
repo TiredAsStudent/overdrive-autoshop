@@ -155,6 +155,24 @@ const Overview = () => {
     setIsFilterModalOpen(false);
   };
 
+  // --- Dynamic Deep Link Handoff Engine ---
+  const handleDeepLink = (basePath, extraParams = {}) => {
+    const params = new URLSearchParams();
+
+    // Inject global dashboard scope
+    if (branchFilter && branchFilter !== "all")
+      params.append("branch", branchFilter);
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+
+    // Inject alert-specific parameters
+    Object.entries(extraParams).forEach(([key, value]) => {
+      params.append(key, value);
+    });
+
+    navigate(`${basePath}?${params.toString()}`);
+  };
+
   const formatCurrency = (amount) => {
     const num = parseFloat(amount) || 0;
     const formatted = Math.abs(num).toLocaleString(undefined, {
@@ -281,7 +299,9 @@ const Overview = () => {
                 {data.alerts.approvals.pending_pos > 0 && (
                   <button
                     onClick={() =>
-                      navigate("/manager/approvals/purchase-order-approvals")
+                      handleDeepLink(
+                        "/manager/approvals/purchase-order-approvals",
+                      )
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
                   >
@@ -304,7 +324,7 @@ const Overview = () => {
                 {data.alerts.approvals.pending_ocr_receipts > 0 && (
                   <button
                     onClick={() =>
-                      navigate("/manager/approvals/receipt-approvals")
+                      handleDeepLink("/manager/approvals/receipt-approvals")
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
                   >
@@ -327,7 +347,7 @@ const Overview = () => {
                 {data.alerts.approvals.pending_manual_expenses > 0 && (
                   <button
                     onClick={() =>
-                      navigate("/manager/approvals/expense-approvals")
+                      handleDeepLink("/manager/approvals/expense-approvals")
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
                   >
@@ -350,7 +370,7 @@ const Overview = () => {
                 {data.alerts.approvals.pending_stock_adjustments > 0 && (
                   <button
                     onClick={() =>
-                      navigate("/manager/inventory/stock-adjustments")
+                      handleDeepLink("/manager/inventory/stock-adjustments")
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
                   >
@@ -375,9 +395,9 @@ const Overview = () => {
                 {data.alerts.inventory.out_of_stock_count > 0 && (
                   <button
                     onClick={() =>
-                      navigate(
-                        "/manager/inventory/stock-management?stock_status=out_of_stock",
-                      )
+                      handleDeepLink("/manager/inventory/stock-management", {
+                        stock_status: "out_of_stock",
+                      })
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
                   >
@@ -400,9 +420,9 @@ const Overview = () => {
                 {data.alerts.inventory.low_stock_count > 0 && (
                   <button
                     onClick={() =>
-                      navigate(
-                        "/manager/inventory/stock-management?stock_status=low_stock",
-                      )
+                      handleDeepLink("/manager/inventory/stock-management", {
+                        stock_status: "low_stock",
+                      })
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
                   >
@@ -425,9 +445,9 @@ const Overview = () => {
                 {data.alerts.financial.overdue_invoices > 0 && (
                   <button
                     onClick={() =>
-                      navigate(
-                        "/manager/reports/receivables-reports?payment_status=OVERDUE",
-                      )
+                      handleDeepLink("/manager/reports/receivables-reports", {
+                        payment_status: "OVERDUE",
+                      })
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
                   >
@@ -450,9 +470,9 @@ const Overview = () => {
                 {data.alerts.financial.overdue_bills > 0 && (
                   <button
                     onClick={() =>
-                      navigate(
-                        "/manager/reports/payables-reports?payment_status=OVERDUE",
-                      )
+                      handleDeepLink("/manager/reports/payables-reports", {
+                        payment_status: "OVERDUE",
+                      })
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
                   >
@@ -479,7 +499,7 @@ const Overview = () => {
           {/* KPI GRID */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div
-              onClick={() => navigate("/manager/reports/sales-reports")}
+              onClick={() => handleDeepLink("/manager/reports/sales-reports")}
               className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
             >
               <StatCard
@@ -490,7 +510,7 @@ const Overview = () => {
               />
             </div>
             <div
-              onClick={() => navigate("/manager/reports/expense-reports")}
+              onClick={() => handleDeepLink("/manager/reports/expense-reports")}
               className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
             >
               <StatCard
@@ -501,7 +521,9 @@ const Overview = () => {
               />
             </div>
             <div
-              onClick={() => navigate("/manager/reports/income-statement")}
+              onClick={() =>
+                handleDeepLink("/manager/reports/income-statement")
+              }
               className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
             >
               <StatCard
@@ -514,7 +536,9 @@ const Overview = () => {
               />
             </div>
             <div
-              onClick={() => navigate("/manager/reports/receivables-reports")}
+              onClick={() =>
+                handleDeepLink("/manager/reports/receivables-reports")
+              }
               className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
             >
               <StatCard
@@ -525,7 +549,9 @@ const Overview = () => {
               />
             </div>
             <div
-              onClick={() => navigate("/manager/reports/payables-reports")}
+              onClick={() =>
+                handleDeepLink("/manager/reports/payables-reports")
+              }
               className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
             >
               <StatCard
@@ -536,7 +562,9 @@ const Overview = () => {
               />
             </div>
             <div
-              onClick={() => navigate("/manager/reports/inventory-reports")}
+              onClick={() =>
+                handleDeepLink("/manager/reports/inventory-reports")
+              }
               className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
             >
               <StatCard
