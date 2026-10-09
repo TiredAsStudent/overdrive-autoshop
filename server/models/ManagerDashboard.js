@@ -31,7 +31,12 @@ class ManagerDashboard {
 
   static async getExecutiveKPIs(filters) {
     const invFilters = this.buildFilterConditions(filters, "created_at", "i.");
-    const expFilters = this.buildFilterConditions(filters, "expense_date", "");
+    const expFilters = this.buildFilterConditions(
+      filters,
+      "expense_date",
+      "e.",
+    );
+    const jeFilters = this.buildFilterConditions(filters, "entry_date", "je.");
     const billFilters = this.buildFilterConditions(filters, "bill_date", "b.");
     const cogsFilters = this.buildFilterConditions(
       filters,
@@ -48,79 +53,117 @@ class ManagerDashboard {
           }
         : { whereClause: "", values: [] };
 
-    // Parallel execution for the fundamental KPI pillars
-    const [salesRes, expenseRes, cogsRes, arRes, apRes, stockRes] =
-      await Promise.all([
-        // Total Net Sales
-        query(
-          `
-        SELECT COALESCE(SUM(ii.quantity * ii.recorded_selling_price - ii.discount_amount), 0) as total_sales
+    // Parallel execution for fundamental KPI pillars
+    const [
+      salesRes,
+      jeSalesRes,
+      expenseRes,
+      jeExpenseRes,
+      cogsRes,
+      arRes,
+      apRes,
+      stockRes,
+    ] = await Promise.all([
+      // 1. Total Net Sales (Invoices)
+      query(
+        `
+        SELECT COALESCE(SUM(ii.quantity * ii.recorded_selling_price - ii.discount_amount), 0) as total
         FROM invoices i
         JOIN invoice_items ii ON i.id = ii.invoice_id
         ${invFilters.whereClause ? invFilters.whereClause + " AND " : "WHERE "} i.status != 'VOID'
       `,
-          invFilters.values,
-        ),
+        invFilters.values,
+      ),
 
-        // Total Operating Expenses (Net of VAT)
-        query(
-          `
-        SELECT COALESCE(SUM(subtotal), 0) as total_expenses
-        FROM expenses 
-        ${expFilters.whereClause ? expFilters.whereClause + " AND " : "WHERE "} status = 'APPROVED'
+      // 2. Adjusting Journal Entries (Income)
+      query(
+        `
+        SELECT COALESCE(SUM(CASE WHEN ji.entry_type = 'CREDIT' THEN ji.amount ELSE -ji.amount END), 0) as total
+        FROM journal_entries je
+        JOIN journal_entry_items ji ON je.id = ji.journal_entry_id
+        JOIN chart_of_accounts coa ON ji.account_id = coa.id
+        ${jeFilters.whereClause ? jeFilters.whereClause + " AND " : "WHERE "} je.status = 'POSTED' AND coa.account_type = 'INCOME'
       `,
-          expFilters.values,
-        ),
+        jeFilters.values,
+      ),
 
-        // Total Cost of Goods Sold (Shrinkage & Consumption)
-        query(
-          `
-        SELECT COALESCE(SUM((im.quantity_deducted - im.quantity_added) * im.recorded_unit_cost), 0) as total_cogs
+      // 3. Total Operating Expenses (Net of VAT)
+      query(
+        `
+        SELECT COALESCE(SUM(e.subtotal), 0) as total
+        FROM expenses e
+        ${expFilters.whereClause ? expFilters.whereClause + " AND " : "WHERE "} e.status = 'APPROVED'
+      `,
+        expFilters.values,
+      ),
+
+      // 4. Adjusting Journal Entries (Expenses)
+      query(
+        `
+        SELECT COALESCE(SUM(CASE WHEN ji.entry_type = 'DEBIT' THEN ji.amount ELSE -ji.amount END), 0) as total
+        FROM journal_entries je
+        JOIN journal_entry_items ji ON je.id = ji.journal_entry_id
+        JOIN chart_of_accounts coa ON ji.account_id = coa.id
+        ${jeFilters.whereClause ? jeFilters.whereClause + " AND " : "WHERE "} je.status = 'POSTED' AND coa.account_type = 'EXPENSE'
+      `,
+        jeFilters.values,
+      ),
+
+      // 5. Total Cost of Goods Sold (Shrinkage & Consumption linked to COA)
+      query(
+        `
+        SELECT COALESCE(SUM((im.quantity_deducted - im.quantity_added) * im.recorded_unit_cost), 0) as total
         FROM inventory_movements im
-        ${cogsFilters.whereClause ? cogsFilters.whereClause + " AND " : "WHERE "} im.transaction_type IN ('MANUAL_ADJUSTMENT', 'SALES_INVOICE')
+        JOIN inventory_items i ON im.item_id = i.id
+        JOIN chart_of_accounts coa ON i.expense_account_id = coa.id
+        ${cogsFilters.whereClause ? cogsFilters.whereClause + " AND " : "WHERE "} im.transaction_type IN ('MANUAL_ADJUSTMENT', 'SALES_INVOICE') AND coa.account_type = 'EXPENSE'
       `,
-          cogsFilters.values,
-        ),
+        cogsFilters.values,
+      ),
 
-        // Accounts Receivable (Outstanding balances)
-        query(
-          `
-        SELECT COALESCE(SUM(grand_total - amount_paid), 0) as total_ar
+      // 6. Accounts Receivable (Outstanding balances)
+      query(
+        `
+        SELECT COALESCE(SUM(grand_total - amount_paid), 0) as total
         FROM invoices i
         ${invFilters.whereClause ? invFilters.whereClause + " AND " : "WHERE "} i.status IN ('UNPAID', 'PARTIALLY_PAID', 'OVERDUE')
       `,
-          invFilters.values,
-        ),
+        invFilters.values,
+      ),
 
-        // Accounts Payable (Outstanding balances)
-        query(
-          `
-        SELECT COALESCE(SUM(b.grand_total - b.amount_paid), 0) as total_ap
+      // 7. Accounts Payable (Outstanding balances)
+      query(
+        `
+        SELECT COALESCE(SUM(b.grand_total - b.amount_paid), 0) as total
         FROM bills b
         ${billFilters.whereClause ? billFilters.whereClause + " AND " : "WHERE "} b.status IN ('RECEIVED', 'CLOSED') AND b.payment_status IN ('UNPAID', 'PARTIALLY_PAID')
       `,
-          billFilters.values,
-        ),
+        billFilters.values,
+      ),
 
-        // Total Inventory Asset Valuation
-        query(
-          `
-        SELECT COALESCE(SUM(bi.quantity * i.unit_cost), 0) as total_inventory_value
+      // 8. Total Inventory Asset Valuation
+      query(
+        `
+        SELECT COALESCE(SUM(bi.quantity * i.unit_cost), 0) as total
         FROM branch_inventory bi
         JOIN inventory_items i ON bi.item_id = i.id
         ${stockFilters.whereClause}
       `,
-          stockFilters.values,
-        ),
-      ]);
+        stockFilters.values,
+      ),
+    ]);
 
     return {
-      total_sales: parseFloat(salesRes.rows[0].total_sales),
-      total_expenses: parseFloat(expenseRes.rows[0].total_expenses),
-      total_cogs: parseFloat(cogsRes.rows[0].total_cogs),
-      total_ar: parseFloat(arRes.rows[0].total_ar),
-      total_ap: parseFloat(apRes.rows[0].total_ap),
-      total_inventory_value: parseFloat(stockRes.rows[0].total_inventory_value),
+      total_sales:
+        parseFloat(salesRes.rows[0].total) +
+        parseFloat(jeSalesRes.rows[0].total),
+      total_expenses:
+        parseFloat(expenseRes.rows[0].total) +
+        parseFloat(jeExpenseRes.rows[0].total),
+      total_cogs: parseFloat(cogsRes.rows[0].total),
+      total_ar: parseFloat(arRes.rows[0].total),
+      total_ap: parseFloat(apRes.rows[0].total),
+      total_inventory_value: parseFloat(stockRes.rows[0].total),
     };
   }
 
@@ -179,16 +222,22 @@ class ManagerDashboard {
     let paramIdx = 1;
     let dateConditionI = "";
     let dateConditionE = "";
+    let dateConditionJE = "";
+    let dateConditionCogs = "";
 
     if (filters.start_date) {
       dateConditionI += ` AND i.created_at >= $${paramIdx}::timestamp`;
       dateConditionE += ` AND e.expense_date >= $${paramIdx}::timestamp`;
+      dateConditionJE += ` AND je.entry_date >= $${paramIdx}::timestamp`;
+      dateConditionCogs += ` AND im.created_at >= $${paramIdx}::timestamp`;
       values.push(`${filters.start_date} 00:00:00`);
       paramIdx++;
     }
     if (filters.end_date) {
       dateConditionI += ` AND i.created_at <= $${paramIdx}::timestamp`;
       dateConditionE += ` AND e.expense_date <= $${paramIdx}::timestamp`;
+      dateConditionJE += ` AND je.entry_date <= $${paramIdx}::timestamp`;
+      dateConditionCogs += ` AND im.created_at <= $${paramIdx}::timestamp`;
       values.push(`${filters.end_date} 23:59:59.999`);
       paramIdx++;
     }
@@ -210,18 +259,38 @@ class ManagerDashboard {
           JOIN invoice_items ii ON i.id = ii.invoice_id
           WHERE i.branch_id = b.id AND i.status != 'VOID'
           ${dateConditionI}
+        ), 0) +
+        COALESCE((
+          SELECT SUM(CASE WHEN ji.entry_type = 'CREDIT' THEN ji.amount ELSE -ji.amount END)
+          FROM journal_entries je
+          JOIN journal_entry_items ji ON je.id = ji.journal_entry_id
+          JOIN chart_of_accounts coa ON ji.account_id = coa.id
+          WHERE je.branch_id = b.id AND je.status = 'POSTED' AND coa.account_type = 'INCOME'
+          ${dateConditionJE}
         ), 0) as total_sales,
+        
         COALESCE((
           SELECT SUM(e.subtotal)
           FROM expenses e
           WHERE e.branch_id = b.id AND e.status = 'APPROVED'
           ${dateConditionE}
+        ), 0) +
+        COALESCE((
+          SELECT SUM(CASE WHEN ji.entry_type = 'DEBIT' THEN ji.amount ELSE -ji.amount END)
+          FROM journal_entries je
+          JOIN journal_entry_items ji ON je.id = ji.journal_entry_id
+          JOIN chart_of_accounts coa ON ji.account_id = coa.id
+          WHERE je.branch_id = b.id AND je.status = 'POSTED' AND coa.account_type = 'EXPENSE'
+          ${dateConditionJE}
         ), 0) as total_expenses,
+
         COALESCE((
           SELECT SUM((im.quantity_deducted - im.quantity_added) * im.recorded_unit_cost)
           FROM inventory_movements im
-          WHERE im.branch_id = b.id AND im.transaction_type IN ('MANUAL_ADJUSTMENT', 'SALES_INVOICE')
-          ${dateConditionI.replace(/i\./g, "im.")}
+          JOIN inventory_items inv ON im.item_id = inv.id
+          JOIN chart_of_accounts coa ON inv.expense_account_id = coa.id
+          WHERE im.branch_id = b.id AND im.transaction_type IN ('MANUAL_ADJUSTMENT', 'SALES_INVOICE') AND coa.account_type = 'EXPENSE'
+          ${dateConditionCogs}
         ), 0) as total_cogs
       FROM branches b
       WHERE b.is_active = TRUE
