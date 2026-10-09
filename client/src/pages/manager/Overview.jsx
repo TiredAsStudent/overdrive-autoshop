@@ -246,8 +246,8 @@ const Overview = () => {
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
       {/* PAGE HEADER */}
       <PageHeader
-        title="Dashboard Overview"
-        subtitle="Executive Business Intelligence & Operational Monitoring"
+        title="Overview"
+        subtitle="Business Performance & Operations"
         icon={LayoutDashboard}
       >
         <div className="hidden lg:block">
@@ -269,7 +269,7 @@ const Overview = () => {
 
         <div className="flex gap-2 w-full sm:w-auto mt-3 sm:mt-0">
           <ActionButton
-            label={isRefreshing ? "Syncing..." : "Refresh Data"}
+            label={isRefreshing ? "Syncing..." : "Refresh"}
             icon={isRefreshing ? Loader2 : RefreshCw}
             onClick={() => loadOverviewData(true)}
             disabled={loading || isRefreshing}
