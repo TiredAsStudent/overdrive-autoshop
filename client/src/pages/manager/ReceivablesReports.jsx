@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   FileText,
   Download,
@@ -40,6 +41,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 
 const ReceivablesReports = () => {
   const { showToast } = useApp();
+  const [searchParams] = useSearchParams();
 
   // Report State
   const [data, setData] = useState(null);
@@ -48,14 +50,20 @@ const ReceivablesReports = () => {
   // Lookups
   const [branches, setBranches] = useState([]);
 
-  // Filters
+  // Filters (Initialized from URL Search Params if present)
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  const [branchFilter, setBranchFilter] = useState("all");
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState(
+    searchParams.get("branch") || "all",
+  );
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState(
+    searchParams.get("payment_status") || "all",
+  );
   const [agingFilter, setAgingFilter] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(
+    searchParams.get("startDate") || "",
+  );
+  const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 

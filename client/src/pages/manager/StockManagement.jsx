@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -49,17 +50,22 @@ const CATEGORIES = [
 
 const StockManagement = () => {
   const { showToast } = useApp();
+  const [searchParams] = useSearchParams();
 
   const [items, setItems] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters & Pagination
+  // Filters & Pagination (Initialized from URL Search Params if present)
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [branchFilter, setBranchFilter] = useState("all");
-  const [stockStatusFilter, setStockStatusFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState(
+    searchParams.get("branch") || "all",
+  );
+  const [stockStatusFilter, setStockStatusFilter] = useState(
+    searchParams.get("stock_status") || "all",
+  );
   const [showArchived, setShowArchived] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
