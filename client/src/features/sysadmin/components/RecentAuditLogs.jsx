@@ -33,7 +33,7 @@ const RecentAuditLogs = ({ logs, loading }) => {
             "Severity",
             "Operator",
             "Action Performed",
-            "Transaction Link",
+            "Target Resource",
           ]}
           data={logs}
           loading={loading}
@@ -75,7 +75,7 @@ const RecentAuditLogs = ({ logs, loading }) => {
                 </p>
               </td>
 
-              {/* Transaction Link */}
+              {/* Target Resource */}
               <td className="px-4 sm:px-6 py-4 text-right whitespace-nowrap">
                 <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 dark:text-slate-400 font-mono truncate max-w-[150px] sm:max-w-none ml-auto">
                   {log.target}
