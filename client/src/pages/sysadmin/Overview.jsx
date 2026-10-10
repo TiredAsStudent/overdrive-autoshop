@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Activity,
-  Building2,
-  ShieldAlert,
-  ShieldCheck,
-  Clock,
-} from "lucide-react";
+import { Activity, Building2 } from "lucide-react";
 
 import { useApp } from "../../context/AppContext";
 import { dashboardService } from "../../services/sysadmin/dashboard.service";
@@ -14,6 +8,7 @@ import { dashboardService } from "../../services/sysadmin/dashboard.service";
 import PageHeader from "../../components/shared/PageHeader";
 import DataTable from "../../components/shared/DataTable";
 import StatusBadge from "../../components/ui/StatusBadge";
+import LiveClock from "../../components/ui/LiveClock";
 import OverviewMetricsCards from "../../features/sysadmin/components/OverviewMetricsCards";
 import BusinessSettingsWidget from "../../features/sysadmin/components/BusinessSettingsWidget";
 import RecentAuditLogs from "../../features/sysadmin/components/RecentAuditLogs";
@@ -22,7 +17,6 @@ const Overview = () => {
   const { showToast } = useApp();
 
   // --- COMPONENT STATES ---
-  const [time, setTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
 
   const [dashboardData, setDashboardData] = useState({
@@ -40,12 +34,6 @@ const Overview = () => {
     branchRegistryList: [],
     recentAuditLogs: [],
   });
-
-  // --- CLOCK INTERVAL ---
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // --- API DATA FETCHING ---
   useEffect(() => {
@@ -73,18 +61,8 @@ const Overview = () => {
         subtitle="Monitor system activity, users, and operations"
         icon={Activity}
       >
-        {/* Clock Display as a child of PageHeader */}
-        <div className="flex items-center gap-2 bg-slate-50 dark:bg-black/20 px-4 py-3 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto text-slate-700 dark:text-slate-300 font-mono text-xs sm:text-sm font-bold justify-center sm:justify-start">
-          <Clock size={16} className="text-amber-500" />
-          <span>
-            {time.toLocaleDateString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-            })}{" "}
-            | {time.toLocaleTimeString()}
-          </span>
-        </div>
+        {/* Isolated Real-Time Clock Component */}
+        <LiveClock />
       </PageHeader>
 
       {/* 2. DYNAMIC SUMMARY CARDS */}
@@ -117,7 +95,6 @@ const Overview = () => {
                   key={branch.id}
                   className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors border-b border-slate-100 dark:border-white/5 last:border-0"
                 >
-                  {/* Branch Details */}
                   <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 whitespace-nowrap">
                     <div className="flex items-center gap-3 sm:gap-4">
                       <div className="p-2 sm:p-3 bg-amber-500/10 text-amber-600 dark:text-amber-500 rounded-xl sm:rounded-2xl shrink-0">
@@ -134,7 +111,6 @@ const Overview = () => {
                     </div>
                   </td>
 
-                  {/* Branch Code */}
                   <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 whitespace-nowrap">
                     <div className="inline-flex items-center px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20">
                       <span className="text-[9px] sm:text-[10px] lg:text-xs font-black text-amber-700 dark:text-amber-400 tracking-[0.2em] uppercase">
@@ -143,7 +119,6 @@ const Overview = () => {
                     </div>
                   </td>
 
-                  {/* Status Badges */}
                   <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
                     <StatusBadge
                       label={
@@ -151,9 +126,6 @@ const Overview = () => {
                       }
                       variant={
                         branch.is_maintenance_mode ? "danger" : "success"
-                      }
-                      icon={
-                        branch.is_maintenance_mode ? ShieldAlert : ShieldCheck
                       }
                     />
                   </td>
