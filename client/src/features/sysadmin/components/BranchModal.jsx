@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Building2, MapPin, Loader2, AlertCircle } from "lucide-react";
+import {
+  X,
+  Building2,
+  MapPin,
+  Loader2,
+  AlertCircle,
+  Edit2,
+  Plus,
+} from "lucide-react";
 
 const BranchModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,11 +86,23 @@ const BranchModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
           >
-            {/* Header */}
-            <div className="flex justify-between items-center p-6 sm:p-8 pb-4">
-              <h2 className="text-xl sm:text-2xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
-                {initialData ? "Edit Branch Profile" : "Register Branch"}
-              </h2>
+            {/* MODAL HEADER */}
+            <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
+                  {initialData ? <Edit2 size={20} /> : <Building2 size={20} />}
+                </div>
+                <div>
+                  <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
+                    {initialData ? "Edit Branch Profile" : "Register Branch"}
+                  </h2>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                    {initialData
+                      ? `Branch Code: ${initialData.branch_code}`
+                      : "Branch Intake Form"}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
@@ -92,10 +112,10 @@ const BranchModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               </button>
             </div>
 
-            {/* Scrollable Form Body */}
-            <div className="px-6 sm:px-8 pb-6 sm:pb-8 overflow-y-auto custom-scrollbar">
+            {/* MODAL BODY */}
+            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
-                <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
+                <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
                   <span>{validationError}</span>
                 </div>
@@ -104,16 +124,16 @@ const BranchModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               <form
                 id="branchForm"
                 onSubmit={handleSubmit}
-                className="space-y-6 sm:space-y-8"
+                className="space-y-6"
               >
                 {/* Basic Details Section */}
-                <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
-                  <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
-                    <Building2 size={16} /> Basic Details
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase text-amber-500 mb-4 tracking-widest flex items-center gap-2">
+                    <Building2 size={14} /> Basic Details
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Branch Name <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -123,11 +143,11 @@ const BranchModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         value={formData.branch_name}
                         onChange={handleChange}
                         placeholder="e.g., Overdrive Biñan"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Branch Code (Prefix){" "}
                         <span className="text-red-500">*</span>
                       </label>
@@ -139,7 +159,7 @@ const BranchModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                         onChange={handleChange}
                         placeholder="e.g., BIN"
                         maxLength="3"
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black tracking-widest text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all uppercase placeholder:font-normal placeholder:tracking-normal"
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black tracking-widest text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 uppercase placeholder:font-normal placeholder:tracking-normal"
                       />
                       <p className="text-[10px] font-medium text-slate-400 mt-1.5">
                         Must be exactly 3 letters.
@@ -149,12 +169,12 @@ const BranchModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </div>
 
                 {/* Location Section */}
-                <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
-                  <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
-                    <MapPin size={16} /> Location Profile
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <h3 className="text-[10px] font-black uppercase text-amber-500 mb-4 tracking-widest flex items-center gap-2">
+                    <MapPin size={14} /> Location Profile
                   </h3>
                   <div>
-                    <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                       Official Geographical Address{" "}
                       <span className="text-red-500">*</span>
                     </label>
@@ -165,22 +185,30 @@ const BranchModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                       onChange={handleChange}
                       rows="3"
                       placeholder="Complete physical address used for printed documents"
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none transition-all"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none"
                     ></textarea>
                   </div>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-xs sm:text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
-                >
-                  {isSubmitting && (
-                    <Loader2 size={18} className="animate-spin" />
-                  )}
-                  {initialData ? "Update Branch Profile" : "Save New Branch"}
-                </button>
               </form>
+            </div>
+
+            {/* MODAL FOOTER */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+              <button
+                type="submit"
+                form="branchForm"
+                disabled={isSubmitting}
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] shadow-lg shadow-amber-500/20 flex justify-center items-center gap-2 cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : initialData ? (
+                  <Edit2 size={16} />
+                ) : (
+                  <Plus size={16} />
+                )}
+                {initialData ? "Save Profile Changes" : "Confirm Registration"}
+              </button>
             </div>
           </motion.div>
         </div>
