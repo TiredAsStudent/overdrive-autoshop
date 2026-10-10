@@ -37,13 +37,17 @@ const branchGuard = async (req, res, next) => {
       if (!branch) {
         return sendError(res, STATUS_CODES.FORBIDDEN, "Branch does not exist.");
       }
+
       if (!branch.is_active) {
-        return sendError(
-          res,
-          STATUS_CODES.FORBIDDEN,
-          "Your branch is archived.",
-        );
+        return res.status(STATUS_CODES.FORBIDDEN).json({
+          success: false,
+          error: {
+            message: "BRANCH_ARCHIVED",
+            details: "Your assigned branch has been archived.",
+          },
+        });
       }
+
       if (branch.is_maintenance_mode) {
         // We use the exact "MAINTENANCE_MODE" string for the frontend interceptor
         return res.status(STATUS_CODES.FORBIDDEN).json({
