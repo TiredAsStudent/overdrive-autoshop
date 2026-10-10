@@ -11,7 +11,9 @@ import { useApp } from "../../context/AppContext";
 import { dashboardService } from "../../services/sysadmin/dashboard.service";
 
 // Components
+import PageHeader from "../../components/shared/PageHeader";
 import DataTable from "../../components/shared/DataTable";
+import StatusBadge from "../../components/ui/StatusBadge";
 import OverviewMetricsCards from "../../features/sysadmin/components/OverviewMetricsCards";
 import BusinessSettingsWidget from "../../features/sysadmin/components/BusinessSettingsWidget";
 import RecentAuditLogs from "../../features/sysadmin/components/RecentAuditLogs";
@@ -64,25 +66,14 @@ const Overview = () => {
   }, [showToast]);
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full max-w-[100vw] overflow-hidden px-2 sm:px-0">
-      {/* 1. ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm w-full">
-        {/* Header Title Section */}
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Activity className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Overview
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Monitor system activity, users, and operations
-            </p>
-          </div>
-        </div>
-
-        {/* Clock Display */}
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+      {/* 1. ACTION BAR (STANDARD PAGE HEADER) */}
+      <PageHeader
+        title="Overview"
+        subtitle="Monitor system activity, users, and operations"
+        icon={Activity}
+      >
+        {/* Clock Display as a child of PageHeader */}
         <div className="flex items-center gap-2 bg-slate-50 dark:bg-black/20 px-4 py-3 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto text-slate-700 dark:text-slate-300 font-mono text-xs sm:text-sm font-bold justify-center sm:justify-start">
           <Clock size={16} className="text-amber-500" />
           <span>
@@ -94,7 +85,7 @@ const Overview = () => {
             | {time.toLocaleTimeString()}
           </span>
         </div>
-      </div>
+      </PageHeader>
 
       {/* 2. DYNAMIC SUMMARY CARDS */}
       <OverviewMetricsCards metrics={dashboardData.dashboardMetrics} />
@@ -154,23 +145,17 @@ const Overview = () => {
 
                   {/* Status Badges */}
                   <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
-                    {branch.is_maintenance_mode ? (
-                      <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20">
-                        <ShieldAlert
-                          size={10}
-                          className="sm:w-[12px] sm:h-[12px] lg:w-[14px] lg:h-[14px]"
-                        />{" "}
-                        Locked
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-                        <ShieldCheck
-                          size={10}
-                          className="sm:w-[12px] sm:h-[12px] lg:w-[14px] lg:h-[14px]"
-                        />{" "}
-                        Operational
-                      </span>
-                    )}
+                    <StatusBadge
+                      label={
+                        branch.is_maintenance_mode ? "Locked" : "Operational"
+                      }
+                      variant={
+                        branch.is_maintenance_mode ? "danger" : "success"
+                      }
+                      icon={
+                        branch.is_maintenance_mode ? ShieldAlert : ShieldCheck
+                      }
+                    />
                   </td>
                 </tr>
               )}

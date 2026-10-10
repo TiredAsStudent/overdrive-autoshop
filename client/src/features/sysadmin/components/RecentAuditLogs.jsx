@@ -1,8 +1,20 @@
 import React from "react";
 import { History, ShieldAlert, Activity } from "lucide-react";
 import DataTable from "../../../components/shared/DataTable";
+import StatusBadge from "../../../components/ui/StatusBadge";
 
 const RecentAuditLogs = ({ logs, loading }) => {
+  const getSeverityVariant = (severity) => {
+    if (severity === "CRITICAL") return "danger";
+    if (severity === "WARNING") return "warning";
+    return "info";
+  };
+
+  const getSeverityIcon = (severity) => {
+    if (severity === "CRITICAL") return ShieldAlert;
+    return Activity;
+  };
+
   return (
     <div className="flex flex-col w-full h-full overflow-hidden">
       <div className="mb-3 flex items-center justify-between pl-2">
@@ -42,22 +54,11 @@ const RecentAuditLogs = ({ logs, loading }) => {
 
               {/* Severity */}
               <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-widest border ${
-                    log.severity === "CRITICAL"
-                      ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20"
-                      : log.severity === "WARNING"
-                        ? "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
-                        : "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20"
-                  }`}
-                >
-                  {log.severity === "CRITICAL" ? (
-                    <ShieldAlert size={10} />
-                  ) : (
-                    <Activity size={10} />
-                  )}
-                  {log.severity}
-                </span>
+                <StatusBadge
+                  label={log.severity}
+                  variant={getSeverityVariant(log.severity)}
+                  icon={getSeverityIcon(log.severity)}
+                />
               </td>
 
               {/* Operator */}
