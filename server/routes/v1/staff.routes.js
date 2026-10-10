@@ -14,6 +14,7 @@ const ExpenseController = require("../../controllers/staff/expense.controller");
 const StaffInventoryController = require("../../controllers/staff/inventory.controller");
 const StaffStockAdjustmentController = require("../../controllers/staff/stockAdjustment.controller");
 const ReceiptController = require("../../controllers/staff/receipt.controller");
+const StaffDashboardController = require("../../controllers/staff/dashboard.controller");
 
 // Bring in Read-Only Controllers for Estimates formulation
 const ServiceController = require("../../controllers/manager/service.controller");
@@ -89,12 +90,24 @@ const {
   verifyReceiptSchema,
   getReceiptHistorySchema,
 } = require("../../validations/staff/receipt.schema");
+const {
+  getStaffDashboardSchema,
+} = require("../../validations/staff/dashboard.schema");
 
 // ==========================================
 // GLOBAL SECURITY: Staff, Manager & Admin Access
 // ==========================================
 router.use(verifyToken, requireRole(ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN));
 router.use(branchGuard);
+
+// ==========================================
+// MODULE: DASHBOARD (Overview)
+// ==========================================
+router.get(
+  "/dashboard/overview",
+  validate(getStaffDashboardSchema),
+  StaffDashboardController.getOverview,
+);
 
 // ==========================================
 // MODULE: CUSTOMERS (CRM)
