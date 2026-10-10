@@ -324,9 +324,7 @@ const Overview = () => {
                 {data.action_alerts.unverified_receipts > 0 && (
                   <button
                     onClick={() =>
-                      handleDeepLink("/staff/receipts/receipt-history", {
-                        status: "PENDING_VERIFICATION",
-                      })
+                      handleDeepLink("/staff/receipts/receipt-scanner")
                     }
                     className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
                   >
@@ -558,7 +556,6 @@ const Overview = () => {
                         {activity.reference}
                       </span>
                     </td>
-
                     <td className="px-4 sm:px-6 py-4">
                       <span
                         className={`text-sm font-black font-mono ${isNegative ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"}`}
