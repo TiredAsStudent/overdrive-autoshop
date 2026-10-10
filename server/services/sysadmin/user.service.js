@@ -84,7 +84,7 @@ class UserService {
     // Self-Preservation Check: Admin cannot demote or deactivate themselves
     if (
       adminUser.id === targetUserId &&
-      (updates.isActive === false || updates.role !== "ADMIN")
+      (updates.isActive === false || (updates.role && updates.role !== "ADMIN"))
     ) {
       throw new Error(
         "Security Violation: You cannot deactivate or demote your own active Administrator session.",
@@ -109,14 +109,21 @@ class UserService {
     let actionStr = "UPDATED_USER_PROFILE";
     let severity = "INFO";
 
+    const roleChanged = updatedUser.role !== oldUser.role;
+    const branchChanged = updatedUser.branch_id !== oldUser.branch_id;
+
     if (updates.isActive === false) {
       actionStr = "DEACTIVATED_USER_ACCOUNT";
       severity = "CRITICAL";
       // Auto-trigger the Session Kill Switch if deactivated
       await User.incrementTokenVersion(targetUserId);
-    } else if (updates.branchId !== oldUser.branch_id) {
-      actionStr = "BRANCH_TRANSFER_EXECUTED";
+    } else if (roleChanged || branchChanged) {
+      if (branchChanged) actionStr = "BRANCH_TRANSFER_EXECUTED";
+      if (roleChanged) actionStr = "USER_ROLE_UPDATED";
+      if (branchChanged && roleChanged) actionStr = "ROLE_AND_BRANCH_UPDATED";
       severity = "WARNING";
+
+      await User.incrementTokenVersion(targetUserId);
     }
 
     await logSecureAction(
