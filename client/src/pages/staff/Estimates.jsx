@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
   Loader2,
@@ -34,6 +34,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 const Estimates = () => {
   const { showToast } = useApp();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [estimates, setEstimates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +42,9 @@ const Estimates = () => {
   // Filters & State
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(
+    searchParams.get("status") || "all",
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 10;

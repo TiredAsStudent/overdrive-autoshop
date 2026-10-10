@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Scale,
   Plus,
@@ -26,13 +27,17 @@ import { useDebounce } from "../../hooks/useDebounce";
 
 const StockAdjustments = () => {
   const { showToast } = useApp();
+  const [searchParams] = useSearchParams();
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters & State
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(
+    searchParams.get("status") || "all",
+  );
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);

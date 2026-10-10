@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Boxes,
   History,
@@ -37,6 +38,7 @@ const CATEGORIES = [
 
 const StockManagement = () => {
   const { showToast } = useApp();
+  const [searchParams] = useSearchParams();
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,9 @@ const StockManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [stockStatusFilter, setStockStatusFilter] = useState("all");
+  const [stockStatusFilter, setStockStatusFilter] = useState(
+    searchParams.get("stock_status") || "all",
+  );
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
