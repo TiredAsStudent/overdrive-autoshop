@@ -5,8 +5,6 @@ import {
   Trash2,
   ShieldAlert,
   ShieldCheck,
-  Search,
-  Loader2,
   Building2,
   RotateCcw,
   Archive,
@@ -16,6 +14,13 @@ import BranchModal from "../../features/sysadmin/components/BranchModal";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
+
+// Universal UI Components
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import StatusToggle from "../../components/ui/StatusToggle";
+import ActionButton from "../../components/ui/ActionButton";
+import StatusBadge from "../../components/ui/StatusBadge";
 
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -175,65 +180,34 @@ const Branches = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        {/* Header Title Section */}
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Building2 className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Branch Registry
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Centralized branch records
-            </p>
-          </div>
-        </div>
+      {/* UNIVERSAL PAGE HEADER */}
+      <PageHeader
+        title="Branch Registry"
+        subtitle="Centralized branch records"
+        icon={Building2}
+      >
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search branches..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-        {/* Filter & Action Controls */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="relative w-full sm:max-w-xs lg:w-64">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchQuery !== debouncedSearchQuery ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search branches..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
-            />
-          </div>
+        <StatusToggle
+          activeValue={showArchived}
+          onToggle={setShowArchived}
+          options={[
+            { label: "Active", value: false },
+            { label: "Archived", value: true },
+          ]}
+        />
 
-          <div className="flex items-center gap-1 bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
-            <button
-              onClick={() => setShowArchived(false)}
-              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${!showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => setShowArchived(true)}
-              className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${showArchived ? "bg-white dark:bg-slate-700 text-amber-500 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-            >
-              Archived
-            </button>
-          </div>
-
-          <button
-            onClick={handleCreate}
-            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer"
-          >
-            <Plus size={16} /> Register Branch
-          </button>
-        </div>
-      </div>
+        <ActionButton
+          onClick={handleCreate}
+          label="Register Branch"
+          icon={Plus}
+        />
+      </PageHeader>
 
       {/* UNIVERSAL DATATABLE */}
       <DataTable
@@ -292,20 +266,23 @@ const Branches = () => {
             {/* Security Status */}
             <td className="px-4 sm:px-8 py-4 sm:py-6">
               {!branch.is_active ? (
-                <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                  <Archive size={12} className="sm:w-[14px] sm:h-[14px]" />{" "}
-                  Archived
-                </span>
+                <StatusBadge
+                  label="Archived"
+                  variant="default"
+                  icon={Archive}
+                />
               ) : branch.is_maintenance_mode ? (
-                <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20">
-                  <ShieldAlert size={12} className="sm:w-[14px] sm:h-[14px]" />{" "}
-                  Locked
-                </span>
+                <StatusBadge
+                  label="Locked"
+                  variant="danger"
+                  icon={ShieldAlert}
+                />
               ) : (
-                <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-                  <ShieldCheck size={12} className="sm:w-[14px] sm:h-[14px]" />{" "}
-                  Operational
-                </span>
+                <StatusBadge
+                  label="Operational"
+                  variant="success"
+                  icon={ShieldCheck}
+                />
               )}
             </td>
 
