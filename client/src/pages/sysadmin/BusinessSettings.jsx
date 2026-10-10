@@ -225,7 +225,7 @@ const BusinessSettings = () => {
                         Upload Master Logo
                       </span>
                       <span className="text-[9px] mt-2 opacity-70 font-bold">
-                        Strictly PNG, JPG (Max 2MB)
+                        JPEG, PNG, WEBP up to 2MB
                       </span>
                     </div>
                   )}
@@ -240,13 +240,13 @@ const BusinessSettings = () => {
                 </div>
               </div>
 
-              {/* Business Name */}
+              {/* Company Name */}
               <div>
                 <label
                   htmlFor="company_name"
                   className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest"
                 >
-                  Business Name
+                  Company Name
                 </label>
                 <div className="relative">
                   <Building2
@@ -287,7 +287,7 @@ const BusinessSettings = () => {
                     htmlFor="vat_percentage"
                     className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1"
                   >
-                    Value Added Tax
+                    Standard VAT Rate
                   </label>
                   <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
                     Automated tax matrix calculated across ledger orders.
@@ -320,7 +320,7 @@ const BusinessSettings = () => {
                     htmlFor="markup_percentage"
                     className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1"
                   >
-                    Profit Markup
+                    Catalog Parts Markup
                   </label>
                   <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
                     Standard multiplier baseline applied to supplier unit costs.
