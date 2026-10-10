@@ -151,7 +151,8 @@ const Overview = () => {
       params.append(key, value);
     });
 
-    navigate(`${basePath}?${params.toString()}`);
+    const queryString = params.toString();
+    navigate(queryString ? `${basePath}?${queryString}` : basePath);
   };
 
   const formatCurrency = (amount) => {
