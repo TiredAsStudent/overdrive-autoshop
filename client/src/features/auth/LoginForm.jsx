@@ -123,22 +123,6 @@ const LoginForm = () => {
           >
             {loading ? "VERIFYING..." : "SIGN IN"}
           </Button>
-
-          <div className="relative flex items-center py-1">
-            <div className="flex-grow border-t border-slate-200"></div>
-            <span className="flex-shrink-0 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Or Continue With
-            </span>
-            <div className="flex-grow border-t border-slate-200"></div>
-          </div>
-
-          <button
-            type="button"
-            className="w-full h-14 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-center gap-3 text-xs font-black text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-slate-100 transition-all uppercase tracking-widest shadow-sm"
-          >
-            <Chrome size={18} className="text-slate-500" />
-            Sign in with Google
-          </button>
         </div>
       </form>
     </div>

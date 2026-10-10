@@ -1,16 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  Menu,
-  Bell,
-  UserCircle,
-  ChevronDown,
-  LogOut,
-  Settings,
-  User,
-  Sun,
-  Moon,
-} from "lucide-react";
+import { Menu, UserCircle, ChevronDown, LogOut, Sun, Moon } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useApp } from "../../context/AppContext";
@@ -85,14 +75,6 @@ const Navbar = ({ user, onMenuClick }) => {
             )}
           </button>
 
-          {/* NOTIFICATIONS */}
-          <button className="relative p-1 text-gray-500 hover:text-overdrive-dark dark:text-gray-400 dark:hover:text-white transition-colors">
-            <Bell size={20} />
-            <span className="absolute top-0 right-0 h-4 w-4 bg-overdrive-red text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-overdrive-dark transition-colors">
-              3
-            </span>
-          </button>
-
           {/* DIVIDER */}
           <div className="h-8 w-px bg-gray-200 dark:bg-white/10 hidden sm:block transition-colors" />
 
@@ -134,6 +116,7 @@ const Navbar = ({ user, onMenuClick }) => {
                 </div>
 
                 <div className="flex flex-col">
+                  {/*
                   <Link
                     to="/profile"
                     onClick={() => setIsDropdownOpen(false)}
@@ -159,6 +142,7 @@ const Navbar = ({ user, onMenuClick }) => {
                   </Link>
 
                   <div className="h-px bg-gray-100 dark:bg-white/10 my-1 mx-4" />
+                  */}
 
                   <button
                     onClick={() => {
