@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { settingsService } from "../../services/sysadmin/settings.service";
 import { useApp } from "../../context/AppContext";
+
+// Universal UI Components
+import PageHeader from "../../components/shared/PageHeader";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 
 const BusinessSettings = () => {
@@ -157,38 +160,26 @@ const BusinessSettings = () => {
 
   return (
     <div className="w-full space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-10">
-      {/* ACTION BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Settings2 className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Business Logic
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Manage company information, pricing, and tax settings.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <button
-            type="submit"
-            form="settingsForm"
-            disabled={isSaving}
-            className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSaving ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Save size={16} />
-            )}
-            {isSaving ? "SAVING..." : "SAVE SETTINGS"}
-          </button>
-        </div>
-      </div>
+      {/* UNIVERSAL PAGE HEADER */}
+      <PageHeader
+        title="Business Logic"
+        subtitle="Manage company information, pricing, and tax settings."
+        icon={Settings2}
+      >
+        <button
+          type="submit"
+          form="settingsForm"
+          disabled={isSaving}
+          className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSaving ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Save size={16} />
+          )}
+          {isSaving ? "SAVING..." : "SAVE SETTINGS"}
+        </button>
+      </PageHeader>
 
       {/* MAIN CONFIGURATION FORM */}
       <form
