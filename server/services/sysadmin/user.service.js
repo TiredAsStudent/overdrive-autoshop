@@ -94,6 +94,18 @@ class UserService {
     const oldUser = await User.findUserById(targetUserId);
     if (!oldUser) throw new Error("User not found.");
 
+    if (updates.email && updates.email !== oldUser.email) {
+      const emailCollision = await User.checkEmailExists(
+        updates.email,
+        targetUserId,
+      );
+      if (emailCollision) {
+        throw new Error(
+          `The email address '${updates.email}' is already tied to another account.`,
+        );
+      }
+    }
+
     const sanitizedUpdates = {
       branch_id: updates.branchId !== undefined ? updates.branchId : undefined,
       is_active: updates.isActive !== undefined ? updates.isActive : undefined,
@@ -138,11 +150,13 @@ class UserService {
         branch_id: oldUser.branch_id,
         is_active: oldUser.is_active,
         role: oldUser.role,
+        email: oldUser.email,
       },
       {
         branch_id: updatedUser.branch_id,
         is_active: updatedUser.is_active,
         role: updatedUser.role,
+        email: updatedUser.email,
       },
     );
   }

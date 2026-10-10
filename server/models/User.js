@@ -45,9 +45,16 @@ class User {
     await query(updateSql, [newPasswordHash, userId]);
   }
 
-  static async checkEmailExists(email) {
-    const sql = `SELECT id, is_active, password_hash FROM users WHERE email = $1`;
-    const result = await query(sql, [email]);
+  static async checkEmailExists(email, excludeId = null) {
+    let sql = `SELECT id, is_active, password_hash FROM users WHERE email = $1`;
+    const params = [email];
+
+    if (excludeId) {
+      sql += ` AND id != $2`;
+      params.push(excludeId);
+    }
+
+    const result = await query(sql, params);
     return result.rows[0];
   }
 
