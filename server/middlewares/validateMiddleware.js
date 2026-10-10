@@ -1,8 +1,8 @@
-const fs = require("fs");
+const fs = require("fs").promises;
 const { sendError } = require("../utils/responseHandler");
 const { STATUS_CODES } = require("../constants/statusCodes");
 
-const validate = (schema) => (req, res, next) => {
+const validate = (schema) => async (req, res, next) => {
   if (!schema) {
     console.error("Validation Middleware Error: Schema is undefined.");
     return sendError(
@@ -19,13 +19,15 @@ const validate = (schema) => (req, res, next) => {
   });
 
   if (!result.success) {
-    // If Multer uploaded a file before Zod validation failed, delete the orphaned file.
     if (req.file && req.file.path) {
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+      try {
+        await fs.access(req.file.path);
+        await fs.unlink(req.file.path);
         console.log(
           "Validation Middleware: Deleted orphaned file due to validation error.",
         );
+      } catch (err) {
+        // File doesn't exist or already deleted, safely ignore
       }
     }
 

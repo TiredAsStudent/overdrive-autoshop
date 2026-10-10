@@ -36,6 +36,14 @@ const BusinessSettings = () => {
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
 
+  useEffect(() => {
+    return () => {
+      if (logoPreview && logoPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoPreview]);
+
   const loadSettings = async () => {
     try {
       setIsLoading(true);
@@ -104,13 +112,16 @@ const BusinessSettings = () => {
       return;
     }
 
+    if (logoPreview && logoPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(logoPreview);
+    }
+
     setLogoFile(file);
     setLogoPreview(URL.createObjectURL(file));
   };
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-
     setIsConfirmModalOpen(true);
   };
 
