@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search,
   ShieldAlert,
   Terminal,
   Globe,
@@ -13,15 +12,19 @@ import {
   RefreshCw,
   X,
   Database,
-  Loader2,
 } from "lucide-react";
 
 import { auditService } from "../../services/sysadmin/audit.service";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useApp } from "../../context/AppContext";
 
+// Universal UI Components
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import ActionButton from "../../components/ui/ActionButton";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
+import StatusBadge from "../../components/ui/StatusBadge";
 
 const AuditLogs = () => {
   const { showToast } = useApp();
@@ -124,6 +127,7 @@ const AuditLogs = () => {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
+      hour12: true,
     });
   };
 
@@ -142,95 +146,78 @@ const AuditLogs = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700 w-full pb-10">
-      {/* ACTION BAR */}
-      <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        {/* Header Title Section */}
-        <div className="flex items-center gap-3 sm:gap-4 w-full xl:w-auto min-w-0">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <ShieldAlert className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Audit Trail
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-              Track user actions and system changes
-            </p>
-          </div>
-        </div>
+      {/* UNIVERSAL PAGE HEADER */}
+      <PageHeader
+        title="Audit Trail"
+        subtitle="Track user actions and system changes"
+        icon={ShieldAlert}
+      >
+        {/* Universal Search Bar */}
+        <SearchBar
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search action, user, or IP..."
+          isSearching={searchTerm !== debouncedSearch}
+        />
 
-        {/* Action Controls */}
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full xl:w-auto">
-          {/* Universal Search Bar */}
-          <div className="relative w-full sm:flex-1 xl:w-64 xl:flex-none min-w-[200px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchTerm !== debouncedSearch ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search action, user, or IP..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
-            />
-          </div>
-
-          {/* Dynamic Server-Side Severities Dropdown */}
-          <div className="relative w-full sm:flex-1 xl:w-auto xl:flex-none min-w-[160px]">
-            <select
-              value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
-              className="w-full appearance-none pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all cursor-pointer"
-            >
-              <option value="">All Severities</option>
-              {severities.map((sev) => (
-                <option key={sev} value={sev}>
-                  {sev === "INFO"
-                    ? "🟢 Info"
-                    : sev === "WARNING"
-                      ? "🟡 Warning"
-                      : sev === "CRITICAL"
-                        ? "🔴 Critical"
-                        : sev}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <svg
-                className="w-4 h-4 text-slate-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </div>
-          </div>
-
-          {/* Export Button */}
-          <button
-            onClick={handleExport}
-            disabled={isExporting || logs.length === 0 || isLoading}
-            className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+        {/* Dynamic Server-Side Severities Dropdown */}
+        <div className="relative w-full sm:flex-1 xl:w-auto xl:flex-none min-w-[160px]">
+          <select
+            value={severityFilter}
+            onChange={(e) => setSeverityFilter(e.target.value)}
+            className="w-full appearance-none pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all cursor-pointer"
           >
-            {isExporting ? (
-              <RefreshCw size={16} className="animate-spin" />
-            ) : (
-              <Download size={16} />
-            )}
-            {isExporting ? "Exporting..." : "Export CSV"}
-          </button>
+            <option value="">All Severities</option>
+            {severities.map((sev) => (
+              <option key={sev} value={sev}>
+                {sev === "INFO"
+                  ? "🟢 Info"
+                  : sev === "WARNING"
+                    ? "🟡 Warning"
+                    : sev === "CRITICAL"
+                      ? "🔴 Critical"
+                      : sev}
+              </option>
+            ))}
+          </select>
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <svg
+              className="w-4 h-4 text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
         </div>
-      </div>
+
+        {/* Universal Export Button */}
+        <ActionButton
+          onClick={handleExport}
+          label={isExporting ? "Exporting..." : "Export CSV"}
+          icon={
+            isExporting
+              ? (props) => (
+                  <RefreshCw
+                    {...props}
+                    className={`animate-spin ${props.className || ""}`}
+                  />
+                )
+              : Download
+          }
+          className={
+            isExporting || logs.length === 0 || isLoading
+              ? "opacity-50 cursor-not-allowed pointer-events-none"
+              : ""
+          }
+        />
+      </PageHeader>
 
       {/* UNIVERSAL DATATABLE COMPONENT */}
       <DataTable
@@ -392,9 +379,9 @@ const AuditLogs = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+              className="relative w-full max-w-5xl bg-white dark:bg-slate-800 rounded-[32px] shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
             >
-              <div className="px-4 sm:px-8 py-5 sm:py-6 border-b border-slate-100 dark:border-white/10 flex justify-between items-start bg-white dark:bg-slate-900 shrink-0">
+              <div className="px-4 sm:px-8 py-5 sm:py-6 border-b border-slate-100 dark:border-white/10 flex justify-between items-start bg-white dark:bg-slate-800 shrink-0">
                 <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0 pr-4">
                   <div className="h-10 w-10 sm:h-12 sm:w-12 bg-amber-500/10 rounded-xl sm:rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-500 shrink-0">
                     <Database size={20} className="sm:w-6 sm:h-6" />
