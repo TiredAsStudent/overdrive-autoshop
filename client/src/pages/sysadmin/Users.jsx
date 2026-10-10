@@ -6,7 +6,6 @@ import {
   Mail,
   Clock,
   MoreVertical,
-  Search,
   Users,
   Key,
   RefreshCw,
@@ -20,10 +19,16 @@ import {
   Loader2,
   Send,
 } from "lucide-react";
+
+// Universal UI Components
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import ActionButton from "../../components/ui/ActionButton";
 import StatusBadge from "../../components/ui/StatusBadge";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
+
 import { userService } from "../../services/sysadmin/user.service";
 import { branchService } from "../../services/sysadmin/branch.service";
 import { useAuth } from "../../context/AuthContext";
@@ -300,48 +305,25 @@ const UsersTab = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 w-full pb-10">
-      {/* Action Bar */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-          <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl sm:rounded-2xl shrink-0">
-            <Users className="text-amber-600 dark:text-overdrive-yellow h-6 w-6 sm:h-7 sm:w-7" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic truncate">
-              Users Accounts
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5 truncate">
-              User Accounts & Access Control
-            </p>
-          </div>
-        </div>
+      {/* UNIVERSAL PAGE HEADER */}
+      <PageHeader
+        title="Users Accounts"
+        subtitle="User Accounts & Access Control"
+        icon={Users}
+      >
+        <SearchBar
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search users..."
+          isSearching={searchTerm !== debouncedSearchTerm}
+        />
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="relative w-full sm:max-w-xs lg:w-64 shrink-0">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              {searchTerm !== debouncedSearchTerm ? (
-                <Loader2 size={16} className="text-amber-500 animate-spin" />
-              ) : (
-                <Search size={16} className="text-slate-400" />
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
-            />
-          </div>
-
-          <button
-            onClick={() => setIsInviting(true)}
-            className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer shrink-0"
-          >
-            <Plus size={16} /> Invite User
-          </button>
-        </div>
-      </div>
+        <ActionButton
+          onClick={() => setIsInviting(true)}
+          label="Invite User"
+          icon={Plus}
+        />
+      </PageHeader>
 
       {/* Top Stats KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
@@ -578,10 +560,21 @@ const UsersTab = () => {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
             >
-              <div className="flex justify-between items-center p-5 sm:p-8 pb-4">
-                <h2 className="text-xl sm:text-2xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
-                  Invite User
-                </h2>
+              {/* MODAL HEADER */}
+              <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
+                    <Plus size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
+                      Invite User
+                    </h2>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                      New Access Registration
+                    </p>
+                  </div>
+                </div>
                 <button
                   onClick={() => setIsInviting(false)}
                   disabled={inviteLoading}
@@ -591,16 +584,17 @@ const UsersTab = () => {
                 </button>
               </div>
 
-              <div className="px-5 sm:px-8 pb-5 sm:pb-8 overflow-y-auto custom-scrollbar">
+              {/* MODAL BODY */}
+              <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
                 <form
                   id="inviteForm"
                   onSubmit={handleInviteSubmit}
                   className="space-y-6 sm:space-y-8"
                 >
                   {/* Basic Details Section */}
-                  <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
-                    <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
-                      <Users size={16} /> Basic Details
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase text-amber-500 mb-4 tracking-widest flex items-center gap-2">
+                      <Users size={14} /> Basic Details
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
@@ -619,7 +613,7 @@ const UsersTab = () => {
                             })
                           }
                           placeholder="e.g., Juan"
-                          className="w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
                         />
                       </div>
                       <div>
@@ -637,7 +631,7 @@ const UsersTab = () => {
                             })
                           }
                           placeholder="e.g., Dela Cruz"
-                          className="w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
                         />
                       </div>
                     </div>
@@ -662,16 +656,16 @@ const UsersTab = () => {
                             })
                           }
                           placeholder="e.g., juan@overdrive.com"
-                          className="w-full pl-10 pr-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Access Configuration Section */}
-                  <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
-                    <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
-                      <ShieldCheck size={16} /> Access Configuration
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase text-amber-500 mb-4 tracking-widest flex items-center gap-2">
+                      <ShieldCheck size={14} /> Access Configuration
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
@@ -693,7 +687,7 @@ const UsersTab = () => {
                                     : "",
                             })
                           }
-                          className="w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer"
                         >
                           <option value="STAFF">Staff (Branch Lock)</option>
                           <option value="MANAGER">Manager (Global)</option>
@@ -713,7 +707,7 @@ const UsersTab = () => {
                             })
                           }
                           disabled={inviteForm.role === "MANAGER"}
-                          className={`w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${inviteForm.role === "MANAGER" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
+                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${inviteForm.role === "MANAGER" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
                         >
                           {inviteForm.role === "MANAGER" ? (
                             <option value="">Enterprise Global</option>
@@ -739,22 +733,26 @@ const UsersTab = () => {
                       </p>
                     </div>
                   </div>
-
-                  <button
-                    type="submit"
-                    disabled={inviteLoading}
-                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-[11px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
-                  >
-                    {inviteLoading ? (
-                      <RefreshCw size={18} className="animate-spin" />
-                    ) : (
-                      <Send size={18} />
-                    )}
-                    {inviteLoading
-                      ? "PROCESSING SECURE LINK..."
-                      : "ISSUE INVITATION"}
-                  </button>
                 </form>
+              </div>
+
+              {/* MODAL FOOTER */}
+              <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+                <button
+                  type="submit"
+                  form="inviteForm"
+                  disabled={inviteLoading}
+                  className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-[11px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                >
+                  {inviteLoading ? (
+                    <RefreshCw size={18} className="animate-spin" />
+                  ) : (
+                    <Send size={18} />
+                  )}
+                  {inviteLoading
+                    ? "PROCESSING SECURE LINK..."
+                    : "ISSUE INVITATION"}
+                </button>
               </div>
             </motion.div>
           </div>
@@ -771,10 +769,21 @@ const UsersTab = () => {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
             >
-              <div className="flex justify-between items-center p-5 sm:p-8 pb-4">
-                <h2 className="text-xl sm:text-2xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
-                  Edit Account Details
-                </h2>
+              {/* MODAL HEADER */}
+              <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
+                    <Edit size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
+                      Edit Account Details
+                    </h2>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                      Personnel Record Update
+                    </p>
+                  </div>
+                </div>
                 <button
                   onClick={() => setIsEditing(false)}
                   disabled={editLoading}
@@ -784,15 +793,16 @@ const UsersTab = () => {
                 </button>
               </div>
 
-              <div className="px-5 sm:px-8 pb-5 sm:pb-8 overflow-y-auto custom-scrollbar">
+              {/* MODAL BODY */}
+              <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
                 <form
                   id="editForm"
                   onSubmit={handleEditSubmit}
                   className="space-y-6 sm:space-y-8"
                 >
-                  <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
-                    <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
-                      <Users size={16} /> Basic Details
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase text-amber-500 mb-4 tracking-widest flex items-center gap-2">
+                      <Users size={14} /> Basic Details
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
@@ -811,7 +821,7 @@ const UsersTab = () => {
                             })
                           }
                           placeholder="e.g., Juan"
-                          className="w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
                         />
                       </div>
                       <div>
@@ -829,7 +839,7 @@ const UsersTab = () => {
                             })
                           }
                           placeholder="e.g., Dela Cruz"
-                          className="w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
                         />
                       </div>
                     </div>
@@ -851,15 +861,15 @@ const UsersTab = () => {
                             setEditForm({ ...editForm, email: e.target.value })
                           }
                           placeholder="e.g., juan@overdrive.com"
-                          className="w-full pl-10 pr-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-slate-50/50 dark:bg-black/10 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5">
-                    <h3 className="text-xs font-black uppercase text-amber-500 mb-5 tracking-widest flex items-center gap-2">
-                      <ShieldCheck size={16} /> Access Configuration
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase text-amber-500 mb-4 tracking-widest flex items-center gap-2">
+                      <ShieldCheck size={14} /> Access Configuration
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
@@ -883,7 +893,7 @@ const UsersTab = () => {
                                       : ""),
                             })
                           }
-                          className={`w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
+                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <option value="STAFF">Staff (Branch)</option>
                           <option value="MANAGER">Manager (Global)</option>
@@ -909,7 +919,7 @@ const UsersTab = () => {
                             editForm.role === "MANAGER" ||
                             editForm.role === "ADMIN"
                           }
-                          className={`w-full px-4 py-3.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "MANAGER" || editForm.role === "ADMIN" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
+                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "MANAGER" || editForm.role === "ADMIN" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
                         >
                           {editForm.role === "MANAGER" ||
                           editForm.role === "ADMIN" ? (
@@ -925,18 +935,22 @@ const UsersTab = () => {
                       </div>
                     </div>
                   </div>
-
-                  <button
-                    type="submit"
-                    disabled={editLoading}
-                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-[11px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
-                  >
-                    {editLoading ? (
-                      <RefreshCw size={18} className="animate-spin mr-2" />
-                    ) : null}
-                    {editLoading ? "UPDATING..." : "UPDATE ACCOUNT DETAILS"}
-                  </button>
                 </form>
+              </div>
+
+              {/* MODAL FOOTER */}
+              <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+                <button
+                  type="submit"
+                  form="editForm"
+                  disabled={editLoading}
+                  className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-[11px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                >
+                  {editLoading ? (
+                    <RefreshCw size={18} className="animate-spin mr-2" />
+                  ) : null}
+                  {editLoading ? "UPDATING..." : "UPDATE ACCOUNT DETAILS"}
+                </button>
               </div>
             </motion.div>
           </div>
