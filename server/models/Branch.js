@@ -1,15 +1,37 @@
-const { query } = require("../config/db");
+const { query, pool } = require("../config/db");
 
 class Branch {
   static async create(data) {
-    const sql = `
-      INSERT INTO branches (branch_name, branch_code, address) 
-      VALUES ($1, $2, $3) 
-      RETURNING *
-    `;
-    const values = [data.branch_name, data.branch_code, data.address];
-    const result = await query(sql, values);
-    return result.rows[0];
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const branchSql = `
+        INSERT INTO branches (branch_name, branch_code, address) 
+        VALUES ($1, $2, $3) 
+        RETURNING *
+      `;
+      const branchValues = [data.branch_name, data.branch_code, data.address];
+      const branchRes = await client.query(branchSql, branchValues);
+      const newBranch = branchRes.rows[0];
+
+      const syncSql = `
+        INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
+        SELECT $1, id, 0, default_reorder_level 
+        FROM inventory_items 
+        WHERE is_active = TRUE
+        ON CONFLICT DO NOTHING
+      `;
+      await client.query(syncSql, [newBranch.id]);
+
+      await client.query("COMMIT");
+      return newBranch;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async countFiltered(search, status) {

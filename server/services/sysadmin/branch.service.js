@@ -46,16 +46,6 @@ class BranchService {
 
     const newBranch = await Branch.create(data);
 
-    const { query } = require("../../config/db");
-    const syncSql = `
-      INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
-      SELECT $1, id, 0, default_reorder_level 
-      FROM inventory_items 
-      WHERE is_active = TRUE
-      ON CONFLICT DO NOTHING
-    `;
-    await query(syncSql, [newBranch.id]);
-
     await logSecureAction(
       adminId,
       newBranch.id,
@@ -74,6 +64,15 @@ class BranchService {
   static async updateBranch(id, data, adminId, ipAddress) {
     const oldBranch = await Branch.findById(id);
     if (!oldBranch) throw new Error("Branch not found.");
+
+    if (data.branch_code && data.branch_code !== oldBranch.branch_code) {
+      const collisionCheck = await Branch.findByCode(data.branch_code);
+      if (collisionCheck && collisionCheck.id !== parseInt(id, 10)) {
+        throw new Error(
+          `Branch Code '${data.branch_code}' is already assigned to another branch.`,
+        );
+      }
+    }
 
     const updatedBranch = await Branch.update(id, data);
 
