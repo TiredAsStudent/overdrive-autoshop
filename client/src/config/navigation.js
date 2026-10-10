@@ -28,7 +28,7 @@ export const sysAdminMenu = [
         name: "Branch Registry",
         path: "/sysadmin/management/branches-registry",
       },
-      { name: "Users Accounts", path: "/sysadmin/management/users-accounts" },
+      { name: "User Accounts", path: "/sysadmin/management/users-accounts" },
     ],
   },
   {

@@ -307,7 +307,7 @@ const UsersTab = () => {
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 w-full pb-10">
       {/* UNIVERSAL PAGE HEADER */}
       <PageHeader
-        title="Users Accounts"
+        title="User Accounts"
         subtitle="User Accounts & Access Control"
         icon={Users}
       >
@@ -512,7 +512,7 @@ const UsersTab = () => {
                             }
                             className="w-full px-4 py-3 text-xs font-black text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 bg-red-50/50 dark:bg-red-900/10 cursor-pointer"
                           >
-                            <PowerOff size={14} /> Kill Active Sessions
+                            <PowerOff size={14} /> Terminate Active Sessions
                           </button>
                         )}
                         {user.account_status === "DEACTIVATED" ? (
@@ -689,7 +689,7 @@ const UsersTab = () => {
                           }
                           className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer"
                         >
-                          <option value="STAFF">Staff (Branch Lock)</option>
+                          <option value="STAFF">Staff (Branch)</option>
                           <option value="MANAGER">Manager (Global)</option>
                         </select>
                       </div>
