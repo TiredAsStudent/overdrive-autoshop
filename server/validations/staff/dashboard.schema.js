@@ -5,17 +5,11 @@ const getStaffDashboardSchema = z.object({
     .object({
       start_date: z
         .string()
-        .refine(
-          (val) => !isNaN(Date.parse(val)),
-          "Invalid start date format (YYYY-MM-DD)",
-        )
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid start date format (YYYY-MM-DD)")
         .optional(),
       end_date: z
         .string()
-        .refine(
-          (val) => !isNaN(Date.parse(val)),
-          "Invalid end date format (YYYY-MM-DD)",
-        )
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid end date format (YYYY-MM-DD)")
         .optional(),
     })
     .optional(),
