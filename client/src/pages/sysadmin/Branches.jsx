@@ -292,7 +292,7 @@ const Branches = () => {
                 {!branch.is_active ? (
                   <button
                     onClick={() => handleRestore(branch.id, branch.branch_name)}
-                    title="Restore Registry"
+                    title="Restore Branch"
                     className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5 sm:gap-2 cursor-pointer"
                   >
                     <RotateCcw size={12} className="sm:w-[14px] sm:h-[14px]" />{" "}
@@ -338,10 +338,10 @@ const Branches = () => {
                       onClick={() =>
                         handleDelete(branch.id, branch.branch_name)
                       }
-                      title="Archive Registry"
+                      title="Archive Branch"
                       className="p-1.5 sm:p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
                     >
-                      <Trash2 size={14} className="sm:w-[16px] sm:h-[16px]" />
+                      <Archive size={14} className="sm:w-[16px] sm:h-[16px]" />
                     </button>
                   </>
                 )}
