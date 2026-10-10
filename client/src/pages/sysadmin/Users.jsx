@@ -28,6 +28,7 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import ConfirmModal from "../../components/shared/ConfirmModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
+import StatCard from "../../components/ui/StatCard";
 
 import { userService } from "../../services/sysadmin/user.service";
 import { branchService } from "../../services/sysadmin/branch.service";
@@ -50,6 +51,7 @@ const UsersTab = () => {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
+  const [totalCount, setTotalCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -118,6 +120,7 @@ const UsersTab = () => {
       setTotalPages(userRosterResponse.pagination?.totalPages || 1);
 
       const allUsers = globalStatsResponse.data || [];
+      setTotalCount(allUsers.length);
       setActiveCount(
         allUsers.filter((u) => u.account_status === "ACTIVE").length,
       );
@@ -326,46 +329,25 @@ const UsersTab = () => {
       </PageHeader>
 
       {/* Top Stats KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[32px] p-6 sm:p-8 shadow-sm relative overflow-hidden border border-slate-200 dark:border-white/10 flex flex-col justify-between">
-          <div className="absolute right-0 top-0 p-4 text-slate-900 dark:text-white opacity-[0.03] dark:opacity-10 pointer-events-none">
-            <ShieldCheck size={100} />
-          </div>
-          <div className="relative z-10">
-            <p className="text-[10px] font-black uppercase text-amber-500 tracking-[0.2em] mb-2">
-              Gate Status
-            </p>
-            <h3 className="text-2xl sm:text-3xl font-black italic text-slate-900 dark:text-white">
-              Restricted
-            </h3>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase leading-snug">
-              Public user registration is disabled.
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl sm:rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
-          <p className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest mb-2">
-            Active Users
-          </p>
-          <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white italic">
-            {activeCount.toString().padStart(2, "0")}
-          </h3>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl sm:rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
-          <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-2">
-            Pending Invites
-          </p>
-          <div className="flex items-center justify-between">
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white italic">
-              {pendingCount.toString().padStart(2, "0")}
-            </h3>
-            <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase italic">
-              Awaiting Setup
-            </span>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 w-full">
+        <StatCard
+          title="Total Accounts"
+          value={totalCount.toString().padStart(2, "0")}
+          icon={Users}
+          variant="default"
+        />
+        <StatCard
+          title="Active Personnel"
+          value={activeCount.toString().padStart(2, "0")}
+          icon={ShieldCheck}
+          variant="success"
+        />
+        <StatCard
+          title="Pending Invitations"
+          value={pendingCount.toString().padStart(2, "0")}
+          icon={Clock}
+          variant="warning"
+        />
       </div>
 
       {/* Directory Table */}
