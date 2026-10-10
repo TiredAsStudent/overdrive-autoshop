@@ -89,6 +89,11 @@ const Overview = () => {
   const loadOverviewData = async (isManualRefresh = false) => {
     if (!startDate || !endDate) return;
 
+    if (new Date(startDate) > new Date(endDate)) {
+      showToast("Start date cannot be after end date.", "warning");
+      return;
+    }
+
     try {
       if (isManualRefresh) setIsRefreshing(true);
       else setLoading(true);
@@ -553,7 +558,8 @@ const Overview = () => {
                         {activity.reference}
                       </span>
                     </td>
-                    <td className="px-4 sm:px-6 py-4 text-right">
+
+                    <td className="px-4 sm:px-6 py-4">
                       <span
                         className={`text-sm font-black font-mono ${isNegative ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"}`}
                       >
