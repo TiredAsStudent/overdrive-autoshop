@@ -33,6 +33,7 @@ class BackupController {
         success: true,
         data: result.logs,
         pagination: result.pagination,
+        metrics: result.metrics,
         message: "Backup logs retrieved successfully.",
       });
     } catch (error) {

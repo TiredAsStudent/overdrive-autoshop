@@ -54,6 +54,27 @@ class BackupLog {
     const result = await query(sql, values);
     return result.rows;
   }
+
+  static async getMetrics() {
+    const globalSql = `
+      SELECT 
+        COALESCE(SUM(file_size_mb), 0) as total_volume,
+        COALESCE(SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END), 0) as success_count
+      FROM backup_logs
+    `;
+    const latestSql = `SELECT status FROM backup_logs ORDER BY created_at DESC LIMIT 1`;
+
+    const [globalRes, latestRes] = await Promise.all([
+      query(globalSql),
+      query(latestSql),
+    ]);
+
+    return {
+      totalVolume: parseFloat(globalRes.rows[0].total_volume).toFixed(2),
+      successCount: parseInt(globalRes.rows[0].success_count, 10),
+      lastExecution: latestRes.rows[0] ? latestRes.rows[0].status : "STANDBY",
+    };
+  }
 }
 
 module.exports = BackupLog;

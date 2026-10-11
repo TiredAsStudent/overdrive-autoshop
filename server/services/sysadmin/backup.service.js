@@ -122,13 +122,15 @@ class BackupService {
   static async getBackupLogs(page = 1, limit = 5, search = "") {
     const offset = (page - 1) * limit;
 
-    const [totalItems, logs] = await Promise.all([
+    const [totalItems, logs, metrics] = await Promise.all([
       BackupLog.countFiltered(search),
       BackupLog.findPaginatedFiltered(limit, offset, search),
+      BackupLog.getMetrics(),
     ]);
 
     return {
       logs,
+      metrics,
       pagination: {
         totalItems,
         totalPages: Math.ceil(totalItems / limit) || 1,

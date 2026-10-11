@@ -27,8 +27,13 @@ const DatabaseBackups = () => {
   const debouncedSearchQuery = useDebounce(searchQuery, 400);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalArchives, setTotalArchives] = useState(0);
   const ITEMS_PER_PAGE = 5;
+
+  const [metrics, setMetrics] = useState({
+    totalVolume: "0.00",
+    successCount: 0,
+    lastExecution: "STANDBY",
+  });
 
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
@@ -54,7 +59,19 @@ const DatabaseBackups = () => {
 
       setLogs(response.data || []);
       setTotalPages(response.pagination?.totalPages || 1);
-      setTotalArchives(response.pagination?.totalItems || 0);
+
+      if (response.metrics) {
+        setMetrics({
+          totalVolume: response.metrics.totalVolume,
+          successCount: response.metrics.successCount,
+          lastExecution:
+            response.metrics.lastExecution === "SUCCESS"
+              ? "HEALTHY"
+              : response.metrics.lastExecution === "FAILED"
+                ? "CRITICAL"
+                : "STANDBY",
+        });
+      }
     } catch (error) {
       showToast(error.message, "error");
     } finally {
@@ -65,16 +82,6 @@ const DatabaseBackups = () => {
   useEffect(() => {
     loadBackupLogs();
   }, [currentPage, debouncedSearchQuery]);
-
-  const totalVolume = logs
-    .reduce((acc, log) => acc + parseFloat(log.file_size_mb || 0), 0)
-    .toFixed(2);
-  const lastExecution =
-    logs.length > 0
-      ? logs[0].status === "SUCCESS"
-        ? "HEALTHY"
-        : "CRITICAL"
-      : "STANDBY";
 
   // --- HANDLERS ---
   const handleTriggerBackupClick = () => {
@@ -159,9 +166,9 @@ const DatabaseBackups = () => {
 
       {/* METRICS CARDS */}
       <BackupMetricsCards
-        totalVolume={totalVolume}
-        successCount={totalArchives}
-        lastExecution={lastExecution}
+        totalVolume={metrics.totalVolume}
+        successCount={metrics.successCount}
+        lastExecution={metrics.lastExecution}
       />
 
       {/* UNIVERSAL DATATABLE */}
