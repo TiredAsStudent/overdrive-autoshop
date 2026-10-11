@@ -143,9 +143,7 @@ router.get(
   EstimateController.getEstimates,
 );
 router.get("/estimates/:id", EstimateController.getEstimateDetails);
-
 router.get("/estimates/:id/pdf", EstimateController.downloadPdf);
-
 router.put(
   "/estimates/:id",
   validate(updateEstimateSchema),
@@ -177,9 +175,7 @@ router.get(
   SalesOrderController.getSalesOrders,
 );
 router.get("/sales-orders/:id", SalesOrderController.getSalesOrderDetails);
-
 router.get("/sales-orders/:id/pdf", SalesOrderController.downloadPdf);
-
 router.patch(
   "/sales-orders/:id",
   validate(updateSalesOrderSchema),
@@ -200,9 +196,7 @@ router.get(
   InvoiceController.getInvoices,
 );
 router.get("/invoices/:id", InvoiceController.getInvoiceDetails);
-
 router.get("/invoices/:id/pdf", InvoiceController.downloadPdf);
-
 router.patch(
   "/invoices/:id",
   validate(updateInvoiceSchema),
@@ -224,9 +218,7 @@ router.get(
   PaymentController.getPayments,
 );
 router.get("/payments/:id", PaymentController.getPaymentDetails);
-
 router.get("/payments/:id/pdf", PaymentController.downloadPdf);
-
 router.patch("/payments/:id/void", PaymentController.voidPayment);
 
 // ==========================================
@@ -255,9 +247,7 @@ router.get(
   "/purchase-orders/:id",
   PurchaseOrderController.getPurchaseOrderDetails,
 );
-
 router.get("/purchase-orders/:id/pdf", PurchaseOrderController.downloadPdf);
-
 router.put(
   "/purchase-orders/:id",
   validate(updatePurchaseOrderSchema),
@@ -280,6 +270,7 @@ router.post(
 );
 router.get("/bills", validate(getBillsSchema), BillController.getBills);
 router.get("/bills/:id", BillController.getBillDetails);
+router.get("/bills/:id/pdf", BillController.downloadPdf);
 router.patch("/bills/:id/receive", BillController.confirmReceipt);
 
 // ==========================================
@@ -301,9 +292,7 @@ router.get(
   ExpenseController.getExpenses,
 );
 router.get("/expenses/:id", ExpenseController.getExpenseDetails);
-
 router.get("/expenses/:id/pdf", ExpenseController.downloadPdf);
-
 router.put(
   "/expenses/:id",
   uploadExpenseAttachment.single("attachment"),
@@ -353,31 +342,26 @@ router.post(
   uploadReceipt.single("receipt"),
   ReceiptController.uploadAndScan,
 );
-
 router.get(
   "/receipts/scan/:id",
   validate(scanIdParamSchema),
   ReceiptController.getScanDetails,
 );
-
 router.patch(
   "/receipts/scan/:id/cancel",
   validate(scanIdParamSchema),
   ReceiptController.cancelScan,
 );
-
 router.post(
   "/receipts/scan/:id/verify",
   validate(verifyReceiptSchema),
   ReceiptController.verifyReceipt,
 );
-
 router.get(
   "/receipts/history",
   validate(getReceiptHistorySchema),
   ReceiptController.getReceiptHistory,
 );
-
 router.get(
   "/receipts/history/:id",
   validate(scanIdParamSchema),

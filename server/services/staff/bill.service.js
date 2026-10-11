@@ -3,6 +3,7 @@ const PurchaseOrderModel = require("../../models/PurchaseOrder");
 const VendorModel = require("../../models/Vendor");
 const InventoryModel = require("../../models/Inventory");
 const SystemSetting = require("../../models/SystemSetting");
+const BillPdfService = require("../pdf/billPdf.service");
 const { logSecureAction } = require("../../utils/auditLogger");
 const fs = require("fs").promises;
 
@@ -244,6 +245,31 @@ class BillService {
         currentPage: page,
         itemsPerPage: limit,
       },
+    };
+  }
+
+  static async generatePdf(id, activeUser, ipAddress) {
+    const bill = await this.getBillDetails(id, activeUser);
+
+    const settings = await SystemSetting.getSettings();
+
+    const pdfBuffer = await BillPdfService.generate(bill, settings);
+
+    await logSecureAction(
+      activeUser.id,
+      activeUser.branchId,
+      "SUPPLIER_BILL_PDF_GENERATED",
+      "INFO",
+      ipAddress,
+      "bills",
+      id,
+      null,
+      { bill_number: bill.bill_number },
+    );
+
+    return {
+      buffer: pdfBuffer,
+      filename: `${bill.bill_number}_Voucher.pdf`,
     };
   }
 }

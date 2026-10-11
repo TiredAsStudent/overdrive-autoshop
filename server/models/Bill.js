@@ -147,7 +147,7 @@ class Bill {
           updatedBill.bill_number,
           item.quantity_received,
           newQuantity,
-          netUnitCost, // Injects exact net cost for asset capitalization
+          netUnitCost,
           userId,
         ]);
       }
@@ -169,8 +169,10 @@ class Bill {
 
   static async findById(id) {
     const sql = `
-      SELECT b.*, po.purchase_order_number, v.business_name as vendor_name, v.is_vat_registered,
-             br.branch_name, u.first_name as created_by_name
+      SELECT b.*, po.purchase_order_number, 
+             v.business_name as vendor_name, v.business_address as vendor_address, v.contact_number as vendor_contact, v.tin as vendor_tin, v.is_vat_registered,
+             br.branch_name, br.address as branch_address, br.branch_code, 
+             u.first_name as created_by_name, u.last_name as created_by_last_name, u.role as created_by_role
       FROM bills b
       JOIN purchase_orders po ON b.purchase_order_id = po.id
       JOIN vendors v ON b.vendor_id = v.id
@@ -189,6 +191,15 @@ class Bill {
       WHERE bi.bill_id = $1
     `;
     bill.items = (await query(itemsSql, [id])).rows;
+
+    const paymentsSql = `
+      SELECT payment_number, amount_paid, payment_method, reference_number, TO_CHAR(payment_date, 'YYYY-MM-DD') as payment_date, status
+      FROM vendor_payments
+      WHERE bill_id = $1 AND status != 'VOID'
+      ORDER BY created_at DESC
+    `;
+    bill.payments = (await query(paymentsSql, [id])).rows;
+
     return bill;
   }
 
