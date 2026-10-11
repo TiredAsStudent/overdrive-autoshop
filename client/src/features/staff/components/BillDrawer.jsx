@@ -451,7 +451,7 @@ const BillDrawer = ({ isOpen, onClose, billId, readOnly = false }) => {
                   {bill.notes && (
                     <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
                       <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2 flex items-center gap-1.5">
-                        <FileText size={14} /> Invoice Notes
+                        <FileText size={14} /> Bill Notes
                       </p>
                       <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200/80 italic leading-relaxed">
                         "{bill.notes}"

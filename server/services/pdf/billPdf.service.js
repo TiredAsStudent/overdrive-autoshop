@@ -95,17 +95,14 @@ class BillPdfService {
           .fontSize(16)
           .font("Helvetica-Bold")
           .fillColor(titleColor)
-          .text("ACCOUNTS PAYABLE VOUCHER", 200, rightY, {
-            align: "right",
-            width: 345,
-          });
+          .text("SUPPLIER BILL", 200, rightY, { align: "right", width: 345 });
         rightY += 18;
 
         doc
           .fontSize(9)
           .font("Helvetica-Bold")
           .fillColor("#64748b")
-          .text("(SUPPLIER BILL & RECEIVING SLIP)", 200, rightY, {
+          .text("(RECEIVING & BILLING SLIP)", 200, rightY, {
             align: "right",
             width: 345,
           });
@@ -395,7 +392,6 @@ class BillPdfService {
           });
         startY += 18;
 
-        // FRS COMPLIANCE: Display explicit Tax Percentage if VAT Registered
         doc
           .fillColor("#475569")
           .text(
@@ -468,7 +464,7 @@ class BillPdfService {
           .fontSize(10)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text("Accounts Payable Notes:", 50, startY);
+          .text("Bill Notes:", 50, startY);
         doc
           .fontSize(9)
           .font("Helvetica-Oblique")
