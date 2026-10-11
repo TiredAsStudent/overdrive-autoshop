@@ -26,35 +26,16 @@ class SalesOrderPdfService {
         doc.on("data", buffers.push.bind(buffers));
         doc.on("end", () => resolve(Buffer.concat(buffers)));
 
-        // We use rightY to dynamically stack the right-side text without overlapping
-        let rightY = 40;
-
         // --- 1. HEADER SECTION ---
 
-        // LEFT SIDE: Solo Enlarged Logo
-        if (settings?.logo_url) {
-          const cleanLogoUrl = settings.logo_url.replace(/^\//, "");
-          const logoPath = path.join(process.cwd(), cleanLogoUrl);
-
-          if (fs.existsSync(logoPath)) {
-            try {
-              doc.image(logoPath, 50, 40, { fit: [100, 75], align: "left" });
-            } catch (imgError) {
-              console.warn("PDF Engine: Logo exists but is corrupted.");
-            }
-          }
-        }
-
-        // RIGHT SIDE: Company Info
         doc
-          .fontSize(18)
+          .fontSize(20)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text(settings?.company_name || "Overdrive Auto Shop", 300, rightY, {
-            align: "right",
-            width: 245,
+          .text(settings?.company_name || "Overdrive Auto Shop", 50, 45, {
+            align: "center",
+            width: 495,
           });
-        rightY += 20;
 
         const contactInfo = [settings?.contact_number, settings?.contact_email]
           .filter(Boolean)
@@ -65,11 +46,28 @@ class SalesOrderPdfService {
             .fontSize(9)
             .font("Helvetica")
             .fillColor("#64748b")
-            .text(contactInfo, 300, rightY, { align: "right", width: 245 });
-          rightY += 18;
+            .text(contactInfo, 50, 68, { align: "center", width: 495 });
         }
 
-        rightY += 10; // Extra padding before document title
+        const contentStartY = 95;
+        let rightY = contentStartY;
+
+        // LEFT SIDE: Logo
+        if (settings?.logo_url) {
+          const cleanLogoUrl = settings.logo_url.replace(/^\//, "");
+          const logoPath = path.join(process.cwd(), cleanLogoUrl);
+
+          if (fs.existsSync(logoPath)) {
+            try {
+              doc.image(logoPath, 50, contentStartY, {
+                fit: [110, 80],
+                align: "left",
+              });
+            } catch (imgError) {
+              console.warn("PDF Engine: Logo exists but is corrupted.");
+            }
+          }
+        }
 
         // RIGHT SIDE: Document Title & Meta
         doc
@@ -84,9 +82,9 @@ class SalesOrderPdfService {
 
         let statusColor = "#64748b";
         if (so.status === "COMPLETED" || so.status === "INVOICED")
-          statusColor = "#10b981";
-        if (so.status === "IN_PROGRESS") statusColor = "#f59e0b";
-        if (so.status === "CANCELLED") statusColor = "#ef4444";
+          statusColor = "#10b981"; // Emerald
+        if (so.status === "IN_PROGRESS") statusColor = "#f59e0b"; // Amber
+        if (so.status === "CANCELLED") statusColor = "#ef4444"; // Red
 
         doc
           .fontSize(10)
@@ -98,7 +96,6 @@ class SalesOrderPdfService {
           });
         rightY += 14;
 
-        // Document Number (No "Ref:" prefix)
         doc
           .fontSize(11)
           .font("Helvetica-Bold")
@@ -133,9 +130,9 @@ class SalesOrderPdfService {
           rightY += 12;
         }
 
-        // Determine the safe Y coordinate to start the next section
-        let startY = Math.max(125, rightY + 15);
+        let startY = Math.max(185, rightY + 15);
 
+        // Line Separator
         doc
           .moveTo(50, startY)
           .lineTo(545, startY)
@@ -147,6 +144,7 @@ class SalesOrderPdfService {
         // --- 2. ADDRESS BLOCKS ---
         const addressY = startY;
 
+        // Branch Address (Left)
         doc
           .fontSize(8)
           .font("Helvetica-Bold")
@@ -175,6 +173,7 @@ class SalesOrderPdfService {
             .text("Address not provided", 50, addressY + 26);
         }
 
+        // Customer Address (Right)
         doc
           .fontSize(8)
           .font("Helvetica-Bold")
@@ -441,8 +440,6 @@ class SalesOrderPdfService {
           .font("Helvetica")
           .fillColor("#475569")
           .text("Authorized Signature", 50, startY + 45);
-
-        // Intentionally removed Client Acknowledgment as requested
 
         doc.end();
       } catch (error) {
