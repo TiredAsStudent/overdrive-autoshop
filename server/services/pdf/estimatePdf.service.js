@@ -26,85 +26,95 @@ class EstimatePdfService {
         doc.on("data", buffers.push.bind(buffers));
         doc.on("end", () => resolve(Buffer.concat(buffers)));
 
-        let startY = 50;
-        let logoRendered = false;
-
         // --- 1. HEADER SECTION ---
+
+        let currentY = 40;
+
+        doc
+          .fontSize(22)
+          .font("Helvetica-Bold")
+          .fillColor("#0f172a")
+          .text(settings?.company_name || "Overdrive Auto Shop", 50, currentY, {
+            align: "center",
+            width: 495,
+          });
+        currentY += 24;
+
+        const contactInfo = [settings?.contact_number, settings?.contact_email]
+          .filter(Boolean)
+          .join("  |  ");
+
+        if (contactInfo) {
+          doc
+            .fontSize(9)
+            .font("Helvetica")
+            .fillColor("#64748b")
+            .text(contactInfo, 50, currentY, { align: "center", width: 495 });
+          currentY += 14;
+        }
+
+        currentY += 25;
+
+        const row2StartY = currentY;
+        let rightY = row2StartY;
+
+        // LEFT SIDE: Logo
         if (settings?.logo_url) {
           const cleanLogoUrl = settings.logo_url.replace(/^\//, "");
           const logoPath = path.join(process.cwd(), cleanLogoUrl);
 
           if (fs.existsSync(logoPath)) {
             try {
-              doc.image(logoPath, 50, 40, { fit: [60, 45], align: "left" });
-
-              doc
-                .fontSize(20)
-                .font("Helvetica-Bold")
-                .fillColor("#0f172a")
-                .text(settings.company_name || "Overdrive Auto Shop", 125, 45);
-
-              const contactInfo = [
-                settings.contact_number,
-                settings.contact_email,
-              ]
-                .filter(Boolean)
-                .join("  |  ");
-              if (contactInfo) {
-                doc
-                  .fontSize(9)
-                  .font("Helvetica")
-                  .fillColor("#64748b")
-                  .text(contactInfo, 125, 68);
-              }
-
-              startY = 105;
-              logoRendered = true;
+              doc.image(logoPath, 50, row2StartY, {
+                fit: [100, 75],
+                align: "left",
+              });
             } catch (imgError) {
               console.warn(
-                "PDF Engine: Logo exists but is corrupted. Falling back to text.",
+                "PDF Engine: Logo exists but is corrupted. Skipping logo.",
               );
             }
           }
         }
 
-        if (!logoRendered) {
-          doc
-            .fontSize(22)
-            .font("Helvetica-Bold")
-            .fillColor("#0f172a")
-            .text(settings?.company_name || "Overdrive Auto Shop", 50, 45);
-
-          const contactInfo = [
-            settings?.contact_number,
-            settings?.contact_email,
-          ]
-            .filter(Boolean)
-            .join("  |  ");
-          if (contactInfo) {
-            doc
-              .fontSize(9)
-              .font("Helvetica")
-              .fillColor("#64748b")
-              .text(contactInfo, 50, 72);
-          }
-          startY = 105;
-        }
-
-        // Right Header (Document Meta)
+        // RIGHT SIDE: Document Title & Meta
         doc
-          .fontSize(18)
+          .fontSize(16)
           .font("Helvetica-Bold")
           .fillColor("#f59e0b")
-          .text("OFFICIAL ESTIMATE", 300, 45, { align: "right", width: 245 });
+          .text("OFFICIAL ESTIMATE", 300, rightY, {
+            align: "right",
+            width: 245,
+          });
+        rightY += 18;
+
+        let statusColor = "#64748b";
+        if (estimate.status === "APPROVED" || estimate.status === "CONVERTED")
+          statusColor = "#10b981";
+        if (estimate.status === "PENDING_APPROVAL") statusColor = "#f59e0b";
+        if (estimate.status === "REJECTED" || estimate.status === "EXPIRED")
+          statusColor = "#ef4444";
+
+        doc
+          .fontSize(10)
+          .font("Helvetica-Bold")
+          .fillColor(statusColor)
+          .text(estimate.status.replace(/_/g, " "), 300, rightY, {
+            align: "right",
+            width: 245,
+          });
+        rightY += 14;
+
         doc
           .fontSize(11)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text(estimate.estimate_number, 300, 67, {
+          .text(estimate.estimate_number, 300, rightY, {
             align: "right",
             width: 245,
           });
+        rightY += 14;
+
         doc
           .font("Helvetica")
           .fillColor("#64748b")
@@ -112,17 +122,22 @@ class EstimatePdfService {
           .text(
             `Date: ${new Date(estimate.created_at).toLocaleDateString()}`,
             300,
-            83,
+            rightY,
             { align: "right", width: 245 },
           );
+        rightY += 12;
+
         doc
           .fillColor("#ef4444")
           .text(
             `Valid Until: ${new Date(estimate.valid_until).toLocaleDateString()}`,
             300,
-            97,
+            rightY,
             { align: "right", width: 245 },
           );
+        rightY += 12;
+
+        let startY = Math.max(row2StartY + 85, rightY + 15);
 
         // Line Separator
         doc
@@ -199,11 +214,9 @@ class EstimatePdfService {
             .text("Address not provided", 300, custY);
         }
 
-        // Push Y coordinate dynamically below the tallest address block
         startY = doc.y + 35;
 
         // --- 3. ITEMS TABLE ---
-        // Strict Column X Coordinates & Widths to prevent overlapping
         const colX = {
           type: 50,
           desc: 100,
@@ -338,7 +351,6 @@ class EstimatePdfService {
         startY += 10;
 
         // --- 4. TOTALS SECTION ---
-        // Align totals perfectly to the right side
         const labelX = 320;
         const labelW = 130;
         const valueX = 460;
@@ -398,10 +410,12 @@ class EstimatePdfService {
           this.formatCurrency(estimate.grand_total),
           valueX,
           startY + 9,
-          { width: valueW - 10, align: "right" },
+          {
+            width: valueW - 10,
+            align: "right",
+          },
         );
 
-        // Push Y coordinate safely below the totals box
         startY += 50;
 
         // --- 5. FOOTER & TERMS ---
@@ -424,7 +438,10 @@ class EstimatePdfService {
             estimate.terms_conditions || "Standard shop terms apply.",
             50,
             startY + 15,
-            { width: 495, lineGap: 2 },
+            {
+              width: 495,
+              lineGap: 2,
+            },
           );
 
         // Use the active Y position after the multi-line text to position signatures
