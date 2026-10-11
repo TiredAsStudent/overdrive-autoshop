@@ -27,7 +27,6 @@ class PurchaseOrderPdfService {
         doc.on("end", () => resolve(Buffer.concat(buffers)));
 
         // --- BACKGROUND WATERMARK (SECURITY PROTOCOL) ---
-        // Prevent unauthorized procurement by watermarking non-actionable POs
         if (po.status !== "APPROVED" && po.status !== "CLOSED") {
           let watermarkText = "UNAPPROVED";
           let watermarkColor = "#f59e0b"; // Amber
@@ -76,7 +75,7 @@ class PurchaseOrderPdfService {
 
         currentY += 25;
 
-        // ROW 2: Logo (Left) and Document Meta (Right)
+        // ROW 2: Logo & Meta
         const row2StartY = currentY;
         let rightY = row2StartY;
 
@@ -96,7 +95,6 @@ class PurchaseOrderPdfService {
           }
         }
 
-        // RIGHT SIDE: Document Title & Meta
         let titleColor = "#f59e0b";
         if (po.status === "APPROVED" || po.status === "CLOSED")
           titleColor = "#10b981";
@@ -154,7 +152,6 @@ class PurchaseOrderPdfService {
 
         let startY = Math.max(row2StartY + 85, rightY + 15);
 
-        // Line Separator
         doc
           .moveTo(50, startY)
           .lineTo(545, startY)
@@ -166,7 +163,6 @@ class PurchaseOrderPdfService {
         // --- 2. ADDRESS BLOCKS ---
         const addressY = startY;
 
-        // Delivery Destination (Left)
         doc
           .fontSize(8)
           .font("Helvetica-Bold")
@@ -195,7 +191,6 @@ class PurchaseOrderPdfService {
             .text("Address not provided", 50, addressY + 26);
         }
 
-        // Target Vendor (Right)
         doc
           .fontSize(8)
           .font("Helvetica-Bold")
@@ -372,7 +367,7 @@ class PurchaseOrderPdfService {
         const valueW = 85;
 
         doc.font("Helvetica-Bold").fontSize(9).fillColor("#475569");
-        doc.text("Subtotal (Gross):", labelX, startY, {
+        doc.text("Subtotal (Net of VAT):", labelX, startY, {
           width: labelW,
           align: "right",
         });
@@ -411,7 +406,6 @@ class PurchaseOrderPdfService {
           align: "right",
         });
 
-        // If Cancelled/Rejected, strike through the amount
         if (po.status === "REJECTED" || po.status === "CANCELLED") {
           doc
             .moveTo(valueX + 10, startY + 12)
@@ -473,9 +467,11 @@ class PurchaseOrderPdfService {
 
         doc.fontSize(9).font("Helvetica-Bold").fillColor("#0f172a");
 
-        // Prepared By (Left)
+        const reqName = po.created_by_name
+          ? `${po.created_by_name} ${po.created_by_last_name || ""}`.trim()
+          : "System / Auto-Requisition";
         doc.text(
-          `Requisitioned By: ${po.created_by_name} ${po.created_by_last_name || ""} (${po.created_by_role || "Staff"})`,
+          `Requisitioned By: ${reqName} (${po.created_by_role || "System"})`,
           50,
           startY,
         );
@@ -490,22 +486,20 @@ class PurchaseOrderPdfService {
           .fillColor("#475569")
           .text("Branch Officer Signature", 50, startY + 45);
 
-        // Authorized By (Right)
         doc.font("Helvetica-Bold").fillColor("#0f172a");
-        if (po.resolved_by_name) {
-          let managerActionText = "Reviewed By:";
-          if (po.status === "APPROVED" || po.status === "CLOSED")
-            managerActionText = "Approved By:";
-          if (po.status === "REJECTED") managerActionText = "Rejected By:";
+        let managerActionText = "Authorized By:";
+        if (po.status === "APPROVED" || po.status === "CLOSED")
+          managerActionText = "Approved By:";
+        if (po.status === "REJECTED") managerActionText = "Rejected By:";
 
-          doc.text(
-            `${managerActionText} ${po.resolved_by_name} ${po.resolved_by_last_name || ""} (${po.resolved_by_role || "Manager"})`,
-            345,
-            startY,
-          );
-        } else {
-          doc.text("Authorized By:", 345, startY);
-        }
+        const authName = po.resolved_by_name
+          ? `${po.resolved_by_name} ${po.resolved_by_last_name || ""}`.trim()
+          : "Authorized Officer";
+        doc.text(
+          `${managerActionText} ${authName} (${po.resolved_by_role || "Manager"})`,
+          345,
+          startY,
+        );
 
         doc
           .moveTo(345, startY + 40)
