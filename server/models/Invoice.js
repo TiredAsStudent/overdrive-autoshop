@@ -91,7 +91,7 @@ class Invoice {
     const sql = `
       SELECT i.*, TO_CHAR(i.due_date, 'YYYY-MM-DD') as due_date,
              c.full_name as customer_name, c.contact_number, c.email, c.address as customer_address, 
-             b.branch_name, u.first_name as created_by_name, so.sales_order_number,
+             b.branch_name, b.address as branch_address, b.branch_code, u.first_name as created_by_name, so.sales_order_number,
              CASE 
                WHEN i.status IN ('UNPAID', 'PARTIALLY_PAID') AND i.due_date < CURRENT_DATE THEN 'OVERDUE'
                ELSE i.status 

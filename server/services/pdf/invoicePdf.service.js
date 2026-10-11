@@ -136,10 +136,12 @@ class InvoicePdfService {
         if (invoice.due_date) {
           doc
             .fillColor(invoice.status === "OVERDUE" ? "#ef4444" : "#64748b")
-            .text(`Due Date: ${invoice.due_date}`, 300, rightY, {
-              align: "right",
-              width: 245,
-            });
+            .text(
+              `Due Date: ${new Date(invoice.due_date).toLocaleDateString()}`,
+              300,
+              rightY,
+              { align: "right", width: 245 },
+            );
           rightY += 12;
         }
 
@@ -163,7 +165,7 @@ class InvoicePdfService {
           .fontSize(8)
           .font("Helvetica-Bold")
           .fillColor("#94a3b8")
-          .text("ISSUING BRANCH", 50, addressY);
+          .text("SERVICE BRANCH", 50, addressY);
         doc
           .fontSize(10)
           .font("Helvetica-Bold")
@@ -210,12 +212,10 @@ class InvoicePdfService {
         }
 
         if (invoice.customer_address) {
-          doc
-            .font("Helvetica")
-            .text(invoice.customer_address, 300, custY, {
-              width: 245,
-              lineGap: 2,
-            });
+          doc.font("Helvetica").text(invoice.customer_address, 300, custY, {
+            width: 245,
+            lineGap: 2,
+          });
         } else {
           doc
             .font("Helvetica-Oblique")
