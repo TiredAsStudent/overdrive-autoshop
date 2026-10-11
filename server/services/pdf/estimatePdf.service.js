@@ -36,21 +36,28 @@ class EstimatePdfService {
 
           if (fs.existsSync(logoPath)) {
             try {
-              doc.image(logoPath, 50, 45, { width: 60 });
+              doc.image(logoPath, 50, 40, { fit: [60, 45], align: "left" });
+
               doc
-                .fontSize(18)
+                .fontSize(20)
                 .font("Helvetica-Bold")
                 .fillColor("#0f172a")
-                .text(settings.company_name || "Overdrive Auto Shop", 120, 50);
-              doc
-                .fontSize(9)
-                .font("Helvetica")
-                .fillColor("#64748b")
-                .text(
-                  `Phone: ${settings.contact_number || "N/A"} | Email: ${settings.contact_email || "N/A"}`,
-                  120,
-                  70,
-                );
+                .text(settings.company_name || "Overdrive Auto Shop", 125, 45);
+
+              const contactInfo = [
+                settings.contact_number,
+                settings.contact_email,
+              ]
+                .filter(Boolean)
+                .join("  |  ");
+              if (contactInfo) {
+                doc
+                  .fontSize(9)
+                  .font("Helvetica")
+                  .fillColor("#64748b")
+                  .text(contactInfo, 125, 68);
+              }
+
               startY = 105;
               logoRendered = true;
             } catch (imgError) {
@@ -67,16 +74,21 @@ class EstimatePdfService {
             .font("Helvetica-Bold")
             .fillColor("#0f172a")
             .text(settings?.company_name || "Overdrive Auto Shop", 50, 45);
-          doc
-            .fontSize(9)
-            .font("Helvetica")
-            .fillColor("#64748b")
-            .text(
-              `Phone: ${settings?.contact_number || "N/A"} | Email: ${settings?.contact_email || "N/A"}`,
-              50,
-              70,
-            );
-          startY = 100;
+
+          const contactInfo = [
+            settings?.contact_number,
+            settings?.contact_email,
+          ]
+            .filter(Boolean)
+            .join("  |  ");
+          if (contactInfo) {
+            doc
+              .fontSize(9)
+              .font("Helvetica")
+              .fillColor("#64748b")
+              .text(contactInfo, 50, 72);
+          }
+          startY = 105;
         }
 
         // Right Header (Document Meta)
@@ -86,20 +98,21 @@ class EstimatePdfService {
           .fillColor("#f59e0b")
           .text("OFFICIAL ESTIMATE", 300, 45, { align: "right", width: 245 });
         doc
-          .fontSize(9)
+          .fontSize(11)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text(`Doc Number: ${estimate.estimate_number}`, 300, 68, {
+          .text(estimate.estimate_number, 300, 67, {
             align: "right",
             width: 245,
           });
         doc
           .font("Helvetica")
-          .fillColor("#475569")
+          .fillColor("#64748b")
+          .fontSize(9)
           .text(
             `Date: ${new Date(estimate.created_at).toLocaleDateString()}`,
             300,
-            82,
+            83,
             { align: "right", width: 245 },
           );
         doc
@@ -107,7 +120,7 @@ class EstimatePdfService {
           .text(
             `Valid Until: ${new Date(estimate.valid_until).toLocaleDateString()}`,
             300,
-            96,
+            97,
             { align: "right", width: 245 },
           );
 
@@ -125,7 +138,7 @@ class EstimatePdfService {
 
         // Branch Address (Left)
         doc
-          .fontSize(9)
+          .fontSize(8)
           .font("Helvetica-Bold")
           .fillColor("#94a3b8")
           .text("SERVICE BRANCH", 50, addressY);
@@ -133,25 +146,28 @@ class EstimatePdfService {
           .fontSize(10)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text(
-            `${estimate.branch_name} [${estimate.branch_code}]`,
-            50,
-            addressY + 14,
-          );
-        doc
-          .fontSize(9)
-          .font("Helvetica")
-          .fillColor("#475569")
-          .text(
-            estimate.branch_address || "Address not provided",
-            50,
-            addressY + 28,
-            { width: 220, lineGap: 2 },
-          );
+          .text(estimate.branch_name, 50, addressY + 12);
+
+        if (estimate.branch_address) {
+          doc
+            .fontSize(9)
+            .font("Helvetica")
+            .fillColor("#475569")
+            .text(estimate.branch_address, 50, addressY + 26, {
+              width: 220,
+              lineGap: 2,
+            });
+        } else {
+          doc
+            .fontSize(9)
+            .font("Helvetica-Oblique")
+            .fillColor("#94a3b8")
+            .text("Address not provided", 50, addressY + 26);
+        }
 
         // Customer Address (Right)
         doc
-          .fontSize(9)
+          .fontSize(8)
           .font("Helvetica-Bold")
           .fillColor("#94a3b8")
           .text("PREPARED FOR", 300, addressY);
@@ -159,22 +175,29 @@ class EstimatePdfService {
           .fontSize(10)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text(
-            `${estimate.customer_name} (${estimate.customer_code})`,
-            300,
-            addressY + 14,
-          );
-        doc
-          .fontSize(9)
-          .font("Helvetica")
-          .fillColor("#475569")
-          .text(`Phone: ${estimate.contact_number}`, 300, addressY + 28);
-        doc.text(
-          estimate.customer_address || "Address not provided",
-          300,
-          addressY + 42,
-          { width: 245, lineGap: 2 },
-        );
+          .text(estimate.customer_name, 300, addressY + 12);
+
+        let custY = addressY + 26;
+        if (estimate.contact_number) {
+          doc
+            .fontSize(9)
+            .font("Helvetica")
+            .fillColor("#475569")
+            .text(estimate.contact_number, 300, custY);
+          custY += 14;
+        }
+
+        if (estimate.customer_address) {
+          doc.font("Helvetica").text(estimate.customer_address, 300, custY, {
+            width: 245,
+            lineGap: 2,
+          });
+        } else {
+          doc
+            .font("Helvetica-Oblique")
+            .fillColor("#94a3b8")
+            .text("Address not provided", 300, custY);
+        }
 
         // Push Y coordinate dynamically below the tallest address block
         startY = doc.y + 35;
