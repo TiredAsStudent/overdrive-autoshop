@@ -12,25 +12,36 @@ import {
 } from "lucide-react";
 import { inventoryService } from "../../../services/staff/inventory.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import Pagination from "../../../components/shared/Pagination";
+import { useApp } from "../../../context/AppContext";
 
 const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
+  const { showToast } = useApp();
   const [details, setDetails] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState("");
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     if (isOpen && itemId) {
       setLoading(true);
       setError("");
+      setCurrentPage(1); // Reset to page 1 on fresh open
 
       Promise.all([
         inventoryService.getItemDetails(itemId),
-        inventoryService.getMovementHistory(itemId),
+        inventoryService.getMovementHistory(itemId, 1, ITEMS_PER_PAGE),
       ])
         .then(([detailsRes, historyRes]) => {
           setDetails(detailsRes.data);
-          setHistory(historyRes.data);
+          setHistory(historyRes.data || []);
+          setTotalPages(historyRes.pagination?.totalPages || 1);
         })
         .catch((err) => setError(err.message))
         .finally(() => setLoading(false));
@@ -39,6 +50,24 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
       setHistory([]);
     }
   }, [isOpen, itemId]);
+
+  const handlePageChange = async (newPage) => {
+    setCurrentPage(newPage);
+    setLoadingHistory(true);
+    try {
+      const res = await inventoryService.getMovementHistory(
+        itemId,
+        newPage,
+        ITEMS_PER_PAGE,
+      );
+      setHistory(res.data || []);
+      setTotalPages(res.pagination?.totalPages || 1);
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -61,7 +90,7 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          {/* 1. Standardized Backdrop */}
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -72,7 +101,7 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
             aria-hidden="true"
           />
 
-          {/* 2. Standardized Drawer Panel */}
+          {/* Drawer Panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -87,7 +116,7 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
             role="dialog"
             aria-modal="true"
           >
-            {/* 3. Standardized Fixed Header */}
+            {/* Header */}
             <header className="flex justify-between items-center px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
@@ -113,7 +142,7 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
               </button>
             </header>
 
-            {/* 4. Standardized Scrollable Body */}
+            {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
@@ -177,7 +206,13 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
                   </section>
 
                   {/* Movement Ledger Table */}
-                  <section className="bg-white dark:bg-slate-800 p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                  <section className="bg-white dark:bg-slate-800 p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col relative overflow-hidden">
+                    {loadingHistory && (
+                      <div className="absolute inset-0 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
+                        <Loader2 className="h-6 w-6 text-amber-500 animate-spin" />
+                      </div>
+                    )}
+
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-5 flex items-center gap-2">
                       <History size={16} className="text-amber-500" /> Immutable
                       Movement Ledger
@@ -190,79 +225,90 @@ const StockMovementDrawer = ({ isOpen, onClose, itemId }) => {
                         </p>
                       </div>
                     ) : (
-                      <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-[16px] overflow-hidden">
-                        <div className="overflow-x-auto custom-scrollbar">
-                          <table className="w-full text-left whitespace-nowrap">
-                            <thead>
-                              <tr className="bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-700">
-                                <th className="px-5 py-4">Date & Auth</th>
-                                <th className="px-5 py-4">Transaction</th>
-                                <th className="px-5 py-4 text-right">
-                                  Movement
-                                </th>
-                                <th className="px-5 py-4 text-right">
-                                  Balance
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                              {history.map((record) => (
-                                <tr
-                                  key={record.id}
-                                  className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors"
-                                >
-                                  <td className="px-5 py-4">
-                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                      {formatDate(record.created_at)}
-                                    </p>
-                                    <p className="text-[9px] font-medium text-slate-400 uppercase mt-0.5 tracking-widest">
-                                      By: {record.first_name || "System"}{" "}
-                                      {record.last_name || ""}
-                                    </p>
-                                  </td>
-                                  <td className="px-5 py-4">
-                                    <StatusBadge
-                                      label={record.transaction_type.replace(
-                                        /_/g,
-                                        " ",
-                                      )}
-                                      variant={getTransactionVariant(
-                                        record.transaction_type,
-                                      )}
-                                    />
-                                    <p className="text-[10px] text-blue-500 font-bold uppercase mt-1.5 tracking-widest">
-                                      {record.transaction_reference}
-                                    </p>
-                                  </td>
-                                  <td className="px-5 py-4 text-right">
-                                    {record.quantity_added > 0 && (
-                                      <span className="inline-flex items-center gap-1 text-emerald-500 text-[11px] font-black justify-end">
-                                        <ArrowUpRight size={12} /> +
-                                        {record.quantity_added}
-                                      </span>
-                                    )}
-                                    {record.quantity_deducted > 0 && (
-                                      <span className="inline-flex items-center gap-1 text-red-500 text-[11px] font-black justify-end">
-                                        <ArrowDownRight size={12} /> -
-                                        {record.quantity_deducted}
-                                      </span>
-                                    )}
-                                    {record.quantity_added === 0 &&
-                                      record.quantity_deducted === 0 && (
-                                        <span className="text-slate-400 text-[11px] font-black">
-                                          -
+                      <>
+                        <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-[16px] overflow-hidden">
+                          <div className="overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left whitespace-nowrap">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-700">
+                                  <th className="px-5 py-4">Date & Auth</th>
+                                  <th className="px-5 py-4">Transaction</th>
+                                  <th className="px-5 py-4 text-right">
+                                    Movement
+                                  </th>
+                                  <th className="px-5 py-4 text-right">
+                                    Balance
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                {history.map((record) => (
+                                  <tr
+                                    key={record.id}
+                                    className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors"
+                                  >
+                                    <td className="px-5 py-4">
+                                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                        {formatDate(record.created_at)}
+                                      </p>
+                                      <p className="text-[9px] font-medium text-slate-400 uppercase mt-0.5 tracking-widest">
+                                        By: {record.first_name || "System"}{" "}
+                                        {record.last_name || ""}
+                                      </p>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                      <StatusBadge
+                                        label={record.transaction_type.replace(
+                                          /_/g,
+                                          " ",
+                                        )}
+                                        variant={getTransactionVariant(
+                                          record.transaction_type,
+                                        )}
+                                      />
+                                      <p className="text-[10px] text-blue-500 font-bold uppercase mt-1.5 tracking-widest">
+                                        {record.transaction_reference}
+                                      </p>
+                                    </td>
+                                    <td className="px-5 py-4 text-right">
+                                      {record.quantity_added > 0 && (
+                                        <span className="inline-flex items-center gap-1 text-emerald-500 text-[11px] font-black justify-end">
+                                          <ArrowUpRight size={12} /> +
+                                          {record.quantity_added}
                                         </span>
                                       )}
-                                  </td>
-                                  <td className="px-5 py-4 text-right text-sm font-black text-slate-900 dark:text-white font-mono">
-                                    {record.remaining_quantity}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                                      {record.quantity_deducted > 0 && (
+                                        <span className="inline-flex items-center gap-1 text-red-500 text-[11px] font-black justify-end">
+                                          <ArrowDownRight size={12} /> -
+                                          {record.quantity_deducted}
+                                        </span>
+                                      )}
+                                      {record.quantity_added === 0 &&
+                                        record.quantity_deducted === 0 && (
+                                          <span className="text-slate-400 text-[11px] font-black">
+                                            -
+                                          </span>
+                                        )}
+                                    </td>
+                                    <td className="px-5 py-4 text-right text-sm font-black text-slate-900 dark:text-white font-mono">
+                                      {record.remaining_quantity}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                      </div>
+
+                        {/* Standardized Reusable Pagination */}
+                        <div className="mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
+                          <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                          />
+                        </div>
+                      </>
                     )}
                   </section>
                 </div>
