@@ -1,4 +1,5 @@
 import api from "../api";
+import { extractBlobError } from "../../utils/fileDownloader";
 
 export const billService = {
   getEligiblePOs: async () => {
@@ -51,6 +52,18 @@ export const billService = {
       throw new Error(
         error.response?.data?.error?.message || "Failed to load bill details.",
       );
+    }
+  },
+
+  downloadPdf: async (id) => {
+    try {
+      const response = await api.get(`/staff/bills/${id}/pdf`, {
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage = await extractBlobError(error);
+      throw new Error(errorMessage || "Failed to generate Bill Voucher PDF.");
     }
   },
 

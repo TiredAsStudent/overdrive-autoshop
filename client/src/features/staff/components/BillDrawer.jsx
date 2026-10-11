@@ -25,10 +25,14 @@ import {
 } from "lucide-react";
 import { billService } from "../../../services/staff/bill.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import { useApp } from "../../../context/AppContext";
+import { openPdfInNewTab } from "../../../utils/pdfViewer";
 
 const BillDrawer = ({ isOpen, onClose, billId, readOnly = false }) => {
+  const { showToast } = useApp();
   const [bill, setBill] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     if (isOpen && billId) {
@@ -81,6 +85,17 @@ const BillDrawer = ({ isOpen, onClose, billId, readOnly = false }) => {
 
   const isPdf = (path) => {
     return path?.toLowerCase().endsWith(".pdf");
+  };
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      await openPdfInNewTab(() => billService.downloadPdf(billId));
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   return (
@@ -423,10 +438,20 @@ const BillDrawer = ({ isOpen, onClose, billId, readOnly = false }) => {
             {!readOnly && bill && !loading && (
               <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex gap-3 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
                 <button
-                  onClick={() => window.print()}
+                  onClick={handlePrint}
+                  disabled={!bill || loading || isPrinting}
                   className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  <Printer size={16} /> Print Document
+                  {isPrinting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Generating PDF...
+                    </>
+                  ) : (
+                    <>
+                      <Printer size={16} /> Print Document
+                    </>
+                  )}
                 </button>
               </div>
             )}
