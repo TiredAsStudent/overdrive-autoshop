@@ -150,9 +150,12 @@ class PurchaseOrder {
 
   static async findById(id) {
     const sql = `
-      SELECT po.*, v.business_name as vendor_name, v.contact_person, v.email as vendor_email, 
-             b.branch_name, u.first_name as created_by_name, u.last_name as created_by_last_name,
-             r.first_name as resolved_by_name, r.last_name as resolved_by_last_name
+      SELECT po.*, 
+             v.business_name as vendor_name, v.contact_person, v.email as vendor_email, 
+             v.business_address as vendor_address, v.contact_number as vendor_contact, v.tin as vendor_tin, v.is_vat_registered,
+             b.branch_name, b.branch_code, b.address as branch_address, 
+             u.first_name as created_by_name, u.last_name as created_by_last_name, u.role as created_by_role,
+             r.first_name as resolved_by_name, r.last_name as resolved_by_last_name, r.role as resolved_by_role
       FROM purchase_orders po
       JOIN vendors v ON po.vendor_id = v.id
       JOIN branches b ON po.branch_id = b.id

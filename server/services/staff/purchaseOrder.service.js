@@ -2,6 +2,7 @@ const PurchaseOrderModel = require("../../models/PurchaseOrder");
 const VendorModel = require("../../models/Vendor");
 const InventoryModel = require("../../models/Inventory");
 const SystemSetting = require("../../models/SystemSetting");
+const PurchaseOrderPdfService = require("../pdf/purchaseOrderPdf.service");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class PurchaseOrderService {
@@ -281,6 +282,31 @@ class PurchaseOrderService {
     if (!branchId) throw new Error("Branch context is required.");
 
     return await PurchaseOrderModel.findEligibleForBilling(branchId);
+  }
+
+  static async generatePdf(id, activeUser, ipAddress) {
+    const po = await this.getPurchaseOrderDetails(id, activeUser);
+
+    const settings = await SystemSetting.getSettings();
+
+    const pdfBuffer = await PurchaseOrderPdfService.generate(po, settings);
+
+    await logSecureAction(
+      activeUser.id,
+      activeUser.branchId,
+      "PURCHASE_ORDER_PDF_GENERATED",
+      "INFO",
+      ipAddress,
+      "purchase_orders",
+      id,
+      null,
+      { purchase_order_number: po.purchase_order_number },
+    );
+
+    return {
+      buffer: pdfBuffer,
+      filename: `${po.purchase_order_number}_PO.pdf`,
+    };
   }
 }
 

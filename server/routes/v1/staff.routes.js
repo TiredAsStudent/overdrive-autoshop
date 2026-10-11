@@ -255,6 +255,9 @@ router.get(
   "/purchase-orders/:id",
   PurchaseOrderController.getPurchaseOrderDetails,
 );
+
+router.get("/purchase-orders/:id/pdf", PurchaseOrderController.downloadPdf);
+
 router.put(
   "/purchase-orders/:id",
   validate(updatePurchaseOrderSchema),
