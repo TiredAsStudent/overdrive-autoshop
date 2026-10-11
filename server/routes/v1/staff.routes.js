@@ -143,6 +143,9 @@ router.get(
   EstimateController.getEstimates,
 );
 router.get("/estimates/:id", EstimateController.getEstimateDetails);
+
+router.get("/estimates/:id/pdf", EstimateController.downloadPdf);
+
 router.put(
   "/estimates/:id",
   validate(updateEstimateSchema),

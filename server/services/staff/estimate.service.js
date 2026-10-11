@@ -3,6 +3,7 @@ const CustomerModel = require("../../models/Customer");
 const ServiceModel = require("../../models/Service");
 const InventoryModel = require("../../models/Inventory");
 const SystemSetting = require("../../models/SystemSetting");
+const EstimatePdfService = require("../pdf/estimatePdf.service");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class EstimateService {
@@ -267,6 +268,31 @@ class EstimateService {
         currentPage: page,
         itemsPerPage: limit,
       },
+    };
+  }
+
+  static async generatePdf(id, activeUser, ipAddress) {
+    const estimate = await this.getEstimateDetails(id, activeUser);
+
+    const settings = await SystemSetting.getSettings();
+
+    const pdfBuffer = await EstimatePdfService.generate(estimate, settings);
+
+    await logSecureAction(
+      activeUser.id,
+      activeUser.branchId,
+      "ESTIMATE_PDF_GENERATED",
+      "INFO",
+      ipAddress,
+      "estimates",
+      id,
+      null,
+      { estimate_number: estimate.estimate_number },
+    );
+
+    return {
+      buffer: pdfBuffer,
+      filename: `${estimate.estimate_number}_Quotation.pdf`,
     };
   }
 }
