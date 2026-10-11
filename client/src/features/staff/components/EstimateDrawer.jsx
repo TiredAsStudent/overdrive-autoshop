@@ -17,11 +17,15 @@ import {
 } from "lucide-react";
 import { estimateService } from "../../../services/staff/estimate.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import { useApp } from "../../../context/AppContext";
+import { openPdfInNewTab } from "../../../utils/pdfViewer";
 
 const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
+  const { showToast } = useApp();
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     if (isOpen && estimateId) {
@@ -58,6 +62,17 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
         return AlertCircle;
       default:
         return FileText; // DRAFT
+    }
+  };
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      await openPdfInNewTab(() => estimateService.downloadPdf(estimateId));
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -305,13 +320,23 @@ const EstimateDrawer = ({ isOpen, onClose, estimateId }) => {
               )}
             </div>
 
-            {/* Print Footer Stub */}
+            {/* Print Footer */}
             <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
               <button
-                disabled={!estimate || loading}
+                onClick={handlePrint}
+                disabled={!estimate || loading || isPrinting}
                 className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Printer size={16} /> Print Document
+                {isPrinting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Printer size={16} /> Print Document
+                  </>
+                )}
               </button>
             </div>
           </motion.div>
