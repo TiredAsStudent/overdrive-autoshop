@@ -3,7 +3,6 @@ const fs = require("fs");
 const path = require("path");
 
 class SalesOrderPdfService {
-  // ISO 4217 Compliant Format
   static formatCurrency(amount) {
     return (
       "PHP " +
@@ -27,104 +26,89 @@ class SalesOrderPdfService {
         doc.on("data", buffers.push.bind(buffers));
         doc.on("end", () => resolve(Buffer.concat(buffers)));
 
-        let startY = 50;
-        let logoRendered = false;
+        // We use rightY to dynamically stack the right-side text without overlapping
+        let rightY = 40;
 
         // --- 1. HEADER SECTION ---
+
+        // LEFT SIDE: Solo Enlarged Logo
         if (settings?.logo_url) {
           const cleanLogoUrl = settings.logo_url.replace(/^\//, "");
           const logoPath = path.join(process.cwd(), cleanLogoUrl);
 
           if (fs.existsSync(logoPath)) {
             try {
-              doc.image(logoPath, 50, 40, { fit: [60, 45], align: "left" });
-
-              doc
-                .fontSize(20)
-                .font("Helvetica-Bold")
-                .fillColor("#0f172a")
-                .text(settings.company_name || "Overdrive Auto Shop", 125, 45);
-
-              const contactInfo = [
-                settings.contact_number,
-                settings.contact_email,
-              ]
-                .filter(Boolean)
-                .join("  |  ");
-              if (contactInfo) {
-                doc
-                  .fontSize(9)
-                  .font("Helvetica")
-                  .fillColor("#64748b")
-                  .text(contactInfo, 125, 68);
-              }
-
-              startY = 105;
-              logoRendered = true;
+              doc.image(logoPath, 50, 40, { fit: [100, 75], align: "left" });
             } catch (imgError) {
-              console.warn(
-                "PDF Engine: Logo exists but is corrupted. Falling back to text.",
-              );
+              console.warn("PDF Engine: Logo exists but is corrupted.");
             }
           }
         }
 
-        if (!logoRendered) {
-          doc
-            .fontSize(22)
-            .font("Helvetica-Bold")
-            .fillColor("#0f172a")
-            .text(settings?.company_name || "Overdrive Auto Shop", 50, 45);
-
-          const contactInfo = [
-            settings?.contact_number,
-            settings?.contact_email,
-          ]
-            .filter(Boolean)
-            .join("  |  ");
-          if (contactInfo) {
-            doc
-              .fontSize(9)
-              .font("Helvetica")
-              .fillColor("#64748b")
-              .text(contactInfo, 50, 72);
-          }
-          startY = 105;
-        }
-
-        // Right Header (Document Meta & Dynamic Status)
+        // RIGHT SIDE: Company Info
         doc
           .fontSize(18)
           .font("Helvetica-Bold")
-          .fillColor("#f59e0b")
-          .text("OFFICIAL WORK ORDER", 300, 45, { align: "right", width: 245 });
+          .fillColor("#0f172a")
+          .text(settings?.company_name || "Overdrive Auto Shop", 300, rightY, {
+            align: "right",
+            width: 245,
+          });
+        rightY += 20;
 
-        // Dynamic Status Color Logic
-        let statusColor = "#64748b"; // Default / Pending
+        const contactInfo = [settings?.contact_number, settings?.contact_email]
+          .filter(Boolean)
+          .join("  |  ");
+
+        if (contactInfo) {
+          doc
+            .fontSize(9)
+            .font("Helvetica")
+            .fillColor("#64748b")
+            .text(contactInfo, 300, rightY, { align: "right", width: 245 });
+          rightY += 18;
+        }
+
+        rightY += 10; // Extra padding before document title
+
+        // RIGHT SIDE: Document Title & Meta
+        doc
+          .fontSize(16)
+          .font("Helvetica-Bold")
+          .fillColor("#f59e0b")
+          .text("OFFICIAL WORK ORDER", 300, rightY, {
+            align: "right",
+            width: 245,
+          });
+        rightY += 18;
+
+        let statusColor = "#64748b";
         if (so.status === "COMPLETED" || so.status === "INVOICED")
-          statusColor = "#10b981"; // Emerald
-        if (so.status === "IN_PROGRESS") statusColor = "#f59e0b"; // Amber
-        if (so.status === "CANCELLED") statusColor = "#ef4444"; // Red
+          statusColor = "#10b981";
+        if (so.status === "IN_PROGRESS") statusColor = "#f59e0b";
+        if (so.status === "CANCELLED") statusColor = "#ef4444";
 
         doc
           .fontSize(10)
           .font("Helvetica-Bold")
           .fillColor(statusColor)
-          .text(so.status.replace("_", " "), 300, 66, {
+          .text(so.status.replace("_", " "), 300, rightY, {
             align: "right",
             width: 245,
           });
+        rightY += 14;
 
+        // Document Number (No "Ref:" prefix)
         doc
           .fontSize(11)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text(`Ref: ${so.sales_order_number}`, 300, 80, {
+          .text(so.sales_order_number, 300, rightY, {
             align: "right",
             width: 245,
           });
+        rightY += 14;
 
-        let metaY = 96;
         doc
           .font("Helvetica")
           .fillColor("#64748b")
@@ -132,23 +116,26 @@ class SalesOrderPdfService {
           .text(
             `Date: ${new Date(so.created_at).toLocaleDateString()}`,
             300,
-            metaY,
+            rightY,
             { align: "right", width: 245 },
           );
+        rightY += 12;
 
         if (so.estimated_completion_date) {
-          metaY += 12;
           doc
             .fillColor("#ef4444")
             .text(
               `Target Completion: ${new Date(so.estimated_completion_date).toLocaleDateString()}`,
               300,
-              metaY,
+              rightY,
               { align: "right", width: 245 },
             );
+          rightY += 12;
         }
 
-        // Line Separator
+        // Determine the safe Y coordinate to start the next section
+        let startY = Math.max(125, rightY + 15);
+
         doc
           .moveTo(50, startY)
           .lineTo(545, startY)
@@ -160,7 +147,6 @@ class SalesOrderPdfService {
         // --- 2. ADDRESS BLOCKS ---
         const addressY = startY;
 
-        // Branch Address (Left)
         doc
           .fontSize(8)
           .font("Helvetica-Bold")
@@ -189,7 +175,6 @@ class SalesOrderPdfService {
             .text("Address not provided", 50, addressY + 26);
         }
 
-        // Customer Address (Right)
         doc
           .fontSize(8)
           .font("Helvetica-Bold")
@@ -245,6 +230,7 @@ class SalesOrderPdfService {
         doc.roundedRect(50, startY, 495, 22, 4).fill("#f1f5f9");
         doc.fillColor("#475569").font("Helvetica-Bold").fontSize(8);
         const headerY = startY + 6;
+
         doc.text("TYPE", colX.type, headerY, {
           width: colW.type,
           align: "left",
@@ -439,6 +425,7 @@ class SalesOrderPdfService {
         }
 
         doc.fontSize(9).font("Helvetica-Bold").fillColor("#0f172a");
+
         doc.text(
           `Prepared By: ${so.created_by_name} ${so.created_by_last_name || ""} (${so.created_by_role})`,
           50,
@@ -455,20 +442,7 @@ class SalesOrderPdfService {
           .fillColor("#475569")
           .text("Authorized Signature", 50, startY + 45);
 
-        doc
-          .font("Helvetica-Bold")
-          .fillColor("#0f172a")
-          .text("Client Acknowledgment", 345, startY);
-        doc
-          .moveTo(345, startY + 40)
-          .lineTo(545, startY + 40)
-          .lineWidth(1)
-          .strokeColor("#0f172a")
-          .stroke();
-        doc
-          .font("Helvetica")
-          .fillColor("#475569")
-          .text("Client Signature over Printed Name", 345, startY + 45);
+        // Intentionally removed Client Acknowledgment as requested
 
         doc.end();
       } catch (error) {
