@@ -48,10 +48,10 @@ const AuditLogs = () => {
   // State: UI & Primary Controls
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
-  const [severityFilter, setSeverityFilter] = useState("");
 
   // State: Advanced Filters
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [severityFilter, setSeverityFilter] = useState("");
   const [branchFilter, setBranchFilter] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -64,7 +64,9 @@ const AuditLogs = () => {
 
   // Calculate active advanced filters for the badge
   const activeFilterCount =
-    (branchFilter !== "all" ? 1 : 0) + (startDate && endDate ? 1 : 0);
+    (branchFilter !== "all" ? 1 : 0) +
+    (severityFilter !== "" ? 1 : 0) +
+    (startDate && endDate ? 1 : 0);
 
   // Initial Setup: Fetch dynamic severities and branches
   useEffect(() => {
@@ -72,7 +74,6 @@ const AuditLogs = () => {
       try {
         const [severitiesRes, branchesRes] = await Promise.all([
           auditService.getSeverities(),
-
           branchService.getAllBranches(1, 100, "", "active"),
         ]);
         setSeverities(severitiesRes.data || []);
@@ -100,7 +101,6 @@ const AuditLogs = () => {
         search: debouncedSearch || undefined,
         severity: severityFilter || undefined,
         branchId: branchFilter !== "all" ? branchFilter : undefined,
-
         startDate: startDate && endDate ? `${startDate} 00:00:00` : undefined,
         endDate: startDate && endDate ? `${endDate} 23:59:59.999` : undefined,
       };
@@ -181,6 +181,7 @@ const AuditLogs = () => {
 
   const resetAdvancedFilters = () => {
     setBranchFilter("all");
+    setSeverityFilter("");
     setStartDate("");
     setEndDate("");
     setIsFilterModalOpen(false);
@@ -201,43 +202,6 @@ const AuditLogs = () => {
           placeholder="Search action, user, or IP..."
           isSearching={searchTerm !== debouncedSearch}
         />
-
-        {/* Dynamic Server-Side Severities Dropdown */}
-        <div className="relative w-full sm:flex-1 xl:w-auto xl:flex-none min-w-[160px]">
-          <select
-            value={severityFilter}
-            onChange={(e) => setSeverityFilter(e.target.value)}
-            className="w-full appearance-none pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all cursor-pointer"
-          >
-            <option value="">All Severities</option>
-            {severities.map((sev) => (
-              <option key={sev} value={sev}>
-                {sev === "INFO"
-                  ? "🟢 Info"
-                  : sev === "WARNING"
-                    ? "🟡 Warning"
-                    : sev === "CRITICAL"
-                      ? "🔴 Critical"
-                      : sev}
-              </option>
-            ))}
-          </select>
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <svg
-              className="w-4 h-4 text-slate-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </div>
-        </div>
 
         {/* Universal Filter Button */}
         <FilterButton
@@ -424,22 +388,41 @@ const AuditLogs = () => {
         title="Advanced Audit Filters"
       >
         <div className="space-y-5">
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Action Context (Branch)
-            </label>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
-            >
-              <option value="all">Enterprise Global & All Branches</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.branch_name}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                Branch Location
+              </label>
+              <select
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
+              >
+                <option value="all">All Branches</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.branch_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                Severity Level
+              </label>
+              <select
+                value={severityFilter}
+                onChange={(e) => setSeverityFilter(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
+              >
+                <option value="">All Severities</option>
+                {severities.map((sev) => (
+                  <option key={sev} value={sev}>
+                    {sev.charAt(0) + sev.slice(1).toLowerCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
