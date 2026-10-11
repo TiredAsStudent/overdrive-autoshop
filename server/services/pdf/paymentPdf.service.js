@@ -199,12 +199,10 @@ class PaymentPdfService {
         }
 
         if (payment.customer_address) {
-          doc
-            .font("Helvetica")
-            .text(payment.customer_address, 300, custY, {
-              width: 245,
-              lineGap: 2,
-            });
+          doc.font("Helvetica").text(payment.customer_address, 300, custY, {
+            width: 245,
+            lineGap: 2,
+          });
         } else {
           doc
             .font("Helvetica-Oblique")
@@ -252,12 +250,10 @@ class PaymentPdfService {
           width: colW.desc,
           align: "left",
         });
-        doc
-          .font("Helvetica")
-          .text(methodText, colX.method, startY, {
-            width: colW.method,
-            align: "left",
-          });
+        doc.font("Helvetica").text(methodText, colX.method, startY, {
+          width: colW.method,
+          align: "left",
+        });
         doc.text(refText, colX.ref, startY, { width: colW.ref, align: "left" });
         doc
           .font("Helvetica-Bold")
@@ -283,7 +279,7 @@ class PaymentPdfService {
 
         // Invoice Grand Total
         doc.font("Helvetica-Bold").fontSize(9).fillColor("#475569");
-        doc.text(`Invoice Total (${payment.invoice_number}):`, labelX, startY, {
+        doc.text("Invoice Total:", labelX, startY, {
           width: labelW,
           align: "right",
         });
