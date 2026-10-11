@@ -321,7 +321,7 @@ const BillDrawer = ({ isOpen, onClose, billId, readOnly = false }) => {
                     </h3>
                     <div className="space-y-3 mb-5 text-sm font-medium text-slate-400">
                       <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
-                        <span>Subtotal</span>
+                        <span>Subtotal (Net of VAT)</span>
                         <span className="font-bold text-slate-200 font-mono">
                           ₱
                           {parseFloat(bill.subtotal).toLocaleString(undefined, {
@@ -345,7 +345,7 @@ const BillDrawer = ({ isOpen, onClose, billId, readOnly = false }) => {
 
                       <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
                         <span>
-                          VAT Allocation{" "}
+                          Input VAT Allocation{" "}
                           {!bill.is_vat_registered ? "(Exempt)" : ""}
                         </span>
                         <span className="font-bold text-slate-200 font-mono">
@@ -357,16 +357,43 @@ const BillDrawer = ({ isOpen, onClose, billId, readOnly = false }) => {
                         </span>
                       </div>
                     </div>
-                    <div className="pt-4 sm:pt-5 border-t border-slate-700/50 flex justify-between items-center">
+
+                    <div className="pt-4 sm:pt-5 border-y border-slate-700/50 pb-4 mb-4 flex justify-between items-center">
                       <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
                         Grand Total
                       </span>
-                      <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight font-mono">
+                      <span className="text-2xl sm:text-3xl font-black text-white tracking-tight font-mono">
                         ₱
                         {parseFloat(bill.grand_total).toLocaleString(
                           undefined,
                           { minimumFractionDigits: 2 },
                         )}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-sm font-medium text-emerald-500 mb-4 bg-emerald-500/10 p-3 sm:p-4 rounded-xl">
+                      <span>Total Payments Applied</span>
+                      <span className="font-black font-mono">
+                        - ₱
+                        {parseFloat(bill.amount_paid || 0).toLocaleString(
+                          undefined,
+                          { minimumFractionDigits: 2 },
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="text-sm font-black uppercase tracking-widest text-rose-400">
+                        Balance Due
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-black text-rose-500 font-mono tracking-tight">
+                        ₱
+                        {(
+                          parseFloat(bill.grand_total) -
+                          parseFloat(bill.amount_paid || 0)
+                        ).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}
                       </span>
                     </div>
                   </section>

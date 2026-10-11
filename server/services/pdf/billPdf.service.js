@@ -88,7 +88,7 @@ class BillPdfService {
         }
 
         // RIGHT SIDE: Document Title & Meta
-        let titleColor = "#3b82f6"; // Default Blue for A/P Vouchers
+        let titleColor = "#3b82f6";
         if (bill.payment_status === "PAID") titleColor = "#10b981";
 
         doc
@@ -395,10 +395,11 @@ class BillPdfService {
           });
         startY += 18;
 
+        // FRS COMPLIANCE: Display explicit Tax Percentage if VAT Registered
         doc
           .fillColor("#475569")
           .text(
-            `Input VAT ${bill.is_vat_registered ? `Allocation` : "(Exempt)"}:`,
+            `Input VAT ${bill.is_vat_registered ? `(${parseFloat(settings?.vat_percentage || 12)}%)` : "(Exempt)"}:`,
             labelX,
             startY,
             { width: labelW, align: "right" },
@@ -425,20 +426,22 @@ class BillPdfService {
         startY += 30;
 
         // Ledger / Payments Deduction
-        doc.font("Helvetica").fontSize(9).fillColor("#10b981");
-        doc.text("Less: Payments Applied:", labelX, startY, {
-          width: labelW,
-          align: "right",
-        });
-        doc.text(`(${this.formatCurrency(bill.amount_paid)})`, valueX, startY, {
-          width: valueW,
-          align: "right",
-        });
-        startY += 20;
+        const amountPaid = parseFloat(bill.amount_paid || 0);
+        if (amountPaid > 0) {
+          doc.font("Helvetica").fontSize(9).fillColor("#10b981");
+          doc.text("Less: Payments Applied:", labelX, startY, {
+            width: labelW,
+            align: "right",
+          });
+          doc.text(`(${this.formatCurrency(amountPaid)})`, valueX, startY, {
+            width: valueW,
+            align: "right",
+          });
+          startY += 20;
+        }
 
         // Balance Due Highlighted Box
-        const balanceDue =
-          parseFloat(bill.grand_total) - parseFloat(bill.amount_paid);
+        const balanceDue = parseFloat(bill.grand_total) - amountPaid;
         doc.roundedRect(labelX, startY, 225, 30, 4).fill("#fffbeb");
         doc
           .fillColor(balanceDue > 0 ? "#b91c1c" : "#10b981")
