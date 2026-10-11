@@ -1,4 +1,5 @@
 import api from "../api";
+import { extractBlobError } from "../../utils/fileDownloader";
 
 export const invoiceService = {
   getInvoices: async (
@@ -29,6 +30,18 @@ export const invoiceService = {
         error.response?.data?.error?.message ||
           "Failed to fetch invoice details.",
       );
+    }
+  },
+
+  downloadPdf: async (id) => {
+    try {
+      const response = await api.get(`/staff/invoices/${id}/pdf`, {
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage = await extractBlobError(error);
+      throw new Error(errorMessage || "Failed to generate PDF document.");
     }
   },
 

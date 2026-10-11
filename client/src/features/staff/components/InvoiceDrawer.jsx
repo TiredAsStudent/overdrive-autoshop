@@ -21,11 +21,15 @@ import {
 } from "lucide-react";
 import { invoiceService } from "../../../services/staff/invoice.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import { useApp } from "../../../context/AppContext";
+import { openPdfInNewTab } from "../../../utils/pdfViewer";
 
 const InvoiceDrawer = ({ isOpen, onClose, invoiceId, readOnly = false }) => {
+  const { showToast } = useApp();
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isPrinting, setIsPrinting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -77,6 +81,17 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId, readOnly = false }) => {
     if (!dateString) return "N/A";
     const [year, month, day] = dateString.split("T")[0].split("-");
     return `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+  };
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      await openPdfInNewTab(() => invoiceService.downloadPdf(invoiceId));
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   return (
@@ -191,7 +206,7 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId, readOnly = false }) => {
                         <p className="text-sm font-bold text-blue-700 dark:text-blue-400 truncate">
                           {invoice.sales_order_number}
                         </p>
-                        <p className="text-[10px] text-blue-600/70 dark:text-blue-500 truncate mt-0.5 font-medium">
+                        <p className="text-[10px] text-blue-600/70 dark:text-blue-500/70 mt-0.5 truncate font-medium">
                           Work Order Completed
                         </p>
                       </div>
@@ -424,10 +439,20 @@ const InvoiceDrawer = ({ isOpen, onClose, invoiceId, readOnly = false }) => {
             {!readOnly && invoice && !loading && (
               <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex gap-3 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
                 <button
-                  onClick={() => window.print()}
+                  onClick={handlePrint}
+                  disabled={!invoice || loading || isPrinting}
                   className="flex-1 py-3.5 sm:py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  <Printer size={16} /> Print Document
+                  {isPrinting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Generating PDF...
+                    </>
+                  ) : (
+                    <>
+                      <Printer size={16} /> Print Document
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() =>
