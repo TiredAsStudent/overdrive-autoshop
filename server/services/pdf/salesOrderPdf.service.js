@@ -28,14 +28,17 @@ class SalesOrderPdfService {
 
         // --- 1. HEADER SECTION ---
 
+        let currentY = 40;
+
         doc
-          .fontSize(20)
+          .fontSize(22)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text(settings?.company_name || "Overdrive Auto Shop", 50, 45, {
+          .text(settings?.company_name || "Overdrive Auto Shop", 50, currentY, {
             align: "center",
             width: 495,
           });
+        currentY += 24;
 
         const contactInfo = [settings?.contact_number, settings?.contact_email]
           .filter(Boolean)
@@ -46,11 +49,14 @@ class SalesOrderPdfService {
             .fontSize(9)
             .font("Helvetica")
             .fillColor("#64748b")
-            .text(contactInfo, 50, 68, { align: "center", width: 495 });
+            .text(contactInfo, 50, currentY, { align: "center", width: 495 });
+          currentY += 14;
         }
 
-        const contentStartY = 95;
-        let rightY = contentStartY;
+        currentY += 25;
+
+        const row2StartY = currentY;
+        let rightY = row2StartY;
 
         // LEFT SIDE: Logo
         if (settings?.logo_url) {
@@ -59,8 +65,8 @@ class SalesOrderPdfService {
 
           if (fs.existsSync(logoPath)) {
             try {
-              doc.image(logoPath, 50, contentStartY, {
-                fit: [110, 80],
+              doc.image(logoPath, 50, row2StartY, {
+                fit: [100, 75],
                 align: "left",
               });
             } catch (imgError) {
@@ -90,7 +96,7 @@ class SalesOrderPdfService {
           .fontSize(10)
           .font("Helvetica-Bold")
           .fillColor(statusColor)
-          .text(so.status.replace("_", " "), 300, rightY, {
+          .text(so.status.replace(/_/g, " "), 300, rightY, {
             align: "right",
             width: 245,
           });
@@ -130,7 +136,7 @@ class SalesOrderPdfService {
           rightY += 12;
         }
 
-        let startY = Math.max(185, rightY + 15);
+        let startY = Math.max(row2StartY + 85, rightY + 15);
 
         // Line Separator
         doc
