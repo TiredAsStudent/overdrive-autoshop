@@ -27,16 +27,20 @@ class ExpensePdfService {
         doc.on("data", buffers.push.bind(buffers));
         doc.on("end", () => resolve(Buffer.concat(buffers)));
 
-        // --- BACKGROUND WATERMARK (IF REJECTED) ---
-        if (expense.status === "REJECTED") {
+        if (expense.status !== "APPROVED") {
+          const watermarkText =
+            expense.status === "REJECTED" ? "REJECTED" : "UNAPPROVED";
+          const watermarkColor =
+            expense.status === "REJECTED" ? "#ef4444" : "#f59e0b";
+
           doc
             .save()
             .translate(200, 350)
             .rotate(-45, { origin: [0, 0] })
-            .fontSize(80)
-            .fillColor("#ef4444")
+            .fontSize(65)
+            .fillColor(watermarkColor)
             .opacity(0.1)
-            .text("REJECTED", 0, 0, { align: "center", width: 400 })
+            .text(watermarkText, 0, 0, { align: "center", width: 400 })
             .restore();
         }
 
@@ -225,12 +229,10 @@ class ExpensePdfService {
         }
 
         if (expense.vendor_address) {
-          doc
-            .font("Helvetica")
-            .text(expense.vendor_address, 300, custY, {
-              width: 245,
-              lineGap: 2,
-            });
+          doc.font("Helvetica").text(expense.vendor_address, 300, custY, {
+            width: 245,
+            lineGap: 2,
+          });
           custY += Math.max(
             14,
             doc.heightOfString(expense.vendor_address, { width: 245 }),
@@ -291,12 +293,10 @@ class ExpensePdfService {
           doc.heightOfString(descriptionText, { width: colW.desc }),
         );
 
-        doc
-          .font("Helvetica")
-          .text(methodText, colX.method, startY, {
-            width: colW.method,
-            align: "left",
-          });
+        doc.font("Helvetica").text(methodText, colX.method, startY, {
+          width: colW.method,
+          align: "left",
+        });
         doc.text(refText, colX.ref, startY, { width: colW.ref, align: "left" });
         doc
           .font("Helvetica-Bold")
@@ -446,9 +446,14 @@ class ExpensePdfService {
 
         // Authorized By Signature (Right)
         doc.font("Helvetica-Bold").fillColor("#0f172a");
+
         if (expense.resolved_by_name) {
+          let managerActionText = "Reviewed By:";
+          if (expense.status === "APPROVED") managerActionText = "Approved By:";
+          if (expense.status === "REJECTED") managerActionText = "Rejected By:";
+
           doc.text(
-            `Approved By: ${expense.resolved_by_name} ${expense.resolved_by_last_name || ""} (${expense.resolved_by_role || "Manager"})`,
+            `${managerActionText} ${expense.resolved_by_name} ${expense.resolved_by_last_name || ""} (${expense.resolved_by_role || "Manager"})`,
             345,
             startY,
           );
