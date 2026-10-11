@@ -1,4 +1,5 @@
 import api from "../api";
+import { extractBlobError } from "../../utils/fileDownloader";
 
 export const purchaseOrderService = {
   getPurchaseOrders: async (
@@ -34,6 +35,18 @@ export const purchaseOrderService = {
         error.response?.data?.error?.message ||
           "Failed to load purchase order details.",
       );
+    }
+  },
+
+  downloadPdf: async (id) => {
+    try {
+      const response = await api.get(`/staff/purchase-orders/${id}/pdf`, {
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage = await extractBlobError(error);
+      throw new Error(errorMessage || "Failed to generate Purchase Order PDF.");
     }
   },
 

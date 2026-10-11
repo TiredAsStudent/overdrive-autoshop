@@ -20,11 +20,15 @@ import {
 } from "lucide-react";
 import { purchaseOrderService } from "../../../services/staff/purchaseOrder.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import { useApp } from "../../../context/AppContext";
+import { openPdfInNewTab } from "../../../utils/pdfViewer";
 
 const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
+  const { showToast } = useApp();
   const [po, setPo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     if (isOpen && poId) {
@@ -60,6 +64,17 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
         return XCircle;
       default:
         return FileText; // DRAFT
+    }
+  };
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      await openPdfInNewTab(() => purchaseOrderService.downloadPdf(poId));
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -177,7 +192,7 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
 
                   {/* Meta Cards */}
                   <div className="grid grid-cols-2 gap-4 sm:gap-5">
-                    <div className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
                       <Store size={16} className="text-slate-400 mb-3" />
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
@@ -190,8 +205,8 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                           <Building2 size={10} /> {po.branch_name}
                         </p>
                       </div>
-                    </div>
-                    <div className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                    </section>
+                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
                       <Calendar size={16} className="text-slate-400 mb-3" />
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
@@ -206,7 +221,7 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                           <User size={10} /> By: {po.created_by_name}
                         </p>
                       </div>
-                    </div>
+                    </section>
                   </div>
 
                   {/* Line Items Table */}
@@ -243,7 +258,7 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                                     minimumFractionDigits: 2,
                                   })}
                                   {parseFloat(item.discount_amount) > 0 && (
-                                    <span className="text-amber-500 ml-1.5">
+                                    <span className="text-amber-500 ml-1.5 font-bold">
                                       (Disc: -₱
                                       {parseFloat(
                                         item.discount_amount,
@@ -268,8 +283,11 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                     </div>
                   </div>
 
-                  {/* Totals */}
-                  <div className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl">
+                  {/* Totals Lock */}
+                  <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
+                    <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3">
+                      Locked Financials
+                    </p>
                     <div className="space-y-2 mb-5 text-sm font-medium text-slate-400">
                       <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
                         <span>Subtotal (Gross)</span>
@@ -281,10 +299,21 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                         </span>
                       </div>
 
+                      {parseFloat(po.total_discount) > 0 && (
+                        <div className="flex justify-between items-center bg-amber-500/10 p-3 sm:p-4 rounded-xl text-amber-500">
+                          <span className="font-bold">Total Discounts</span>
+                          <span className="font-black font-mono">
+                            - ₱
+                            {parseFloat(po.total_discount).toLocaleString(
+                              undefined,
+                              { minimumFractionDigits: 2 },
+                            )}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
-                        <span className="flex items-center gap-1.5">
-                          VAT Allocation
-                        </span>
+                        <span>VAT Amount</span>
                         <span className="font-bold text-slate-200 font-mono">
                           ₱
                           {parseFloat(po.vat_amount).toLocaleString(undefined, {
@@ -304,7 +333,7 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
                         })}
                       </span>
                     </div>
-                  </div>
+                  </section>
 
                   {/* Notes */}
                   {po.notes && (
@@ -322,12 +351,22 @@ const PurchaseOrderDrawer = ({ isOpen, onClose, poId }) => {
             </div>
 
             {/* Print Footer */}
-            <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+            <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
               <button
-                disabled={!po || loading}
+                onClick={handlePrint}
+                disabled={!po || loading || isPrinting}
                 className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Printer size={16} /> Print Document
+                {isPrinting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Printer size={16} /> Print Document
+                  </>
+                )}
               </button>
             </div>
           </motion.div>
