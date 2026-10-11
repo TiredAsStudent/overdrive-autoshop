@@ -224,6 +224,9 @@ router.get(
   PaymentController.getPayments,
 );
 router.get("/payments/:id", PaymentController.getPaymentDetails);
+
+router.get("/payments/:id/pdf", PaymentController.downloadPdf);
+
 router.patch("/payments/:id/void", PaymentController.voidPayment);
 
 // ==========================================

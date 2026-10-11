@@ -1,5 +1,7 @@
 const PaymentModel = require("../../models/Payment");
 const InvoiceModel = require("../../models/Invoice");
+const SystemSetting = require("../../models/SystemSetting");
+const PaymentPdfService = require("../pdf/paymentPdf.service");
 const { logSecureAction } = require("../../utils/auditLogger");
 const fs = require("fs").promises;
 
@@ -165,6 +167,31 @@ class PaymentService {
         currentPage: page,
         itemsPerPage: limit,
       },
+    };
+  }
+
+  static async generatePdf(id, activeUser, ipAddress) {
+    const payment = await this.getPaymentDetails(id, activeUser);
+
+    const settings = await SystemSetting.getSettings();
+
+    const pdfBuffer = await PaymentPdfService.generate(payment, settings);
+
+    await logSecureAction(
+      activeUser.id,
+      activeUser.branchId,
+      "SALES_PAYMENT_PDF_GENERATED",
+      "INFO",
+      ipAddress,
+      "payments",
+      id,
+      null,
+      { payment_number: payment.payment_number },
+    );
+
+    return {
+      buffer: pdfBuffer,
+      filename: `${payment.payment_number}_Receipt.pdf`,
     };
   }
 }

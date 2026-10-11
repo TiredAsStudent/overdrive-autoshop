@@ -99,6 +99,27 @@ class PaymentController {
       return sendError(res, code, error.message);
     }
   }
+
+  static async downloadPdf(req, res) {
+    try {
+      const { buffer, filename } = await PaymentService.generatePdf(
+        req.params.id,
+        req.user,
+        req.ip,
+      );
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      res.setHeader("Content-Length", buffer.length);
+
+      return res.end(buffer);
+    } catch (error) {
+      const code = error.message.includes("Unauthorized")
+        ? STATUS_CODES.FORBIDDEN
+        : STATUS_CODES.BAD_REQUEST;
+      return sendError(res, code, error.message);
+    }
+  }
 }
 
 module.exports = PaymentController;

@@ -160,8 +160,10 @@ class Payment {
   static async findById(id) {
     const sql = `
       SELECT p.*, TO_CHAR(p.payment_date, 'YYYY-MM-DD') as payment_date, 
-             i.invoice_number, i.grand_total as invoice_total, c.full_name as customer_name,
-             u.first_name as created_by_name, b.branch_name
+             i.invoice_number, i.grand_total as invoice_total, i.amount_paid as invoice_amount_paid,
+             c.full_name as customer_name, c.contact_number, c.email, c.address as customer_address, c.customer_code,
+             b.branch_name, b.address as branch_address, b.branch_code,
+             u.first_name as created_by_name, u.last_name as created_by_last_name, u.role as created_by_role
       FROM payments p
       JOIN invoices i ON p.invoice_id = i.id
       JOIN customers c ON i.customer_id = c.id
