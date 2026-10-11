@@ -107,6 +107,18 @@ const DatabaseBackups = () => {
     }
   };
 
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
       {/* UNIVERSAL PAGE HEADER */}
@@ -126,7 +138,7 @@ const DatabaseBackups = () => {
         {/* Universal Action Button */}
         <ActionButton
           onClick={handleTriggerBackupClick}
-          label={isTriggering ? "Compiling..." : "Trigger Backup"}
+          label={isTriggering ? "Compiling..." : "Create Backup"}
           icon={
             isTriggering
               ? (props) => (
@@ -169,7 +181,7 @@ const DatabaseBackups = () => {
         }
         emptySubtitle={
           searchQuery
-            ? "Try adjusting your search query."
+            ? "Try adjusting your search criteria."
             : "System snapshots will appear here once executed."
         }
         renderRow={(log) => (
@@ -223,7 +235,7 @@ const DatabaseBackups = () => {
 
             <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 text-right whitespace-nowrap">
               <p className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">
-                {new Date(log.created_at).toLocaleString()}
+                {formatDate(log.created_at)}
               </p>
             </td>
           </tr>
