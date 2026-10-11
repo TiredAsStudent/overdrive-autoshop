@@ -5,8 +5,8 @@ const path = require("path");
 class EstimatePdfService {
   static formatCurrency(amount) {
     return (
-      "P" +
-      parseFloat(amount).toLocaleString("en-PH", {
+      "PHP " +
+      parseFloat(amount).toLocaleString("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })
@@ -16,7 +16,6 @@ class EstimatePdfService {
   static async generate(estimate, settings) {
     return new Promise((resolve, reject) => {
       try {
-        // Initialize PDF Document (A4 Size)
         const doc = new PDFDocument({ margin: 50, size: "A4" });
         const buffers = [];
 
@@ -24,29 +23,40 @@ class EstimatePdfService {
         doc.on("end", () => resolve(Buffer.concat(buffers)));
 
         // --- 1. HEADER SECTION ---
-        // Logo Rendering with Fallback
-        const logoPath = settings?.logo_url
-          ? path.join(__dirname, "../../../", settings.logo_url)
-          : null;
         let startY = 50;
+        let logoRendered = false;
 
-        if (logoPath && fs.existsSync(logoPath)) {
-          doc.image(logoPath, 50, 45, { width: 60 });
-          doc
-            .fontSize(20)
-            .font("Helvetica-Bold")
-            .text(settings?.company_name || "Overdrive Auto Shop", 120, 55);
-          doc
-            .fontSize(10)
-            .font("Helvetica")
-            .fillColor("#64748b")
-            .text(
-              `Phone: ${settings?.contact_number || "N/A"} | Email: ${settings?.contact_email || "N/A"}`,
-              120,
-              80,
-            );
-          startY = 120;
-        } else {
+        if (settings?.logo_url) {
+          const cleanLogoUrl = settings.logo_url.replace(/^\//, "");
+          const logoPath = path.join(process.cwd(), cleanLogoUrl);
+
+          if (fs.existsSync(logoPath)) {
+            try {
+              doc.image(logoPath, 50, 45, { width: 60 });
+              doc
+                .fontSize(20)
+                .font("Helvetica-Bold")
+                .text(settings.company_name || "Overdrive Auto Shop", 120, 55);
+              doc
+                .fontSize(10)
+                .font("Helvetica")
+                .fillColor("#64748b")
+                .text(
+                  `Phone: ${settings.contact_number || "N/A"} | Email: ${settings.contact_email || "N/A"}`,
+                  120,
+                  80,
+                );
+              startY = 120;
+              logoRendered = true;
+            } catch (imgError) {
+              console.warn(
+                "PDF Engine: Logo exists but is corrupted. Falling back to text.",
+              );
+            }
+          }
+        }
+
+        if (!logoRendered) {
           doc
             .fontSize(24)
             .font("Helvetica-Bold")
@@ -103,7 +113,6 @@ class EstimatePdfService {
         // --- 2. ADDRESS BLOCK ---
         startY += 20;
 
-        // Branch
         doc
           .fontSize(10)
           .font("Helvetica-Bold")
@@ -123,10 +132,11 @@ class EstimatePdfService {
             estimate.branch_address || "Address not provided",
             50,
             startY + 30,
-            { width: 200 },
+            {
+              width: 200,
+            },
           );
 
-        // Customer
         doc
           .fontSize(10)
           .font("Helvetica-Bold")
@@ -153,20 +163,18 @@ class EstimatePdfService {
         // --- 3. ITEMS TABLE ---
         startY += 80;
 
-        // Table Header
         doc.rect(50, startY, 495, 20).fill("#f8fafc");
         doc.fillColor("#475569").font("Helvetica-Bold").fontSize(9);
         doc.text("TYPE", 55, startY + 5, { width: 50 });
-        doc.text("DESCRIPTION", 110, startY + 5, { width: 200 });
-        doc.text("QTY", 310, startY + 5, { width: 40, align: "center" });
-        doc.text("PRICE", 350, startY + 5, { width: 60, align: "right" });
+        doc.text("DESCRIPTION", 110, startY + 5, { width: 190 });
+        doc.text("QTY", 300, startY + 5, { width: 40, align: "center" });
+        doc.text("PRICE", 340, startY + 5, { width: 70, align: "right" });
         doc.text("DISC.", 410, startY + 5, { width: 50, align: "right" });
         doc.text("NET TOTAL", 460, startY + 5, { width: 80, align: "right" });
 
         startY += 25;
         doc.font("Helvetica").fontSize(9).fillColor("#0f172a");
 
-        // Table Rows
         estimate.items.forEach((item) => {
           const isService = item.line_type === "SERVICE";
           const desc = isService ? item.service_name : item.item_name;
@@ -181,10 +189,10 @@ class EstimatePdfService {
           }
 
           doc.text(item.line_type, 55, startY, { width: 50 });
-          doc.text(desc, 110, startY, { width: 190 });
-          doc.text(qty.toString(), 310, startY, { width: 40, align: "center" });
-          doc.text(this.formatCurrency(price), 350, startY, {
-            width: 60,
+          doc.text(desc, 110, startY, { width: 180 });
+          doc.text(qty.toString(), 300, startY, { width: 40, align: "center" });
+          doc.text(this.formatCurrency(price), 340, startY, {
+            width: 70,
             align: "right",
           });
           doc.text(this.formatCurrency(disc), 410, startY, {
@@ -209,27 +217,30 @@ class EstimatePdfService {
         startY += 10;
         doc.font("Helvetica-Bold").fontSize(10);
 
-        doc.text("Subtotal (Gross):", 350, startY, {
-          width: 100,
+        doc.text("Subtotal (Gross):", 340, startY, {
+          width: 110,
           align: "right",
         });
-        doc.text(this.formatCurrency(estimate.subtotal), 460, startY, {
-          width: 80,
+        doc.text(this.formatCurrency(estimate.subtotal), 450, startY, {
+          width: 90,
           align: "right",
         });
         startY += 15;
 
         if (parseFloat(estimate.total_discount) > 0) {
           doc.fillColor("#ef4444");
-          doc.text("Total Discounts:", 350, startY, {
-            width: 100,
+          doc.text("Total Discounts:", 340, startY, {
+            width: 110,
             align: "right",
           });
           doc.text(
             `(${this.formatCurrency(estimate.total_discount)})`,
-            460,
+            450,
             startY,
-            { width: 80, align: "right" },
+            {
+              width: 90,
+              align: "right",
+            },
           );
           startY += 15;
         }
@@ -237,24 +248,24 @@ class EstimatePdfService {
         doc.fillColor("#0f172a");
         doc.text(
           `VAT (${parseFloat(settings?.vat_percentage || 12)}%):`,
-          350,
+          340,
           startY,
-          { width: 100, align: "right" },
+          { width: 110, align: "right" },
         );
-        doc.text(this.formatCurrency(estimate.vat_amount), 460, startY, {
-          width: 80,
+        doc.text(this.formatCurrency(estimate.vat_amount), 450, startY, {
+          width: 90,
           align: "right",
         });
         startY += 20;
 
-        doc.rect(350, startY, 195, 25).fill("#fffbeb");
+        doc.rect(340, startY, 205, 25).fill("#fffbeb");
         doc.fillColor("#d97706").fontSize(12);
-        doc.text("GRAND TOTAL:", 355, startY + 6, {
+        doc.text("GRAND TOTAL:", 345, startY + 6, {
           width: 100,
           align: "left",
         });
-        doc.text(this.formatCurrency(estimate.grand_total), 450, startY + 6, {
-          width: 90,
+        doc.text(this.formatCurrency(estimate.grand_total), 445, startY + 6, {
+          width: 95,
           align: "right",
         });
 
@@ -309,7 +320,6 @@ class EstimatePdfService {
           .font("Helvetica")
           .text("Client Signature over Printed Name", 350, startY + 35);
 
-        // Finalize PDF
         doc.end();
       } catch (error) {
         reject(error);
