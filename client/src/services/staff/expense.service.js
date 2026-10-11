@@ -1,4 +1,5 @@
 import api from "../api";
+import { extractBlobError } from "../../utils/fileDownloader";
 
 export const expenseService = {
   getActiveCategories: async () => {
@@ -49,6 +50,18 @@ export const expenseService = {
         error.response?.data?.error?.message ||
           "Failed to load expense details.",
       );
+    }
+  },
+
+  downloadPdf: async (id) => {
+    try {
+      const response = await api.get(`/staff/expenses/${id}/pdf`, {
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage = await extractBlobError(error);
+      throw new Error(errorMessage || "Failed to generate Expense Voucher.");
     }
   },
 

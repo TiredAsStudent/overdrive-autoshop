@@ -22,11 +22,15 @@ import { expenseService } from "../../../services/staff/expense.service";
 import { catalogService } from "../../../services/staff/catalog.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import api from "../../../services/api";
+import { useApp } from "../../../context/AppContext";
+import { openPdfInNewTab } from "../../../utils/pdfViewer";
 
 const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
+  const { showToast } = useApp();
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
   const [vatRate, setVatRate] = useState(12);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     if (isOpen && expenseId) {
@@ -80,6 +84,17 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
 
   const isPdf = (path) => {
     return path?.toLowerCase().endsWith(".pdf");
+  };
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      await openPdfInNewTab(() => expenseService.downloadPdf(expenseId));
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -372,13 +387,23 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
               ) : null}
             </div>
 
-            {/* Print Footer Stub */}
+            {/* Print Footer */}
             <div className="p-4 sm:p-5 lg:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
               <button
-                disabled={!expense || loading}
+                onClick={handlePrint}
+                disabled={!expense || loading || isPrinting}
                 className="w-full py-3.5 sm:py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Printer size={16} /> Print Document
+                {isPrinting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Printer size={16} /> Print Document
+                  </>
+                )}
               </button>
             </div>
           </motion.div>
