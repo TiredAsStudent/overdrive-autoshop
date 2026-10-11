@@ -12,9 +12,11 @@ import {
   RefreshCw,
   X,
   Database,
+  Loader2,
 } from "lucide-react";
 
 import { auditService } from "../../services/sysadmin/audit.service";
+import { branchService } from "../../services/sysadmin/branch.service";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useApp } from "../../context/AppContext";
 
@@ -22,6 +24,8 @@ import { useApp } from "../../context/AppContext";
 import PageHeader from "../../components/shared/PageHeader";
 import SearchBar from "../../components/ui/SearchBar";
 import ActionButton from "../../components/ui/ActionButton";
+import FilterButton from "../../components/ui/FilterButton";
+import FilterModal from "../../components/shared/FilterModal";
 import DataTable from "../../components/shared/DataTable";
 import Pagination from "../../components/shared/Pagination";
 import StatusBadge from "../../components/ui/StatusBadge";
@@ -32,6 +36,7 @@ const AuditLogs = () => {
   // State: Data
   const [logs, setLogs] = useState([]);
   const [severities, setSeverities] = useState([]);
+  const [branches, setBranches] = useState([]);
 
   // State: Pagination Object
   const [pagination, setPagination] = useState({
@@ -40,10 +45,16 @@ const AuditLogs = () => {
     totalRecords: 0,
   });
 
-  // State: UI & Controls
+  // State: UI & Primary Controls
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [severityFilter, setSeverityFilter] = useState("");
+
+  // State: Advanced Filters
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -51,23 +62,33 @@ const AuditLogs = () => {
   // State: Data Delta Modal
   const [selectedDelta, setSelectedDelta] = useState(null);
 
-  // Initial Setup: Fetch dynamic severities for the dropdown filter
+  // Calculate active advanced filters for the badge
+  const activeFilterCount =
+    (branchFilter !== "all" ? 1 : 0) + (startDate && endDate ? 1 : 0);
+
+  // Initial Setup: Fetch dynamic severities and branches
   useEffect(() => {
-    const loadFilters = async () => {
+    const loadSystemData = async () => {
       try {
-        const severitiesRes = await auditService.getSeverities();
+        const [severitiesRes, branchesRes] = await Promise.all([
+          auditService.getSeverities(),
+
+          branchService.getAllBranches(1, 100, "", "active"),
+        ]);
         setSeverities(severitiesRes.data || []);
+        setBranches(branchesRes.data || []);
       } catch (err) {
-        showToast("Failed to load severity filters", "error");
+        console.error("Filter Load Error:", err);
+        showToast("Failed to load system filters", "error");
       }
     };
-    loadFilters();
+    loadSystemData();
   }, [showToast]);
 
-  // Reset to page 1 whenever a filter changes
+  // Reset to page 1 whenever ANY filter changes
   useEffect(() => {
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
-  }, [debouncedSearch, severityFilter]);
+  }, [debouncedSearch, severityFilter, branchFilter, startDate, endDate]);
 
   // Fetch Logs based on filters and pagination
   const fetchLogs = async () => {
@@ -78,6 +99,10 @@ const AuditLogs = () => {
         limit: 15,
         search: debouncedSearch || undefined,
         severity: severityFilter || undefined,
+        branchId: branchFilter !== "all" ? branchFilter : undefined,
+
+        startDate: startDate && endDate ? `${startDate} 00:00:00` : undefined,
+        endDate: startDate && endDate ? `${endDate} 23:59:59.999` : undefined,
       };
 
       const response = await auditService.getLogs(params);
@@ -100,15 +125,25 @@ const AuditLogs = () => {
   // Re-fetch when dependencies change
   useEffect(() => {
     fetchLogs();
-  }, [pagination.currentPage, debouncedSearch, severityFilter]);
+  }, [
+    pagination.currentPage,
+    debouncedSearch,
+    severityFilter,
+    branchFilter,
+    startDate,
+    endDate,
+  ]);
 
-  // Handle CSV Export
+  // Handle CSV Export mapping the same parameters
   const handleExport = async () => {
     setIsExporting(true);
     try {
       await auditService.exportLogs({
         search: debouncedSearch || undefined,
         severity: severityFilter || undefined,
+        branchId: branchFilter !== "all" ? branchFilter : undefined,
+        startDate: startDate && endDate ? `${startDate} 00:00:00` : undefined,
+        endDate: startDate && endDate ? `${endDate} 23:59:59.999` : undefined,
       });
       showToast("Audit logs exported successfully", "success");
     } catch (err) {
@@ -142,6 +177,13 @@ const AuditLogs = () => {
       default:
         return "bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/20";
     }
+  };
+
+  const resetAdvancedFilters = () => {
+    setBranchFilter("all");
+    setStartDate("");
+    setEndDate("");
+    setIsFilterModalOpen(false);
   };
 
   return (
@@ -196,6 +238,12 @@ const AuditLogs = () => {
             </svg>
           </div>
         </div>
+
+        {/* Universal Filter Button */}
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
 
         {/* Universal Export Button */}
         <ActionButton
@@ -367,6 +415,63 @@ const AuditLogs = () => {
           setPagination((prev) => ({ ...prev, currentPage: page }))
         }
       />
+
+      {/* UNIVERSAL FILTER MODAL */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={resetAdvancedFilters}
+        title="Advanced Audit Filters"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Action Context (Branch)
+            </label>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
+            >
+              <option value="all">Enterprise Global & All Branches</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.branch_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
+              />
+            </div>
+          </div>
+          {(!startDate || !endDate) && (startDate || endDate) && (
+            <p className="text-[10px] text-amber-500 font-bold tracking-wider uppercase text-center mt-2">
+              Note: Both dates must be selected to filter by date range.
+            </p>
+          )}
+        </div>
+      </FilterModal>
 
       {/* JSON STATE ANALYSIS MODAL */}
       <AnimatePresence>

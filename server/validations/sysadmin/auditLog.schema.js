@@ -8,8 +8,8 @@ const getAuditLogsSchema = z.object({
       search: z.string().max(100).optional().or(z.literal("")),
       branchId: z.string().regex(/^\d+$/).optional().or(z.literal("")),
       severity: z.string().optional().or(z.literal("")),
-      startDate: z.string().datetime().optional().or(z.literal("")),
-      endDate: z.string().datetime().optional().or(z.literal("")),
+      startDate: z.string().optional().or(z.literal("")),
+      endDate: z.string().optional().or(z.literal("")),
     })
     .optional(),
 });
