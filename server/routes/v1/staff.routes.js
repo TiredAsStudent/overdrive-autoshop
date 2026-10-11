@@ -80,6 +80,7 @@ const {
 } = require("../../validations/staff/expense.schema");
 const {
   getStaffInventorySchema,
+  getMovementHistorySchema,
 } = require("../../validations/staff/inventory.schema");
 const {
   createStockAdjustmentSchema,
@@ -316,6 +317,7 @@ router.get(
 router.get("/inventory/:id", StaffInventoryController.getInventoryDetails);
 router.get(
   "/inventory/:id/movements",
+  validate(getMovementHistorySchema),
   StaffInventoryController.getMovementHistory,
 );
 

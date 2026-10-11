@@ -20,6 +20,25 @@ const getStaffInventorySchema = z.object({
     .optional(),
 });
 
+const getMovementHistorySchema = z.object({
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "Valid Item ID is required"),
+  }),
+  query: z
+    .object({
+      page: z
+        .string()
+        .regex(/^\d+$/, "Page must be a valid positive number")
+        .optional(),
+      limit: z
+        .string()
+        .regex(/^\d+$/, "Limit must be a valid positive number")
+        .optional(),
+    })
+    .optional(),
+});
+
 module.exports = {
   getStaffInventorySchema,
+  getMovementHistorySchema,
 };

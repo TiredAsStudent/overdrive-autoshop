@@ -68,14 +68,30 @@ class StaffInventoryService {
   }
 
   /**
-   * Retrieves movement history, strictly filtering out transactions from other branches.
+   * Retrieves paginated movement history, strictly filtering out transactions from other branches.
    */
-  static async getItemMovementHistory(itemId, branchId) {
-    const branchHistory = await InventoryModel.getBranchMovementHistory(
-      itemId,
-      branchId,
-    );
-    return branchHistory;
+  static async getItemMovementHistory(itemId, branchId, page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, historyRecords] = await Promise.all([
+      InventoryModel.countBranchMovementHistory(itemId, branchId),
+      InventoryModel.getBranchPaginatedMovementHistory(
+        itemId,
+        branchId,
+        limit,
+        offset,
+      ),
+    ]);
+
+    return {
+      history: historyRecords,
+      pagination: {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
   }
 }
 

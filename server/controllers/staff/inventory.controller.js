@@ -90,17 +90,22 @@ class StaffInventoryController {
         );
       }
 
-      const history = await StaffInventoryService.getItemMovementHistory(
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+
+      const result = await StaffInventoryService.getItemMovementHistory(
         req.params.id,
         branchId,
+        page,
+        limit,
       );
 
-      return sendSuccess(
-        res,
-        STATUS_CODES.SUCCESS,
-        history,
-        "Branch movement ledger retrieved securely.",
-      );
+      return res.status(STATUS_CODES.SUCCESS).json({
+        success: true,
+        data: result.history,
+        pagination: result.pagination,
+        message: "Branch movement ledger retrieved securely.",
+      });
     } catch (error) {
       return sendError(
         res,
