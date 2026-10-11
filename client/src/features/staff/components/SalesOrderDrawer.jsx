@@ -8,20 +8,30 @@ import {
   User,
   Printer,
   Loader2,
-  Link,
-  Clock,
-  Play,
-  CheckCircle,
-  XCircle,
+  Store,
+  Package,
+  AlertCircle,
   BadgeCheck,
+  CheckCircle,
+  Clock,
+  FileCheck,
+  XCircle,
+  FileText,
+  Link,
+  Play,
 } from "lucide-react";
 import { salesOrderService } from "../../../services/staff/salesOrder.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
 
+import { useApp } from "../../../context/AppContext";
+import { openPdfInNewTab } from "../../../utils/pdfViewer";
+
 const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
+  const { showToast } = useApp();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     if (isOpen && salesOrderId) {
@@ -50,6 +60,17 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
         return { variant: "danger", icon: XCircle };
       default:
         return { variant: "default", icon: ClipboardList };
+    }
+  };
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      await openPdfInNewTab(() => salesOrderService.downloadPdf(salesOrderId));
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -101,13 +122,15 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                         variant={getStatusConfig(order.status).variant}
                         icon={getStatusConfig(order.status).icon}
                       />
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
-                        <BadgeCheck size={12} className="text-amber-500" />
-                        Created by:{" "}
-                        <span className="text-slate-600 dark:text-slate-300">
-                          {order.created_by_name || "System"}
+                      <div className="flex flex-col gap-0.5 mt-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <BadgeCheck size={12} className="text-amber-500" />
+                          Prepared by:{" "}
+                          <span className="text-slate-600 dark:text-slate-300">
+                            {order.created_by_name || "System"}
+                          </span>
                         </span>
-                      </span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -333,10 +356,20 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
             {/* Print Footer Stub */}
             <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
               <button
-                disabled={!order || loading}
+                onClick={handlePrint}
+                disabled={!order || loading || isPrinting}
                 className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Printer size={16} /> Print Document
+                {isPrinting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Printer size={16} /> Print Document
+                  </>
+                )}
               </button>
             </div>
           </motion.div>

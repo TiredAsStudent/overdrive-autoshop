@@ -1,4 +1,5 @@
 import api from "../api";
+import { extractBlobError } from "../../utils/fileDownloader";
 
 export const salesOrderService = {
   getSalesOrders: async (
@@ -29,6 +30,18 @@ export const salesOrderService = {
         error.response?.data?.error?.message ||
           "Failed to fetch sales order details.",
       );
+    }
+  },
+
+  downloadPdf: async (id) => {
+    try {
+      const response = await api.get(`/staff/sales-orders/${id}/pdf`, {
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage = await extractBlobError(error);
+      throw new Error(errorMessage || "Failed to generate PDF document.");
     }
   },
 
