@@ -434,7 +434,8 @@ const ExpenseModal = ({
                 className="space-y-5 sm:space-y-6 pb-2 mx-1 sm:mx-0"
               >
                 {/* SECTION 1: EXPENSE PARTICULARS */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
+
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-50">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 sm:mb-4 flex items-center gap-2">
                     <FileText size={14} /> Expense Particulars
                   </h3>
@@ -489,12 +490,13 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 2: PAYEE & DOCUMENTATION */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-40">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 sm:mb-4 flex items-center gap-2">
                     <Store size={14} /> Payee & Documentation
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                    <div className="relative z-[70]">
+                    <div className="relative z-50">
                       <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2 flex items-center flex-wrap">
                         Registered Vendor{" "}
                         <span className="lowercase font-medium text-slate-400 ml-1">
@@ -542,7 +544,7 @@ const ExpenseModal = ({
                         className="w-full px-3 sm:px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] sm:text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm disabled:opacity-50"
                       />
                     </div>
-                    <div className="sm:col-span-2 relative z-10">
+                    <div className="sm:col-span-2 relative">
                       <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2 flex items-center flex-wrap">
                         Reference / Receipt #{" "}
                         <span className="lowercase font-medium text-slate-400 ml-1">
@@ -562,7 +564,8 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 3: FINANCIAL DETAILS */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-30">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-3 sm:mb-4 flex items-center gap-2">
                     <DollarSign size={14} /> Financial Details
                   </h3>
@@ -676,7 +679,8 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 4: DOCUMENTARY PROOF / ATTACHMENT */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
                   <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                     <FileCode2 size={14} className="text-amber-500 shrink-0" />
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center flex-wrap">
@@ -755,6 +759,7 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 5: NOTES */}
+
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 sm:mb-4 flex items-center gap-2">
                     <ClipboardList size={14} /> Internal Notes
