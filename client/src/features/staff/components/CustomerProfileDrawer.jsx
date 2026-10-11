@@ -13,16 +13,22 @@ import {
 } from "lucide-react";
 import { customerService } from "../../../services/staff/customer.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import Pagination from "../../../components/shared/Pagination";
 
 const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
   useEffect(() => {
     if (isOpen && customer?.id) {
       setLoading(true);
       setError("");
+      setCurrentPage(1);
+
       customerService
         .getCustomerProfile(customer.id)
         .then((res) => setProfileData(res.data))
@@ -49,6 +55,15 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
     if (type === "INVOICE") return "danger";
     return "success";
   };
+
+  const totalItems = profileData?.history?.length || 0;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+  const currentHistory = profileData?.history
+    ? profileData.history.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE,
+      )
+    : [];
 
   return (
     <AnimatePresence>
@@ -245,7 +260,7 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                            {profileData.history.map((record, index) => (
+                            {currentHistory.map((record, index) => (
                               <tr
                                 key={`${record.doc_number}-${index}`}
                                 className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors"
@@ -281,6 +296,14 @@ const CustomerProfileDrawer = ({ isOpen, onClose, customer }) => {
                       </div>
                     )}
                   </section>
+
+                  {profileData.history.length > 0 && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
                 </div>
               ) : null}
             </div>
