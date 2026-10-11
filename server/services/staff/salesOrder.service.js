@@ -1,5 +1,7 @@
 const SalesOrderModel = require("../../models/SalesOrder");
 const EstimateModel = require("../../models/Estimate");
+const SalesOrderPdfService = require("../pdf/salesOrderPdf.service");
+const SystemSetting = require("../../models/SystemSetting");
 const { logSecureAction } = require("../../utils/auditLogger");
 const { query } = require("../../config/db");
 
@@ -223,6 +225,31 @@ class SalesOrderService {
         currentPage: page,
         itemsPerPage: limit,
       },
+    };
+  }
+
+  static async generatePdf(id, activeUser, ipAddress) {
+    const so = await this.getSalesOrderDetails(id, activeUser);
+
+    const settings = await SystemSetting.getSettings();
+
+    const pdfBuffer = await SalesOrderPdfService.generate(so, settings);
+
+    await logSecureAction(
+      activeUser.id,
+      activeUser.branchId,
+      "SALES_ORDER_PDF_GENERATED",
+      "INFO",
+      ipAddress,
+      "sales_orders",
+      id,
+      null,
+      { sales_order_number: so.sales_order_number },
+    );
+
+    return {
+      buffer: pdfBuffer,
+      filename: `${so.sales_order_number}_WorkOrder.pdf`,
     };
   }
 }

@@ -177,6 +177,9 @@ router.get(
   SalesOrderController.getSalesOrders,
 );
 router.get("/sales-orders/:id", SalesOrderController.getSalesOrderDetails);
+
+router.get("/sales-orders/:id/pdf", SalesOrderController.downloadPdf);
+
 router.patch(
   "/sales-orders/:id",
   validate(updateSalesOrderSchema),

@@ -237,8 +237,10 @@ class SalesOrder {
   static async findById(id) {
     const sql = `
       SELECT so.*, TO_CHAR(so.estimated_completion_date, 'YYYY-MM-DD') as estimated_completion_date, 
-             c.full_name as customer_name, c.contact_number, c.email, b.branch_name, 
-             u.first_name as created_by_name, e.estimate_number
+             c.full_name as customer_name, c.contact_number, c.email, c.address as customer_address, c.customer_code,
+             b.branch_name, b.branch_code, b.address as branch_address, 
+             u.first_name as created_by_name, u.last_name as created_by_last_name, u.role as created_by_role,
+             e.estimate_number
       FROM sales_orders so
       JOIN customers c ON so.customer_id = c.id
       JOIN branches b ON so.branch_id = b.id
