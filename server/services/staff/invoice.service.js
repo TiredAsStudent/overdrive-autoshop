@@ -1,5 +1,7 @@
 const InvoiceModel = require("../../models/Invoice");
 const SalesOrderModel = require("../../models/SalesOrder");
+const SystemSetting = require("../../models/SystemSetting");
+const InvoicePdfService = require("../pdf/invoicePdf.service");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class InvoiceService {
@@ -192,6 +194,31 @@ class InvoiceService {
         currentPage: page,
         itemsPerPage: limit,
       },
+    };
+  }
+
+  static async generatePdf(id, activeUser, ipAddress) {
+    const invoice = await this.getInvoiceDetails(id, activeUser);
+
+    const settings = await SystemSetting.getSettings();
+
+    const pdfBuffer = await InvoicePdfService.generate(invoice, settings);
+
+    await logSecureAction(
+      activeUser.id,
+      activeUser.branchId,
+      "INVOICE_PDF_GENERATED",
+      "INFO",
+      ipAddress,
+      "invoices",
+      id,
+      null,
+      { invoice_number: invoice.invoice_number },
+    );
+
+    return {
+      buffer: pdfBuffer,
+      filename: `${invoice.invoice_number}_Invoice.pdf`,
     };
   }
 }

@@ -200,6 +200,9 @@ router.get(
   InvoiceController.getInvoices,
 );
 router.get("/invoices/:id", InvoiceController.getInvoiceDetails);
+
+router.get("/invoices/:id/pdf", InvoiceController.downloadPdf);
+
 router.patch(
   "/invoices/:id",
   validate(updateInvoiceSchema),
