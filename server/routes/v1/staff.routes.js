@@ -298,6 +298,9 @@ router.get(
   ExpenseController.getExpenses,
 );
 router.get("/expenses/:id", ExpenseController.getExpenseDetails);
+
+router.get("/expenses/:id/pdf", ExpenseController.downloadPdf);
+
 router.put(
   "/expenses/:id",
   uploadExpenseAttachment.single("attachment"),

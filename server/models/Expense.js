@@ -102,8 +102,13 @@ class Expense {
 
   static async findById(id) {
     const sql = `
-      SELECT e.*, coa.account_name AS category, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
-             u.first_name as created_by_name, r.first_name as resolved_by_name
+      SELECT e.*, 
+             coa.account_name AS category, coa.account_code,
+             COALESCE(v.business_name, e.vendor_name) as vendor_name,
+             v.business_address as vendor_address, v.contact_number as vendor_contact, v.tin as vendor_tin,
+             b.branch_name, b.branch_code, b.address as branch_address, 
+             u.first_name as created_by_name, u.last_name as created_by_last_name, u.role as created_by_role,
+             r.first_name as resolved_by_name, r.last_name as resolved_by_last_name, r.role as resolved_by_role
       FROM expenses e
       JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
       LEFT JOIN vendors v ON e.vendor_id = v.id

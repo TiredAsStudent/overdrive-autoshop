@@ -1,6 +1,7 @@
 const ExpenseModel = require("../../models/Expense");
 const SystemSetting = require("../../models/SystemSetting");
 const VendorModel = require("../../models/Vendor");
+const ExpensePdfService = require("../pdf/expensePdf.service");
 const { logSecureAction } = require("../../utils/auditLogger");
 const fs = require("fs").promises;
 const path = require("path");
@@ -386,6 +387,31 @@ class ExpenseService {
         currentPage: page,
         itemsPerPage: limit,
       },
+    };
+  }
+
+  static async generatePdf(id, activeUser, ipAddress) {
+    const expense = await this.getExpenseDetails(id, activeUser);
+
+    const settings = await SystemSetting.getSettings();
+
+    const pdfBuffer = await ExpensePdfService.generate(expense, settings);
+
+    await logSecureAction(
+      activeUser.id,
+      activeUser.branchId,
+      "EXPENSE_VOUCHER_PDF_GENERATED",
+      "INFO",
+      ipAddress,
+      "expenses",
+      id,
+      null,
+      { expense_number: expense.expense_number },
+    );
+
+    return {
+      buffer: pdfBuffer,
+      filename: `${expense.expense_number}_Voucher.pdf`,
     };
   }
 }
