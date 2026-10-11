@@ -38,6 +38,7 @@ class SalesOrderPdfService {
           if (fs.existsSync(logoPath)) {
             try {
               doc.image(logoPath, 50, 40, { fit: [60, 45], align: "left" });
+
               doc
                 .fontSize(20)
                 .font("Helvetica-Bold")
@@ -57,6 +58,7 @@ class SalesOrderPdfService {
                   .fillColor("#64748b")
                   .text(contactInfo, 125, 68);
               }
+
               startY = 105;
               logoRendered = true;
             } catch (imgError) {
@@ -73,6 +75,7 @@ class SalesOrderPdfService {
             .font("Helvetica-Bold")
             .fillColor("#0f172a")
             .text(settings?.company_name || "Overdrive Auto Shop", 50, 45);
+
           const contactInfo = [
             settings?.contact_number,
             settings?.contact_email,
@@ -89,17 +92,39 @@ class SalesOrderPdfService {
           startY = 105;
         }
 
-        // Right Header (Document Meta)
+        // Right Header (Document Meta & Dynamic Status)
         doc
           .fontSize(18)
           .font("Helvetica-Bold")
           .fillColor("#f59e0b")
-          .text("SALES ORDER", 300, 45, { align: "right", width: 245 });
+          .text("OFFICIAL WORK ORDER", 300, 45, { align: "right", width: 245 });
+
+        // Dynamic Status Color Logic
+        let statusColor = "#64748b"; // Default / Pending
+        if (so.status === "COMPLETED" || so.status === "INVOICED")
+          statusColor = "#10b981"; // Emerald
+        if (so.status === "IN_PROGRESS") statusColor = "#f59e0b"; // Amber
+        if (so.status === "CANCELLED") statusColor = "#ef4444"; // Red
+
+        doc
+          .fontSize(10)
+          .font("Helvetica-Bold")
+          .fillColor(statusColor)
+          .text(so.status.replace("_", " "), 300, 66, {
+            align: "right",
+            width: 245,
+          });
+
         doc
           .fontSize(11)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text(so.sales_order_number, 300, 67, { align: "right", width: 245 });
+          .text(`Ref: ${so.sales_order_number}`, 300, 80, {
+            align: "right",
+            width: 245,
+          });
+
+        let metaY = 96;
         doc
           .font("Helvetica")
           .fillColor("#64748b")
@@ -107,25 +132,16 @@ class SalesOrderPdfService {
           .text(
             `Date: ${new Date(so.created_at).toLocaleDateString()}`,
             300,
-            83,
+            metaY,
             { align: "right", width: 245 },
           );
 
-        let metaY = 97;
-        if (so.estimate_number) {
-          doc.text(`Ref Estimate: ${so.estimate_number}`, 300, metaY, {
-            align: "right",
-            width: 245,
-          });
-          metaY += 14;
-        }
-
         if (so.estimated_completion_date) {
+          metaY += 12;
           doc
             .fillColor("#ef4444")
-            .font("Helvetica-Bold")
             .text(
-              `Est. Completion: ${new Date(so.estimated_completion_date).toLocaleDateString()}`,
+              `Target Completion: ${new Date(so.estimated_completion_date).toLocaleDateString()}`,
               300,
               metaY,
               { align: "right", width: 245 },
@@ -154,7 +170,7 @@ class SalesOrderPdfService {
           .fontSize(10)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text(`${so.branch_name} [${so.branch_code}]`, 50, addressY + 12);
+          .text(so.branch_name, 50, addressY + 12);
 
         if (so.branch_address) {
           doc
@@ -183,11 +199,7 @@ class SalesOrderPdfService {
           .fontSize(10)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text(
-            `${so.customer_name} (${so.customer_code})`,
-            300,
-            addressY + 12,
-          );
+          .text(so.customer_name, 300, addressY + 12);
 
         let custY = addressY + 26;
         if (so.contact_number) {
@@ -410,7 +422,7 @@ class SalesOrderPdfService {
           .fontSize(10)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text("Operational Notes:");
+          .text("Operational Notes:", 50, startY);
         doc
           .fontSize(9)
           .font("Helvetica-Oblique")
@@ -442,6 +454,21 @@ class SalesOrderPdfService {
           .font("Helvetica")
           .fillColor("#475569")
           .text("Authorized Signature", 50, startY + 45);
+
+        doc
+          .font("Helvetica-Bold")
+          .fillColor("#0f172a")
+          .text("Client Acknowledgment", 345, startY);
+        doc
+          .moveTo(345, startY + 40)
+          .lineTo(545, startY + 40)
+          .lineWidth(1)
+          .strokeColor("#0f172a")
+          .stroke();
+        doc
+          .font("Helvetica")
+          .fillColor("#475569")
+          .text("Client Signature over Printed Name", 345, startY + 45);
 
         doc.end();
       } catch (error) {
