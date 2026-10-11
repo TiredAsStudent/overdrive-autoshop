@@ -88,23 +88,6 @@ class EstimatePdfService {
           });
         rightY += 18;
 
-        let statusColor = "#64748b";
-        if (estimate.status === "APPROVED" || estimate.status === "CONVERTED")
-          statusColor = "#10b981";
-        if (estimate.status === "PENDING_APPROVAL") statusColor = "#f59e0b";
-        if (estimate.status === "REJECTED" || estimate.status === "EXPIRED")
-          statusColor = "#ef4444";
-
-        doc
-          .fontSize(10)
-          .font("Helvetica-Bold")
-          .fillColor(statusColor)
-          .text(estimate.status.replace(/_/g, " "), 300, rightY, {
-            align: "right",
-            width: 245,
-          });
-        rightY += 14;
-
         doc
           .fontSize(11)
           .font("Helvetica-Bold")
