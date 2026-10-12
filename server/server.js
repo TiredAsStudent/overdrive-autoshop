@@ -5,6 +5,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const path = require("path");
 const fs = require("fs").promises;
+const rateLimit = require("express-rate-limit");
 
 // Import Database & Utilities
 const { connectDB, query } = require("./config/db");
@@ -22,9 +23,7 @@ const allowedOrigin =
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-
     xFrameOptions: false,
-
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
@@ -36,7 +35,23 @@ app.use(
 );
 app.set("trust proxy", 1);
 
-//Global Middleware
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === "production" ? 1000 : 5000, // Limit each IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      message:
+        "Too many requests from this IP, please try again after 15 minutes.",
+      details: null,
+    },
+  },
+});
+app.use("/api", apiLimiter);
+
+// Global Middleware
 app.use(
   cors({
     origin: allowedOrigin,
@@ -99,63 +114,69 @@ app.use((err, req, res, next) => {
 const cron = require("node-cron");
 const BackupService = require("./services/sysadmin/backup.service");
 
-// Runs exactly at Midnight (00:00) server time, every single day
-cron.schedule("0 0 * * *", async () => {
-  console.log("[CRON] Initiating scheduled automated database backup...");
-  try {
-    await BackupService.generateBackup(null, "127.0.0.1", false);
-    console.log("[CRON] Automated database snapshot completed successfully.");
+if (
+  process.env.RUN_CRONS === "true" ||
+  process.env.NODE_ENV === "development"
+) {
+  // Runs exactly at Midnight (00:00) server time, every single day
+  cron.schedule("0 0 * * *", async () => {
+    console.log("[CRON] Initiating scheduled automated database backup...");
+    try {
+      await BackupService.generateBackup(null, "127.0.0.1", false);
+      console.log("[CRON] Automated database snapshot completed successfully.");
 
-    const deletedCount = await BackupService.cleanOldBackups(7);
-    console.log(
-      `[CRON] Cleanup routine finished. Safely purged ${deletedCount} old backup archives.`,
-    );
-  } catch (err) {
-    console.error("[CRON] Automated backup failed:", err.message);
-  }
-});
+      const deletedCount = await BackupService.cleanOldBackups(7);
+      console.log(
+        `[CRON] Cleanup routine finished. Safely purged ${deletedCount} old backup archives.`,
+      );
+    } catch (err) {
+      console.error("[CRON] Automated backup failed:", err.message);
+    }
+  });
 
-cron.schedule("0 2 * * *", async () => {
-  console.log("[CRON] Running Receipt Garbage Collection...");
-  try {
-    const staleScans = await query(
-      `SELECT id, file_path FROM receipt_scans 
-       WHERE status IN ('PROCESSING', 'PENDING_VERIFICATION') 
-       AND created_at < NOW() - INTERVAL '24 hours'`,
-    );
+  // Runs exactly at 02:00 server time
+  cron.schedule("0 2 * * *", async () => {
+    console.log("[CRON] Running Receipt Garbage Collection...");
+    try {
+      const staleScans = await query(
+        `SELECT id, file_path FROM receipt_scans 
+         WHERE status IN ('PROCESSING', 'PENDING_VERIFICATION') 
+         AND created_at < NOW() - INTERVAL '24 hours'`,
+      );
 
-    if (staleScans.rows.length > 0) {
-      for (const scan of staleScans.rows) {
-        try {
-          const cleanPath = scan.file_path.replace(/^\//, "");
-          const absolutePath = path.join(__dirname, cleanPath);
-          await fs.unlink(absolutePath);
-        } catch (err) {
-          if (err.code !== "ENOENT") {
-            console.error(
-              `[CRON] Failed to delete physical file for scan ${scan.id}:`,
-              err.message,
-            );
+      if (staleScans.rows.length > 0) {
+        for (const scan of staleScans.rows) {
+          try {
+            const cleanPath = scan.file_path.replace(/^\//, "");
+            const absolutePath = path.join(__dirname, cleanPath);
+            await fs.unlink(absolutePath);
+          } catch (err) {
+            if (err.code !== "ENOENT") {
+              console.error(
+                `[CRON] Failed to delete physical file for scan ${scan.id}:`,
+                err.message,
+              );
+            }
           }
-        }
 
-        await query(
-          `UPDATE receipt_scans SET status = 'DISCARDED' WHERE id = $1`,
-          [scan.id],
+          await query(
+            `UPDATE receipt_scans SET status = 'DISCARDED' WHERE id = $1`,
+            [scan.id],
+          );
+        }
+        console.log(
+          `[CRON] Cleaned up ${staleScans.rows.length} orphaned receipt scans.`,
+        );
+      } else {
+        console.log(
+          "[CRON] No orphaned receipts found. Server storage is clean.",
         );
       }
-      console.log(
-        `[CRON] Cleaned up ${staleScans.rows.length} orphaned receipt scans.`,
-      );
-    } else {
-      console.log(
-        "[CRON] No orphaned receipts found. Server storage is clean.",
-      );
+    } catch (err) {
+      console.error("[CRON] Receipt Garbage Collection failed:", err.message);
     }
-  } catch (err) {
-    console.error("[CRON] Receipt Garbage Collection failed:", err.message);
-  }
-});
+  });
+}
 
 // Start Server
 const PORT = process.env.PORT || 5000;
