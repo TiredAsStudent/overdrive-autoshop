@@ -8,51 +8,51 @@ import {
   Package,
   MapPin,
   Calculator,
-  FileText,
   Search,
+  Plus,
+  Trash2,
+  Layers,
 } from "lucide-react";
 import { inventoryService } from "../../../services/manager/inventory.service";
 import { useDebounce } from "../../../hooks/useDebounce";
+
+const generateRowId = () =>
+  `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 
 const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
 
-  // Custom Async Dropdown State
   const dropdownRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedItemData, setSelectedItemData] = useState(null);
 
-  const [branchStock, setBranchStock] = useState({});
-  const [isLoadingStock, setIsLoadingStock] = useState(false);
+  const [stockCache, setStockCache] = useState({});
 
-  const [formData, setFormData] = useState({
-    item_id: "",
+  const [header, setHeader] = useState({
     source_branch_id: "",
     destination_branch_id: "",
-    quantity: "",
     reason: "",
   });
 
+  const [items, setItems] = useState([]);
+
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        item_id: "",
+      setHeader({
         source_branch_id: "",
         destination_branch_id: "",
-        quantity: "",
         reason: "",
       });
+      setItems([]);
       setValidationError("");
-      setBranchStock({});
       setSearchTerm("");
       setSearchResults([]);
-      setSelectedItemData(null);
       setIsDropdownOpen(false);
+      setStockCache({});
     }
   }, [isOpen]);
 
@@ -85,104 +85,145 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
     }
   }, [isOpen, debouncedSearchTerm, isDropdownOpen]);
 
-  const handleSelectItem = (item) => {
-    setSelectedItemData(item);
-    setFormData((prev) => ({ ...prev, item_id: item.id.toString() }));
-    setSearchTerm(`[${item.sku}] ${item.item_name}`);
+  const fetchBranchStock = async (itemId) => {
+    if (stockCache[itemId]) return stockCache[itemId];
+    try {
+      const res = await inventoryService.getBranchBreakdown(itemId);
+      const stockMap = {};
+      res.data.forEach((b) => (stockMap[b.branch_id.toString()] = b.quantity));
+      setStockCache((prev) => ({ ...prev, [itemId]: stockMap }));
+      return stockMap;
+    } catch {
+      return {};
+    }
+  };
+
+  const handleSelectItem = async (masterItem) => {
     setIsDropdownOpen(false);
+    setSearchTerm("");
+
+    if (items.some((i) => i.item_id === masterItem.id)) {
+      setValidationError(
+        `Item "${masterItem.sku}" is already in the manifest.`,
+      );
+      return;
+    }
+
+    setValidationError("");
+    const stockMap = await fetchBranchStock(masterItem.id);
+
+    setItems((prev) => [
+      ...prev,
+      {
+        rowId: generateRowId(),
+        item_id: masterItem.id,
+        sku: masterItem.sku,
+        item_name: masterItem.item_name,
+        uom: masterItem.uom,
+        unit_cost: parseFloat(masterItem.unit_cost),
+        quantity: "",
+        stockMap: stockMap,
+      },
+    ]);
   };
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     setIsDropdownOpen(true);
-    if (selectedItemData) {
-      setSelectedItemData(null);
-      setFormData((prev) => ({ ...prev, item_id: "" }));
-      setBranchStock({});
-    }
   };
 
-  useEffect(() => {
-    if (formData.item_id) {
-      setIsLoadingStock(true);
-      inventoryService
-        .getBranchBreakdown(formData.item_id)
-        .then((res) => {
-          const stockMap = {};
-          res.data.forEach((b) => (stockMap[b.branch_id] = b.quantity));
-          setBranchStock(stockMap);
-        })
-        .catch(() => setBranchStock({}))
-        .finally(() => setIsLoadingStock(false));
-    } else {
-      setBranchStock({});
-    }
-  }, [formData.item_id]);
-
-  const handleChange = (e) => {
+  const handleHeaderChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setHeader((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleLineChange = (rowId, field, value) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.rowId === rowId ? { ...item, [field]: value } : item,
+      ),
+    );
+  };
+
+  const removeLine = (rowId) => {
+    setItems((prev) => prev.filter((item) => item.rowId !== rowId));
+  };
+
+  const getAvailableStock = (item) => {
+    if (!header.source_branch_id) return "...";
+    return item.stockMap[header.source_branch_id] || 0;
+  };
+
+  const calculateTotals = () => {
+    let totalQty = 0;
+    let totalValuation = 0;
+    items.forEach((item) => {
+      const qty = parseInt(item.quantity, 10) || 0;
+      totalQty += qty;
+      totalValuation += qty * item.unit_cost;
+    });
+    return { totalQty, totalValuation };
+  };
+
+  const totals = calculateTotals();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setValidationError("");
 
-    if (!formData.item_id || !selectedItemData) {
+    if (!header.source_branch_id || !header.destination_branch_id) {
+      return setValidationError("Origin and Target branches are required.");
+    }
+    if (header.source_branch_id === header.destination_branch_id) {
       return setValidationError(
-        "Please search and select a valid master inventory item.",
+        "Origin and Target branches must be different.",
       );
     }
-
-    if (
-      parseInt(formData.source_branch_id, 10) ===
-      parseInt(formData.destination_branch_id, 10)
-    ) {
-      setValidationError("Source and Destination branches must be different.");
-      return;
-    }
-
-    const qty = parseInt(formData.quantity, 10);
-    const availableSourceStock = branchStock[formData.source_branch_id] || 0;
-
-    if (qty <= 0) {
-      setValidationError("Transfer quantity must be greater than zero.");
-      return;
-    }
-
-    if (qty > availableSourceStock) {
-      setValidationError(
-        `Insufficient stock. You are trying to transfer ${qty}, but the source branch only has ${availableSourceStock} available.`,
+    if (items.length === 0) {
+      return setValidationError(
+        "At least one item must be added to the manifest.",
       );
-      return;
     }
+    if (header.reason.trim().length < 3) {
+      return setValidationError("A valid reason for the transfer is required.");
+    }
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const qty = parseInt(item.quantity, 10);
+      const available = getAvailableStock(item);
+
+      if (isNaN(qty) || qty <= 0) {
+        return setValidationError(
+          `Line ${i + 1}: Quantity must be greater than zero.`,
+        );
+      }
+      if (qty > available) {
+        return setValidationError(
+          `Line ${i + 1}: Insufficient stock. Cannot transfer ${qty} ${item.uom} of ${item.sku}. Only ${available} available.`,
+        );
+      }
+    }
+
+    const payload = {
+      source_branch_id: header.source_branch_id,
+      destination_branch_id: header.destination_branch_id,
+      reason: header.reason.trim(),
+      items: items.map((item) => ({
+        item_id: item.item_id,
+        quantity: item.quantity,
+      })),
+    };
 
     setIsSubmitting(true);
     try {
-      await onSubmit(formData);
-      setIsSubmitting(false);
+      await onSubmit(payload);
     } catch (error) {
       setValidationError(error.message || "Failed to execute transfer.");
+    } finally {
       setIsSubmitting(false);
     }
   };
-
-  const transferQty = parseInt(formData.quantity, 10) || 0;
-
-  const availableSourceStock = formData.source_branch_id
-    ? branchStock[formData.source_branch_id] || 0
-    : "...";
-
-  const availableDestStock = formData.destination_branch_id
-    ? branchStock[formData.destination_branch_id] || 0
-    : "...";
-
-  const financialImpact =
-    selectedItemData && formData.quantity
-      ? (
-          parseInt(formData.quantity) * parseFloat(selectedItemData.unit_cost)
-        ).toLocaleString(undefined, { minimumFractionDigits: 2 })
-      : "0.00";
 
   return (
     <AnimatePresence>
@@ -192,9 +233,9 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-3xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
+            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-4xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95vh]"
           >
-            {/* MODAL HEADER */}
+            {/* HEADER */}
             <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
@@ -202,7 +243,7 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                 </div>
                 <div>
                   <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
-                    Execute Stock Transfer
+                    Bulk Transfer Manifest
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                     Inter-Branch Logistics Engine
@@ -212,42 +253,108 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+                className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
               >
                 <X size={24} />
               </button>
             </div>
 
-            {/* MODAL BODY */}
-            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+            {/* BODY */}
+            <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 bg-slate-50/30 dark:bg-slate-900/20">
               {validationError && (
-                <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold">
+                <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-sm font-bold shadow-sm">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
                   <span>{validationError}</span>
                 </div>
               )}
 
-              <form
-                id="transferForm"
-                onSubmit={handleSubmit}
-                className="space-y-6"
-              >
-                {/* SECTION 1: ASSET SELECTION */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
-                  <div ref={dropdownRef} className="relative z-20">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 flex items-center gap-2">
-                      <Package size={14} /> Master Inventory Item{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
+              <form id="bulkTransferForm" className="space-y-6">
+                {/* LOGISTICS ROUTING HEADER */}
+                <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative shadow-sm">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
+                    <MapPin size={14} /> Logistics Routing
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 relative">
+                    <div className="hidden sm:flex absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full items-center justify-center text-emerald-500 shadow-sm">
+                      <ArrowRightLeft size={14} />
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                          Extract From <span className="text-red-500">*</span>
+                        </span>
+                      </label>
+                      <select
+                        name="source_branch_id"
+                        value={header.source_branch_id}
+                        onChange={handleHeaderChange}
+                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 cursor-pointer shadow-sm"
+                      >
+                        <option value="">-- Origin Location --</option>
+                        {branches.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.branch_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                          Deposit To <span className="text-red-500">*</span>
+                        </span>
+                      </label>
+                      <select
+                        name="destination_branch_id"
+                        value={header.destination_branch_id}
+                        onChange={handleHeaderChange}
+                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 cursor-pointer shadow-sm"
+                      >
+                        <option value="">-- Target Location --</option>
+                        {branches.map((b) => (
+                          <option
+                            key={b.id}
+                            value={b.id}
+                            disabled={
+                              b.id.toString() === header.source_branch_id
+                            }
+                          >
+                            {b.branch_name}{" "}
+                            {b.id.toString() === header.source_branch_id
+                              ? "(Source)"
+                              : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                {/* ITEM MATRIX */}
+                <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                      <Layers size={14} /> Itemized Manifest
+                    </h3>
+                  </div>
+
+                  {/* ASSET SEARCH */}
+                  <div
+                    ref={dropdownRef}
+                    className="relative z-20 mb-4 shrink-0"
+                  >
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         {isSearching ? (
                           <Loader2
-                            size={18}
+                            size={16}
                             className="text-amber-500 animate-spin"
                           />
                         ) : (
-                          <Search size={18} className="text-slate-400" />
+                          <Search size={16} className="text-slate-400" />
                         )}
                       </div>
                       <input
@@ -255,11 +362,9 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                         value={searchTerm}
                         onChange={handleSearchChange}
                         onFocus={() => setIsDropdownOpen(true)}
-                        placeholder="Type SKU or Item Name to search..."
-                        className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm"
+                        placeholder="Search SKU or Item Name to append to manifest..."
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-all shadow-inner"
                       />
-
-                      {/* Custom Search Results Dropdown */}
                       <AnimatePresence>
                         {isDropdownOpen && (
                           <motion.div
@@ -273,7 +378,7 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                                 <div
                                   key={item.id}
                                   onClick={() => handleSelectItem(item)}
-                                  className="p-4 sm:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                                  className="p-3 sm:p-4 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
                                 >
                                   <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
                                     {item.sku}
@@ -281,21 +386,13 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                                   <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
                                     {item.item_name}
                                   </p>
-                                  <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase">
-                                    Total Company Stock:{" "}
-                                    <span className="font-black text-slate-700 dark:text-slate-300">
-                                      {item.total_company_quantity} {item.uom}
-                                    </span>
-                                  </p>
                                 </div>
                               ))
                             ) : (
-                              <div className="p-8 text-center">
-                                <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">
-                                  {isSearching
-                                    ? "Searching catalog..."
-                                    : "No matching items found."}
-                                </p>
+                              <div className="p-8 text-center text-xs font-medium text-slate-500 uppercase tracking-widest">
+                                {isSearching
+                                  ? "Searching catalog..."
+                                  : "No matching items found."}
                               </div>
                             )}
                           </motion.div>
@@ -303,201 +400,167 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                       </AnimatePresence>
                     </div>
                   </div>
-                </section>
 
-                {/* SECTION 2: LOGISTICS ROUTING */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
-                    <MapPin size={14} /> Logistics Routing
-                  </h3>
+                  {/* MATRIX TABLE */}
+                  <div className="overflow-x-auto custom-scrollbar border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+                    <table className="w-full text-left whitespace-nowrap min-w-[700px]">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-700">
+                          <th className="px-4 py-3 w-[45%]">Master Item</th>
+                          <th className="px-4 py-3 w-[20%] text-center">
+                            Origin Stock
+                          </th>
+                          <th className="px-4 py-3 w-[25%] text-right">
+                            Transfer Qty
+                          </th>
+                          <th className="px-4 py-3 w-[10%] text-center">Act</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                        {items.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={4}
+                              className="px-4 py-10 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                            >
+                              Manifest is empty. Search above to add items.
+                            </td>
+                          </tr>
+                        ) : (
+                          items.map((line, index) => {
+                            const avail = getAvailableStock(line);
+                            const parsedQty = parseInt(line.quantity, 10);
+                            const isExceeding =
+                              !isNaN(parsedQty) && parsedQty > avail;
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 relative">
-                    {/* Visual Connector Arrow (Desktop only) */}
-                    <div className="hidden sm:flex absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full items-center justify-center text-emerald-500 shadow-sm">
-                      <ArrowRightLeft size={14} />
-                    </div>
-
-                    {/* SOURCE BRANCH AREA */}
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                          Extract From <span className="text-red-500">*</span>
-                        </span>
-                        {!isLoadingStock &&
-                          formData.item_id &&
-                          formData.source_branch_id && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-[9px] font-bold text-slate-400">
-                                Stock:
-                              </span>
-                              <span
-                                className={`text-[9px] px-1.5 py-0.5 rounded font-black ${
-                                  availableSourceStock > 0
-                                    ? "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                                    : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
-                                }`}
+                            return (
+                              <tr
+                                key={line.rowId}
+                                className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
                               >
-                                {availableSourceStock}
-                              </span>
-                              {transferQty > 0 &&
-                                availableSourceStock !== "..." && (
-                                  <>
-                                    <span className="text-[9px] text-slate-400">
-                                      →
-                                    </span>
-                                    <span
-                                      className={`text-[9px] px-1.5 py-0.5 rounded font-black ${
-                                        availableSourceStock - transferQty < 0
-                                          ? "bg-red-50 text-red-600"
-                                          : "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                                <td className="px-4 py-3">
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-0.5">
+                                    {line.sku}
+                                  </p>
+                                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[250px]">
+                                    {line.item_name}
+                                  </p>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span
+                                    className={`text-[10px] px-2 py-1 rounded font-black font-mono tracking-widest ${
+                                      avail === "..."
+                                        ? "bg-slate-100 text-slate-500 dark:bg-slate-800"
+                                        : avail === 0
+                                          ? "bg-rose-50 text-rose-500 dark:bg-rose-500/10"
+                                          : "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"
+                                    }`}
+                                  >
+                                    {avail} {avail !== "..." && line.uom}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      step="1"
+                                      placeholder="0"
+                                      value={line.quantity}
+                                      onChange={(e) =>
+                                        handleLineChange(
+                                          line.rowId,
+                                          "quantity",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className={`w-24 px-3 py-2 bg-white dark:bg-slate-900 border rounded-lg text-xs font-mono font-black text-right shadow-sm focus:outline-none focus:ring-1 ${
+                                        isExceeding
+                                          ? "border-rose-300 focus:border-rose-500 text-rose-600 dark:border-rose-500/50 dark:text-rose-400 focus:ring-rose-500"
+                                          : "border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:border-amber-500 focus:ring-amber-500"
                                       }`}
-                                    >
-                                      {availableSourceStock - transferQty}
+                                    />
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase w-8 text-left">
+                                      {line.uom}
                                     </span>
-                                  </>
-                                )}
-                            </div>
-                          )}
-                      </label>
-                      <select
-                        required
-                        name="source_branch_id"
-                        value={formData.source_branch_id}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                      >
-                        <option value="">-- Origin Location --</option>
-                        {branches.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.branch_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* DESTINATION BRANCH AREA */}
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                          Deposit To <span className="text-red-500">*</span>
-                        </span>
-                        {!isLoadingStock &&
-                          formData.item_id &&
-                          formData.destination_branch_id && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-[9px] font-bold text-slate-400">
-                                Stock:
-                              </span>
-                              <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                                {availableDestStock}
-                              </span>
-                              {transferQty > 0 &&
-                                availableDestStock !== "..." && (
-                                  <>
-                                    <span className="text-[9px] text-slate-400">
-                                      →
-                                    </span>
-                                    <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-                                      {availableDestStock + transferQty}
-                                    </span>
-                                  </>
-                                )}
-                            </div>
-                          )}
-                      </label>
-                      <select
-                        required
-                        name="destination_branch_id"
-                        value={formData.destination_branch_id}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                      >
-                        <option value="">-- Target Location --</option>
-                        {branches.map((b) => (
-                          <option
-                            key={b.id}
-                            value={b.id}
-                            disabled={
-                              b.id.toString() === formData.source_branch_id
-                            }
-                          >
-                            {b.branch_name}{" "}
-                            {b.id.toString() === formData.source_branch_id
-                              ? "(Source)"
-                              : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => removeLine(line.rowId)}
+                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </section>
 
-                {/* SECTION 3: DETAILS & VALUATION */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-4 flex items-center gap-2">
-                    <FileText size={14} /> Transfer Details & Valuation
-                  </h3>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        Transfer Quantity{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        required
-                        type="number"
-                        min="1"
-                        step="1"
-                        name="quantity"
-                        value={formData.quantity}
-                        onChange={handleChange}
-                        placeholder="e.g., 50"
-                        className="w-full px-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-sm"
-                      />
-                    </div>
-
-                    <div className="flex flex-col justify-end">
-                      <div className="p-4 rounded-xl border bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 text-blue-800 dark:text-blue-400 flex items-center justify-between h-[46px] sm:h-[48px] shadow-sm">
-                        <div className="flex items-center gap-2">
-                          <Calculator size={14} />
-                          <span className="text-[9px] font-black uppercase tracking-widest opacity-80">
-                            Asset Value Transferred
-                          </span>
-                        </div>
-                        <span className="text-sm font-black font-mono">
-                          ₱{financialImpact}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      Logistics Notes / Reason{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      required
-                      name="reason"
-                      value={formData.reason}
-                      onChange={handleChange}
-                      rows="2"
-                      placeholder="e.g., Redistributing excess brake pads to cover expected weekend shortage."
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 resize-none shadow-sm"
-                    />
-                  </div>
+                {/* LOGISTICS NOTES */}
+                <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
+                    <FileText size={14} /> Logistics Notes / Reason{" "}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    required
+                    name="reason"
+                    value={header.reason}
+                    onChange={handleHeaderChange}
+                    rows="2"
+                    placeholder="e.g., Redistributing excess brake pads to Mayapa branch to cover expected weekend shortage."
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 resize-none shadow-inner"
+                  />
                 </section>
               </form>
             </div>
 
             {/* MODAL FOOTER */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+            <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto px-2 sm:px-0">
+                <div className="flex flex-col text-left">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                    Total Items
+                  </span>
+                  <span className="text-sm font-black font-mono text-slate-800 dark:text-slate-200">
+                    {items.length}
+                  </span>
+                </div>
+                <div className="h-6 w-px bg-slate-300 dark:bg-slate-700"></div>
+                <div className="flex flex-col text-left">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                    Total Units
+                  </span>
+                  <span className="text-sm font-black font-mono text-slate-800 dark:text-slate-200">
+                    {totals.totalQty.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-6 w-px bg-slate-300 dark:bg-slate-700"></div>
+                <div className="flex flex-col text-left">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">
+                    Asset Value
+                  </span>
+                  <span className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">
+                    ₱
+                    {totals.totalValuation.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              </div>
+
               <button
                 type="submit"
-                form="transferForm"
-                disabled={isSubmitting}
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
+                form="bulkTransferForm"
+                disabled={isSubmitting || items.length === 0}
+                className="w-full sm:w-auto px-8 py-3.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />

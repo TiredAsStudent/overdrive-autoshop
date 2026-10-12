@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowRightLeft, Plus, Eye } from "lucide-react";
+import { ArrowRightLeft, Plus, Eye, Layers } from "lucide-react";
 import { stockTransferService } from "../../services/manager/stockTransfer.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 
@@ -168,9 +168,8 @@ const StockTransfers = () => {
       <DataTable
         headers={[
           "Transfer Profile",
-          "Item Snapshot",
           "Logistics Vector",
-          "Quantity",
+          "Composition",
           "Asset Value",
           "Actions",
         ]}
@@ -192,22 +191,7 @@ const StockTransfers = () => {
                 </span>
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="min-w-0 max-w-[200px] sm:max-w-[250px]">
-                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white italic uppercase truncate">
-                  {req.item_name}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest">
-                    {req.sku}
-                  </span>
-                  <span className="text-slate-300 dark:text-slate-600">•</span>
-                  <span className="text-[9px] font-medium text-slate-400">
-                    {req.category}
-                  </span>
-                </div>
-              </div>
-            </td>
+
             <td className="px-4 sm:px-8 py-4 sm:py-5">
               <div className="flex flex-col items-start gap-1">
                 <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">
@@ -219,16 +203,22 @@ const StockTransfers = () => {
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 text-[10px] sm:text-xs font-black tracking-widest uppercase w-max">
-                <ArrowRightLeft size={12} /> {req.quantity} {req.uom}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 text-[10px] font-black tracking-widest uppercase w-max">
+                  <Layers size={12} /> {req.total_items}{" "}
+                  {parseInt(req.total_items, 10) === 1 ? "Item" : "Items"}
+                </div>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                  Total Units: {req.total_quantity}
+                </p>
               </div>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5">
               <span className="text-xs font-black text-slate-900 dark:text-white tracking-widest">
                 ₱
-                {(
-                  req.quantity * parseFloat(req.recorded_unit_cost)
-                ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {parseFloat(req.total_asset_value).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
               </span>
             </td>
             <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
@@ -268,7 +258,7 @@ const StockTransfers = () => {
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
             >
               <option value="all">All Origins</option>
               {branches.map((b) => (
@@ -285,7 +275,7 @@ const StockTransfers = () => {
             <select
               value={destFilter}
               onChange={(e) => setDestFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300 cursor-pointer"
             >
               <option value="all">All Targets</option>
               {branches.map((b) => (
@@ -351,7 +341,7 @@ const StockTransfers = () => {
       <TransferDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        transfer={selectedTransfer}
+        transferId={selectedTransfer?.id}
       />
     </div>
   );

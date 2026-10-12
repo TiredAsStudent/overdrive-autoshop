@@ -34,15 +34,30 @@ export const stockTransferService = {
     }
   },
 
+  getTransferDetails: async (id) => {
+    try {
+      const response = await api.get(`/manager/transfers/${id}`);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.error?.message ||
+        "Failed to load transfer manifest.";
+      throw new Error(message);
+    }
+  },
+
   executeTransfer: async (transferData) => {
     try {
       const payload = {
-        item_id: parseInt(transferData.item_id, 10),
         source_branch_id: parseInt(transferData.source_branch_id, 10),
         destination_branch_id: parseInt(transferData.destination_branch_id, 10),
-        quantity: parseInt(transferData.quantity, 10),
         reason: transferData.reason,
+        items: transferData.items.map((item) => ({
+          item_id: parseInt(item.item_id, 10),
+          quantity: parseInt(item.quantity, 10),
+        })),
       };
+
       const response = await api.post("/manager/transfers", payload);
       return response.data;
     } catch (error) {
