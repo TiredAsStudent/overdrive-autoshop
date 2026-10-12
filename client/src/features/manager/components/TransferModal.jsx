@@ -406,7 +406,7 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                   <div className="overflow-x-auto custom-scrollbar border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
                     <table className="w-full text-left whitespace-nowrap min-w-[700px]">
                       <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-900/50 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-700">
+                        <tr className="bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-700">
                           <th className="px-4 py-3 w-[45%]">Master Item</th>
                           <th className="px-4 py-3 w-[20%] text-center">
                             Origin Stock

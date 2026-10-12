@@ -52,7 +52,7 @@ const TransferDrawer = ({ isOpen, onClose, transferId }) => {
         transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
         className="relative w-full sm:w-[500px] lg:w-[650px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
       >
-        <header className="flex justify-between items-center px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
+        <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
               <ArrowRightLeft size={24} />
