@@ -23,11 +23,6 @@ class StockTransfer {
       values.push(destBranch);
       paramIdx++;
     }
-    if (category && category !== "all") {
-      conditions.push(`i.category ILIKE $${paramIdx}`);
-      values.push(`%${category}%`);
-      paramIdx++;
-    }
     if (startDate) {
       conditions.push(`st.created_at >= $${paramIdx}`);
       values.push(`${startDate} 00:00:00`);
@@ -35,15 +30,30 @@ class StockTransfer {
     }
     if (endDate) {
       conditions.push(`st.created_at <= $${paramIdx}`);
-      values.push(`${endDate} 23:59:59`);
+      values.push(`${endDate} 23:59:59.999`);
+      paramIdx++;
+    }
+
+    let itemFilterClauses = [];
+    if (category && category !== "all") {
+      itemFilterClauses.push(`i.category ILIKE $${paramIdx}`);
+      values.push(`%${category}%`);
       paramIdx++;
     }
     if (search) {
-      conditions.push(
+      itemFilterClauses.push(
         `(i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx} OR st.transfer_reference ILIKE $${paramIdx})`,
       );
       values.push(`%${search}%`);
       paramIdx++;
+    }
+
+    if (itemFilterClauses.length > 0) {
+      conditions.push(`EXISTS (
+        SELECT 1 FROM stock_transfer_items sti 
+        JOIN inventory_items i ON sti.item_id = i.id 
+        WHERE sti.transfer_id = st.id AND (${itemFilterClauses.join(" AND ")})
+      )`);
     }
 
     return { conditions, values, paramIdx };
@@ -57,11 +67,7 @@ class StockTransfer {
     startDate,
     endDate,
   ) {
-    let sql = `
-      SELECT COUNT(DISTINCT st.id) 
-      FROM stock_transfers st
-      JOIN inventory_items i ON st.item_id = i.id
-    `;
+    let sql = `SELECT COUNT(DISTINCT st.id) FROM stock_transfers st`;
     const { conditions, values } = this.buildConditions(
       search,
       sourceBranch,
@@ -88,13 +94,11 @@ class StockTransfer {
   ) {
     let sql = `
       SELECT 
-        st.id, st.transfer_reference, st.quantity, st.recorded_unit_cost, st.reason, st.created_at,
-        i.sku, i.item_name, i.category, i.uom,
+        st.id, st.transfer_reference, st.total_items, st.total_quantity, st.total_asset_value, st.reason, st.created_at,
         sb.branch_name AS source_branch_name,
         db.branch_name AS destination_branch_name,
         u.first_name, u.last_name
       FROM stock_transfers st
-      JOIN inventory_items i ON st.item_id = i.id
       JOIN branches sb ON st.source_branch_id = sb.id
       JOIN branches db ON st.destination_branch_id = db.id
       LEFT JOIN users u ON st.created_by = u.id
@@ -116,111 +120,167 @@ class StockTransfer {
     return result.rows;
   }
 
-  // The Atomic Transfer Engine
+  static async findById(id) {
+    const headerSql = `
+      SELECT st.*, 
+             sb.branch_name AS source_branch_name, 
+             db.branch_name AS destination_branch_name,
+             u.first_name, u.last_name
+      FROM stock_transfers st
+      JOIN branches sb ON st.source_branch_id = sb.id
+      JOIN branches db ON st.destination_branch_id = db.id
+      LEFT JOIN users u ON st.created_by = u.id
+      WHERE st.id = $1
+    `;
+    const res = await query(headerSql, [id]);
+    const transfer = res.rows[0];
+
+    if (!transfer) return null;
+
+    const itemsSql = `
+      SELECT sti.*, i.sku, i.item_name, i.uom, i.category
+      FROM stock_transfer_items sti
+      JOIN inventory_items i ON sti.item_id = i.id
+      WHERE sti.transfer_id = $1
+    `;
+    transfer.items = (await query(itemsSql, [id])).rows;
+
+    return transfer;
+  }
+
+  // The Atomic Bulk Transfer Engine
   static async executeTransfer(data, userId) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
-      await client.query(
-        `
-        INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
-        VALUES ($1, $2, 0, (SELECT default_reorder_level FROM inventory_items WHERE id = $2))
-        ON CONFLICT (branch_id, item_id) DO NOTHING
-      `,
-        [data.destination_branch_id, data.item_id],
-      );
+      const itemIds = data.items.map((i) => i.item_id).sort((a, b) => a - b);
 
-      const lockRes = await client.query(
-        `
-        SELECT bi.branch_id, bi.quantity, i.unit_cost, i.is_active 
-        FROM branch_inventory bi
-        JOIN inventory_items i ON bi.item_id = i.id
-        WHERE bi.item_id = $1 AND bi.branch_id IN ($2, $3)
-        ORDER BY bi.branch_id ASC
-        FOR UPDATE
-      `,
-        [data.item_id, data.source_branch_id, data.destination_branch_id],
+      const masterRes = await client.query(
+        `SELECT id, sku, item_name, unit_cost, is_active FROM inventory_items WHERE id = ANY($1::int[])`,
+        [itemIds],
       );
+      const masterItemsMap = new Map(masterRes.rows.map((r) => [r.id, r]));
 
-      const sourceData = lockRes.rows.find(
-        (r) => r.branch_id === data.source_branch_id,
-      );
-      const destData = lockRes.rows.find(
-        (r) => r.branch_id === data.destination_branch_id,
-      );
-
-      if (!sourceData)
-        throw new Error("Inventory record not found at source branch.");
-      if (!destData)
-        throw new Error(
-          "Critical: Failed to initialize destination inventory row.",
-        );
-
-      if (sourceData.is_active === false) {
-        throw new Error("Only active inventory items may be transferred.");
+      for (const item of data.items) {
+        const master = masterItemsMap.get(item.item_id);
+        if (!master)
+          throw new Error(
+            `CRITICAL: Item ID ${item.item_id} not found in master catalog.`,
+          );
+        if (!master.is_active)
+          throw new Error(
+            `Cannot transfer archived item: ${master.sku} - ${master.item_name}`,
+          );
       }
 
-      if (sourceData.quantity < data.quantity) {
-        throw new Error(
-          `Insufficient stock. Cannot transfer ${data.quantity}. Source branch only has ${sourceData.quantity} available.`,
+      const sourceRes = await client.query(
+        `SELECT item_id, quantity FROM branch_inventory WHERE branch_id = $1 AND item_id = ANY($2::int[]) ORDER BY item_id ASC FOR UPDATE`,
+        [data.source_branch_id, itemIds],
+      );
+      const sourceInventoryMap = new Map(
+        sourceRes.rows.map((r) => [r.item_id, r.quantity]),
+      );
+
+      let totalQuantity = 0;
+      let totalAssetValue = 0;
+
+      for (const item of data.items) {
+        const qty = parseInt(item.quantity, 10);
+        const available = sourceInventoryMap.get(item.item_id) || 0;
+        const master = masterItemsMap.get(item.item_id);
+
+        if (qty > available) {
+          throw new Error(
+            `Insufficient stock for ${master.sku} (${master.item_name}). Required: ${qty}, Available: ${available} at source branch.`,
+          );
+        }
+        totalQuantity += qty;
+        totalAssetValue += qty * parseFloat(master.unit_cost);
+      }
+
+      for (const itemId of itemIds) {
+        await client.query(
+          `INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
+           VALUES ($1, $2, 0, (SELECT default_reorder_level FROM inventory_items WHERE id = $2))
+           ON CONFLICT (branch_id, item_id) DO NOTHING`,
+          [data.destination_branch_id, itemId],
         );
       }
 
-      const newSourceQty = sourceData.quantity - data.quantity;
-      const newDestQty = destData.quantity + data.quantity;
-
-      await client.query(
-        "UPDATE branch_inventory SET quantity = $1 WHERE branch_id = $2 AND item_id = $3",
-        [newSourceQty, data.source_branch_id, data.item_id],
+      const destRes = await client.query(
+        `SELECT item_id, quantity FROM branch_inventory WHERE branch_id = $1 AND item_id = ANY($2::int[]) ORDER BY item_id ASC FOR UPDATE`,
+        [data.destination_branch_id, itemIds],
       );
-
-      await client.query(
-        "UPDATE branch_inventory SET quantity = $1, last_restock_date = NOW() WHERE branch_id = $2 AND item_id = $3",
-        [newDestQty, data.destination_branch_id, data.item_id],
+      const destInventoryMap = new Map(
+        destRes.rows.map((r) => [r.item_id, r.quantity]),
       );
 
       const refCode = `ST-${Date.now().toString().slice(-6)}`;
-
-      const ledgerSql = `
-        INSERT INTO inventory_movements (item_id, branch_id, transaction_type, transaction_reference, quantity_added, quantity_deducted, remaining_quantity, remarks, recorded_unit_cost, created_by)
-        VALUES 
-        ($1, $2, 'TRANSFER_OUT', $3, 0, $4, $5, $6, $7, $8),
-        ($1, $9, 'TRANSFER_IN', $3, $4, 0, $10, $6, $7, $8)
-      `;
-      await client.query(ledgerSql, [
-        data.item_id,
-        data.source_branch_id,
-        refCode,
-        data.quantity,
-        newSourceQty,
-        data.reason,
-        sourceData.unit_cost,
-        userId,
-        data.destination_branch_id,
-        newDestQty,
-      ]);
-
-      const transferRes = await client.query(
-        `
-        INSERT INTO stock_transfers (transfer_reference, item_id, source_branch_id, destination_branch_id, quantity, recorded_unit_cost, reason, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING *
-      `,
+      const transferHeaderRes = await client.query(
+        `INSERT INTO stock_transfers (transfer_reference, source_branch_id, destination_branch_id, total_items, total_quantity, total_asset_value, reason, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
         [
           refCode,
-          data.item_id,
           data.source_branch_id,
           data.destination_branch_id,
-          data.quantity,
-          sourceData.unit_cost,
+          data.items.length,
+          totalQuantity,
+          totalAssetValue,
           data.reason,
           userId,
         ],
       );
+      const transferRecord = transferHeaderRes.rows[0];
+
+      for (const item of data.items) {
+        const itemId = item.item_id;
+        const qty = item.quantity;
+        const master = masterItemsMap.get(itemId);
+
+        const newSourceQty = sourceInventoryMap.get(itemId) - qty;
+        const newDestQty = destInventoryMap.get(itemId) + qty;
+
+        // Apply Branch 1 Update
+        await client.query(
+          `UPDATE branch_inventory SET quantity = $1 WHERE branch_id = $2 AND item_id = $3`,
+          [newSourceQty, data.source_branch_id, itemId],
+        );
+
+        // Apply Branch 2 Update
+        await client.query(
+          `UPDATE branch_inventory SET quantity = $1, last_restock_date = NOW() WHERE branch_id = $2 AND item_id = $3`,
+          [newDestQty, data.destination_branch_id, itemId],
+        );
+
+        // Record Manifest Line Item
+        await client.query(
+          `INSERT INTO stock_transfer_items (transfer_id, item_id, quantity, recorded_unit_cost) VALUES ($1, $2, $3, $4)`,
+          [transferRecord.id, itemId, qty, master.unit_cost],
+        );
+
+        const ledgerSql = `
+          INSERT INTO inventory_movements (item_id, branch_id, transaction_type, transaction_reference, quantity_added, quantity_deducted, remaining_quantity, remarks, recorded_unit_cost, created_by)
+          VALUES 
+          ($1, $2, 'TRANSFER_OUT', $3, 0, $4, $5, $6, $7, $8),
+          ($1, $9, 'TRANSFER_IN', $3, $4, 0, $10, $6, $7, $8)
+        `;
+        await client.query(ledgerSql, [
+          itemId,
+          data.source_branch_id,
+          refCode,
+          qty,
+          newSourceQty,
+          data.reason,
+          master.unit_cost,
+          userId,
+          data.destination_branch_id,
+          newDestQty,
+        ]);
+      }
 
       await client.query("COMMIT");
-      return transferRes.rows[0];
+      return transferRecord;
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

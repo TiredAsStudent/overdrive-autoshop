@@ -259,6 +259,7 @@ router.post(
   validate(executeTransferSchema),
   StockTransferController.executeTransfer,
 );
+router.get("/transfers/:id", StockTransferController.getTransferDetails);
 
 // ==========================================
 // MODULE: PURCHASE ORDER APPROVALS

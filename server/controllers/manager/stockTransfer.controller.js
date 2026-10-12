@@ -24,6 +24,7 @@ class StockTransferController {
         startDate,
         endDate,
       );
+
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
@@ -40,6 +41,30 @@ class StockTransferController {
     }
   }
 
+  static async getTransferDetails(req, res) {
+    try {
+      const result = await StockTransferService.getTransferDetails(
+        req.params.id,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        result,
+        "Transfer manifest retrieved.",
+      );
+    } catch (error) {
+      const code = error.message.includes("not found")
+        ? STATUS_CODES.NOT_FOUND
+        : STATUS_CODES.INTERNAL_ERROR;
+      return sendError(
+        res,
+        code,
+        "Failed to retrieve transfer details.",
+        error.message,
+      );
+    }
+  }
+
   static async executeTransfer(req, res) {
     try {
       const transfer = await StockTransferService.executeTransfer(
@@ -51,7 +76,7 @@ class StockTransferController {
         res,
         STATUS_CODES.SUCCESS,
         transfer,
-        `Transfer executed successfully. Reference: ${transfer.transfer_reference}`,
+        `Bulk Transfer executed successfully. Manifest Reference: ${transfer.transfer_reference}`,
       );
     } catch (error) {
       const statusCode = error.message.includes("Insufficient stock")

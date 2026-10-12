@@ -1,9 +1,19 @@
 const { z } = require("zod");
 
+const transferItemSchema = z.object({
+  item_id: z
+    .union([z.string(), z.number()])
+    .transform((val) => Number(val))
+    .refine((val) => val > 0, "Valid Master Item ID is required"),
+  quantity: z
+    .union([z.string(), z.number()])
+    .transform((val) => Number(val))
+    .refine((val) => val > 0, "Quantity must be greater than zero"),
+});
+
 const executeTransferSchema = z.object({
   body: z
     .object({
-      item_id: z.number().int().positive("Valid Master Item ID is required"),
       source_branch_id: z
         .number()
         .int()
@@ -12,15 +22,18 @@ const executeTransferSchema = z.object({
         .number()
         .int()
         .positive("Valid Destination Branch ID is required"),
-      quantity: z
-        .number()
-        .int()
-        .positive("Transfer quantity must be greater than 0"),
       reason: z
         .string()
         .trim()
         .min(3, "Reason is required")
         .max(255, "Reason cannot exceed 255 characters"),
+      items: z
+        .array(transferItemSchema)
+        .min(1, "At least one item must be included in the transfer manifest.")
+        .refine((items) => {
+          const itemIds = items.map((i) => i.item_id);
+          return new Set(itemIds).size === itemIds.length;
+        }, "Duplicate items are not allowed in a single transfer manifest."),
     })
     .refine((data) => data.source_branch_id !== data.destination_branch_id, {
       message:

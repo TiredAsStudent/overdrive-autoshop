@@ -45,15 +45,19 @@ class StockTransferService {
     };
   }
 
+  static async getTransferDetails(transferId) {
+    const transfer = await StockTransferModel.findById(transferId);
+    if (!transfer) throw new Error("Transfer manifest not found.");
+    return transfer;
+  }
+
   static async executeTransfer(data, adminUser, ipAddress) {
     const result = await StockTransferModel.executeTransfer(data, adminUser.id);
-
-    const financialImpact = data.quantity * result.recorded_unit_cost;
 
     await logSecureAction(
       adminUser.id,
       null,
-      "EXECUTED_STOCK_TRANSFER",
+      "EXECUTED_BULK_STOCK_TRANSFER",
       "WARNING",
       ipAddress,
       "stock_transfers",
@@ -62,9 +66,9 @@ class StockTransferService {
       {
         source_branch_id: data.source_branch_id,
         destination_branch_id: data.destination_branch_id,
-        item_id: data.item_id,
-        quantity_moved: data.quantity,
-        asset_value_moved: financialImpact,
+        total_items_moved: result.total_items,
+        total_quantity_moved: result.total_quantity,
+        total_asset_value_moved: parseFloat(result.total_asset_value),
         reference: result.transfer_reference,
       },
     );
