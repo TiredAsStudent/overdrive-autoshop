@@ -148,7 +148,6 @@ class StockTransfer {
     return transfer;
   }
 
-  // The Atomic Bulk Transfer Engine
   static async executeTransfer(data, userId) {
     const client = await pool.connect();
     try {
@@ -174,31 +173,6 @@ class StockTransfer {
           );
       }
 
-      const sourceRes = await client.query(
-        `SELECT item_id, quantity FROM branch_inventory WHERE branch_id = $1 AND item_id = ANY($2::int[]) ORDER BY item_id ASC FOR UPDATE`,
-        [data.source_branch_id, itemIds],
-      );
-      const sourceInventoryMap = new Map(
-        sourceRes.rows.map((r) => [r.item_id, r.quantity]),
-      );
-
-      let totalQuantity = 0;
-      let totalAssetValue = 0;
-
-      for (const item of data.items) {
-        const qty = parseInt(item.quantity, 10);
-        const available = sourceInventoryMap.get(item.item_id) || 0;
-        const master = masterItemsMap.get(item.item_id);
-
-        if (qty > available) {
-          throw new Error(
-            `Insufficient stock for ${master.sku} (${master.item_name}). Required: ${qty}, Available: ${available} at source branch.`,
-          );
-        }
-        totalQuantity += qty;
-        totalAssetValue += qty * parseFloat(master.unit_cost);
-      }
-
       for (const itemId of itemIds) {
         await client.query(
           `INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
@@ -208,13 +182,37 @@ class StockTransfer {
         );
       }
 
-      const destRes = await client.query(
-        `SELECT item_id, quantity FROM branch_inventory WHERE branch_id = $1 AND item_id = ANY($2::int[]) ORDER BY item_id ASC FOR UPDATE`,
-        [data.destination_branch_id, itemIds],
+      const lockRes = await client.query(
+        `SELECT branch_id, item_id, quantity 
+         FROM branch_inventory 
+         WHERE branch_id IN ($1, $2) AND item_id = ANY($3::int[]) 
+         ORDER BY branch_id ASC, item_id ASC 
+         FOR UPDATE`,
+        [data.source_branch_id, data.destination_branch_id, itemIds],
       );
-      const destInventoryMap = new Map(
-        destRes.rows.map((r) => [r.item_id, r.quantity]),
+
+      const inventoryMap = new Map();
+      lockRes.rows.forEach((r) =>
+        inventoryMap.set(`${r.branch_id}-${r.item_id}`, r.quantity),
       );
+
+      let totalQuantity = 0;
+      let totalAssetValue = 0;
+
+      for (const item of data.items) {
+        const qty = parseInt(item.quantity, 10);
+        const available =
+          inventoryMap.get(`${data.source_branch_id}-${item.item_id}`) || 0;
+        const master = masterItemsMap.get(item.item_id);
+
+        if (qty > available) {
+          throw new Error(
+            `Insufficient stock for ${master.sku} (${master.item_name}). Required: ${qty}, Available: ${available} at origin branch.`,
+          );
+        }
+        totalQuantity += qty;
+        totalAssetValue += qty * parseFloat(master.unit_cost);
+      }
 
       const refCode = `ST-${Date.now().toString().slice(-6)}`;
       const transferHeaderRes = await client.query(
@@ -235,19 +233,19 @@ class StockTransfer {
 
       for (const item of data.items) {
         const itemId = item.item_id;
-        const qty = item.quantity;
+        const qty = parseInt(item.quantity, 10);
         const master = masterItemsMap.get(itemId);
 
-        const newSourceQty = sourceInventoryMap.get(itemId) - qty;
-        const newDestQty = destInventoryMap.get(itemId) + qty;
+        const newSourceQty =
+          (inventoryMap.get(`${data.source_branch_id}-${itemId}`) || 0) - qty;
+        const newDestQty =
+          (inventoryMap.get(`${data.destination_branch_id}-${itemId}`) || 0) +
+          qty;
 
-        // Apply Branch 1 Update
         await client.query(
           `UPDATE branch_inventory SET quantity = $1 WHERE branch_id = $2 AND item_id = $3`,
           [newSourceQty, data.source_branch_id, itemId],
         );
-
-        // Apply Branch 2 Update
         await client.query(
           `UPDATE branch_inventory SET quantity = $1, last_restock_date = NOW() WHERE branch_id = $2 AND item_id = $3`,
           [newDestQty, data.destination_branch_id, itemId],
