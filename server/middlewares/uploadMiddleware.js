@@ -2,15 +2,17 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-// Ensure physical directories exist before accepting files
-const brandingDir = "uploads/branding/";
-const receiptDir = "uploads/receipts/";
-const adjustmentDir = "uploads/adjustments/";
-const paymentDir = "uploads/payments/";
-const billDir = "uploads/bills/";
-const vendorPaymentDir = "uploads/vendor-payments/";
-const expenseDir = "uploads/expenses/";
+const baseUploadDir = path.join(__dirname, "..", "uploads");
 
+const brandingDir = path.join(baseUploadDir, "branding");
+const receiptDir = path.join(baseUploadDir, "receipts");
+const adjustmentDir = path.join(baseUploadDir, "adjustments");
+const paymentDir = path.join(baseUploadDir, "payments");
+const billDir = path.join(baseUploadDir, "bills");
+const vendorPaymentDir = path.join(baseUploadDir, "vendor-payments");
+const expenseDir = path.join(baseUploadDir, "expenses");
+
+// Ensure physical directories exist before accepting files
 [
   brandingDir,
   receiptDir,

@@ -20,12 +20,15 @@ const sendError = (
   details = null,
 ) => {
   const isDev = process.env.NODE_ENV === "development";
+  const isServerError = statusCode >= 500;
+
+  const shouldHideDetails = isServerError && !isDev;
 
   return res.status(statusCode).json({
     success: false,
     error: {
       message,
-      details: isDev ? details : null,
+      details: shouldHideDetails ? null : details,
     },
   });
 };

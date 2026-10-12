@@ -10,6 +10,9 @@ const pool = new Pool(
         ssl: {
           rejectUnauthorized: false,
         },
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
       }
     : {
         user: process.env.DB_USER,
@@ -23,9 +26,7 @@ const pool = new Pool(
 const connectDB = async () => {
   try {
     const client = await pool.connect();
-
     console.log("Database Connected Successfully");
-
     client.release();
   } catch (err) {
     console.error("Database Connection Failed:", err.message);
