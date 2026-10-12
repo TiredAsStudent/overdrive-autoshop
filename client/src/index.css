@@ -26,3 +26,35 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* Progress Bar Animation for Toasts */
+@layer utilities {
+  @keyframes shrink {
+    0% {
+      width: 100%;
+    }
+    100% {
+      width: 0%;
+    }
+  }
+  .animate-shrink {
+    animation: shrink linear forwards;
+  }
+}
+
+/* Custom Scrollbar for sleek mobile/desktop horizontal scrolling */
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 dark:bg-slate-700 rounded-full;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-300 dark:bg-slate-600;
+  }
+}

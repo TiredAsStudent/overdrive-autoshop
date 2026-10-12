@@ -1,40 +1,62 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  UserPlus,
   ShieldCheck,
   MapPin,
   Mail,
   Clock,
-  Lock,
   MoreVertical,
-  Search,
   Users,
   Key,
-  Send,
-  AlertCircle,
   RefreshCw,
   UserX,
   Edit,
   UserCheck,
   PowerOff,
   Globe,
+  Plus,
+  X,
+  Loader2,
+  Send,
 } from "lucide-react";
+
+// Universal UI Components
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import ActionButton from "../../components/ui/ActionButton";
 import StatusBadge from "../../components/ui/StatusBadge";
 import ConfirmModal from "../../components/shared/ConfirmModal";
+import DataTable from "../../components/shared/DataTable";
+import Pagination from "../../components/shared/Pagination";
+import StatCard from "../../components/ui/StatCard";
+
 import { userService } from "../../services/sysadmin/user.service";
 import { branchService } from "../../services/sysadmin/branch.service";
 import { useAuth } from "../../context/AuthContext";
+import { useApp } from "../../context/AppContext";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const UsersTab = () => {
   const { user: currentUser } = useAuth();
+  const { showToast } = useApp();
+
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
+  const [totalCount, setTotalCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+
   const [openMenuId, setOpenMenuId] = useState(null);
 
-  // Global Confirmation Modal State
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
     title: "",
@@ -44,10 +66,8 @@ const UsersTab = () => {
     onConfirm: () => {},
   });
 
-  // Invite Modal State
   const [isInviting, setIsInviting] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteError, setInviteError] = useState(null);
   const [inviteForm, setInviteForm] = useState({
     email: "",
     firstName: "",
@@ -56,10 +76,8 @@ const UsersTab = () => {
     branchId: "",
   });
 
-  // Edit Modal State
   const [isEditing, setIsEditing] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState(null);
   const [editForm, setEditForm] = useState({
     id: null,
     firstName: "",
@@ -71,7 +89,6 @@ const UsersTab = () => {
 
   const menuRef = useRef();
 
-  // Close dropdown menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target))
@@ -81,33 +98,50 @@ const UsersTab = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Parallel Fetch: Loads Users and Branches simultaneously
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [userRoster, branchDataResponse] = await Promise.all([
-        userService.getRoster(),
-        branchService.getAllBranches(),
-      ]);
+      const [userRosterResponse, branchDataResponse, globalStatsResponse] =
+        await Promise.all([
+          userService.getRoster(
+            currentPage,
+            ITEMS_PER_PAGE,
+            debouncedSearchTerm,
+          ),
+          branchService.getAllBranches(1, 100, "", "active"),
+          userService.getRoster(1, 1000, ""),
+        ]);
 
-      setUsers(userRoster || []);
+      setUsers(userRosterResponse.data || []);
+      setTotalPages(userRosterResponse.pagination?.totalPages || 1);
 
-      // Extract active branches safely
+      const allUsers = globalStatsResponse.data || [];
+      setTotalCount(allUsers.length);
+      setActiveCount(
+        allUsers.filter((u) => u.account_status === "ACTIVE").length,
+      );
+      setPendingCount(
+        allUsers.filter((u) => u.account_status === "PENDING").length,
+      );
+
       const rawBranches = branchDataResponse?.data || branchDataResponse || [];
       const activeBranches = Array.isArray(rawBranches)
         ? rawBranches.filter((b) => b.is_active)
         : [];
       setBranches(activeBranches);
 
-      // Pre-select the first active branch for invites
-      if (activeBranches.length > 0) {
+      if (activeBranches.length > 0 && !inviteForm.branchId) {
         setInviteForm((prev) => ({
           ...prev,
           branchId: activeBranches[0].id.toString(),
         }));
       }
     } catch (error) {
-      console.error("Failed to load dashboard data:", error);
+      showToast("Unable to load personnel accounts.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -115,21 +149,23 @@ const UsersTab = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [currentPage, debouncedSearchTerm]);
 
-  const handleInviteSubmit = async () => {
+  const handleInviteSubmit = async (e) => {
+    if (e) e.preventDefault();
     setInviteLoading(true);
-    setInviteError(null);
     try {
       const payload = {
         ...inviteForm,
-        // Strict Branch Lock Enforcement before sending to backend
         branchId:
           inviteForm.role === "MANAGER"
             ? null
             : parseInt(inviteForm.branchId, 10),
       };
       await userService.inviteUser(payload);
+
+      showToast(`Secure invitation issued to ${payload.email}`, "success");
+
       setIsInviting(false);
       setInviteForm({
         email: "",
@@ -140,15 +176,15 @@ const UsersTab = () => {
       });
       fetchData();
     } catch (error) {
-      setInviteError(error.message);
+      showToast(error.message, "error");
     } finally {
       setInviteLoading(false);
     }
   };
 
-  const handleEditSubmit = async () => {
+  const handleEditSubmit = async (e) => {
+    if (e) e.preventDefault();
     setEditLoading(true);
-    setEditError(null);
     try {
       const payload = {
         firstName: editForm.firstName,
@@ -161,10 +197,13 @@ const UsersTab = () => {
             : parseInt(editForm.branchId, 10),
       };
       await userService.updateUser(editForm.id, payload);
+
+      showToast(`Account details updated successfully.`, "success");
+
       setIsEditing(false);
       fetchData();
     } catch (error) {
-      setEditError(error.message);
+      showToast(error.message, "error");
     } finally {
       setEditLoading(false);
     }
@@ -173,10 +212,10 @@ const UsersTab = () => {
   const executeAction = async (actionFn, successMessage) => {
     try {
       await actionFn();
-      if (successMessage) alert(successMessage); // Optional generic toast fallback
+      if (successMessage) showToast(successMessage, "success");
       fetchData();
     } catch (error) {
-      alert(error.message || "An error occurred.");
+      showToast(error.message || "An error occurred.", "error");
     }
   };
 
@@ -184,7 +223,6 @@ const UsersTab = () => {
     setOpenMenuId(null);
 
     if (action === "EDIT") {
-      setEditError(null);
       setEditForm({
         id: userObj.id,
         firstName: userObj.first_name,
@@ -210,7 +248,7 @@ const UsersTab = () => {
         onConfirm: () =>
           executeAction(
             () => userService.resendInvite(userId),
-            "New invite sent securely.",
+            "New secure invite has been issued.",
           ),
       });
       return;
@@ -221,12 +259,13 @@ const UsersTab = () => {
         isOpen: true,
         title: "Deactivate User",
         message:
-          "Are you sure you want to deactivate this user? They will be locked out immediately and all active sessions will be killed.",
-        confirmText: "Deactivate Account",
+          "Are you sure you want to deactivate this user? They will lose access to the system and will be signed out of all active sessions.",
+        confirmText: "Deactivate User",
         variant: "danger",
         onConfirm: () =>
-          executeAction(() =>
-            userService.updateUser(userId, { isActive: false }),
+          executeAction(
+            () => userService.updateUser(userId, { isActive: false }),
+            "User account has been deactivated.",
           ),
       });
       return;
@@ -237,12 +276,13 @@ const UsersTab = () => {
         isOpen: true,
         title: "Reactivate User",
         message:
-          "This will restore system access for this employee based on their current role configuration.",
-        confirmText: "Reactivate Account",
+          "Are you sure you want to reactivate this user? They will regain access to the system.",
+        confirmText: "Reactivate User",
         variant: "info",
         onConfirm: () =>
-          executeAction(() =>
-            userService.updateUser(userId, { isActive: true }),
+          executeAction(
+            () => userService.updateUser(userId, { isActive: true }),
+            "User account has been reactivated.",
           ),
       });
       return;
@@ -251,636 +291,654 @@ const UsersTab = () => {
     if (action === "KILL_SESSION") {
       setConfirmConfig({
         isOpen: true,
-        title: "Kill Active Sessions",
+        title: "Terminate Active Sessions",
         message:
-          "EMERGENCY ACTION: Instantly invalidate all browser tokens for this user. They will be logged out mid-action. Proceed?",
-        confirmText: "Kill Session",
+          "This will sign the user out of all active sessions. They will need to sign in again to continue using the system.",
+        confirmText: "Terminate Sessions",
         variant: "danger",
         onConfirm: () =>
           executeAction(
             () => userService.killSession(userId),
-            "Session Kill-Switch activated.",
+            "All active browser sessions terminated.",
           ),
       });
       return;
     }
   };
 
-  const activeCount = users.filter((u) => u.account_status === "ACTIVE").length;
-  const pendingCount = users.filter(
-    (u) => u.account_status === "PENDING",
-  ).length;
-  const filteredUsers = users.filter(
-    (user) =>
-      `${user.first_name} ${user.last_name}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 w-full pb-10">
-      {/* 1. Header */}
-      <div className="flex items-center gap-3 border-b border-slate-200 dark:border-white/10 pb-4">
-        <div className="p-2 bg-amber-500/10 rounded-lg">
-          <Users
-            className="text-amber-600 dark:text-overdrive-yellow"
-            size={24}
-          />
-        </div>
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">
-            User RBAC Management
-          </h1>
-          <p className="text-sm font-medium text-slate-500 dark:text-gray-400">
-            Enterprise Directory & Identity Access Control
-          </p>
-        </div>
-      </div>
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 w-full pb-10">
+      {/* UNIVERSAL PAGE HEADER */}
+      <PageHeader
+        title="User Accounts"
+        subtitle="User Accounts & Access Control"
+        icon={Users}
+      >
+        <SearchBar
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search users..."
+          isSearching={searchTerm !== debouncedSearchTerm}
+        />
 
-      {/* 2. Top Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden border border-white/10">
-          <div className="absolute right-0 top-0 p-4 opacity-10">
-            <ShieldCheck size={100} />
-          </div>
-          <p className="text-[10px] font-black uppercase text-amber-500 tracking-[0.2em] mb-2">
-            Gatekeeper Status
-          </p>
-          <h3 className="text-3xl font-black italic">Closed-Loop</h3>
-          <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">
-            Public Registration Disabled
-          </p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
-          <p className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest mb-2">
-            Active Personnel
-          </p>
-          <h3 className="text-4xl font-black text-slate-900 dark:text-white italic">
-            {activeCount.toString().padStart(2, "0")}
-          </h3>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
-          <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-2">
-            Pending Invites
-          </p>
-          <div className="flex items-center justify-between">
-            <h3 className="text-4xl font-black text-slate-900 dark:text-white italic">
-              {pendingCount.toString().padStart(2, "0")}
-            </h3>
-            <span className="text-[10px] font-black text-slate-400 uppercase italic">
-              Awaiting Setup
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Controls */}
-      <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
-        <div className="relative flex-1 w-full lg:max-w-md">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Search Roster by Name or Email..."
-            className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl outline-none focus:border-amber-500 text-sm font-bold shadow-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <button
+        <ActionButton
           onClick={() => setIsInviting(true)}
-          className="px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-all uppercase text-xs tracking-widest shadow-xl w-full lg:w-auto"
-        >
-          <UserPlus size={18} /> Send Security Invite
-        </button>
+          label="Invite User"
+          icon={Plus}
+        />
+      </PageHeader>
+
+      {/* Top Stats KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 w-full">
+        <StatCard
+          title="Total Accounts"
+          value={totalCount.toString().padStart(2, "0")}
+          icon={Users}
+          variant="default"
+        />
+        <StatCard
+          title="Active Personnel"
+          value={activeCount.toString().padStart(2, "0")}
+          icon={ShieldCheck}
+          variant="success"
+        />
+        <StatCard
+          title="Pending Invitations"
+          value={pendingCount.toString().padStart(2, "0")}
+          icon={Clock}
+          variant="warning"
+        />
       </div>
 
-      {/* 4. Directory Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 overflow-visible shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left whitespace-nowrap">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-black/20 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-white/5">
-                <th className="px-8 py-5">Employee Identity</th>
-                <th className="px-8 py-5">Role Level</th>
-                <th className="px-8 py-5">Branch Assignment</th>
-                <th className="px-8 py-5 text-right">Account Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-white/5">
-              {isLoading ? (
-                <tr>
-                  <td colSpan="4" className="text-center py-12">
-                    <div className="flex flex-col items-center gap-2">
-                      <RefreshCw
-                        size={24}
-                        className="animate-spin text-amber-500"
+      {/* Directory Table */}
+      <DataTable
+        headers={["Account Details", "Role", "Branch", "Status & Actions"]}
+        data={users}
+        loading={isLoading}
+        emptyTitle="No personnel found"
+        emptySubtitle="Try adjusting your search criteria or issue a new security invite."
+        renderRow={(user) => (
+          <tr
+            key={user.id}
+            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors relative"
+          >
+            {/* Identity Column */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-slate-100 dark:bg-black/20 rounded-xl sm:rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors shrink-0">
+                  <Users className="text-amber-600 dark:text-overdrive-yellow w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
+                <div className="min-w-0 flex-1 max-w-[140px] sm:max-w-[200px] lg:max-w-none">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight truncate w-full sm:w-auto">
+                      {user.first_name} {user.last_name}
+                    </p>
+                    {user.google_id && (
+                      <span
+                        title="Secured via Google SSO"
+                        className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-[4px] text-[8px] font-black uppercase tracking-wider border border-blue-200 dark:border-blue-500/20 flex items-center gap-1 shrink-0"
+                      >
+                        <Globe size={8} /> SSO
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 font-bold mt-0.5 truncate w-full">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+            </td>
+
+            {/* Role Column */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
+              <div className="flex items-center gap-2">
+                <Key
+                  size={14}
+                  className={
+                    user.role === "ADMIN" || user.role === "MANAGER"
+                      ? "text-amber-500"
+                      : "text-blue-500"
+                  }
+                />
+                <span className="text-[10px] sm:text-xs font-black dark:text-gray-300">
+                  {user.role}
+                </span>
+              </div>
+            </td>
+
+            {/* Branch Column */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-black text-slate-500 uppercase">
+                {user.branch_name ? (
+                  <>
+                    <MapPin size={12} className="text-blue-500 shrink-0" />{" "}
+                    <span className="truncate max-w-[100px] sm:max-w-none">
+                      {user.branch_name}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Globe size={12} className="text-amber-500 shrink-0" />{" "}
+                    Global
+                  </>
+                )}
+              </div>
+            </td>
+
+            {/* Status & Actions Column */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
+              <div className="flex items-center justify-end gap-2 sm:gap-4 relative">
+                <StatusBadge
+                  label={user.account_status}
+                  variant={
+                    user.account_status === "ACTIVE"
+                      ? "success"
+                      : user.account_status === "DEACTIVATED"
+                        ? "danger"
+                        : "warning"
+                  }
+                  icon={
+                    user.account_status === "ACTIVE"
+                      ? ShieldCheck
+                      : user.account_status === "DEACTIVATED"
+                        ? UserX
+                        : Clock
+                  }
+                />
+
+                {currentUser?.id === user.id ? (
+                  <StatusBadge
+                    label="Active"
+                    variant="success"
+                    className="ml-2"
+                  />
+                ) : (
+                  <div ref={menuRef} className="w-8 flex justify-end shrink-0">
+                    <button
+                      onClick={() =>
+                        setOpenMenuId(openMenuId === user.id ? null : user.id)
+                      }
+                      className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400 transition-colors cursor-pointer"
+                    >
+                      <MoreVertical
+                        size={16}
+                        className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px]"
                       />
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                        Syncing Directory...
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors relative"
-                  >
-                    {/* Identity Column */}
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-slate-100 dark:bg-black/20 rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors shrink-0">
-                          <Users size={24} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight flex items-center gap-2">
-                            {user.first_name} {user.last_name}
-                            {/* Google SSO Badge Visualization */}
-                            {user.google_id && (
-                              <span
-                                title="Secured via Google SSO"
-                                className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-[4px] text-[8px] font-black uppercase tracking-wider border border-blue-200 dark:border-blue-500/20 flex items-center gap-1"
-                              >
-                                <Globe size={8} /> SSO
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-[10px] text-slate-400 font-bold mt-0.5">
-                            {user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
+                    </button>
 
-                    {/* Role Column */}
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-2">
-                        <Key
-                          size={14}
-                          className={
-                            user.role === "ADMIN" || user.role === "MANAGER"
-                              ? "text-amber-500"
-                              : "text-blue-500"
+                    {/* Action Menu */}
+                    {openMenuId === user.id && (
+                      <div className="absolute right-4 sm:right-8 top-12 mt-1 w-48 sm:w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-white/10 z-[60] overflow-hidden text-left">
+                        {user.account_status === "PENDING" && (
+                          <button
+                            onMouseDown={() =>
+                              handleMenuAction(user.id, "RESEND")
+                            }
+                            className="w-full px-4 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2 cursor-pointer"
+                          >
+                            <RefreshCw size={14} /> Resend Invite
+                          </button>
+                        )}
+                        <button
+                          onMouseDown={() =>
+                            handleMenuAction(user.id, "EDIT", user)
                           }
-                        />
-                        <span className="text-xs font-black dark:text-gray-300">
-                          {user.role}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Branch Assignment Column */}
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase">
-                        {user.branch_name ? (
-                          <>
-                            <MapPin size={12} className="text-slate-400" />{" "}
-                            {user.branch_name}
-                          </>
+                          className="w-full px-4 py-3 text-xs font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 cursor-pointer"
+                        >
+                          <Edit size={14} /> Edit Account Details
+                        </button>
+                        {user.account_status === "ACTIVE" && (
+                          <button
+                            onMouseDown={() =>
+                              handleMenuAction(user.id, "KILL_SESSION")
+                            }
+                            className="w-full px-4 py-3 text-xs font-black text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 bg-red-50/50 dark:bg-red-900/10 cursor-pointer"
+                          >
+                            <PowerOff size={14} /> Terminate Active Sessions
+                          </button>
+                        )}
+                        {user.account_status === "DEACTIVATED" ? (
+                          <button
+                            onMouseDown={() =>
+                              handleMenuAction(user.id, "ACTIVATE")
+                            }
+                            className="w-full px-4 py-3 text-xs font-bold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 cursor-pointer"
+                          >
+                            <UserCheck size={14} /> Reactivate User
+                          </button>
                         ) : (
-                          <>
-                            <Globe size={12} className="text-amber-500" />{" "}
-                            Enterprise Global
-                          </>
+                          <button
+                            onMouseDown={() =>
+                              handleMenuAction(user.id, "DEACTIVATE")
+                            }
+                            className="w-full px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 cursor-pointer"
+                          >
+                            <UserX size={14} /> Deactivate User
+                          </button>
                         )}
                       </div>
-                    </td>
+                    )}
+                  </div>
+                )}
+              </div>
+            </td>
+          </tr>
+        )}
+      />
 
-                    {/* Status & Actions Column */}
-                    <td className="px-8 py-6 text-right">
-                      <div className="flex items-center justify-end gap-4 relative">
-                        <StatusBadge
-                          status={user.account_status}
-                          type={
-                            user.account_status === "ACTIVE"
-                              ? "success"
-                              : user.account_status === "DEACTIVATED"
-                                ? "danger"
-                                : "warning"
-                          }
-                        />
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
-                        {/* Self-Preservation Logic Display */}
-                        {currentUser?.id === user.id ? (
-                          <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 px-2 py-1 rounded-lg uppercase whitespace-nowrap">
-                            Active Session
-                          </span>
-                        ) : (
-                          <div ref={menuRef} className="w-8 flex justify-end">
-                            <button
-                              onClick={() =>
-                                setOpenMenuId(
-                                  openMenuId === user.id ? null : user.id,
-                                )
-                              }
-                              className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400 transition-colors"
-                            >
-                              <MoreVertical size={18} />
-                            </button>
-
-                            {/* Action Menu */}
-                            {openMenuId === user.id && (
-                              <div className="absolute right-0 top-10 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-white/10 z-50 overflow-hidden">
-                                {user.account_status === "PENDING" && (
-                                  <button
-                                    onMouseDown={() =>
-                                      handleMenuAction(user.id, "RESEND")
-                                    }
-                                    className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2"
-                                  >
-                                    <RefreshCw size={14} /> Resend Invite
-                                  </button>
-                                )}
-                                <button
-                                  onMouseDown={() =>
-                                    handleMenuAction(user.id, "EDIT", user)
-                                  }
-                                  className="w-full text-left px-4 py-3 text-xs font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5"
-                                >
-                                  <Edit size={14} /> Edit Configuration
-                                </button>
-                                {user.account_status === "ACTIVE" && (
-                                  <button
-                                    onMouseDown={() =>
-                                      handleMenuAction(user.id, "KILL_SESSION")
-                                    }
-                                    className="w-full text-left px-4 py-3 text-xs font-black text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5 bg-red-50/50 dark:bg-red-900/10"
-                                  >
-                                    <PowerOff size={14} /> Kill Active Sessions
-                                  </button>
-                                )}
-                                {user.account_status === "DEACTIVATED" ? (
-                                  <button
-                                    onMouseDown={() =>
-                                      handleMenuAction(user.id, "ACTIVATE")
-                                    }
-                                    className="w-full text-left px-4 py-3 text-xs font-bold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5"
-                                  >
-                                    <UserCheck size={14} /> Reactivate User
-                                  </button>
-                                ) : (
-                                  <button
-                                    onMouseDown={() =>
-                                      handleMenuAction(user.id, "DEACTIVATE")
-                                    }
-                                    className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 border-t border-slate-100 dark:border-white/5"
-                                  >
-                                    <UserX size={14} /> Deactivate User
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-              {filteredUsers.length === 0 && !isLoading && (
-                <tr>
-                  <td colSpan="4" className="text-center py-12 text-slate-400">
-                    <div className="flex flex-col items-center justify-center">
-                      <Search size={32} className="mb-2 opacity-20" />
-                      <span className="font-bold text-sm">
-                        No personnel found.
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 5. INVITE MODAL */}
+      {/* INVITE MODAL */}
       <AnimatePresence>
         {isInviting && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsInviting(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-slate-800 w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden z-10 p-8 md:p-10 space-y-8"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">
-                    Issue Invite
-                  </h3>
-                  <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-widest uppercase">
-                    Enforcing Closed-Loop Security
-                  </p>
+              {/* MODAL HEADER */}
+              <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
+                    <Plus size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
+                      Invite User
+                    </h2>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                      New Access Registration
+                    </p>
+                  </div>
                 </div>
-                <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500">
-                  <Lock size={24} />
-                </div>
+                <button
+                  onClick={() => setIsInviting(false)}
+                  disabled={inviteLoading}
+                  className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <X size={24} />
+                </button>
               </div>
 
-              {inviteError && (
-                <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl flex items-center gap-2">
-                  <AlertCircle size={16} className="shrink-0" /> {inviteError}
-                </div>
-              )}
+              {/* MODAL BODY */}
+              <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                <form
+                  id="inviteForm"
+                  onSubmit={handleInviteSubmit}
+                  className="space-y-6 sm:space-y-8"
+                >
+                  {/* Basic Details Section */}
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase text-amber-500 mb-4 tracking-widest flex items-center gap-2">
+                      <Users size={14} /> Basic Details
+                    </h3>
 
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      value={inviteForm.firstName}
-                      onChange={(e) =>
-                        setInviteForm({
-                          ...inviteForm,
-                          firstName: e.target.value,
-                        })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      value={inviteForm.lastName}
-                      onChange={(e) =>
-                        setInviteForm({
-                          ...inviteForm,
-                          lastName: e.target.value,
-                        })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                    />
-                  </div>
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          First Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={inviteForm.firstName}
+                          onChange={(e) =>
+                            setInviteForm({
+                              ...inviteForm,
+                              firstName: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Juan"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          Last Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={inviteForm.lastName}
+                          onChange={(e) =>
+                            setInviteForm({
+                              ...inviteForm,
+                              lastName: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Dela Cruz"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                    Official Email
-                  </label>
-                  <div className="relative">
-                    <Mail
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={16}
-                    />
-                    <input
-                      type="email"
-                      value={inviteForm.email}
-                      onChange={(e) =>
-                        setInviteForm({ ...inviteForm, email: e.target.value })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                    />
+                    <div>
+                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                        Official Email <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Mail
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                          size={16}
+                        />
+                        <input
+                          required
+                          type="email"
+                          value={inviteForm.email}
+                          onChange={(e) =>
+                            setInviteForm({
+                              ...inviteForm,
+                              email: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., juan@overdrive.com"
+                          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      Role Level
-                    </label>
-                    <select
-                      value={inviteForm.role}
-                      onChange={(e) =>
-                        setInviteForm({
-                          ...inviteForm,
-                          role: e.target.value,
-                          branchId:
-                            e.target.value === "MANAGER"
-                              ? ""
-                              : branches.length > 0
-                                ? branches[0].id.toString()
-                                : "",
-                        })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors"
-                    >
-                      <option value="STAFF">Staff (Branch Lock)</option>
-                      <option value="MANAGER">Manager (Global)</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      Branch Assignment
-                    </label>
-                    <select
-                      value={inviteForm.branchId}
-                      onChange={(e) =>
-                        setInviteForm({
-                          ...inviteForm,
-                          branchId: e.target.value,
-                        })
-                      }
-                      disabled={inviteForm.role === "MANAGER"}
-                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors ${inviteForm.role === "MANAGER" ? "opacity-50 bg-slate-200 dark:bg-slate-700 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
-                    >
-                      {inviteForm.role === "MANAGER" ? (
-                        <option value="">Enterprise Global</option>
-                      ) : (
-                        branches.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.branch_name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-                </div>
+                  {/* Access Configuration Section */}
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase text-amber-500 mb-4 tracking-widest flex items-center gap-2">
+                      <ShieldCheck size={14} /> Access Configuration
+                    </h3>
 
-                <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl flex items-start gap-3 mt-4">
-                  <Clock size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold leading-relaxed italic uppercase tracking-wider">
-                    Security Notice: This generates a unique activation link
-                    valid for only 2 hours.
-                  </p>
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          Role Level <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={inviteForm.role}
+                          onChange={(e) =>
+                            setInviteForm({
+                              ...inviteForm,
+                              role: e.target.value,
+                              branchId:
+                                e.target.value === "MANAGER"
+                                  ? ""
+                                  : branches.length > 0
+                                    ? branches[0].id.toString()
+                                    : "",
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer"
+                        >
+                          <option value="STAFF">Staff (Branch)</option>
+                          <option value="MANAGER">Manager (Global)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          Branch Assignment{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={inviteForm.branchId}
+                          onChange={(e) =>
+                            setInviteForm({
+                              ...inviteForm,
+                              branchId: e.target.value,
+                            })
+                          }
+                          disabled={inviteForm.role === "MANAGER"}
+                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${inviteForm.role === "MANAGER" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
+                        >
+                          {inviteForm.role === "MANAGER" ? (
+                            <option value="">Enterprise Global</option>
+                          ) : (
+                            branches.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.branch_name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl flex items-start gap-3 mt-2">
+                      <Clock
+                        size={16}
+                        className="text-amber-600 shrink-0 mt-0.5"
+                      />
+                      <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold leading-relaxed italic uppercase tracking-wider">
+                        Security Notice: This generates a unique activation link
+                        valid for only 2 hours.
+                      </p>
+                    </div>
+                  </div>
+                </form>
               </div>
 
-              <button
-                onClick={handleInviteSubmit}
-                disabled={inviteLoading}
-                className="w-full py-4 bg-amber-500 text-slate-900 font-black rounded-xl uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {inviteLoading ? (
-                  <RefreshCw size={16} className="animate-spin" />
-                ) : (
-                  <Send size={16} />
-                )}
-                {inviteLoading
-                  ? "PROCESSING SECURE LINK..."
-                  : "ISSUE INVITATION"}
-              </button>
+              {/* MODAL FOOTER */}
+              <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+                <button
+                  type="submit"
+                  form="inviteForm"
+                  disabled={inviteLoading}
+                  className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-[11px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                >
+                  {inviteLoading ? (
+                    <RefreshCw size={18} className="animate-spin" />
+                  ) : (
+                    <Send size={18} />
+                  )}
+                  {inviteLoading
+                    ? "PROCESSING SECURE LINK..."
+                    : "ISSUE INVITATION"}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* 6. EDIT MODAL */}
+      {/* EDIT MODAL */}
       <AnimatePresence>
         {isEditing && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsEditing(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-slate-800 w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden z-10 p-8 md:p-10 space-y-6"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[90vh]"
             >
-              <div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">
-                  Edit Personnel Config
-                </h3>
-                <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-widest uppercase">
-                  Update Identity & Access Rules
-                </p>
+              {/* MODAL HEADER */}
+              <div className="flex justify-between items-center p-6 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500">
+                    <Edit size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase">
+                      Edit Account Details
+                    </h2>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                      Personnel Record Update
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  disabled={editLoading}
+                  className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <X size={24} />
+                </button>
               </div>
 
-              {editError && (
-                <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl flex items-center gap-2">
-                  <AlertCircle size={16} className="shrink-0" /> {editError}
-                </div>
-              )}
+              {/* MODAL BODY */}
+              <div className="px-6 sm:px-8 py-6 sm:py-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                <form
+                  id="editForm"
+                  onSubmit={handleEditSubmit}
+                  className="space-y-6 sm:space-y-8"
+                >
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase text-amber-500 mb-4 tracking-widest flex items-center gap-2">
+                      <Users size={14} /> Basic Details
+                    </h3>
 
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.firstName}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, firstName: e.target.value })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          First Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={editForm.firstName}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              firstName: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Juan"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          Last Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={editForm.lastName}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              lastName: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Dela Cruz"
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                        Official Email <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Mail
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                          size={16}
+                        />
+                        <input
+                          required
+                          type="email"
+                          value={editForm.email}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, email: e.target.value })
+                          }
+                          placeholder="e.g., juan@overdrive.com"
+                          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.lastName}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, lastName: e.target.value })
-                      }
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                    />
+
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-[10px] font-black uppercase text-amber-500 mb-4 tracking-widest flex items-center gap-2">
+                      <ShieldCheck size={14} /> Access Configuration
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          System Role <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          disabled={editForm.role === "ADMIN"}
+                          value={editForm.role}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              role: e.target.value,
+                              branchId:
+                                e.target.value === "MANAGER"
+                                  ? ""
+                                  : editForm.branchId ||
+                                    (branches.length > 0
+                                      ? branches[0].id.toString()
+                                      : ""),
+                            })
+                          }
+                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                          <option value="STAFF">Staff (Branch)</option>
+                          <option value="MANAGER">Manager (Global)</option>
+                          {editForm.role === "ADMIN" && (
+                            <option value="ADMIN">Admin (Global)</option>
+                          )}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
+                          Branch Assignment{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={editForm.branchId}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              branchId: e.target.value,
+                            })
+                          }
+                          disabled={
+                            editForm.role === "MANAGER" ||
+                            editForm.role === "ADMIN"
+                          }
+                          className={`w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 appearance-none transition-colors cursor-pointer ${editForm.role === "MANAGER" || editForm.role === "ADMIN" ? "opacity-50 bg-slate-200 dark:bg-slate-800 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
+                        >
+                          {editForm.role === "MANAGER" ||
+                          editForm.role === "ADMIN" ? (
+                            <option value="">Enterprise Global</option>
+                          ) : (
+                            branches.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.branch_name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                    Official Email
-                  </label>
-                  <input
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, email: e.target.value })
-                    }
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 transition-colors"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      System Role
-                    </label>
-                    <select
-                      disabled={editForm.role === "ADMIN"}
-                      value={editForm.role}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          role: e.target.value,
-                          branchId:
-                            e.target.value === "MANAGER"
-                              ? ""
-                              : editForm.branchId ||
-                                (branches.length > 0
-                                  ? branches[0].id.toString()
-                                  : ""),
-                        })
-                      }
-                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors ${editForm.role === "ADMIN" ? "opacity-50 cursor-not-allowed" : ""}`}
-                    >
-                      <option value="STAFF">Staff (Branch)</option>
-                      <option value="MANAGER">Manager (Global)</option>
-                      {editForm.role === "ADMIN" && (
-                        <option value="ADMIN">Admin (Global)</option>
-                      )}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                      Branch Assignment
-                    </label>
-                    <select
-                      value={editForm.branchId}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, branchId: e.target.value })
-                      }
-                      disabled={
-                        editForm.role === "MANAGER" || editForm.role === "ADMIN"
-                      }
-                      className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold dark:text-white outline-none focus:border-amber-500 appearance-none transition-colors ${editForm.role === "MANAGER" || editForm.role === "ADMIN" ? "opacity-50 bg-slate-200 dark:bg-slate-700 cursor-not-allowed text-amber-600 dark:text-amber-500" : ""}`}
-                    >
-                      {editForm.role === "MANAGER" ||
-                      editForm.role === "ADMIN" ? (
-                        <option value="">Enterprise Global</option>
-                      ) : (
-                        branches.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.branch_name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-                </div>
+                </form>
               </div>
-              <button
-                onClick={handleEditSubmit}
-                disabled={editLoading}
-                className="w-full py-4 bg-amber-500 text-slate-900 font-black rounded-xl uppercase text-xs tracking-widest shadow-xl flex items-center justify-center hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {editLoading ? (
-                  <RefreshCw size={16} className="animate-spin mr-2" />
-                ) : null}
-                {editLoading ? "SAVING..." : "COMMIT CHANGES"}
-              </button>
+
+              {/* MODAL FOOTER */}
+              <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0">
+                <button
+                  type="submit"
+                  form="editForm"
+                  disabled={editLoading}
+                  className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-black rounded-xl text-[11px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                >
+                  {editLoading ? (
+                    <RefreshCw size={18} className="animate-spin mr-2" />
+                  ) : null}
+                  {editLoading ? "UPDATING..." : "UPDATE ACCOUNT DETAILS"}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* 7. REUSABLE CONFIRM MODAL */}
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}

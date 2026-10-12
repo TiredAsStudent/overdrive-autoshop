@@ -1,32 +1,148 @@
 const { z } = require("zod");
 
-const createItemSchema = z.object({
+const createInventoryItemSchema = z.object({
   body: z.object({
     sku: z
       .string()
-      .min(3)
+      .min(2, "SKU must be at least 2 characters")
       .max(50)
-      .regex(
-        /^[A-Z0-9-]+$/,
-        "SKU must contain only uppercase letters, numbers, and hyphens",
-      ),
-    item_name: z.string().min(3).max(150),
-    category: z.string().min(2).max(50),
-    unit_cost: z.coerce.number().min(0, "Unit cost cannot be negative"),
-    selling_price: z.coerce.number().min(0, "Selling price cannot be negative"),
-    initial_reorder_point: z.coerce.number().int().min(0).default(5),
+      .toUpperCase(),
+    item_name: z
+      .string()
+      .min(3, "Item name must be at least 3 characters")
+      .max(150),
+    category: z.string().min(2, "Category is required").max(50),
+    uom: z
+      .string()
+      .min(1, "Unit of Measure is required")
+      .max(50)
+      .default("pcs"),
+    description: z.string().optional().nullable(),
+    unit_cost: z.number().min(0, "Unit cost cannot be negative"),
+    selling_price: z.number().min(0, "Selling price cannot be negative"),
+    default_reorder_level: z
+      .number()
+      .int()
+      .min(0, "Reorder level cannot be negative")
+      .default(5),
+    asset_account_id: z
+      .number()
+      .int()
+      .positive("Asset account mapping is required"),
+    income_account_id: z
+      .number()
+      .int()
+      .positive("Income account mapping is required"),
+    expense_account_id: z
+      .number()
+      .int()
+      .positive("Expense account mapping is required"),
   }),
 });
 
-const updateItemSchema = z.object({
+const updateInventoryItemSchema = z.object({
+  body: z
+    .object({
+      item_name: z.string().min(3).max(150).optional(),
+      category: z.string().min(2).max(50).optional(),
+      uom: z.string().min(1).max(50).optional(),
+      description: z.string().optional().nullable(),
+      unit_cost: z.number().min(0).optional(),
+      selling_price: z.number().min(0).optional(),
+      default_reorder_level: z.number().int().min(0).optional(),
+      asset_account_id: z.number().int().positive().optional(),
+      income_account_id: z.number().int().positive().optional(),
+      expense_account_id: z.number().int().positive().optional(),
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+      message: "At least one field must be provided for update.",
+    }),
+});
+
+const toggleInventoryStatusSchema = z.object({
   body: z.object({
-    item_name: z.string().min(3).max(150).optional(),
-    category: z.string().min(2).max(50).optional(),
-    unit_cost: z.coerce.number().min(0).optional(),
-    selling_price: z.coerce.number().min(0).optional(),
-    initial_reorder_point: z.coerce.number().int().min(0).optional(),
-    is_active: z.boolean().optional(),
+    is_active: z.boolean({
+      required_error: "is_active flag is required",
+      invalid_type_error: "is_active must be a boolean",
+    }),
   }),
 });
 
-module.exports = { createItemSchema, updateItemSchema };
+const getInventorySchema = z.object({
+  query: z
+    .object({
+      page: z
+        .string()
+        .regex(/^\d+$/, "Page must be a valid positive number")
+        .optional(),
+      limit: z
+        .string()
+        .regex(/^\d+$/, "Limit must be a valid positive number")
+        .optional(),
+      search: z.string().optional(),
+      category: z.string().optional(),
+      branch: z.string().optional(),
+      status: z.enum(["active", "archived", "all"]).optional(),
+      stock_status: z
+        .enum(["in_stock", "low_stock", "out_of_stock", "all"])
+        .optional(),
+    })
+    .optional(),
+});
+
+const adjustStockSchema = z.object({
+  body: z.object({
+    item_id: z.number().int().positive("Valid Master Item ID is required"),
+    branch_id: z.number().int().positive("Valid Branch ID is required"),
+    adjustment_type: z.enum(["ADD", "DEDUCT"], {
+      required_error: "Adjustment type must be 'ADD' or 'DEDUCT'",
+    }),
+    quantity: z.number().int().positive("Quantity must be greater than 0"),
+    reason: z.enum(
+      [
+        "DAMAGED",
+        "STOLEN_OR_LOST",
+        "STOCK_COUNT_RECONCILIATION",
+        "CLERICAL_ERROR",
+        "PROMOTIONAL_GIVEAWAY",
+      ],
+      {
+        required_error: "A valid accounting reason code is required",
+      },
+    ),
+    remarks: z
+      .string()
+      .trim()
+      .max(255, "Remarks cannot exceed 255 characters")
+      .optional()
+      .nullable(),
+  }),
+});
+
+const getMovementHistorySchema = z.object({
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "Valid Master Item ID is required"),
+  }),
+  query: z
+    .object({
+      page: z
+        .string()
+        .regex(/^\d+$/, "Page must be a valid positive number")
+        .optional(),
+      limit: z
+        .string()
+        .regex(/^\d+$/, "Limit must be a valid positive number")
+        .optional(),
+      branch: z.string().optional().default("all"),
+    })
+    .optional(),
+});
+
+module.exports = {
+  createInventoryItemSchema,
+  updateInventoryItemSchema,
+  toggleInventoryStatusSchema,
+  getInventorySchema,
+  adjustStockSchema,
+  getMovementHistorySchema,
+};

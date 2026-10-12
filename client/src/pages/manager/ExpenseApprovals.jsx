@@ -1,238 +1,370 @@
 import React, { useState, useEffect } from "react";
 import {
-  CheckSquare,
-  MapPin,
   Loader2,
-  ScanFace,
+  ReceiptText,
+  Eye,
+  ScanText,
+  Paperclip,
+  CheckCircle,
+  Clock,
+  XCircle,
   FileText,
-  AlertTriangle,
 } from "lucide-react";
-import { expenseService } from "../../services/manager/expense.service";
-import { coaService } from "../../services/manager/coa.service"; // NEW IMPORT
+import { expenseApprovalService } from "../../services/manager/expenseApproval.service";
+import { inventoryService } from "../../services/manager/inventory.service";
+import { chartOfAccountsService } from "../../services/manager/chartOfAccounts.service";
+
 import ExpenseApprovalModal from "../../features/manager/components/ExpenseApprovalModal";
+import ExpenseApprovalDrawer from "../../features/manager/components/ExpenseApprovalDrawer";
+import DataTable from "../../components/shared/DataTable";
+import Pagination from "../../components/shared/Pagination";
+import PageHeader from "../../components/shared/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import StatusBadge from "../../components/ui/StatusBadge";
+import FilterButton from "../../components/ui/FilterButton";
+import FilterModal from "../../components/shared/FilterModal";
+import StatusToggle from "../../components/ui/StatusToggle";
 
-const getImageUrl = (path) => {
-  if (!path) return "";
-  if (path.startsWith("blob:") || path.startsWith("http")) return path;
-  const baseUrl =
-    import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
-    "http://localhost:5000";
-  return `${baseUrl}${path}`;
-};
-
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
-    amount || 0,
-  );
+import { useApp } from "../../context/AppContext";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const ExpenseApprovals = () => {
-  const [loading, setLoading] = useState(true);
+  const { showToast } = useApp();
+
   const [expenses, setExpenses] = useState([]);
-
-  const [suppliers, setSuppliers] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [accounts, setAccounts] = useState([]); // NEW STATE FOR LEDGER ACCOUNTS
-  const [selectedBranch, setSelectedBranch] = useState("");
+  const [expenseCategories, setExpenseCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Modal State
-  const [selectedExpense, setSelectedExpense] = useState(null);
+  // View Mode: 'PENDING' | 'HISTORY'
+  const [viewMode, setViewMode] = useState("PENDING");
+
+  // Filters & State
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [expenseAccountIdFilter, setExpenseAccountIdFilter] = useState("all");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // UI View States
+  const [selectedExpenseId, setSelectedExpenseId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const activeFilterCount =
+    (branchFilter !== "all" ? 1 : 0) +
+    (expenseAccountIdFilter !== "all" ? 1 : 0);
 
   useEffect(() => {
-    const initDropdowns = async () => {
-      try {
-        // Fetch branches, suppliers, and the Chart of Accounts concurrently
-        const [branchRes, supRes, coaRes] = await Promise.all([
-          expenseService.getActiveBranches(),
-          expenseService.getSuppliers(),
-          coaService.getAllAccounts(),
-        ]);
-        setBranches(branchRes.data || []);
-        setSuppliers(supRes.data || []);
-        setAccounts(coaRes.data || []);
-      } catch (error) {
-        console.error("Failed to load dropdown data:", error.message);
-      }
-    };
-    initDropdowns();
+    inventoryService
+      .getActiveBranches()
+      .then((res) => setBranches(res.data || []))
+      .catch((err) => console.error("Failed to load branches", err));
+
+    chartOfAccountsService
+      .getAccounts(1, 500, "", "EXPENSE", "active")
+      .then((res) => setExpenseCategories(res.data?.accounts || res.data || []))
+      .catch((err) => console.error("Failed to load COA categories", err));
   }, []);
 
-  const fetchQueue = async () => {
-    setLoading(true);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchQuery, viewMode, branchFilter, expenseAccountIdFilter]);
+
+  const loadExpenses = async () => {
     try {
-      const res = await expenseService.getPending(selectedBranch);
-      setExpenses(res.data || []);
+      setLoading(true);
+      const res =
+        viewMode === "PENDING"
+          ? await expenseApprovalService.getPendingApprovals(
+              currentPage,
+              ITEMS_PER_PAGE,
+              debouncedSearchQuery,
+              expenseAccountIdFilter,
+              branchFilter,
+            )
+          : await expenseApprovalService.getApprovalHistory(
+              currentPage,
+              ITEMS_PER_PAGE,
+              debouncedSearchQuery,
+              expenseAccountIdFilter,
+              branchFilter,
+            );
+
+      setExpenses(res.data?.expenses || []);
+      setTotalPages(res.data?.pagination?.totalPages || 1);
     } catch (error) {
-      alert(error.message);
+      showToast(error.message, "error");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchQueue();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBranch]);
+    loadExpenses();
+  }, [
+    currentPage,
+    debouncedSearchQuery,
+    viewMode,
+    branchFilter,
+    expenseAccountIdFilter,
+  ]);
 
-  // Actions
-  const openVerification = (expense) => {
-    setSelectedExpense(expense);
-    setIsModalOpen(true);
+  useEffect(() => {
+    if (!loading && expenses.length === 0 && currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  }, [expenses.length, loading, currentPage]);
+
+  const handleOpenView = (expenseId) => {
+    setSelectedExpenseId(expenseId);
+    if (viewMode === "PENDING") {
+      setIsModalOpen(true);
+    } else {
+      setIsDrawerOpen(true);
+    }
   };
 
-  const handleApprove = async (id, data) => {
-    await expenseService.approve(id, data);
-    fetchQueue(); // Refresh queue after atomic success
+  const getBadgeVariant = (status) => {
+    switch (status) {
+      case "PENDING_APPROVAL":
+        return "warning";
+      case "APPROVED":
+        return "success";
+      case "REJECTED":
+        return "danger";
+      default:
+        return "default";
+    }
   };
 
-  const handleReject = async (id, reason) => {
-    await expenseService.reject(id, reason);
-    fetchQueue();
+  const getBadgeIcon = (status) => {
+    switch (status) {
+      case "APPROVED":
+        return CheckCircle;
+      case "PENDING_APPROVAL":
+        return Clock;
+      case "REJECTED":
+        return XCircle;
+      default:
+        return FileText;
+    }
+  };
+
+  const resetFilters = () => {
+    setBranchFilter("all");
+    setExpenseAccountIdFilter("all");
+    setIsFilterModalOpen(false);
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 pb-10">
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-100 dark:border-indigo-500/20">
-            <CheckSquare
-              className="text-indigo-600 dark:text-indigo-400"
-              size={28}
-            />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic flex items-center gap-3">
-              Expense Verification
-              <span className="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-500 text-[10px] px-2.5 py-1 rounded-full flex items-center gap-1 normal-case tracking-widest uppercase border border-amber-200 dark:border-amber-500/30">
-                {expenses.length} Pending
-              </span>
-            </h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-              AI-Assisted Maker-Checker Queue
-            </p>
-          </div>
-        </div>
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+      <PageHeader
+        title="Expense Approvals"
+        subtitle="Operational Expense Governance"
+        icon={ReceiptText}
+      >
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search Document..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-        {/* Branch Filter */}
-        <div className="relative w-full sm:w-56">
-          <MapPin
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-            size={16}
-          />
-          <select
-            value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none cursor-pointer appearance-none focus:ring-2 focus:ring-indigo-500 transition-all"
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
+
+        <StatusToggle
+          activeValue={viewMode}
+          onToggle={setViewMode}
+          options={[
+            { label: "Pending", value: "PENDING" },
+            { label: "History", value: "HISTORY" },
+          ]}
+        />
+      </PageHeader>
+
+      {/* DATA TABLE */}
+      <DataTable
+        headers={[
+          "Expense No.",
+          viewMode === "PENDING" ? "Expense Date" : "Date Processed",
+          "Particulars",
+          viewMode === "PENDING" ? "Branch & Staff" : "Branch & Decision",
+          "Total Amount",
+          viewMode === "PENDING" ? "Status" : "Decision",
+          "Actions",
+        ]}
+        data={expenses}
+        loading={loading}
+        emptyTitle={
+          viewMode === "PENDING"
+            ? "No Pending Approvals"
+            : "No Historical Records Found"
+        }
+        emptySubtitle={
+          viewMode === "PENDING"
+            ? "Your expense review queue is completely clear."
+            : "Adjust your search parameters."
+        }
+        renderRow={(expense) => (
+          <tr
+            key={expense.id}
+            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
           >
-            <option value="">All Branches</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.branch_code} - {b.branch_name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
+                  {expense.expense_number}
+                </span>
+                {expense.scan_id ? (
+                  <span
+                    className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
+                    title="Generated via OCR Receipt Scanner"
+                  >
+                    <ScanText size={10} /> OCR
+                  </span>
+                ) : expense.receipt_url ? (
+                  <Paperclip
+                    size={14}
+                    className="text-amber-500"
+                    title="Attachment Present"
+                  />
+                ) : null}
+              </div>
+            </td>
 
-      {/* QUEUE GRID */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center h-64">
-          <Loader2 className="animate-spin text-indigo-500 mb-4" size={40} />
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-            Scanning Queue...
-          </p>
-        </div>
-      ) : expenses.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-white/10 p-16 flex flex-col items-center justify-center text-center">
-          <ScanFace
-            size={60}
-            className="text-slate-300 dark:text-slate-600 mb-6"
-          />
-          <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase italic">
-            Zero Pending Scans
-          </h3>
-          <p className="text-sm text-slate-500 mt-2 font-medium">
-            The verification queue is empty. All AI data has been processed.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {expenses.map((expense) => (
-            <div
-              key={expense.id}
-              className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-lg transition-all flex flex-col group"
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                {viewMode === "PENDING"
+                  ? new Date(expense.expense_date).toLocaleDateString()
+                  : new Date(expense.processed_at).toLocaleString()}
+              </p>
+            </td>
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
+                {expense.category}
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 truncate max-w-[200px]">
+                {expense.vendor_name || expense.description}
+              </p>
+            </td>
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[150px]">
+                  {expense.branch_name}
+                </span>
+                <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+                  {viewMode === "PENDING"
+                    ? `BY: ${expense.created_by_name || "System"}`
+                    : `BY: ${expense.resolved_by_name || expense.created_by_name || "System"}`}
+                </span>
+              </div>
+            </td>
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                ₱
+                {parseFloat(expense.total_amount).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
+            </td>
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <StatusBadge
+                label={expense.status.replace("_", " ")}
+                variant={getBadgeVariant(expense.status)}
+                icon={getBadgeIcon(expense.status)}
+              />
+            </td>
+
+            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+              <button
+                onClick={() => handleOpenView(expense.id)}
+                title={
+                  viewMode === "PENDING" ? "Review Request" : "View Details"
+                }
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+              >
+                <Eye size={14} />
+                {viewMode === "PENDING" ? "Review" : "Details"}
+              </button>
+            </td>
+          </tr>
+        )}
+      />
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
+
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={resetFilters}
+        title="Advanced Filters"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              COA Expense Category
+            </label>
+            <select
+              value={expenseAccountIdFilter}
+              onChange={(e) => setExpenseAccountIdFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
             >
-              {/* Receipt Preview Thumbnail */}
-              <div className="h-40 bg-slate-100 dark:bg-slate-900 relative overflow-hidden border-b border-slate-200 dark:border-white/10">
-                <img
-                  src={getImageUrl(expense.receipt_image_url)}
-                  alt="Receipt Thumbnail"
-                  className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                <div className="absolute bottom-3 left-4 right-4 flex justify-between items-end">
-                  <span className="text-white font-black uppercase text-xs tracking-widest drop-shadow-md">
-                    {expense.supplier_name || "Unknown Supplier"}
-                  </span>
-                  <span className="bg-indigo-500 text-white text-[9px] px-2 py-1 rounded-md font-bold uppercase tracking-widest shadow-md">
-                    OCR Scan
-                  </span>
-                </div>
-              </div>
+              <option value="all">All Categories</option>
+              {expenseCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.account_name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              <div className="p-5 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      Total Claimed
-                    </p>
-                    {expense.ai_confidence_score < 0.85 && (
-                      <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
-                        <AlertTriangle size={10} /> Review Recommended
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-2xl font-mono font-black text-emerald-600 dark:text-emerald-400 mb-4">
-                    {formatCurrency(expense.total_amount)}
-                  </p>
-
-                  <div className="space-y-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                    <p className="flex justify-between">
-                      <span>Date:</span>{" "}
-                      <span className="font-mono">
-                        {new Date(
-                          expense.transaction_date,
-                        ).toLocaleDateString()}
-                      </span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span>Staff:</span> <span>{expense.staff_name}</span>
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => openVerification(expense)}
-                  className="mt-6 w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-colors flex justify-center items-center gap-2"
-                >
-                  <FileText size={14} /> Verify Data
-                </button>
-              </div>
-            </div>
-          ))}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Branch Location
+            </label>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
+            >
+              <option value="all">All Branches</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.branch_name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      )}
+      </FilterModal>
 
-      {/* The Split-Screen Verification Modal */}
       <ExpenseApprovalModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        expense={selectedExpense}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        suppliers={suppliers}
-        accounts={accounts} // PASS ACCOUNTS HERE
+        expenseId={selectedExpenseId}
+        onSuccess={loadExpenses}
+      />
+
+      <ExpenseApprovalDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        expenseId={selectedExpenseId}
       />
     </div>
   );

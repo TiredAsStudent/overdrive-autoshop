@@ -1,29 +1,99 @@
-const { query } = require("../config/db");
+const { query, pool } = require("../config/db");
 
 class Branch {
   static async create(data) {
-    const sql = `
-      INSERT INTO branches (
-        branch_name, branch_code, address, tin, 
-        contact_number, contact_email
-      ) 
-      VALUES ($1, $2, $3, $4, $5, $6) 
-      RETURNING *
-    `;
-    const values = [
-      data.branch_name,
-      data.branch_code,
-      data.address,
-      data.tin,
-      data.contact_number,
-      data.contact_email,
-    ];
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const branchSql = `
+        INSERT INTO branches (branch_name, branch_code, address) 
+        VALUES ($1, $2, $3) 
+        RETURNING *
+      `;
+      const branchValues = [data.branch_name, data.branch_code, data.address];
+      const branchRes = await client.query(branchSql, branchValues);
+      const newBranch = branchRes.rows[0];
+
+      const syncSql = `
+        INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
+        SELECT $1, id, 0, default_reorder_level 
+        FROM inventory_items 
+        WHERE is_active = TRUE
+        ON CONFLICT DO NOTHING
+      `;
+      await client.query(syncSql, [newBranch.id]);
+
+      await client.query("COMMIT");
+      return newBranch;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async countFiltered(search, status) {
+    let sql = `SELECT COUNT(*) FROM branches`;
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      conditions.push(
+        `(branch_name ILIKE $${paramIdx} OR branch_code ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    if (status === "active") {
+      conditions.push(`is_active = TRUE`);
+    } else if (status === "archived") {
+      conditions.push(`is_active = FALSE`);
+    }
+
+    if (conditions.length > 0) {
+      sql += ` WHERE ` + conditions.join(" AND ");
+    }
+
     const result = await query(sql, values);
-    return result.rows[0];
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedFiltered(limit, offset, search, status) {
+    let sql = `SELECT * FROM branches`;
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      conditions.push(
+        `(branch_name ILIKE $${paramIdx} OR branch_code ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    if (status === "active") {
+      conditions.push(`is_active = TRUE`);
+    } else if (status === "archived") {
+      conditions.push(`is_active = FALSE`);
+    }
+
+    if (conditions.length > 0) {
+      sql += ` WHERE ` + conditions.join(" AND ");
+    }
+
+    sql += ` ORDER BY is_active DESC, id ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
   }
 
   static async findAll() {
-    // Orders active branches first, then by ID
     const sql = `SELECT * FROM branches ORDER BY is_active DESC, id ASC`;
     const result = await query(sql);
     return result.rows;
@@ -48,21 +118,15 @@ class Branch {
         branch_name = COALESCE($1, branch_name),
         branch_code = COALESCE($2, branch_code),
         address = COALESCE($3, address),
-        tin = COALESCE($4, tin),
-        contact_number = COALESCE($5, contact_number),
-        contact_email = COALESCE($6, contact_email),
-        is_active = COALESCE($7, is_active),
+        is_active = COALESCE($4, is_active),
         updated_at = NOW()
-      WHERE id = $8
+      WHERE id = $5
       RETURNING *
     `;
     const values = [
       data.branch_name,
       data.branch_code,
       data.address,
-      data.tin,
-      data.contact_number,
-      data.contact_email,
       data.is_active,
       id,
     ];

@@ -2,10 +2,17 @@ import api from "../api";
 
 export const branchService = {
   // Fetch all active branches
-  getAllBranches: async () => {
+  getAllBranches: async (page = 1, limit = 5, search = "", status = "all") => {
     try {
-      const response = await api.get("/sysadmin/branches");
-      return response.data; // Returns { success, message, data: [...] }
+      const response = await api.get("/sysadmin/branches", {
+        params: {
+          page,
+          limit,
+          search,
+          status,
+        },
+      });
+      return response.data;
     } catch (error) {
       const message =
         error.response?.data?.error?.message ||
@@ -30,7 +37,7 @@ export const branchService = {
     }
   },
 
-  // Update branch details (Legal Identity, etc.)
+  // Update branch details
   updateBranch: async (id, branchData) => {
     try {
       const response = await api.put(`/sysadmin/branches/${id}`, branchData);

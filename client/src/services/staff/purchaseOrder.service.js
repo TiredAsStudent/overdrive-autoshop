@@ -1,0 +1,90 @@
+import api from "../api";
+import { extractBlobError } from "../../utils/fileDownloader";
+
+export const purchaseOrderService = {
+  getPurchaseOrders: async (
+    page = 1,
+    limit = 10,
+    search = "",
+    status = "all",
+  ) => {
+    try {
+      const response = await api.get("/staff/purchase-orders", {
+        params: {
+          page,
+          limit,
+          search,
+          status,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to load purchase orders.",
+      );
+    }
+  },
+
+  getPurchaseOrderDetails: async (id) => {
+    try {
+      const response = await api.get(`/staff/purchase-orders/${id}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to load purchase order details.",
+      );
+    }
+  },
+
+  downloadPdf: async (id) => {
+    try {
+      const response = await api.get(`/staff/purchase-orders/${id}/pdf`, {
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage = await extractBlobError(error);
+      throw new Error(errorMessage || "Failed to generate Purchase Order PDF.");
+    }
+  },
+
+  createPurchaseOrder: async (poData) => {
+    try {
+      const response = await api.post("/staff/purchase-orders", poData);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to draft purchase order.",
+      );
+    }
+  },
+
+  updatePurchaseOrder: async (id, poData) => {
+    try {
+      const response = await api.put(`/staff/purchase-orders/${id}`, poData);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to update purchase order.",
+      );
+    }
+  },
+
+  updateStatus: async (id, status) => {
+    try {
+      const response = await api.patch(`/staff/purchase-orders/${id}/status`, {
+        status,
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to update purchase order status.",
+      );
+    }
+  },
+};

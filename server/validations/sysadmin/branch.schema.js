@@ -1,5 +1,22 @@
 const { z } = require("zod");
 
+const getBranchesSchema = z.object({
+  query: z
+    .object({
+      page: z
+        .string()
+        .regex(/^\d+$/, "Page must be a valid positive number")
+        .optional(),
+      limit: z
+        .string()
+        .regex(/^\d+$/, "Limit must be a valid positive number")
+        .optional(),
+      search: z.string().optional(),
+      status: z.enum(["active", "archived", "all"]).optional(),
+    })
+    .optional(),
+});
+
 const createBranchSchema = z.object({
   body: z.object({
     branch_name: z
@@ -16,16 +33,6 @@ const createBranchSchema = z.object({
     address: z
       .string()
       .min(5, "Official Address is required for Legal Identity"),
-    tin: z
-      .string()
-      .min(5, "Tax Identification Number (TIN) is required for invoicing")
-      .max(50),
-    contact_number: z.string().max(50).optional(),
-    contact_email: z
-      .string()
-      .email("Invalid email format")
-      .optional()
-      .or(z.literal("")),
   }),
 });
 
@@ -38,9 +45,6 @@ const updateBranchSchema = z.object({
       .regex(/^[a-zA-Z]+$/)
       .optional(),
     address: z.string().min(5).optional(),
-    tin: z.string().max(50).optional(),
-    contact_number: z.string().max(50).optional(),
-    contact_email: z.string().email().optional().or(z.literal("")),
     is_active: z.boolean().optional(),
   }),
 });
@@ -55,6 +59,7 @@ const toggleMaintenanceSchema = z.object({
 });
 
 module.exports = {
+  getBranchesSchema,
   createBranchSchema,
   updateBranchSchema,
   toggleMaintenanceSchema,

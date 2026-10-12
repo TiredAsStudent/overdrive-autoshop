@@ -1,21 +1,114 @@
 const { z } = require("zod");
 
-const submitStaffExpenseSchema = z.object({
+const parseBoolean = (val) => val === "true" || val === true;
+
+const createExpenseSchema = z.object({
   body: z.object({
-    supplier_id: z.number().int().positive().optional().nullable(),
-    transaction_date: z
+    expense_date: z
       .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format. Use YYYY-MM-DD"),
+      .refine((val) => !isNaN(Date.parse(val)), "Invalid expense date format"),
+    expense_account_id: z.coerce
+      .number()
+      .int()
+      .positive("Expense account selection is required"),
+    description: z.string().trim().min(3, "Description is required"),
+
     total_amount: z.coerce
       .number()
       .positive("Total amount must be greater than zero"),
-    vat_amount: z.coerce.number().min(0).optional(),
-    apply_standard_vat: z.boolean().optional(),
-    receipt_image_url: z
+
+    is_vatable: z.preprocess(parseBoolean, z.boolean()).default(true),
+
+    payment_method: z
+      .enum(["CASH", "PETTY_CASH", "GCASH", "MAYA", "BANK_TRANSFER", "CHECK"])
+      .default("CASH"),
+
+    vendor_id: z.preprocess(
+      (v) => (v === "" ? null : v),
+      z.coerce.number().int().positive().nullable().optional(),
+    ),
+    vendor_name: z.string().trim().max(150).optional().nullable(),
+    reference_number: z
       .string()
-      .min(5, "A valid receipt image is strictly required."),
-    confidence_score: z.coerce.number().min(0.1).max(1.0).optional(),
+      .trim()
+      .toUpperCase()
+      .max(100)
+      .optional()
+      .nullable(),
+    notes: z.string().trim().optional().nullable(),
+
+    is_submitting: z
+      .preprocess(parseBoolean, z.boolean())
+      .optional()
+      .default(false),
   }),
 });
 
-module.exports = { submitStaffExpenseSchema };
+const updateExpenseSchema = z.object({
+  body: z
+    .object({
+      expense_date: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), "Invalid date format")
+        .optional(),
+      expense_account_id: z.coerce.number().int().positive().optional(),
+      description: z.string().trim().min(3).optional(),
+      total_amount: z.coerce.number().positive().optional(),
+      is_vatable: z.preprocess(parseBoolean, z.boolean()).optional(),
+      payment_method: z
+        .enum(["CASH", "PETTY_CASH", "GCASH", "MAYA", "BANK_TRANSFER", "CHECK"])
+        .optional(),
+      vendor_id: z.preprocess(
+        (v) => (v === "" || v === "null" || v === "undefined" ? null : v),
+        z.coerce.number().int().positive().nullable().optional(),
+      ),
+      vendor_name: z.string().trim().max(150).optional().nullable(),
+      reference_number: z
+        .string()
+        .trim()
+        .toUpperCase()
+        .max(100)
+        .optional()
+        .nullable(),
+      notes: z.string().trim().optional().nullable(),
+      is_submitting: z
+        .preprocess(parseBoolean, z.boolean())
+        .optional()
+        .default(false),
+      remove_attachment: z
+        .preprocess(parseBoolean, z.boolean())
+        .optional()
+        .default(false),
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+      message: "At least one field must be provided for update.",
+    }),
+});
+
+const updateExpenseStatusSchema = z.object({
+  body: z.object({
+    status: z.enum(["PENDING_APPROVAL"], {
+      required_error: "Status transition is required",
+    }),
+  }),
+});
+
+const getExpensesSchema = z.object({
+  query: z
+    .object({
+      page: z.string().regex(/^\d+$/).optional(),
+      limit: z.string().regex(/^\d+$/).optional(),
+      search: z.string().optional(),
+      status: z.string().optional(),
+      expense_account_id: z.string().optional(),
+      branch: z.string().optional(),
+    })
+    .optional(),
+});
+
+module.exports = {
+  createExpenseSchema,
+  updateExpenseSchema,
+  updateExpenseStatusSchema,
+  getExpensesSchema,
+};

@@ -1,6 +1,6 @@
 const SettingsService = require("../../services/sysadmin/settings.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
-const fs = require("fs");
+const fs = require("fs").promises;
 const path = require("path");
 
 class SettingsController {
@@ -11,10 +11,10 @@ class SettingsController {
         res,
         200,
         settings,
-        "Settings retrieved successfully.",
+        "Enterprise settings retrieved securely.",
       );
     } catch (error) {
-      return sendError(res, 500, error.message);
+      return sendError(res, 500, "Internal Server Error", error.message);
     }
   }
 
@@ -22,7 +22,6 @@ class SettingsController {
     try {
       const updateData = { ...req.body };
 
-      // File Replacement Logic: If a new logo is uploaded, delete the old one
       if (req.file) {
         const currentSettings = await SettingsService.getBusinessSettings();
 
@@ -30,11 +29,14 @@ class SettingsController {
           const cleanPath = currentSettings.logo_url.replace(/^\//, "");
           const oldFilePath = path.join(__dirname, "../../", cleanPath);
 
-          if (fs.existsSync(oldFilePath)) {
-            fs.unlinkSync(oldFilePath);
+          try {
+            await fs.access(oldFilePath);
+            await fs.unlink(oldFilePath);
             console.log(
-              "Cleanup: Deleted old corporate logo to save server storage.",
+              "Storage Optimization: Old corporate logo purged from server.",
             );
+          } catch (err) {
+            // File does not exist, safe to proceed
           }
         }
         updateData.logo_url = `/uploads/branding/${req.file.filename}`;
@@ -50,20 +52,27 @@ class SettingsController {
         res,
         200,
         settings,
-        "Business logic updated successfully.",
+        "Master business logic updated successfully.",
       );
     } catch (error) {
-      // Rollback: If DB update fails, delete the newly uploaded file to prevent orphan files
       if (req.file && req.file.path) {
-        if (fs.existsSync(req.file.path)) {
-          fs.unlinkSync(req.file.path);
+        try {
+          await fs.access(req.file.path);
+          await fs.unlink(req.file.path);
           console.log(
-            "Cleanup: Deleted orphaned file due to validation or database failure.",
+            "Rollback Executed: Deleted orphaned upload due to DB failure.",
           );
+        } catch (err) {
+          // Ignore if missing
         }
       }
 
-      return sendError(res, 400, error.message);
+      return sendError(
+        res,
+        400,
+        "Failed to update configuration",
+        error.message,
+      );
     }
   }
 }

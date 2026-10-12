@@ -1,547 +1,653 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  TrendingDown,
-  Calendar,
-  MapPin,
-  Download,
-  PieChart as PieChartIcon,
   Receipt,
-  AlertTriangle,
-  Building2,
-  FileSearch,
-  Scale,
-  Target,
-} from "lucide-react";
-import {
+  Download,
+  Calendar,
   PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+  List,
+  Search,
+  Eye,
+  Loader2,
+  Building2,
+  TrendingDown,
+  Calculator,
+  Hash,
+  ScanText,
+  FileText,
+  BookOpen,
+} from "lucide-react";
 
-// --- DUMMY DATA ENGINE (OCR Sourced) ---
-const BASE_EXPENSES = 450000.0;
-const BASE_BUDGET = 420000.0; // Simulating being slightly over budget
-const BASE_VAT = 32500.0; // Reclaimable Input VAT from receipts
+// Services
+import { expenseReportService } from "../../services/manager/expenseReport.service";
+import { inventoryService } from "../../services/manager/inventory.service";
+import { chartOfAccountsService } from "../../services/manager/chartOfAccounts.service";
+import { managerVendorService } from "../../services/manager/vendor.service";
 
-const COLORS = {
-  indigo: "#6366f1",
-  emerald: "#10b981",
-  amber: "#f59e0b",
-  rose: "#f43f5e",
-  slate: "#64748b",
-  cyan: "#06b6d4",
+// Shared Components
+import PageHeader from "../../components/shared/PageHeader";
+import FilterModal from "../../components/shared/FilterModal";
+import DataTable from "../../components/shared/DataTable";
+import Pagination from "../../components/shared/Pagination";
+
+// UI Components
+import SearchBar from "../../components/ui/SearchBar";
+import FilterButton from "../../components/ui/FilterButton";
+import ActionButton from "../../components/ui/ActionButton";
+import StatCard from "../../components/ui/StatCard";
+import StatusToggle from "../../components/ui/StatusToggle";
+import StatusBadge from "../../components/ui/StatusBadge";
+
+// Drill-Down Drawer
+import GeneralLedgerSourceDrawer from "../../features/manager/components/GeneralLedgerSourceDrawer";
+
+import { useApp } from "../../context/AppContext";
+import { useDebounce } from "../../hooks/useDebounce";
+
+// --- Date Utility Helpers ---
+const getPresetDates = (preset) => {
+  const today = new Date();
+  let start, end;
+
+  switch (preset) {
+    case "this_month":
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      break;
+    case "this_quarter":
+      const currentQuarter = Math.floor(today.getMonth() / 3);
+      start = new Date(today.getFullYear(), currentQuarter * 3, 1);
+      end = new Date(today.getFullYear(), currentQuarter * 3 + 3, 0);
+      break;
+    case "this_year":
+      start = new Date(today.getFullYear(), 0, 1);
+      end = new Date(today.getFullYear(), 11, 31);
+      break;
+    default:
+      return null;
+  }
+
+  const formatDate = (date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  };
+
+  return { start: formatDate(start), end: formatDate(end) };
 };
 
-// Itemized OCR Log (Simulates the Maker-Checker output)
-const OCR_EXPENSE_LOG = [
-  {
-    id: "EXP-001",
-    date: "2026-05-12",
-    vendor: "Meralco",
-    category: "Utilities",
-    amount: 18500.0,
-    budget: 15000.0,
-    hasScan: true,
-  },
-  {
-    id: "EXP-002",
-    date: "2026-05-14",
-    vendor: "Prime Auto Parts Inc.",
-    category: "COGS/Parts",
-    amount: 85000.0,
-    budget: 85000.0,
-    hasScan: true,
-  },
-  {
-    id: "EXP-003",
-    date: "2026-05-15",
-    vendor: "Maynilad Water",
-    category: "Utilities",
-    amount: 4200.0,
-    budget: 4000.0,
-    hasScan: true,
-  },
-  {
-    id: "EXP-004",
-    date: "2026-05-18",
-    vendor: "Industrial Lubes Co.",
-    category: "Shop Supplies",
-    amount: 22000.0,
-    budget: 18000.0,
-    hasScan: true,
-  },
-  {
-    id: "EXP-005",
-    date: "2026-05-20",
-    vendor: "Calamba Commercial Realty",
-    category: "Rent",
-    amount: 45000.0,
-    budget: 45000.0,
-    hasScan: false,
-  }, // Contract, not a scanned receipt
-];
-
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
-    amount,
-  );
-
 const ExpenseReports = () => {
-  const [selectedBranch, setSelectedBranch] = useState("All");
-  const [selectedPeriod, setSelectedPeriod] = useState("May 2026");
+  const { showToast } = useApp();
 
-  // --- DYNAMIC CALCULATIONS ---
-  const mult =
-    selectedBranch === "All"
-      ? 1.0
-      : selectedBranch === "Calamba"
-        ? 0.5
-        : selectedBranch === "Batino"
-          ? 0.3
-          : 0.2;
+  // Initialization Dates
+  const initialDates = getPresetDates("this_month");
 
-  const totalExpenses = BASE_EXPENSES * mult;
-  const totalBudget = BASE_BUDGET * mult;
-  const inputVAT = BASE_VAT * mult;
+  // Report State
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const varianceAmount = totalExpenses - totalBudget;
-  const isOverBudget = varianceAmount > 0;
+  // Lookups
+  const [branches, setBranches] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [vendors, setVendors] = useState([]);
 
-  // Chart Data: Expense Categories
-  const categoryData = [
-    {
-      name: "Salaries & Wages",
-      value: totalExpenses * 0.4,
-      color: COLORS.indigo,
-    },
-    { name: "Rent & Leases", value: totalExpenses * 0.25, color: COLORS.slate },
-    { name: "Shop Supplies", value: totalExpenses * 0.15, color: COLORS.amber },
-    {
-      name: "Utilities (Power/Water)",
-      value: totalExpenses * 0.12,
-      color: COLORS.rose,
-    },
-    { name: "Marketing", value: totalExpenses * 0.08, color: COLORS.cyan },
-  ];
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [datePreset, setDatePreset] = useState("this_month");
+  const [startDate, setStartDate] = useState(initialDates.start);
+  const [endDate, setEndDate] = useState(initialDates.end);
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [vendorFilter, setVendorFilter] = useState("all");
+  const [sourceModuleFilter, setSourceModuleFilter] = useState("all");
 
-  // Chart Data: Top Vendors (Where the money goes)
-  const vendorData = [
-    { name: "Prime Auto Parts", amount: 145000 * mult, color: COLORS.slate },
-    { name: "Industrial Lubes", amount: 65000 * mult, color: COLORS.slate },
-    { name: "Meralco", amount: 35000 * mult, color: COLORS.rose }, // Highlighted as high overhead
-    { name: "Snap-On Tools", amount: 28000 * mult, color: COLORS.slate },
-  ];
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  // Chart Data: Branch Overhead Comparison
-  const branchOverheadData = [
-    { name: "Calamba", utilities: 25000, supplies: 15000 },
-    { name: "Batino", utilities: 18000, supplies: 12000 },
-    { name: "Biñan", utilities: 12000, supplies: 8000 },
-  ];
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // View States
+  const [selectedSource, setSelectedSource] = useState(null);
+
+  const activeFilterCount =
+    (branchFilter !== "all" ? 1 : 0) +
+    (categoryFilter !== "all" ? 1 : 0) +
+    (vendorFilter !== "all" ? 1 : 0) +
+    (sourceModuleFilter !== "all" ? 1 : 0) +
+    (datePreset !== "this_month" ? 1 : 0);
+
+  // 1. Initial Load: Lookups
+  useEffect(() => {
+    Promise.all([
+      inventoryService.getActiveBranches(),
+      chartOfAccountsService.getAccounts(1, 500, "", "EXPENSE", "active"),
+      managerVendorService.getVendors(1, 500, "", "active"),
+    ])
+      .then(([brRes, catRes, venRes]) => {
+        setBranches(brRes.data || []);
+        setCategories(catRes.data?.accounts || []);
+        setVendors(venRes.data?.vendors || []);
+      })
+      .catch((err) => console.error("Failed to fetch lookups", err));
+  }, []);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    debouncedSearchQuery,
+    branchFilter,
+    categoryFilter,
+    vendorFilter,
+    sourceModuleFilter,
+    startDate,
+    endDate,
+  ]);
+
+  // 2. Load Report Data
+  const loadReport = async () => {
+    if (!startDate || !endDate) return;
+
+    try {
+      setLoading(true);
+      const res = await expenseReportService.getExpenseReport(
+        currentPage,
+        ITEMS_PER_PAGE,
+        {
+          search: debouncedSearchQuery,
+          branch: branchFilter,
+          category_id: categoryFilter,
+          vendor_id: vendorFilter,
+          source_module: sourceModuleFilter,
+          start_date: startDate,
+          end_date: endDate,
+        },
+      );
+      setData(res.data);
+      setTotalPages(res.data?.pagination?.totalPages || 1);
+    } catch (error) {
+      showToast(error.message, "error");
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    currentPage,
+    debouncedSearchQuery,
+    branchFilter,
+    categoryFilter,
+    vendorFilter,
+    sourceModuleFilter,
+    startDate,
+    endDate,
+  ]);
+
+  const handlePresetChange = (val) => {
+    setDatePreset(val);
+    if (val !== "custom") {
+      const { start, end } = getPresetDates(val);
+      setStartDate(start);
+      setEndDate(end);
+    }
+  };
+
+  const resetFilters = () => {
+    setBranchFilter("all");
+    setCategoryFilter("all");
+    setVendorFilter("all");
+    setSourceModuleFilter("all");
+    setDatePreset("this_month");
+    const { start, end } = getPresetDates("this_month");
+    setStartDate(start);
+    setEndDate(end);
+    setIsFilterModalOpen(false);
+  };
+
+  const formatCurrency = (amount) => {
+    const num = parseFloat(amount) || 0;
+    return num.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const getSourceBadge = (source) => {
+    switch (source) {
+      case "MANUAL_EXPENSE":
+        return (
+          <StatusBadge
+            label="Manual"
+            variant="info"
+            icon={FileText}
+            className="print:bg-transparent print:border-slate-300 print:text-black"
+          />
+        );
+      case "OCR_RECEIPT":
+        return (
+          <StatusBadge
+            label="OCR Receipt"
+            variant="warning"
+            icon={ScanText}
+            className="print:bg-transparent print:border-slate-300 print:text-black"
+          />
+        );
+      case "BILL":
+        return (
+          <StatusBadge
+            label="Supplier Bill"
+            variant="default"
+            icon={List}
+            className="!text-purple-600 dark:!text-purple-400 !bg-purple-50 dark:!bg-purple-500/10 !border-purple-200 dark:!border-purple-500/20 print:!bg-transparent print:!border-slate-300 print:!text-black"
+          />
+        );
+      case "JOURNAL_ENTRY":
+        return (
+          <StatusBadge
+            label="Journal"
+            variant="default"
+            icon={BookOpen}
+            className="print:bg-transparent print:border-slate-300 print:text-black"
+          />
+        );
+      default:
+        return <span className="text-[9px] text-slate-400">{source}</span>;
+    }
+  };
+
+  const handleDrillDown = (module, id, ref) => {
+    // FRS Engine Map: Both MANUAL and OCR originate from the 'expenses' table and use the 'EXPENSE' Drawer logic
+    let targetType = module;
+    if (module === "MANUAL_EXPENSE" || module === "OCR_RECEIPT")
+      targetType = "EXPENSE";
+
+    setSelectedSource({
+      type: targetType,
+      id: id,
+      ref: ref,
+    });
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 pb-10 relative">
-      {/* HEADER & CONTROLS */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic flex items-center gap-3">
-            <TrendingDown className="text-rose-500" size={28} />
-            Expense Analytics
-          </h1>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-            Overhead Monitoring & OCR Audit Log
-          </p>
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+      {/* PAGE HEADER & CONTROLS */}
+      <PageHeader
+        title="Expense Reports"
+        subtitle="Operational Expenditure & Category Breakdown"
+        icon={Receipt}
+      >
+        <div className="hidden lg:block">
+          <StatusToggle
+            activeValue={datePreset}
+            onToggle={handlePresetChange}
+            options={[
+              { label: "This Month", value: "this_month" },
+              { label: "This Quarter", value: "this_quarter" },
+              { label: "This Year", value: "this_year" },
+            ]}
+          />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-40">
-            <Calendar
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              size={16}
-            />
-            <select
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
-            >
-              <option value="May 2026">May 2026</option>
-              <option value="April 2026">April 2026</option>
-              <option value="YTD 2026">YTD 2026</option>
-            </select>
-          </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search Reference or Vendor..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-          <div className="relative flex-1 md:w-48">
-            <MapPin
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              size={16}
-            />
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
-            >
-              <option value="All">Consolidated (All)</option>
-              <option value="Calamba">Calamba Branch</option>
-              <option value="Batino">Batino Branch</option>
-              <option value="Biñan">Biñan Branch</option>
-            </select>
-          </div>
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
 
-          <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(79,70,229,0.3)]">
-            <Download size={16} /> Export
-          </button>
+        <div className="flex gap-2">
+          <ActionButton
+            label="Export"
+            icon={Download}
+            onClick={() =>
+              showToast("CSV export queued for reporting phase.", "info")
+            }
+            disabled={!data || loading}
+          />
         </div>
-      </div>
+      </PageHeader>
 
-      {/* KPI DASHBOARD */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Total Expenses vs Budget */}
-        <div className="bg-slate-900 dark:bg-black/40 p-6 rounded-3xl border border-slate-700 dark:border-white/10 shadow-sm relative overflow-hidden flex flex-col justify-between">
-          <div
-            className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full ${isOverBudget ? "bg-rose-500/10" : "bg-emerald-500/10"}`}
-          ></div>
-          <div>
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex items-center gap-2">
-                <Target
-                  size={16}
-                  className={
-                    isOverBudget ? "text-rose-500" : "text-emerald-500"
-                  }
-                />
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  Operating Expenses
-                </p>
-              </div>
-            </div>
-            <h2 className="text-3xl font-mono font-black text-white">
-              {formatCurrency(totalExpenses)}
-            </h2>
-          </div>
-          <div
-            className={`mt-4 flex items-center gap-2 text-[10px] font-bold px-3 py-1.5 rounded-lg w-max ${
-              isOverBudget
-                ? "bg-rose-500/20 text-rose-400"
-                : "bg-emerald-500/20 text-emerald-400"
-            }`}
-          >
-            {isOverBudget ? (
-              <TrendingDown size={12} />
-            ) : (
-              <TrendingDown size={12} />
-            )}
-            {isOverBudget ? "OVER BUDGET BY " : "UNDER BUDGET BY "}
-            {formatCurrency(Math.abs(varianceAmount))}
-          </div>
-        </div>
-
-        {/* Reclaimable Input VAT (Tax Strategy) */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Scale size={16} className="text-indigo-500" />
-              <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                Input VAT (Reclaimable)
-              </p>
-            </div>
-            <h2 className="text-3xl font-mono font-black text-slate-900 dark:text-white">
-              {formatCurrency(inputVAT)}
-            </h2>
-          </div>
-          <p className="text-[10px] font-bold text-indigo-500 mt-4 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-2 rounded-lg">
-            Deductible from Output VAT liability.
-          </p>
-        </div>
-
-        {/* Highest Overhead Category */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Building2 size={16} className="text-amber-500" />
-              <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                Highest Overhead
-              </p>
-            </div>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white mt-1 truncate">
-              {categoryData[0].name}
-            </h2>
-          </div>
-          <div className="mt-4 flex justify-between items-end border-t border-slate-100 dark:border-white/10 pt-3">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Amount
-            </span>
-            <span className="text-sm font-mono font-black text-slate-700 dark:text-slate-300">
-              {formatCurrency(categoryData[0].value)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* CHARTS GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Expense Categorization (Donut) */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col">
-          <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest mb-6 flex items-center gap-2">
-            <PieChartIcon size={14} /> Expense Breakdown
-          </h3>
-          <div className="flex-1 min-h-[250px] relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: "#1e293b",
-                    border: "none",
-                    borderRadius: "12px",
-                    color: "#fff",
-                    fontSize: "12px",
-                  }}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  height={36}
-                  iconType="circle"
-                  wrapperStyle={{ fontSize: "10px", fontWeight: "bold" }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Total OPEX
-              </span>
-              <span className="text-sm font-mono font-black text-slate-900 dark:text-white">
-                {formatCurrency(totalExpenses)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Top Vendors Leaderboard */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col">
-          <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest mb-6 flex items-center gap-2">
-            <Receipt size={14} /> Vendor Spending Leaderboard
-          </h3>
-          <div className="flex-1 min-h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={vendorData}
-                layout="vertical"
-                margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#334155"
-                  horizontal={true}
-                  vertical={false}
-                />
-                <XAxis type="number" hide />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  stroke="#64748b"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  width={110}
-                  fontWeight="bold"
-                />
-                <Tooltip
-                  cursor={{ fill: "transparent" }}
-                  formatter={(value) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: "#1e293b",
-                    border: "none",
-                    borderRadius: "8px",
-                    color: "#fff",
-                    fontSize: "12px",
-                  }}
-                />
-                <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={28}>
-                  {vendorData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* CONDITIONAL: BRANCH OVERHEAD (Only if "All" is selected) */}
-      {selectedBranch === "All" && (
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-          <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest mb-6 flex items-center gap-2">
-            <MapPin size={14} /> Variable Overhead Comparison
-          </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={branchOverheadData}
-                margin={{ top: 20, right: 0, left: -20, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#334155"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="name"
-                  stroke="#64748b"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  fontWeight="bold"
-                />
-                <YAxis
-                  stroke="#64748b"
-                  fontSize={10}
-                  tickFormatter={(val) => `₱${val / 1000}k`}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  cursor={{ fill: "#334155", opacity: 0.1 }}
-                  formatter={(value) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: "#1e293b",
-                    border: "none",
-                    borderRadius: "8px",
-                    color: "#fff",
-                    fontSize: "12px",
-                  }}
-                />
-                <Legend
-                  verticalAlign="top"
-                  height={36}
-                  iconType="circle"
-                  wrapperStyle={{ fontSize: "11px", fontWeight: "bold" }}
-                />
-                <Bar
-                  dataKey="utilities"
-                  name="Utilities (Power/Water)"
-                  fill={COLORS.rose}
-                  radius={[4, 4, 0, 0]}
-                  barSize={40}
-                />
-                <Bar
-                  dataKey="supplies"
-                  name="Shop Supplies"
-                  fill={COLORS.amber}
-                  radius={[4, 4, 0, 0]}
-                  barSize={40}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+      {/* KPI DASHBOARD (Hidden in Print) */}
+      {data && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 print:hidden">
+          <StatCard
+            title="Total Operating Expenses"
+            value={`₱${formatCurrency(data.kpis.total_operating_expense)}`}
+            icon={TrendingDown}
+            variant="danger"
+          />
+          <StatCard
+            title="Total Transactions"
+            value={data.kpis.total_transaction_count}
+            icon={List}
+            variant="default"
+          />
+          <StatCard
+            title="Average Expense Size"
+            value={`₱${formatCurrency(data.kpis.average_expense_size)}`}
+            icon={Calculator}
+            variant="default"
+          />
+          <StatCard
+            title="Top Category (% Share)"
+            value={
+              data.kpis.top_category
+                ? `${data.kpis.top_category.percentage}%`
+                : "0%"
+            }
+            icon={PieChart}
+            variant={data.kpis.top_category ? "warning" : "default"}
+          />
         </div>
       )}
 
-      {/* ITEMIZED OCR EXPENSE LOG (Maker-Checker Audit) */}
-      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-          <div>
-            <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
-              <FileSearch size={14} className="text-indigo-500" /> Itemized
-              Expense Ledger (OCR Sourced)
+      {/* DOCUMENT BODY */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-[24px] sm:rounded-[32px] shadow-sm overflow-hidden print:border-none print:shadow-none print:p-0">
+        {/* Print & Document Header */}
+        <div className="p-6 sm:p-8 pb-5 sm:pb-6 border-b border-slate-100 dark:border-slate-800/50 text-center bg-slate-50 dark:bg-slate-900/50 print:bg-transparent print:border-b-2 print:border-slate-900">
+          <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white print:text-black">
+            Expense Report
+          </h1>
+          <p className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 mt-1.5 uppercase print:text-black">
+            {branchFilter === "all"
+              ? "Enterprise Global (Consolidated)"
+              : branches.find((b) => b.id.toString() === branchFilter)
+                  ?.branch_name || "Branch Specific"}
+          </p>
+          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-500 mt-1.5 uppercase tracking-widest flex justify-center items-center gap-1.5 print:text-slate-700">
+            <Calendar size={12} className="print:hidden" />
+            For the period{" "}
+            {new Date(startDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            to{" "}
+            {new Date(endDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </p>
+        </div>
+
+        <div className="p-6 sm:p-8 lg:px-12 print:px-0">
+          {/* SECTION A: CATEGORY SUMMARY MATRIX */}
+          <div className="mb-10">
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-amber-500 dark:text-amber-500 mb-6 flex items-center gap-2 print:text-black">
+              <PieChart size={16} /> Category Spending Breakdown
             </h3>
-            <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
-              Flags highlight variance against standard budget/prices.
-            </p>
+
+            {loading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="animate-spin text-amber-500" />
+              </div>
+            ) : !data || data.category_summary.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
+                No expenses found for this period.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {data.category_summary.map((cat) => (
+                  <div key={cat.category_id} className="relative">
+                    <div className="flex justify-between items-end mb-2">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase print:text-black truncate pr-4">
+                          {cat.category_name}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 mt-0.5 tracking-widest uppercase">
+                          {cat.transaction_count} Transactions
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="font-mono text-sm font-black text-slate-900 dark:text-white print:text-black">
+                          ₱{formatCurrency(cat.total_amount)}
+                        </span>
+                        <span className="text-[10px] font-black text-amber-500 tracking-widest">
+                          {cat.percentage_of_total}%
+                        </span>
+                      </div>
+                    </div>
+                    {/* Visual Progress Bar */}
+                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden print:hidden">
+                      <div
+                        className="h-full bg-amber-500 rounded-full"
+                        style={{ width: `${cat.percentage_of_total}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* SECTION B: ITEMIZED TRANSACTION LEDGER */}
+          <div>
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-blue-500 dark:text-blue-500 mb-6 flex items-center gap-2 print:text-black print:mt-10">
+              <List size={16} /> Itemized Transaction Ledger
+            </h3>
+
+            <DataTable
+              headers={[
+                "Date & Source",
+                "Reference",
+                "Category & Payee",
+                "Amount (₱)",
+                "Action",
+              ]}
+              data={data?.transactions || []}
+              loading={loading}
+              emptyTitle="No transactions found"
+              emptySubtitle="No transactions match the selected filters."
+              minWidth="min-w-[800px]"
+              renderRow={(txn, idx) => (
+                <tr
+                  key={`${txn.source_module}-${txn.source_id}-${idx}`}
+                  className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors print:hover:bg-transparent"
+                >
+                  <td className="px-4 sm:px-8 py-4">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white print:text-black">
+                      {new Date(txn.transaction_date).toLocaleDateString()}
+                    </p>
+                    <div className="mt-1.5">
+                      {getSourceBadge(txn.source_module)}
+                    </div>
+                  </td>
+
+                  <td className="px-4 sm:px-8 py-4">
+                    <p className="text-xs font-black text-slate-700 dark:text-slate-300 font-mono tracking-widest uppercase print:text-black">
+                      {txn.reference_number || "N/A"}
+                    </p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate max-w-[120px]">
+                      {txn.branch_name}
+                    </p>
+                  </td>
+
+                  <td className="px-4 sm:px-8 py-4">
+                    <p className="text-xs font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px] print:text-black print:max-w-none print:whitespace-normal">
+                      {txn.category}
+                    </p>
+                    <p className="text-[10px] font-medium text-slate-500 uppercase mt-1 truncate max-w-[200px] print:text-black print:max-w-none print:whitespace-normal">
+                      {txn.vendor_name}
+                    </p>
+                  </td>
+
+                  <td className="px-4 sm:px-8 py-4 text-right">
+                    <span className="text-sm font-black font-mono text-slate-900 dark:text-white print:text-black">
+                      {parseFloat(txn.amount).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}
+                    </span>
+                  </td>
+
+                  <td className="px-4 sm:px-8 py-4 text-right">
+                    <button
+                      onClick={() =>
+                        handleDrillDown(
+                          txn.source_module,
+                          txn.source_id,
+                          txn.reference_number,
+                        )
+                      }
+                      className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer print:hidden"
+                      title="View Source Document"
+                    >
+                      <Eye size={16} />
+                    </button>
+                  </td>
+                </tr>
+              )}
+            />
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-100 dark:bg-black/20 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200 dark:border-white/10">
-                <th className="p-4">Date / Ref</th>
-                <th className="p-4">Vendor & Category</th>
-                <th className="p-4 text-right">Actual Cost</th>
-                <th className="p-4 text-center">Variance Alert</th>
-                <th className="p-4 text-center">Physical Proof</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm font-medium text-slate-700 dark:text-slate-300 divide-y divide-slate-100 dark:divide-white/5">
-              {OCR_EXPENSE_LOG.map((expense) => {
-                const isInflated = expense.amount > expense.budget;
-                const variancePct =
-                  ((expense.amount - expense.budget) / expense.budget) * 100;
-
-                return (
-                  <tr
-                    key={expense.id}
-                    className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-                  >
-                    <td className="p-4">
-                      <p className="font-mono text-xs text-slate-500">
-                        {expense.date}
-                      </p>
-                      <p className="text-[10px] font-black text-indigo-500 uppercase">
-                        {expense.id}
-                      </p>
-                    </td>
-                    <td className="p-4">
-                      <p className="font-bold text-slate-900 dark:text-white">
-                        {expense.vendor}
-                      </p>
-                      <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                        {expense.category}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right font-mono font-black text-slate-900 dark:text-white">
-                      {formatCurrency(expense.amount * mult)}
-                    </td>
-                    <td className="p-4 text-center">
-                      {isInflated ? (
-                        <div className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border border-rose-200 dark:border-rose-500/20">
-                          <AlertTriangle size={12} /> +{variancePct.toFixed(1)}%
-                          OVER
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                          Within Budget
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 text-center">
-                      {expense.hasScan ? (
-                        <button className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 dark:text-indigo-400 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-indigo-200 dark:border-indigo-500/20">
-                          <Receipt size={12} /> View Scan
-                        </button>
-                      ) : (
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                          Manual Entry
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
       </div>
+
+      {/* FILTER MODAL */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={resetFilters}
+        title="Report Parameters"
+      >
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                Branch Scope
+              </label>
+              <select
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+              >
+                <option value="all">Global (All)</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.branch_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                Source Origin
+              </label>
+              <select
+                value={sourceModuleFilter}
+                onChange={(e) => setSourceModuleFilter(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+              >
+                <option value="all">All Sources</option>
+                <option value="MANUAL_EXPENSE">Manual Expenses</option>
+                <option value="OCR_RECEIPT">OCR Receipts</option>
+                <option value="BILL">Supplier Bills</option>
+                <option value="JOURNAL_ENTRY">Journal Entries</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Expense Category
+            </label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+            >
+              <option value="all">All Expense Categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.account_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Vendor / Supplier
+            </label>
+            <select
+              value={vendorFilter}
+              onChange={(e) => setVendorFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+            >
+              <option value="all">All Vendors</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.business_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-700/50">
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Reporting Period
+            </label>
+            <select
+              value={datePreset}
+              onChange={(e) => handlePresetChange(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 mb-3 cursor-pointer"
+            >
+              <option value="this_month">This Month</option>
+              <option value="this_quarter">This Quarter</option>
+              <option value="this_year">This Year</option>
+              <option value="custom">Custom Date Range</option>
+            </select>
+
+            {datePreset === "custom" && (
+              <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </FilterModal>
+
+      {/* Drill-Down Source Drawer */}
+      <GeneralLedgerSourceDrawer
+        isOpen={!!selectedSource}
+        onClose={() => setSelectedSource(null)}
+        source={selectedSource}
+      />
     </div>
   );
 };

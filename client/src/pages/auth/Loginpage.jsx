@@ -1,12 +1,63 @@
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import LoginForm from "../../features/auth/LoginForm";
 import BannerLogo from "../../assets/Banner_Logo.png";
+import Footer from "../../components/layout/Footer";
+import AlertDialog from "../../components/shared/AlertDialog";
+
+const ALERT_CONFIGS = {
+  session_revoked: {
+    title: "Session Terminated",
+    message:
+      "Your active session was terminated by a system administrator. Please sign in again to continue.",
+    variant: "danger",
+  },
+  account_deactivated: {
+    title: "Account Disabled",
+    message:
+      "Your account has been deactivated. Please contact your system administrator for assistance.",
+    variant: "danger",
+  },
+  maintenance_mode: {
+    title: "System Maintenance",
+    message:
+      "Your assigned branch is currently undergoing maintenance. Access is temporarily restricted.",
+    variant: "warning",
+  },
+  branch_archived: {
+    title: "Branch Inactive",
+    message:
+      "Your assigned branch has been closed or decommissioned. Please contact administration.",
+    variant: "danger",
+  },
+};
 
 const LoginPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [alertConfig, setAlertConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+  });
+
+  useEffect(() => {
+    const alertType = searchParams.get("alert");
+
+    if (alertType && ALERT_CONFIGS[alertType]) {
+      setAlertConfig({
+        isOpen: true,
+        ...ALERT_CONFIGS[alertType],
+      });
+
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   return (
-    // Changed main wrapper to center everything horizontally and vertically
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-100 p-4">
-      {/* Centered Login Card */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 sm:p-10 space-y-6">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-100 p-4 relative">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 sm:p-10 space-y-6 z-10">
         {/* Banner Logo */}
         <div className="w-full flex justify-center">
           <img
@@ -21,16 +72,19 @@ const LoginPage = () => {
           <LoginForm />
         </div>
 
-        {/* Divider & Footer */}
-        <div className="flex flex-col items-center gap-4 pt-4">
-          <div className="h-px w-full bg-gray-200"></div>
-
-          <p className="text-[10px] uppercase tracking-[0.25em] text-gray-400 font-semibold text-center leading-relaxed">
-            Authorized Personnel Only <br className="sm:hidden" />
-            Overdrive Autoworks © 2026
-          </p>
-        </div>
+        {/* Footer */}
+        <Footer />
       </div>
+
+      {/*  Security Landing Modal */}
+      <AlertDialog
+        isOpen={alertConfig.isOpen}
+        onClose={() => setAlertConfig((prev) => ({ ...prev, isOpen: false }))}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        variant={alertConfig.variant}
+        buttonText="Understood"
+      />
     </div>
   );
 };

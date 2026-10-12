@@ -1,36 +1,38 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from "react";
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  // 1. Current Operation State
-  const [activeVehicle, setActiveVehicle] = useState(null); // Stores Plate Number
-  const [activeCustomer, setActiveCustomer] = useState(null); // Stores { name, phone, etc. }
-  
-  // 2. Branch Context
-  const [branchContext, setBranchContext] = useState('Batino Branch');
+  const [branchContext, setBranchContext] = useState("Batino Branch");
 
-  // Helper to set everything at once during check-in
-  const setSession = (plate, customer) => {
-    setActiveVehicle(plate);
-    setActiveCustomer(customer);
-  };
+  const [toasts, setToasts] = useState([]);
 
-  // Helper to clear the session (e.g., when vehicle is released)
-  const clearSession = () => {
-    setActiveVehicle(null);
-    setActiveCustomer(null);
-  };
+  // Toast Functionality
+  const showToast = useCallback((message, type = "info", duration = 4000) => {
+    const id = Date.now() + Math.random().toString(36).substr(2, 9);
+
+    setToasts((prev) => [...prev, { id, message, type, duration }]);
+
+    // Auto-dismiss
+    setTimeout(() => {
+      removeToast(id);
+    }, duration);
+  }, []);
+
+  const removeToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
 
   return (
-    <AppContext.Provider value={{ 
-      activeVehicle, 
-      activeCustomer, 
-      branchContext, 
-      setBranchContext,
-      setSession,
-      clearSession
-    }}>
+    <AppContext.Provider
+      value={{
+        branchContext,
+        setBranchContext,
+        toasts, // Exported toast state
+        showToast, // Exported trigger function
+        removeToast, // Exported dismiss function
+      }}
+    >
       {children}
     </AppContext.Provider>
   );

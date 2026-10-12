@@ -1,0 +1,120 @@
+const StaffInventoryService = require("../../services/staff/inventory.service");
+const { sendSuccess, sendError } = require("../../utils/responseHandler");
+const { STATUS_CODES } = require("../../constants/statusCodes");
+
+class StaffInventoryController {
+  static async getInventory(req, res) {
+    try {
+      const branchId = req.branchId;
+
+      if (!branchId) {
+        return sendError(
+          res,
+          STATUS_CODES.BAD_REQUEST,
+          "Branch context is strictly required to access local inventory.",
+        );
+      }
+
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const search = req.query.search || "";
+      const category = req.query.category || "all";
+      const stockStatus = req.query.stock_status || "all";
+
+      const result = await StaffInventoryService.getBranchInventory(
+        branchId,
+        page,
+        limit,
+        search,
+        category,
+        stockStatus,
+      );
+
+      return res.status(STATUS_CODES.SUCCESS).json({
+        success: true,
+        data: result.items,
+        pagination: result.pagination,
+        message: "Branch inventory retrieved successfully.",
+      });
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to retrieve branch inventory.",
+        error.message,
+      );
+    }
+  }
+
+  static async getInventoryDetails(req, res) {
+    try {
+      const branchId = req.branchId;
+
+      if (!branchId) {
+        return sendError(
+          res,
+          STATUS_CODES.BAD_REQUEST,
+          "Branch context is strictly required to view item details.",
+        );
+      }
+
+      const details = await StaffInventoryService.getItemDetails(
+        req.params.id,
+        branchId,
+      );
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        details,
+        "Item details retrieved securely.",
+      );
+    } catch (error) {
+      const statusCode = error.message.includes("not found")
+        ? STATUS_CODES.NOT_FOUND
+        : STATUS_CODES.BAD_REQUEST;
+
+      return sendError(res, statusCode, error.message);
+    }
+  }
+
+  static async getMovementHistory(req, res) {
+    try {
+      const branchId = req.branchId;
+
+      if (!branchId) {
+        return sendError(
+          res,
+          STATUS_CODES.BAD_REQUEST,
+          "Branch context is strictly required to view movement history.",
+        );
+      }
+
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+
+      const result = await StaffInventoryService.getItemMovementHistory(
+        req.params.id,
+        branchId,
+        page,
+        limit,
+      );
+
+      return res.status(STATUS_CODES.SUCCESS).json({
+        success: true,
+        data: result.history,
+        pagination: result.pagination,
+        message: "Branch movement ledger retrieved securely.",
+      });
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to retrieve movement history.",
+        error.message,
+      );
+    }
+  }
+}
+
+module.exports = StaffInventoryController;

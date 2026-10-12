@@ -1,0 +1,360 @@
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  X,
+  ShoppingCart,
+  Calendar,
+  Building2,
+  User,
+  Loader2,
+  Store,
+  Package,
+  AlertCircle,
+  BadgeCheck,
+  CheckCircle,
+  Clock,
+  FileCheck,
+  XCircle,
+  FileText,
+} from "lucide-react";
+import { poApprovalService } from "../../../services/manager/poApproval.service";
+import StatusBadge from "../../../components/ui/StatusBadge";
+
+const PurchaseOrderApprovalDrawer = ({ isOpen, onClose, poId }) => {
+  const [po, setPo] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (isOpen && poId) {
+      setLoading(true);
+      setError("");
+      poApprovalService
+        .getPODetails(poId)
+        .then((res) => setPo(res.data))
+        .catch((err) => setError(err.message))
+        .finally(() => setLoading(false));
+    } else {
+      setPo(null);
+    }
+  }, [isOpen, poId]);
+
+  if (po && po.status === "PENDING_APPROVAL") return null;
+
+  const getStatusVariant = (status) => {
+    if (status === "APPROVED") return "success";
+    if (status === "REJECTED") return "danger";
+    return "default";
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "APPROVED":
+        return CheckCircle;
+      case "REJECTED":
+        return XCircle;
+      default:
+        return FileText;
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* 1. Standardized Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer"
+            aria-hidden="true"
+          />
+
+          {/* 2. Standardized Drawer Panel */}
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{
+              type: "spring",
+              damping: 30,
+              stiffness: 300,
+              mass: 0.8,
+            }}
+            className="relative w-full sm:w-[500px] lg:w-[600px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* 3. Standardized Fixed Header */}
+            <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
+                  <ShoppingCart size={24} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
+                    {po?.purchase_order_number || "Loading..."}
+                  </h2>
+
+                  {po && (
+                    <div className="flex flex-col items-start gap-1.5 mt-1.5">
+                      <StatusBadge
+                        label={po.status.replace("_", " ")}
+                        variant={getStatusVariant(po.status)}
+                        icon={getStatusIcon(po.status)}
+                      />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
+                        <BadgeCheck size={12} className="text-amber-500" />
+                        Drafted by:{" "}
+                        <span className="text-slate-600 dark:text-slate-300">
+                          {po.created_by_name || "System"}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
+                aria-label="Close panel"
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            {/* 4. Standardized Scrollable Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
+              {loading && (
+                <div className="flex flex-col items-center justify-center py-20 opacity-70">
+                  <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Retrieving Document...
+                  </p>
+                </div>
+              )}
+              {error && (
+                <div className="p-4 text-center bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-200">
+                  {error}
+                </div>
+              )}
+
+              {po && !loading && (
+                <div className="space-y-6 sm:space-y-8">
+                  {/* Meta Linkages */}
+                  <div className="grid grid-cols-2 gap-4 sm:gap-5">
+                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                      <Store size={16} className="text-slate-400 mb-3" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Target Vendor
+                        </p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                          {po.vendor_name}
+                        </p>
+                        {po.contact_person && (
+                          <p className="text-[10px] text-slate-500 truncate mt-0.5 font-medium">
+                            Attn: {po.contact_person}
+                          </p>
+                        )}
+                        {po.vendor_email && (
+                          <p className="text-[10px] text-slate-500 truncate mt-0.5 font-medium">
+                            {po.vendor_email}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50 truncate font-medium">
+                          <Building2 size={10} /> {po.branch_name}
+                        </p>
+                      </div>
+                    </section>
+                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                      <Calendar size={16} className="text-slate-400 mb-3" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Timeline Focus
+                        </p>
+                        <div className="space-y-2 mt-2">
+                          <div>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                              Purchase Date
+                            </p>
+                            <p className="text-xs font-black text-slate-700 dark:text-slate-300 truncate mt-0.5">
+                              {new Date(po.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                              Delivery Target
+                            </p>
+                            <p className="text-xs font-black text-slate-700 dark:text-slate-300 truncate mt-0.5">
+                              {new Date(
+                                po.expected_delivery_date,
+                              ).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+
+                  {/* Line Items Table */}
+                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                    <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        Itemized Parts Breakdown
+                      </h3>
+                    </div>
+                    <div className="p-5 sm:p-6 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                      {po.items.map((item) => {
+                        const net =
+                          parseFloat(item.recorded_unit_cost) * item.quantity -
+                          parseFloat(item.discount_amount);
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-[16px] sm:rounded-[20px] flex items-center justify-between group transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-800"
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                              <div className="p-1.5 rounded-md shrink-0 bg-white border border-slate-200 dark:border-slate-600 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                <Package size={14} />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate uppercase italic">
+                                  [{item.sku}] {item.item_name}
+                                </p>
+                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-widest mt-0.5">
+                                  {item.quantity}x @ ₱
+                                  {parseFloat(
+                                    item.recorded_unit_cost,
+                                  ).toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                  {parseFloat(item.discount_amount) > 0 && (
+                                    <span className="text-amber-500 ml-1.5 font-bold">
+                                      (Disc: -₱
+                                      {parseFloat(
+                                        item.discount_amount,
+                                      ).toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                      })}
+                                      )
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-sm font-black text-slate-900 dark:text-white font-mono shrink-0">
+                              ₱
+                              {net.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  {/* Totals Lock */}
+                  <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
+                    <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3">
+                      Locked Financials
+                    </p>
+                    <div className="space-y-2 mb-5 text-sm font-medium text-slate-400">
+                      <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                        <span>Subtotal (Gross)</span>
+                        <span className="font-bold text-slate-200 font-mono">
+                          ₱
+                          {parseFloat(po.subtotal).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                        <span className="flex items-center gap-1.5">
+                          VAT Allocation
+                        </span>
+                        <span className="font-bold text-slate-200 font-mono">
+                          ₱
+                          {parseFloat(po.vat_amount).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/50">
+                      <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
+                        Grand Total
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight font-mono">
+                        ₱
+                        {parseFloat(po.grand_total).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                  </section>
+
+                  {/* Operational Notes / Manager Resolution */}
+                  <section
+                    className={`p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm ${
+                      po.status === "APPROVED"
+                        ? "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20"
+                        : "bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/20"
+                    }`}
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                      Manager Resolution
+                    </p>
+                    <div>
+                      <p
+                        className={`text-xs font-black uppercase tracking-widest mb-1.5 ${
+                          po.status === "APPROVED"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-rose-600 dark:text-rose-400"
+                        }`}
+                      >
+                        {po.status.replace("_", " ")} BY{" "}
+                        {po.resolved_by_name || po.created_by_name}
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-500 mb-4 uppercase tracking-widest">
+                        On{" "}
+                        {new Date(
+                          po.resolved_at || po.updated_at,
+                        ).toLocaleString()}
+                      </p>
+                      <div className="text-xs text-slate-700 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-4 rounded-[16px] border border-slate-100 dark:border-slate-800 shadow-sm leading-relaxed">
+                        "
+                        {po.approval_remarks ||
+                          "No additional remarks provided."}
+                        "
+                      </div>
+                    </div>
+                  </section>
+
+                  {po.notes && (
+                    <section className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px]">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Staff Justification
+                      </p>
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">
+                        "{po.notes}"
+                      </p>
+                    </section>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+export default PurchaseOrderApprovalDrawer;

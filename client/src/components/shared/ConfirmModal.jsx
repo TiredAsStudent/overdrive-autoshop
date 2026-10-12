@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle, Trash2, Info, Loader2 } from "lucide-react";
+import { AlertTriangle, CircleAlert, Info, Loader2 } from "lucide-react";
 
 /**
  * Reusable Confirmation Modal
@@ -21,7 +21,9 @@ const ConfirmModal = ({
   // Dynamic styling based on the variant
   const styles = {
     danger: {
-      icon: <Trash2 size={24} className="text-red-600 dark:text-red-500" />,
+      icon: (
+        <CircleAlert size={24} className="text-red-600 dark:text-red-500" />
+      ),
       bg: "bg-red-100 dark:bg-red-500/20",
       button: "bg-red-600 hover:bg-red-700 text-white",
     },

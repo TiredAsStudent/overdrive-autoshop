@@ -3,81 +3,190 @@ const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
 
 class InventoryController {
-  static async getMarkup(req, res) {
+  static async createMasterItem(req, res) {
     try {
-      const markup = await InventoryService.getSystemMarkup();
-      return sendSuccess(
-        res,
-        STATUS_CODES.SUCCESS,
-        { markup_percentage: markup },
-        "Markup fetched.",
-      );
-    } catch (error) {
-      return sendError(
-        res,
-        STATUS_CODES.INTERNAL_ERROR,
-        "Failed to fetch markup.",
-      );
-    }
-  }
-
-  static async createItem(req, res) {
-    try {
-      if (req.body.sku) req.body.sku = req.body.sku.toUpperCase().trim();
-      const item = await InventoryService.createInventoryItem(
+      const item = await InventoryService.createMasterItem(
         req.body,
         req.user.id,
         req.ip,
       );
-      return sendSuccess(res, STATUS_CODES.CREATED, item, "Part added.");
+      return sendSuccess(
+        res,
+        STATUS_CODES.CREATED,
+        item,
+        "Master inventory item registered successfully.",
+      );
     } catch (error) {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
 
-  static async updateItem(req, res) {
+  static async updateMasterItem(req, res) {
     try {
-      const item = await InventoryService.updateInventoryItem(
+      const item = await InventoryService.updateMasterItem(
         req.params.id,
         req.body,
         req.user.id,
         req.ip,
       );
-      const actionMsg =
-        req.body.is_active === false
-          ? "Part archived."
-          : req.body.is_active === true
-            ? "Part restored."
-            : "Part updated.";
-      return sendSuccess(res, STATUS_CODES.SUCCESS, item, actionMsg);
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        item,
+        "Master inventory item updated successfully.",
+      );
     } catch (error) {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
 
-  static async getOverview(req, res) {
+  static async toggleItemStatus(req, res) {
     try {
-      const branchId = req.query.branch_id
-        ? parseInt(req.query.branch_id, 10)
-        : null;
-      const showArchived = req.query.archived === "true";
-
-      const overview = await InventoryService.getStockOverview(
-        branchId,
-        showArchived,
+      const { is_active } = req.body;
+      const item = await InventoryService.toggleItemStatus(
+        req.params.id,
+        is_active,
+        req.user.id,
+        req.ip,
       );
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
-        overview,
-        "Stock retrieved.",
+        item,
+        `Inventory item successfully ${is_active ? "restored" : "archived"}.`,
+      );
+    } catch (error) {
+      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+    }
+  }
+
+  static async getInventoryCatalog(req, res) {
+    try {
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const search = req.query.search || "";
+      const category = req.query.category || "all";
+      const branch = req.query.branch || "all";
+      const status = req.query.status || "all";
+      const stock_status = req.query.stock_status || "all";
+
+      const result = await InventoryService.getInventoryCatalog(
+        page,
+        limit,
+        search,
+        category,
+        branch,
+        status,
+        stock_status,
+      );
+
+      return res.status(STATUS_CODES.SUCCESS).json({
+        success: true,
+        data: result.items,
+        pagination: result.pagination,
+        message: "Company inventory catalog retrieved successfully.",
+      });
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to retrieve inventory catalog.",
+        error.message,
+      );
+    }
+  }
+
+  static async getBranchBreakdown(req, res) {
+    try {
+      const breakdown = await InventoryService.getItemBranchBreakdown(
+        req.params.id,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        breakdown,
+        "Branch-level stock extraction successful.",
       );
     } catch (error) {
       return sendError(
         res,
         STATUS_CODES.INTERNAL_ERROR,
-        "Failed to retrieve stock overview.",
+        "Failed to extract branch stock data.",
+        error.message,
       );
+    }
+  }
+
+  static async getMovementHistory(req, res) {
+    try {
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const branch = req.query.branch || "all";
+
+      const result = await InventoryService.getItemMovementHistory(
+        req.params.id,
+        page,
+        limit,
+        branch,
+      );
+
+      return res.status(STATUS_CODES.SUCCESS).json({
+        success: true,
+        data: result.movements,
+        pagination: result.pagination,
+        message: "Inventory movement history retrieved successfully.",
+      });
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to retrieve movement history.",
+        error.message,
+      );
+    }
+  }
+
+  static async getSingleMovement(req, res) {
+    try {
+      const movement = await InventoryService.getSingleMovement(req.params.id);
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        movement,
+        "Movement details retrieved successfully.",
+      );
+    } catch (error) {
+      const statusCode = error.message.includes("not found")
+        ? STATUS_CODES.NOT_FOUND
+        : STATUS_CODES.BAD_REQUEST;
+      return sendError(res, statusCode, error.message);
+    }
+  }
+
+  static async adjustStock(req, res) {
+    try {
+      const adjustmentData = req.body;
+      const ledgerEntry = await InventoryService.adjustStock(
+        adjustmentData,
+        req.user.id,
+        req.ip,
+      );
+
+      const verb =
+        adjustmentData.adjustment_type === "ADD" ? "added to" : "deducted from";
+
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        ledgerEntry,
+        `Stock successfully ${verb} branch. Movement reference: ${ledgerEntry.transaction_reference}`,
+      );
+    } catch (error) {
+      const statusCode = error.message.includes("Insufficient stock")
+        ? STATUS_CODES.BAD_REQUEST
+        : STATUS_CODES.INTERNAL_ERROR;
+
+      return sendError(res, statusCode, error.message);
     }
   }
 }

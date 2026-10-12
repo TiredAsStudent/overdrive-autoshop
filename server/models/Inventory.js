@@ -1,52 +1,266 @@
-const { query } = require("../config/db");
+const { query, pool } = require("../config/db");
 
 class Inventory {
-  static async getSystemMarkup() {
-    const sql = `SELECT markup_percentage FROM system_settings WHERE id = 1`;
-    const result = await query(sql);
-    return result.rows[0]?.markup_percentage || 20.0;
-  }
-
-  static async createItem(data, activeBranches) {
-    const sqlItem = `
-      INSERT INTO inventory_items (sku, item_name, category, unit_cost, selling_price) 
-      VALUES ($1, $2, $3, $4, $5) RETURNING *
+  // =========================================================
+  // MANAGER/ADMIN METHODS (Global Context)
+  // =========================================================
+  static async countFilteredItems(
+    search,
+    category,
+    branch,
+    systemStatus,
+    stockStatus,
+  ) {
+    let sql = `
+      SELECT COUNT(DISTINCT i.id) 
+      FROM inventory_items i
+      LEFT JOIN branch_inventory bi ON i.id = bi.item_id
     `;
-    const itemValues = [
-      data.sku,
-      data.item_name,
-      data.category,
-      data.unit_cost,
-      data.selling_price,
-    ];
-    const itemResult = await query(sqlItem, itemValues);
-    const newItem = itemResult.rows[0];
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
 
-    for (const branch of activeBranches) {
-      const sqlBranch = `
-        INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point) 
-        VALUES ($1, $2, 0, $3)
-      `;
-      await query(sqlBranch, [
-        branch.id,
-        newItem.id,
-        data.initial_reorder_point,
-      ]);
+    if (search) {
+      conditions.push(
+        `(i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (category && category !== "all") {
+      conditions.push(`i.category = $${paramIdx}`);
+      values.push(category);
+      paramIdx++;
+    }
+    if (branch && branch !== "all") {
+      conditions.push(`bi.branch_id = $${paramIdx}`);
+      values.push(branch);
+      paramIdx++;
+    }
+    if (systemStatus === "active") conditions.push(`i.is_active = TRUE`);
+    else if (systemStatus === "archived")
+      conditions.push(`i.is_active = FALSE`);
+
+    if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
+
+    // Aggregate Filtering for Stock Status
+    if (stockStatus && stockStatus !== "all") {
+      if (stockStatus === "out_of_stock") {
+        sql += ` GROUP BY i.id HAVING COALESCE(SUM(bi.quantity), 0) = 0`;
+      } else if (stockStatus === "low_stock") {
+        sql += ` GROUP BY i.id HAVING COALESCE(SUM(bi.quantity), 0) > 0 AND COALESCE(SUM(bi.quantity), 0) <= COALESCE(SUM(bi.reorder_point), 0)`;
+      } else if (stockStatus === "in_stock") {
+        sql += ` GROUP BY i.id HAVING COALESCE(SUM(bi.quantity), 0) > COALESCE(SUM(bi.reorder_point), 0)`;
+      }
     }
 
-    return newItem;
+    if (sql.includes("GROUP BY")) {
+      const wrapSql = `SELECT COUNT(*) FROM (${sql}) AS subquery`;
+      const result = await query(wrapSql, values);
+      return parseInt(result.rows[0].count, 10);
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedItems(
+    limit,
+    offset,
+    search,
+    category,
+    branch,
+    systemStatus,
+    stockStatus,
+  ) {
+    let joinClause = `LEFT JOIN branch_inventory bi ON i.id = bi.item_id`;
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (branch && branch !== "all") {
+      joinClause += ` AND bi.branch_id = $${paramIdx}`;
+      conditions.push(`bi.branch_id = $${paramIdx}`);
+      values.push(branch);
+      paramIdx++;
+    }
+
+    let sql = `
+      SELECT 
+        i.*,
+        (SELECT COUNT(id) FROM inventory_movements WHERE item_id = i.id AND transaction_type != 'INITIALIZATION') AS usage_count,
+        COALESCE(SUM(bi.quantity), 0) AS total_company_quantity,
+        COALESCE(SUM(bi.reorder_point), 0) AS total_company_reorder,
+        CASE
+          WHEN COALESCE(SUM(bi.quantity), 0) = 0 THEN 'Out of Stock'
+          WHEN COALESCE(SUM(bi.quantity), 0) <= COALESCE(SUM(bi.reorder_point), 0) THEN 'Low Stock'
+          ELSE 'In Stock'
+        END AS global_stock_status
+      FROM inventory_items i
+      ${joinClause}
+    `;
+
+    if (search) {
+      conditions.push(
+        `(i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (category && category !== "all") {
+      conditions.push(`i.category = $${paramIdx}`);
+      values.push(category);
+      paramIdx++;
+    }
+    if (systemStatus === "active") conditions.push(`i.is_active = TRUE`);
+    else if (systemStatus === "archived")
+      conditions.push(`i.is_active = FALSE`);
+
+    if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
+
+    sql += ` GROUP BY i.id `;
+
+    if (stockStatus && stockStatus !== "all") {
+      if (stockStatus === "out_of_stock") {
+        sql += ` HAVING COALESCE(SUM(bi.quantity), 0) = 0 `;
+      } else if (stockStatus === "low_stock") {
+        sql += ` HAVING COALESCE(SUM(bi.quantity), 0) > 0 AND COALESCE(SUM(bi.quantity), 0) <= COALESCE(SUM(bi.reorder_point), 0) `;
+      } else if (stockStatus === "in_stock") {
+        sql += ` HAVING COALESCE(SUM(bi.quantity), 0) > COALESCE(SUM(bi.reorder_point), 0) `;
+      }
+    }
+
+    sql += ` ORDER BY i.is_active DESC, i.item_name ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
+  // =========================================================
+  // STRICTLY ISOLATED STAFF METHODS (Local Context)
+  // =========================================================
+  static async countBranchFilteredItems(
+    search,
+    category,
+    branchId,
+    stockStatus,
+  ) {
+    let sql = `
+      SELECT COUNT(i.id)
+      FROM inventory_items i
+      INNER JOIN branch_inventory bi ON i.id = bi.item_id AND bi.branch_id = $1
+      WHERE i.is_active = TRUE
+    `;
+    const values = [branchId];
+    let paramIdx = 2;
+
+    if (search) {
+      sql += ` AND (i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (category && category !== "all") {
+      sql += ` AND i.category = $${paramIdx}`;
+      values.push(category);
+      paramIdx++;
+    }
+
+    if (stockStatus && stockStatus !== "all") {
+      if (stockStatus === "out_of_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) = 0`;
+      } else if (stockStatus === "low_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) > 0 AND COALESCE(bi.quantity, 0) <= COALESCE(bi.reorder_point, i.default_reorder_level)`;
+      } else if (stockStatus === "in_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) > COALESCE(bi.reorder_point, i.default_reorder_level)`;
+      }
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findBranchPaginatedItems(
+    limit,
+    offset,
+    search,
+    category,
+    branchId,
+    stockStatus,
+  ) {
+    let sql = `
+      SELECT 
+        i.*,
+        -- Aliased to match existing frontend architecture without breaking the UI
+        COALESCE(bi.quantity, 0) AS total_company_quantity,
+        COALESCE(bi.reorder_point, i.default_reorder_level) AS total_company_reorder,
+        CASE
+          WHEN COALESCE(bi.quantity, 0) = 0 THEN 'Out of Stock'
+          WHEN COALESCE(bi.quantity, 0) <= COALESCE(bi.reorder_point, i.default_reorder_level) THEN 'Low Stock'
+          ELSE 'In Stock'
+        END AS global_stock_status
+      FROM inventory_items i
+      INNER JOIN branch_inventory bi ON i.id = bi.item_id AND bi.branch_id = $1
+      WHERE i.is_active = TRUE
+    `;
+
+    const values = [branchId];
+    let paramIdx = 2;
+
+    if (search) {
+      sql += ` AND (i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (category && category !== "all") {
+      sql += ` AND i.category = $${paramIdx}`;
+      values.push(category);
+      paramIdx++;
+    }
+
+    if (stockStatus && stockStatus !== "all") {
+      if (stockStatus === "out_of_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) = 0`;
+      } else if (stockStatus === "low_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) > 0 AND COALESCE(bi.quantity, 0) <= COALESCE(bi.reorder_point, i.default_reorder_level)`;
+      } else if (stockStatus === "in_stock") {
+        sql += ` AND COALESCE(bi.quantity, 0) > COALESCE(bi.reorder_point, i.default_reorder_level)`;
+      }
+    }
+
+    sql += ` ORDER BY i.item_name ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
+  // =========================================================
+  // SHARED UTILITIES
+  // =========================================================
+
+  static async checkSkuExists(sku) {
+    const sql = `SELECT id FROM inventory_items WHERE sku = $1`;
+    const result = await query(sql, [sku]);
+    return result.rows[0];
   }
 
   static async findById(id) {
-    const sql = `SELECT * FROM inventory_items WHERE id = $1`;
+    const sql = `
+      SELECT i.*, 
+      (SELECT COUNT(id) FROM inventory_movements WHERE item_id = i.id AND transaction_type != 'INITIALIZATION') AS usage_count
+      FROM inventory_items i WHERE id = $1
+    `;
     const result = await query(sql, [id]);
     return result.rows[0];
   }
 
-  static async findBySku(sku) {
-    const sql = `SELECT * FROM inventory_items WHERE sku = $1`;
-    const result = await query(sql, [sku]);
-    return result.rows[0];
+  static async findManyByIds(ids) {
+    if (!ids || ids.length === 0) return [];
+
+    const sql = `SELECT * FROM inventory_items WHERE id = ANY($1::int[])`;
+    const result = await query(sql, [ids]);
+    return result.rows;
   }
 
   static async update(id, data) {
@@ -55,71 +269,323 @@ class Inventory {
       SET 
         item_name = COALESCE($1, item_name),
         category = COALESCE($2, category),
-        unit_cost = COALESCE($3, unit_cost),
-        selling_price = COALESCE($4, selling_price),
-        is_active = COALESCE($5, is_active),
+        uom = COALESCE($3, uom),
+        description = COALESCE($4, description),
+        unit_cost = COALESCE($5, unit_cost),
+        selling_price = COALESCE($6, selling_price),
+        default_reorder_level = COALESCE($7, default_reorder_level),
+        asset_account_id = COALESCE($8, asset_account_id),
+        income_account_id = COALESCE($9, income_account_id),
+        expense_account_id = COALESCE($10, expense_account_id),
         updated_at = NOW()
-      WHERE id = $6 RETURNING *
+      WHERE id = $11
+      RETURNING *
     `;
     const values = [
       data.item_name,
       data.category,
+      data.uom,
+      data.description,
       data.unit_cost,
       data.selling_price,
-      data.is_active,
+      data.default_reorder_level,
+      data.asset_account_id,
+      data.income_account_id,
+      data.expense_account_id,
       id,
     ];
     const result = await query(sql, values);
-    const updatedItem = result.rows[0];
+    return result.rows[0];
+  }
 
-    if (data.initial_reorder_point !== undefined) {
-      const sqlOverride = `UPDATE branch_inventory SET reorder_point = $1 WHERE item_id = $2`;
-      await query(sqlOverride, [data.initial_reorder_point, id]);
+  static async toggleStatus(id, isActive) {
+    const sql = `UPDATE inventory_items SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
+    const result = await query(sql, [isActive, id]);
+    return result.rows[0];
+  }
+
+  static async getBranchBreakdown(itemId) {
+    const sql = `
+      SELECT 
+        b.id AS branch_id,
+        b.branch_name,
+        b.branch_code,
+        COALESCE(bi.quantity, 0) AS quantity,
+        COALESCE(bi.reorder_point, 5) AS reorder_point,
+        bi.last_restock_date,
+        CASE
+          WHEN COALESCE(bi.quantity, 0) = 0 THEN 'Out of Stock'
+          WHEN COALESCE(bi.quantity, 0) <= COALESCE(bi.reorder_point, 5) THEN 'Low Stock'
+          ELSE 'In Stock'
+        END AS stock_status
+      FROM branches b
+      LEFT JOIN branch_inventory bi ON b.id = bi.branch_id AND bi.item_id = $1
+      WHERE b.is_active = TRUE
+      ORDER BY b.branch_name ASC
+    `;
+    const result = await query(sql, [itemId]);
+    return result.rows;
+  }
+
+  static async getMovementHistory(itemId) {
+    const sql = `
+      SELECT 
+        m.id,
+        m.transaction_type,
+        m.transaction_reference,
+        m.quantity_added,
+        m.quantity_deducted,
+        m.remaining_quantity,
+        m.remarks,
+        m.created_at,
+        b.branch_name,
+        u.first_name,
+        u.last_name
+      FROM inventory_movements m
+      JOIN branches b ON m.branch_id = b.id
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.item_id = $1
+      ORDER BY m.created_at DESC
+    `;
+    const result = await query(sql, [itemId]);
+    return result.rows;
+  }
+
+  static async countMovementHistory(itemId, branchId = "all") {
+    let sql = `SELECT COUNT(*) FROM inventory_movements WHERE item_id = $1`;
+    const values = [itemId];
+
+    if (branchId && branchId !== "all") {
+      sql += ` AND branch_id = $2`;
+      values.push(branchId);
     }
 
-    return updatedItem;
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
   }
 
-  static async getConsolidatedOverview(showArchived) {
-    const sql = `
+  static async findPaginatedMovementHistory(
+    itemId,
+    branchId = "all",
+    limit,
+    offset,
+  ) {
+    let sql = `
       SELECT 
-        i.id, i.sku, i.item_name, i.category, i.unit_cost, i.selling_price, i.is_active,
-        COALESCE(SUM(b.quantity), 0) AS total_quantity,
-        (COALESCE(SUM(b.quantity), 0) * i.unit_cost) AS total_asset_value,
-        MAX(b.reorder_point) as reorder_point
-      FROM inventory_items i
-      LEFT JOIN branch_inventory b ON i.id = b.item_id
-      WHERE ($1::boolean = TRUE OR i.is_active = TRUE)
-      GROUP BY i.id
-      ORDER BY i.is_active DESC, i.category ASC, i.item_name ASC
+        m.id,
+        m.transaction_type,
+        m.transaction_reference,
+        m.quantity_added,
+        m.quantity_deducted,
+        m.remaining_quantity,
+        m.remarks,
+        m.created_at,
+        b.branch_name,
+        u.first_name,
+        u.last_name
+      FROM inventory_movements m
+      JOIN branches b ON m.branch_id = b.id
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.item_id = $1
     `;
-    const result = await query(sql, [showArchived]);
+    const values = [itemId];
+    let paramIdx = 2;
+
+    if (branchId && branchId !== "all") {
+      sql += ` AND m.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    sql += ` ORDER BY m.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
     return result.rows;
   }
 
-  static async getBranchOverview(branchId, showArchived) {
+  static async getSingleMovement(movementId) {
     const sql = `
       SELECT 
-        i.id, i.sku, i.item_name, i.category, i.unit_cost, i.selling_price, i.is_active,
-        b.quantity, b.reorder_point,
-        (b.quantity * i.unit_cost) AS branch_asset_value,
-        CASE WHEN b.quantity <= b.reorder_point THEN true ELSE false END AS is_low_stock
-      FROM inventory_items i
-      JOIN branch_inventory b ON i.id = b.item_id
-      WHERE b.branch_id = $1 AND ($2::boolean = TRUE OR i.is_active = TRUE)
-      ORDER BY i.is_active DESC, is_low_stock DESC, i.category ASC, i.item_name ASC
+        m.id,
+        m.transaction_type,
+        m.transaction_reference,
+        m.quantity_added,
+        m.quantity_deducted,
+        m.remaining_quantity,
+        m.remarks,
+        m.adjustment_reason,
+        m.recorded_unit_cost,
+        m.created_at,
+        b.branch_name,
+        u.first_name,
+        u.last_name,
+        i.item_name,
+        i.sku,
+        i.uom,
+        i.category
+      FROM inventory_movements m
+      JOIN inventory_items i ON m.item_id = i.id
+      JOIN branches b ON m.branch_id = b.id
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.id = $1
     `;
-    const result = await query(sql, [branchId, showArchived]);
+    const result = await query(sql, [movementId]);
+    return result.rows[0];
+  }
+
+  static async getBranchMovementHistory(itemId, branchId) {
+    const sql = `
+      SELECT 
+        m.id,
+        m.transaction_type,
+        m.transaction_reference,
+        m.quantity_added,
+        m.quantity_deducted,
+        m.remaining_quantity,
+        m.remarks,
+        m.created_at,
+        b.branch_name,
+        u.first_name,
+        u.last_name
+      FROM inventory_movements m
+      JOIN branches b ON m.branch_id = b.id
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.item_id = $1 AND m.branch_id = $2
+      ORDER BY m.created_at DESC
+    `;
+    const result = await query(sql, [itemId, branchId]);
     return result.rows;
   }
 
-  static async seedNewBranch(branchId) {
+  static async countBranchMovementHistory(itemId, branchId) {
     const sql = `
-      INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
-      SELECT $1, id, 0, 5 FROM inventory_items
-      ON CONFLICT DO NOTHING
+      SELECT COUNT(*) 
+      FROM inventory_movements 
+      WHERE item_id = $1 AND branch_id = $2
     `;
-    await query(sql, [branchId]);
+    const result = await query(sql, [itemId, branchId]);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async getBranchPaginatedMovementHistory(
+    itemId,
+    branchId,
+    limit,
+    offset,
+  ) {
+    const sql = `
+      SELECT 
+        m.id,
+        m.transaction_type,
+        m.transaction_reference,
+        m.quantity_added,
+        m.quantity_deducted,
+        m.remaining_quantity,
+        m.remarks,
+        m.created_at,
+        b.branch_name,
+        u.first_name,
+        u.last_name
+      FROM inventory_movements m
+      JOIN branches b ON m.branch_id = b.id
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.item_id = $1 AND m.branch_id = $2
+      ORDER BY m.created_at DESC
+      LIMIT $3 OFFSET $4
+    `;
+    const result = await query(sql, [itemId, branchId, limit, offset]);
+    return result.rows;
+  }
+
+  static async adjustStockTransaction(data, userId) {
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const checkSql = `
+        SELECT bi.quantity, i.unit_cost 
+        FROM branch_inventory bi
+        JOIN inventory_items i ON bi.item_id = i.id
+        WHERE bi.branch_id = $1 AND bi.item_id = $2
+        FOR UPDATE
+      `;
+      const checkRes = await client.query(checkSql, [
+        data.branch_id,
+        data.item_id,
+      ]);
+
+      if (checkRes.rows.length === 0) {
+        throw new Error("Inventory record not found for this branch.");
+      }
+
+      const currentQuantity = checkRes.rows[0].quantity;
+      const unitCost = checkRes.rows[0].unit_cost;
+
+      let qtyAdded = 0;
+      let qtyDeducted = 0;
+      let newQuantity = currentQuantity;
+
+      if (data.adjustment_type === "ADD") {
+        qtyAdded = data.quantity;
+        newQuantity += data.quantity;
+      } else if (data.adjustment_type === "DEDUCT") {
+        qtyDeducted = data.quantity;
+        newQuantity -= data.quantity;
+
+        if (newQuantity < 0) {
+          throw new Error(
+            `Insufficient stock. Cannot deduct ${data.quantity}. Only ${currentQuantity} available.`,
+          );
+        }
+      }
+
+      const updateSql = `
+        UPDATE branch_inventory 
+        SET quantity = $1, last_restock_date = CASE WHEN $2 > 0 THEN NOW() ELSE last_restock_date END
+        WHERE branch_id = $3 AND item_id = $4
+        RETURNING *
+      `;
+      await client.query(updateSql, [
+        newQuantity,
+        qtyAdded,
+        data.branch_id,
+        data.item_id,
+      ]);
+
+      const referenceCode = `ADJ-${Date.now().toString().slice(-6)}`;
+      const ledgerSql = `
+        INSERT INTO inventory_movements (
+          item_id, branch_id, transaction_type, transaction_reference, 
+          quantity_added, quantity_deducted, remaining_quantity, 
+          remarks, adjustment_reason, recorded_unit_cost, created_by
+        )
+        VALUES ($1, $2, 'MANUAL_ADJUSTMENT', $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *
+      `;
+
+      const ledgerRes = await client.query(ledgerSql, [
+        data.item_id,
+        data.branch_id,
+        referenceCode,
+        qtyAdded,
+        qtyDeducted,
+        newQuantity,
+        data.remarks,
+        data.reason,
+        unitCost,
+        userId,
+      ]);
+
+      await client.query("COMMIT");
+      return ledgerRes.rows[0];
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 

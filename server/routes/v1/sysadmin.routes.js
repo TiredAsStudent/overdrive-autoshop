@@ -7,7 +7,8 @@ const UserController = require("../../controllers/sysadmin/user.controller");
 const BranchController = require("../../controllers/sysadmin/branch.controller");
 const SettingsController = require("../../controllers/sysadmin/settings.controller");
 const AuditLogController = require("../../controllers/sysadmin/audit.controller");
-const AiController = require("../../controllers/sysadmin/ai.controller");
+const BackupController = require("../../controllers/sysadmin/backup.controller");
+const DashboardController = require("../../controllers/sysadmin/dashboard.controller");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
@@ -24,11 +25,13 @@ const {
   updateSettingsSchema,
 } = require("../../validations/sysadmin/settings.schema");
 const {
+  getBranchesSchema,
   createBranchSchema,
   updateBranchSchema,
   toggleMaintenanceSchema,
 } = require("../../validations/sysadmin/branch.schema");
 const {
+  getRosterSchema,
   inviteUserSchema,
   updateUserSchema,
 } = require("../../validations/sysadmin/user.schema");
@@ -36,25 +39,21 @@ const {
   getAuditLogsSchema,
 } = require("../../validations/sysadmin/auditLog.schema");
 const {
-  updateAiSettingsSchema,
-  testConnectionSchema,
-} = require("../../validations/sysadmin/ai.schema");
+  getBackupsSchema,
+} = require("../../validations/sysadmin/backup.schema");
 
 // ==========================================
-// UTILITY: Catch Multer File Errors cleanly (Turns 500s into 400s)
+// UTILITY: Catch Multer File Errors cleanly
 // ==========================================
 const handleLogoUpload = (req, res, next) => {
   const upload = uploadLogo.single("logo");
 
   upload(req, res, function (err) {
     if (err instanceof multer.MulterError) {
-      // A Multer error occurred (e.g., File too large)
       return sendError(res, 400, "File Upload Error", err.message);
     } else if (err) {
-      // An unknown error occurred (e.g., PDF uploaded instead of image)
       return sendError(res, 400, "Invalid File Type", err.message);
     }
-    // Everything went fine, proceed to validation!
     next();
   });
 };
@@ -65,6 +64,11 @@ const handleLogoUpload = (req, res, next) => {
 router.use(verifyToken, requireRole(ROLES.ADMIN));
 
 // ==========================================
+// SUB-TAB 1.1: SYSTEM DASHBOARD OVERVIEW
+// ==========================================
+router.get("/dashboard/overview", DashboardController.getOverview);
+
+// ==========================================
 // SUB-TAB 2.1: BRANCH MANAGEMENT
 // ==========================================
 router.post(
@@ -73,7 +77,11 @@ router.post(
   BranchController.createBranch,
 );
 
-router.get("/branches", BranchController.getAllBranches);
+router.get(
+  "/branches",
+  validate(getBranchesSchema),
+  BranchController.getAllBranches,
+);
 
 router.get("/branches/:id", BranchController.getBranch);
 
@@ -107,7 +115,7 @@ router.put(
 // ==========================================
 // SUB-TAB 2.2: USER MANAGEMENT & SECURITY
 // ==========================================
-router.get("/users", UserController.getRoster);
+router.get("/users", validate(getRosterSchema), UserController.getRoster);
 
 router.post(
   "/users/invite",
@@ -126,30 +134,22 @@ router.post("/users/:id/resend-invite", UserController.resendInvite);
 // ==========================================
 // SUB-TAB 4.1: AUDIT LOGS & COMPLIANCE
 // ==========================================
+
+router.get("/audit/severities", AuditLogController.getSeverities);
+
 router.get(
   "/audit/export",
   validate(getAuditLogsSchema),
   AuditLogController.exportLogs,
 );
 
-// The Read-Only Paginated Data Route
 router.get("/audit", validate(getAuditLogsSchema), AuditLogController.getLogs);
 
 // ==========================================
-// SUB-TAB 3.2: AI ASSISTANT CONFIGURATION
+// SUB-TAB 4.2: DATABASE BACKUPS
 // ==========================================
-router.get("/ai-settings", AiController.getSettings);
+router.get("/backups", validate(getBackupsSchema), BackupController.getBackups);
 
-router.put(
-  "/ai-settings",
-  validate(updateAiSettingsSchema),
-  AiController.updateSettings,
-);
-
-router.post(
-  "/ai-settings/test-connection",
-  validate(testConnectionSchema),
-  AiController.testConnection,
-);
+router.post("/backups/trigger", BackupController.triggerBackup);
 
 module.exports = router;

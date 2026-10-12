@@ -1,66 +1,131 @@
 import api from "../api";
+import { extractBlobError } from "../../utils/fileDownloader";
 
-export const staffExpenseService = {
-  // Step 1: Upload image for AI Extraction
-  scanReceipt: async (imageFile) => {
+export const expenseService = {
+  getActiveCategories: async () => {
     try {
-      const formData = new FormData();
-      formData.append("receipt_image", imageFile);
-
-      const response = await api.post("/staff/expenses/scan", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await api.get("/staff/expenses/active-categories");
       return response.data;
     } catch (error) {
-      if (error.response?.data?.data?.image_url) {
-        return error.response.data;
-      }
       throw new Error(
         error.response?.data?.error?.message ||
-          "Failed to scan receipt image. Please try again.",
+          "Failed to load expense categories.",
       );
     }
   },
 
-  // Step 2: Submit verified data to the Manager's Queue
-  submitExpense: async (expenseData) => {
+  getExpenses: async (
+    page = 1,
+    limit = 10,
+    search = "",
+    status = "all",
+    expenseAccountId = "all",
+    branchId = "all",
+  ) => {
     try {
-      const response = await api.post("/staff/expenses/submit", expenseData);
+      const response = await api.get("/staff/expenses", {
+        params: {
+          page,
+          limit,
+          search,
+          status,
+          expense_account_id: expenseAccountId,
+          branch: branchId,
+        },
+      });
       return response.data;
     } catch (error) {
-      let extractedMessage = "Failed to submit expense.";
-      const responseData = error.response?.data;
+      throw new Error(
+        error.response?.data?.error?.message || "Failed to load expenses.",
+      );
+    }
+  },
 
-      if (responseData?.error?.details) {
-        extractedMessage = Array.isArray(responseData.error.details)
-          ? responseData.error.details.map((err) => err.message).join(" | ")
-          : responseData.error.details;
-      } else if (responseData?.error?.message) {
-        extractedMessage = responseData.error.message;
+  getExpenseDetails: async (id) => {
+    try {
+      const response = await api.get(`/staff/expenses/${id}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to load expense details.",
+      );
+    }
+  },
+
+  downloadPdf: async (id) => {
+    try {
+      const response = await api.get(`/staff/expenses/${id}/pdf`, {
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage = await extractBlobError(error);
+      throw new Error(errorMessage || "Failed to generate Expense Voucher.");
+    }
+  },
+
+  createExpense: async (expenseData, attachmentFile = null) => {
+    try {
+      const formData = new FormData();
+
+      Object.keys(expenseData).forEach((key) => {
+        if (expenseData[key] !== null && expenseData[key] !== undefined) {
+          formData.append(key, expenseData[key]);
+        }
+      });
+
+      if (attachmentFile) {
+        formData.append("attachment", attachmentFile);
       }
-      throw new Error(extractedMessage);
-    }
-  },
 
-  // Helper: Fetch suppliers for the dropdown mapping
-  getSuppliers: async () => {
-    try {
-      const response = await api.get("/staff/suppliers/active");
+      const response = await api.post("/staff/expenses", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return response.data;
     } catch (error) {
-      console.warn("Supplier fetch failed.", error);
-      return { data: [] };
+      throw new Error(
+        error.response?.data?.error?.message || "Failed to record expense.",
+      );
     }
   },
 
-  // Helper: Fetch dynamic system VAT rate
-  getSystemVat: async () => {
+  updateExpense: async (id, expenseData, attachmentFile = null) => {
     try {
-      const response = await api.get("/staff/settings/vat");
-      return response.data.data.vat_percentage;
+      const formData = new FormData();
+
+      Object.keys(expenseData).forEach((key) => {
+        if (expenseData[key] !== null && expenseData[key] !== undefined) {
+          formData.append(key, expenseData[key]);
+        }
+      });
+
+      if (attachmentFile) {
+        formData.append("attachment", attachmentFile);
+      }
+
+      const response = await api.put(`/staff/expenses/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return response.data;
     } catch (error) {
-      console.warn("VAT fetch failed. Defaulting to 12%.", error);
-      return 12; // Safe standard fallback
+      throw new Error(
+        error.response?.data?.error?.message || "Failed to update expense.",
+      );
+    }
+  },
+
+  updateStatus: async (id, status) => {
+    try {
+      const response = await api.patch(`/staff/expenses/${id}/status`, {
+        status,
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error?.message ||
+          "Failed to update expense status.",
+      );
     }
   },
 };

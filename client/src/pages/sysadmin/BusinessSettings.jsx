@@ -9,20 +9,22 @@ import {
   Mail,
   Phone,
   Loader2,
-  AlertCircle,
-  Globe,
 } from "lucide-react";
 import { settingsService } from "../../services/sysadmin/settings.service";
+import { useApp } from "../../context/AppContext";
+
+// Universal UI Components
+import PageHeader from "../../components/shared/PageHeader";
+import ConfirmModal from "../../components/shared/ConfirmModal";
 
 const BusinessSettings = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-
+  const { showToast } = useApp();
   const fileInputRef = useRef(null);
 
-  // Form State initialized to safe default values (aligns with backend fallback)
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
   const [formData, setFormData] = useState({
     company_name: "Overdrive Auto Shop",
     vat_percentage: 12.0,
@@ -31,17 +33,21 @@ const BusinessSettings = () => {
     contact_number: "",
   });
 
-  // Image State
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview && logoPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoPreview]);
 
   const loadSettings = async () => {
     try {
       setIsLoading(true);
-      setError("");
       const response = await settingsService.getSettings();
-
-      // Robust extraction for different response structures
       const settingsData = response?.data?.data || response?.data || response;
 
       if (settingsData) {
@@ -61,10 +67,8 @@ const BusinessSettings = () => {
         }
       }
     } catch (err) {
-      console.error("Failed to load settings:", err);
-      setError(
-        err.message || "Failed to load business settings from the server.",
-      );
+      console.error("Failed to sync settings:", err);
+      showToast(err.message || "Failed to load business settings.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +80,13 @@ const BusinessSettings = () => {
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
-    // Ensure numerical inputs don't store as strings in React state
+
+    if (name === "contact_number") {
+      const sanitizedPhone = value.replace(/[^0-9+\-\s()]/g, "");
+      setFormData((prev) => ({ ...prev, [name]: sanitizedPhone }));
+      return;
+    }
+
     const parsedValue =
       type === "number" ? (value === "" ? "" : Number(value)) : value;
     setFormData((prev) => ({ ...prev, [name]: parsedValue }));
@@ -86,52 +96,65 @@ const BusinessSettings = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Strict Client-side validation
     const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      setError("Please upload a valid image file (JPEG, PNG, WEBP).");
+      showToast(
+        "File rejected. Upload must be a valid JPEG, PNG, or WEBP.",
+        "error",
+      );
+      setLogoFile(null);
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      // 2MB Limit
-      setError("Image file is too large. Maximum allowed size is 2MB.");
+      showToast("Image is too heavy. Maximum allowed size is 2MB.", "error");
+      setLogoFile(null);
       return;
     }
 
-    setError(""); // Clear errors on valid selection
+    if (logoPreview && logoPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(logoPreview);
+    }
+
     setLogoFile(file);
-    setLogoPreview(URL.createObjectURL(file)); // Fast local preview
+    setLogoPreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e) => {
+  const handleFormSubmit = (e) => {
     e.preventDefault();
+    setIsConfirmModalOpen(true);
+  };
+
+  const executeSaveSettings = async () => {
+    if (isSaving) return;
     setIsSaving(true);
-    setError("");
-    setSuccessMsg("");
 
     try {
       const submitData = new FormData();
-      submitData.append("company_name", formData.company_name);
+
+      submitData.append("company_name", formData.company_name.trim());
       submitData.append("vat_percentage", formData.vat_percentage);
       submitData.append("markup_percentage", formData.markup_percentage);
-      submitData.append("contact_email", formData.contact_email);
-      submitData.append("contact_number", formData.contact_number);
+      submitData.append(
+        "contact_email",
+        formData.contact_email.trim().toLowerCase(),
+      );
+      submitData.append("contact_number", formData.contact_number.trim());
 
       if (logoFile) {
         submitData.append("logo", logoFile);
       }
 
       await settingsService.updateSettings(submitData);
-      setSuccessMsg("Enterprise configuration successfully updated.");
 
-      setTimeout(() => setSuccessMsg(""), 4000);
-      await loadSettings(); // Re-sync to ensure preview URL is actual server path
-      setLogoFile(null); // Clear pending file state
+      showToast("Business logic configuration saved successfully.", "success");
+      setLogoFile(null);
+      await loadSettings();
     } catch (err) {
-      setError(err.message || "Failed to update system rules.");
+      showToast(err.message || "Failed to save configuration.", "error");
     } finally {
       setIsSaving(false);
+      setIsConfirmModalOpen(false);
     }
   };
 
@@ -139,7 +162,7 @@ const BusinessSettings = () => {
     return (
       <div className="w-full h-64 flex flex-col items-center justify-center space-y-4">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest animate-pulse">
           Syncing Enterprise Rules...
         </p>
       </div>
@@ -147,82 +170,56 @@ const BusinessSettings = () => {
   }
 
   return (
-    <div className="w-full space-y-8 animate-in fade-in duration-500 pb-10">
-      {/* 1. HEADER */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-500/10 rounded-xl">
-            <Settings2
-              className="text-amber-600 dark:text-overdrive-yellow"
-              size={24}
-            />
-          </div>
-          <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic flex items-center gap-2">
-              Business Logic
-            </h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-              Global Financial Rules & Corporate Identity
-            </p>
-          </div>
-        </div>
-
+    <div className="w-full space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-10">
+      {/* UNIVERSAL PAGE HEADER */}
+      <PageHeader
+        title="Business Logic"
+        subtitle="Manage company information, pricing, and tax settings."
+        icon={Settings2}
+      >
         <button
-          onClick={handleSubmit}
+          type="submit"
+          form="settingsForm"
           disabled={isSaving}
-          className="w-full xl:w-auto px-8 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm shadow-amber-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSaving ? (
             <Loader2 size={16} className="animate-spin" />
           ) : (
             <Save size={16} />
           )}
-          {isSaving
-            ? "SYNCING TO ALL BRANCHES..."
-            : "SAVE GLOBAL CONFIGURATION"}
+          {isSaving ? "SAVING..." : "SAVE SETTINGS"}
         </button>
-      </div>
+      </PageHeader>
 
-      {/* 2. NOTIFICATIONS */}
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl flex items-center gap-3 text-red-600 dark:text-red-400 text-sm font-bold shadow-sm">
-          <AlertCircle size={18} className="shrink-0" /> {error}
-        </div>
-      )}
-      {successMsg && (
-        <div className="p-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl flex items-center gap-3 text-emerald-600 dark:text-emerald-400 text-sm font-bold shadow-sm">
-          <Globe size={18} className="shrink-0" /> {successMsg}
-        </div>
-      )}
-
-      {/* 3. MAIN CONFIGURATION GRID */}
+      {/* MAIN CONFIGURATION FORM */}
       <form
         id="settingsForm"
-        onSubmit={handleSubmit}
-        className="grid grid-cols-1 xl:grid-cols-3 gap-8"
+        onSubmit={handleFormSubmit}
+        className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8"
       >
-        {/* LEFT COLUMN: BRAND IDENTITY */}
+        {/* LEFT COLUMN: BRANDING */}
         <div className="xl:col-span-1 space-y-6">
-          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm p-8">
+          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm p-6 sm:p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
-              <ImageIcon size={14} /> Official Brand Identity
+              <ImageIcon size={14} /> Company Profile
             </h3>
 
             <div className="space-y-6">
               {/* Logo Upload */}
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
-                  Corporate Logo (Invoices & Reports)
+                  Company Logo
                 </label>
                 <div
                   className={`w-full aspect-square max-h-64 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group transition-all cursor-pointer ${logoPreview ? "border-amber-500/50 bg-white dark:bg-slate-900" : "border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-black/20 hover:border-amber-500"}`}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => !isSaving && fileInputRef.current?.click()}
                 >
                   {logoPreview ? (
                     <>
                       <img
                         src={logoPreview}
-                        alt="Corporate Logo"
+                        alt="Company Logo"
                         className="w-full h-full object-contain p-4"
                       />
                       <div className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white backdrop-blur-sm">
@@ -239,7 +236,7 @@ const BusinessSettings = () => {
                         Upload Master Logo
                       </span>
                       <span className="text-[9px] mt-2 opacity-70 font-bold">
-                        Strictly PNG, JPG (Max 2MB)
+                        JPEG, PNG, WEBP up to 2MB
                       </span>
                     </div>
                   )}
@@ -249,14 +246,18 @@ const BusinessSettings = () => {
                     className="hidden"
                     accept="image/jpeg, image/png, image/webp"
                     onChange={handleFileChange}
+                    disabled={isSaving}
                   />
                 </div>
               </div>
 
-              {/* Corporate Name */}
+              {/* Company Name */}
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
-                  Registered Enterprise Name
+                <label
+                  htmlFor="company_name"
+                  className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest"
+                >
+                  Company Name
                 </label>
                 <div className="relative">
                   <Building2
@@ -265,11 +266,15 @@ const BusinessSettings = () => {
                   />
                   <input
                     type="text"
+                    id="company_name"
                     name="company_name"
                     value={formData.company_name}
                     onChange={handleChange}
                     required
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors"
+                    maxLength={255}
+                    disabled={isSaving}
+                    placeholder="Enter business entity title"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors uppercase disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -277,62 +282,75 @@ const BusinessSettings = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: FINANCIAL MATH & COMMUNICATIONS */}
-        <div className="xl:col-span-2 space-y-8">
-          {/* FINANCIAL LOGIC ENGINE */}
-          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-8">
+        {/* RIGHT COLUMN: MATH & CONTACTS */}
+        <div className="xl:col-span-2 space-y-6 sm:space-y-8">
+          {/* FINANCIAL MATH ENGINE */}
+          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-6 sm:p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
-              <Percent size={14} /> Master Financial Logic Engine
+              <Percent size={14} /> Financial Settings
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
               {/* VAT Rule */}
-              <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5">
-                <label className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1">
-                  Value Added Tax (VAT)
-                </label>
-                <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
-                  Controls the automated tax calculations on all generated
-                  invoices.
-                </p>
-                <div className="relative">
+              <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5 flex flex-col justify-between">
+                <div>
+                  <label
+                    htmlFor="vat_percentage"
+                    className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1"
+                  >
+                    Standard VAT Rate
+                  </label>
+                  <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
+                    Automated tax matrix calculated across ledger orders.
+                  </p>
+                </div>
+                <div className="relative mt-auto">
                   <input
                     type="number"
+                    id="vat_percentage"
+                    name="vat_percentage"
                     step="0.01"
                     min="0"
                     max="100"
-                    name="vat_percentage"
                     value={formData.vat_percentage}
                     onChange={handleChange}
-                    className="w-full px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-lg font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors pr-12"
+                    required
+                    disabled={isSaving}
+                    className="w-full px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-lg font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors pr-12 font-mono disabled:opacity-60"
                   />
-                  <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-lg">
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-lg font-mono">
                     %
                   </span>
                 </div>
               </div>
 
               {/* Markup Rule */}
-              <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5">
-                <label className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1">
-                  Default Profit Markup
-                </label>
-                <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
-                  Standardized profit margin multiplier applied to supplier unit
-                  costs.
-                </p>
-                <div className="relative">
+              <div className="p-5 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-100 dark:border-white/5 flex flex-col justify-between">
+                <div>
+                  <label
+                    htmlFor="markup_percentage"
+                    className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1"
+                  >
+                    Catalog Parts Markup
+                  </label>
+                  <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed">
+                    Standard multiplier baseline applied to supplier unit costs.
+                  </p>
+                </div>
+                <div className="relative mt-auto">
                   <input
                     type="number"
+                    id="markup_percentage"
+                    name="markup_percentage"
                     step="0.01"
                     min="0"
-                    max="500"
-                    name="markup_percentage"
                     value={formData.markup_percentage}
                     onChange={handleChange}
-                    className="w-full px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-lg font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors pr-12"
+                    required
+                    disabled={isSaving}
+                    className="w-full px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-lg font-black text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors pr-12 font-mono disabled:opacity-60"
                   />
-                  <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-lg">
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-lg font-mono">
                     %
                   </span>
                 </div>
@@ -340,16 +358,20 @@ const BusinessSettings = () => {
             </div>
           </div>
 
-          {/* HEADQUARTERS CONTACT */}
-          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-8">
+          {/* HEADQUARTERS CONTACTS */}
+          <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-white/10 shadow-sm p-6 sm:p-8">
             <h3 className="text-[10px] font-black uppercase text-amber-500 mb-6 tracking-widest flex items-center gap-2">
-              <Phone size={14} /> Corporate Headquarters Contact
+              <Phone size={14} /> Business Contact Information
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+              {/* Email */}
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
-                  Main Corporate Email
+                <label
+                  htmlFor="contact_email"
+                  className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest"
+                >
+                  Business Email
                 </label>
                 <div className="relative">
                   <Mail
@@ -358,18 +380,25 @@ const BusinessSettings = () => {
                   />
                   <input
                     type="email"
+                    id="contact_email"
                     name="contact_email"
                     value={formData.contact_email}
                     onChange={handleChange}
-                    placeholder="hq@overdrive.com"
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors"
+                    required
+                    disabled={isSaving}
+                    placeholder="corporate@overdrive.com"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors disabled:opacity-60"
                   />
                 </div>
               </div>
 
+              {/* Phone */}
               <div>
-                <label className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">
-                  Main Corporate Phone
+                <label
+                  htmlFor="contact_number"
+                  className="block text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest"
+                >
+                  Business Phone
                 </label>
                 <div className="relative">
                   <Phone
@@ -378,11 +407,15 @@ const BusinessSettings = () => {
                   />
                   <input
                     type="text"
+                    id="contact_number"
                     name="contact_number"
                     value={formData.contact_number}
                     onChange={handleChange}
-                    placeholder="+63 9XX XXX XXXX"
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors"
+                    required
+                    maxLength={50}
+                    disabled={isSaving}
+                    placeholder="e.g., +63 909 090 9091"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 transition-colors font-mono disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -390,6 +423,18 @@ const BusinessSettings = () => {
           </div>
         </div>
       </form>
+
+      {/* CONFIRMATION MODAL */}
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={executeSaveSettings}
+        title="Confirm Settings Changes"
+        message="The changes made to your company information, pricing, and tax settings will be applied across the system. Do you want to continue?"
+        confirmText="Save Changes"
+        cancelText="Cancel"
+        variant="warning"
+      />
     </div>
   );
 };

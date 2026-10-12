@@ -1,25 +1,84 @@
-const Service = require("../../models/Service");
+const ServiceModel = require("../../models/Service");
+const COAModel = require("../../models/ChartOfAccounts");
 const { logSecureAction } = require("../../utils/auditLogger");
 
-class ServiceService {
-  static async createService(data, managerId, ipAddress) {
-    // 1. Force uppercase and trim for clean data
-    const cleanCode = data.service_code.toUpperCase().trim();
+class ServiceCatalogService {
+  static async generateServiceCode(category) {
+    const prefixMap = {
+      Engine: "ENG",
+      Transmission: "TRN",
+      "Brake System": "BRK",
+      Suspension: "SUS",
+      "Cooling System": "COL",
+      Electrical: "ELE",
+      "Air Conditioning": "AIR",
+      Steering: "STR",
+      "Preventive Maintenance": "PMT",
+      "Tire Services": "TIR",
+      "General Repair": "GEN",
+    };
 
-    // 2. Check for duplicates
-    const existing = await Service.findByCode(cleanCode);
-    if (existing) {
-      throw new Error(`Service Code '${cleanCode}' is already in use.`);
+    const prefix = prefixMap[category] || "SRV";
+    const lastRecord = await ServiceModel.getLatestCodeByPrefix(`${prefix}-`);
+
+    let sequence = 1;
+    if (lastRecord) {
+      const lastSequence = parseInt(lastRecord.service_code.split("-")[1], 10);
+      sequence = lastSequence + 1;
     }
 
-    const newService = await Service.create({
-      ...data,
-      service_code: cleanCode,
-    });
+    return `${prefix}-${String(sequence).padStart(4, "0")}`;
+  }
 
-    // 3. Log creation
+  static async createService(data, userId, ipAddress) {
+    if (data.service_name) data.service_name = data.service_name.trim();
+
+    const account = await COAModel.findById(data.income_account_id);
+    if (!account) {
+      throw new Error("The selected revenue account does not exist.");
+    }
+    if (account.account_type !== "INCOME") {
+      throw new Error(
+        "Services must be explicitly mapped to an INCOME account type to ensure accurate General Ledger routing.",
+      );
+    }
+
+    const existing = await ServiceModel.findByCategoryAndName(
+      data.category,
+      data.service_name,
+    );
+    if (existing) {
+      throw new Error(
+        `A service named '${data.service_name}' already exists under the ${data.category} category.`,
+      );
+    }
+
+    let retries = 3;
+    let newService = null;
+
+    while (retries > 0) {
+      try {
+        data.service_code = await this.generateServiceCode(data.category);
+        newService = await ServiceModel.create(data);
+        break;
+      } catch (error) {
+        if (
+          error.code === "23505" &&
+          error.constraint === "services_service_code_key"
+        ) {
+          retries--;
+          if (retries === 0)
+            throw new Error(
+              "High system traffic. Failed to generate a unique service code. Please try again.",
+            );
+        } else {
+          throw error;
+        }
+      }
+    }
+
     await logSecureAction(
-      managerId,
+      userId,
       null,
       "SERVICE_CREATED",
       "INFO",
@@ -29,43 +88,69 @@ class ServiceService {
       null,
       newService,
     );
-
     return newService;
   }
 
-  static async getAllServices() {
-    return await Service.findAll();
-  }
+  static async updateService(id, data, userId, ipAddress) {
+    if (data.service_name) data.service_name = data.service_name.trim();
 
-  static async updateService(id, data, managerId, ipAddress) {
-    const oldService = await Service.findById(id);
+    const oldService = await ServiceModel.findById(id);
     if (!oldService) throw new Error("Service not found.");
 
-    const updatedService = await Service.update(id, data);
-
-    // Dynamic Audit Logging: Detect Price Changes
-    let actionType = "SERVICE_UPDATED";
-    let severity = "INFO";
-
-    // If the price was changed, escalate the audit log severity
     if (
-      data.price !== undefined &&
-      parseFloat(data.price) !== parseFloat(oldService.price)
+      data.income_account_id &&
+      parseInt(data.income_account_id, 10) !==
+        parseInt(oldService.income_account_id, 10)
     ) {
-      actionType = "SERVICE_PRICE_CHANGED";
-      severity = "WARNING";
+      if (parseInt(oldService.usage_count, 10) > 0) {
+        throw new Error(
+          "Cannot change the revenue account mapping because this service has already been billed on historical invoices. Doing so would alter historical financial ledgers.",
+        );
+      }
+
+      const account = await COAModel.findById(data.income_account_id);
+      if (!account) {
+        throw new Error("The selected revenue account does not exist.");
+      }
+      if (account.account_type !== "INCOME") {
+        throw new Error(
+          "Services must be explicitly mapped to an INCOME account type to ensure accurate General Ledger routing.",
+        );
+      }
     }
 
-    // If a service is deactivated, log it critically
-    if (data.is_active === false && oldService.is_active === true) {
-      actionType = "SERVICE_DEACTIVATED";
+    if (data.service_name || data.category) {
+      const checkCategory = data.category || oldService.category;
+      const checkName = data.service_name || oldService.service_name;
+
+      const existing = await ServiceModel.findByCategoryAndName(
+        checkCategory,
+        checkName,
+        id,
+      );
+      if (existing) {
+        throw new Error(
+          `A service named '${checkName}' already exists under the ${checkCategory} category.`,
+        );
+      }
+    }
+
+    const updatedService = await ServiceModel.update(id, data);
+
+    let severity = "INFO";
+    if (
+      parseFloat(oldService.price) !== parseFloat(updatedService.price) ||
+      (data.income_account_id &&
+        parseInt(data.income_account_id, 10) !==
+          parseInt(oldService.income_account_id, 10))
+    ) {
       severity = "WARNING";
     }
 
     await logSecureAction(
-      managerId,
+      userId,
       null,
-      actionType,
+      "SERVICE_UPDATED",
       severity,
       ipAddress,
       "services",
@@ -73,9 +158,69 @@ class ServiceService {
       oldService,
       updatedService,
     );
+    return updatedService;
+  }
+
+  static async getServices(
+    page = 1,
+    limit = 10,
+    search = "",
+    category = "all",
+    status = "all",
+  ) {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, services] = await Promise.all([
+      ServiceModel.countFiltered(search, category, status),
+      ServiceModel.findPaginatedFiltered(
+        limit,
+        offset,
+        search,
+        category,
+        status,
+      ),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      services,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
+  }
+
+  static async toggleServiceStatus(id, isActive, userId, ipAddress) {
+    const oldService = await ServiceModel.findById(id);
+    if (!oldService) throw new Error("Service not found.");
+
+    const updatedService = await ServiceModel.toggleStatus(id, isActive);
+
+    const action = isActive ? "SERVICE_ACTIVATED" : "SERVICE_DEACTIVATED";
+    await logSecureAction(
+      userId,
+      null,
+      action,
+      isActive ? "INFO" : "WARNING",
+      ipAddress,
+      "services",
+      id,
+      { is_active: oldService.is_active },
+      { is_active: updatedService.is_active },
+    );
 
     return updatedService;
   }
+
+  static async getServiceUsage(id) {
+    const service = await ServiceModel.findById(id);
+    if (!service) throw new Error("Service not found.");
+    return await ServiceModel.getUsageHistory(id);
+  }
 }
 
-module.exports = ServiceService;
+module.exports = ServiceCatalogService;

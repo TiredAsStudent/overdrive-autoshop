@@ -1,10 +1,12 @@
 import api from "../api";
 
 export const userService = {
-  getRoster: async () => {
+  getRoster: async (page = 1, limit = 5, search = "") => {
     try {
-      const response = await api.get("/sysadmin/users");
-      return response.data.data;
+      const response = await api.get("/sysadmin/users", {
+        params: { page, limit, search },
+      });
+      return response.data;
     } catch (error) {
       throw new Error(
         error.response?.data?.error?.message || "Failed to fetch roster.",

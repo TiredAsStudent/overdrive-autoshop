@@ -23,13 +23,25 @@ class BranchController {
 
   static async getAllBranches(req, res) {
     try {
-      const branches = await BranchService.getAllBranches();
-      return sendSuccess(
-        res,
-        STATUS_CODES.SUCCESS,
-        branches,
-        "Enterprise branches retrieved.",
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 5;
+
+      const search = req.query.search || "";
+      const status = req.query.status || "all";
+
+      const result = await BranchService.getAllBranches(
+        page,
+        limit,
+        search,
+        status,
       );
+
+      return res.status(STATUS_CODES.SUCCESS).json({
+        success: true,
+        data: result.branches,
+        pagination: result.pagination,
+        message: "Enterprise branches retrieved.",
+      });
     } catch (error) {
       return sendError(
         res,
@@ -93,7 +105,8 @@ class BranchController {
   static async toggleMaintenance(req, res) {
     try {
       const { is_maintenance_mode } = req.body;
-      const branch = await BranchService.toggleMaintenanceMode(
+
+      const branch = await BranchService.toggleMaintenance(
         req.params.id,
         is_maintenance_mode,
         req.user.id,

@@ -1,14 +1,41 @@
 const Branch = require("../../models/Branch");
-const Inventory = require("../../models/Inventory");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class BranchService {
-  static async getAllBranches() {
-    return await Branch.findAll();
+  static async getAllBranches(
+    page = 1,
+    limit = 5,
+    search = "",
+    status = "all",
+  ) {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, branches] = await Promise.all([
+      Branch.countFiltered(search, status),
+      Branch.findPaginatedFiltered(limit, offset, search, status),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      branches,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
   }
 
   static async getActiveBranches() {
     return await Branch.findActive();
+  }
+
+  static async getBranchById(id) {
+    const branch = await Branch.findById(id);
+    if (!branch) throw new Error("Branch not found.");
+    return branch;
   }
 
   static async createBranch(data, adminId, ipAddress) {
@@ -18,8 +45,6 @@ class BranchService {
     }
 
     const newBranch = await Branch.create(data);
-
-    await Inventory.seedNewBranch(newBranch.id);
 
     await logSecureAction(
       adminId,
@@ -39,6 +64,15 @@ class BranchService {
   static async updateBranch(id, data, adminId, ipAddress) {
     const oldBranch = await Branch.findById(id);
     if (!oldBranch) throw new Error("Branch not found.");
+
+    if (data.branch_code && data.branch_code !== oldBranch.branch_code) {
+      const collisionCheck = await Branch.findByCode(data.branch_code);
+      if (collisionCheck && collisionCheck.id !== parseInt(id, 10)) {
+        throw new Error(
+          `Branch Code '${data.branch_code}' is already assigned to another branch.`,
+        );
+      }
+    }
 
     const updatedBranch = await Branch.update(id, data);
 

@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   useLocation,
+  Outlet,
 } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
@@ -29,25 +30,25 @@ const AccountSettingsPage = lazy(
 
 // --- STAFF PAGES ---
 const StaffOverview = lazy(() => import("../pages/staff/Overview"));
+const StaffCustomers = lazy(() => import("../pages/staff/Customers"));
 const StaffEstimates = lazy(() => import("../pages/staff/Estimates"));
 const StaffSalesOrders = lazy(() => import("../pages/staff/SalesOrders"));
 const StaffInvoices = lazy(() => import("../pages/staff/Invoices"));
-const StaffPaymentsPostings = lazy(
-  () => import("../pages/staff/PaymentsPostings"),
+const StaffPayments = lazy(() => import("../pages/staff/Payments"));
+const StaffExpenses = lazy(() => import("../pages/staff/Expenses"));
+const StaffPurchaseOrders = lazy(() => import("../pages/staff/PurchaseOrders"));
+const StaffBills = lazy(() => import("../pages/staff/Bills"));
+const StaffStockManagement = lazy(
+  () => import("../pages/staff/StockManagement"),
 );
-const StaffSalesHistory = lazy(() => import("../pages/staff/SalesHistory"));
-const StaffReceiptScanning = lazy(
-  () => import("../pages/staff/ReceiptScanning"),
-);
-const StaffSubmissionStatus = lazy(
-  () => import("../pages/staff/SubmissionStatus"),
-);
-const StaffExpenseHistory = lazy(() => import("../pages/staff/ExpenseHistory"));
-const StaffStockInventory = lazy(() => import("../pages/staff/StockInventory"));
 const StaffStockAdjustments = lazy(
   () => import("../pages/staff/StockAdjustments"),
 );
-const StaffStockTransfers = lazy(() => import("../pages/staff/StockTransfers"));
+const StaffReceiptScanner = lazy(() => import("../pages/staff/ReceiptScanner"));
+const StaffReceiptVerification = lazy(
+  () => import("../pages/staff/ReceiptVerification"),
+);
+const StaffReceiptHistory = lazy(() => import("../pages/staff/ReceiptHistory"));
 
 // --- SYS ADMIN PAGES ---
 const AdminOverview = lazy(() => import("../pages/sysadmin/Overview"));
@@ -56,33 +57,35 @@ const AdminUsers = lazy(() => import("../pages/sysadmin/Users"));
 const AdminBusinessSettings = lazy(
   () => import("../pages/sysadmin/BusinessSettings"),
 );
-const AdminAiAssistant = lazy(() => import("../pages/sysadmin/AiAssistant"));
 const AdminAuditLogs = lazy(() => import("../pages/sysadmin/AuditLogs"));
-const AdminSystemHealth = lazy(() => import("../pages/sysadmin/SystemHealth"));
+const AdminDatabaseBackups = lazy(
+  () => import("../pages/sysadmin/DatabaseBackups"),
+);
 
 // --- MANAGER PAGES ---
 const ManagerOverview = lazy(() => import("../pages/manager/Overview"));
-const ManagerExpenseApprovals = lazy(
-  () => import("../pages/manager/ExpenseApprovals"),
+const ManagerServiceCatalog = lazy(
+  () => import("../pages/manager/ServiceCatalog"),
 );
-const ManagerStockAdjustment = lazy(
-  () => import("../pages/manager/StockAdjustment"),
+const ManagerStockManagement = lazy(
+  () => import("../pages/manager/StockManagement"),
 );
-const ManagerRejectionLogs = lazy(
-  () => import("../pages/manager/RejectionLogs"),
+const ManagerStockAdjustments = lazy(
+  () => import("../pages/manager/StockAdjustments"),
 );
-const ManagerServices = lazy(() => import("../pages/manager/Services"));
-const ManagerMechanics = lazy(() => import("../pages/manager/Mechanics"));
-const ManagerStockOverview = lazy(
-  () => import("../pages/manager/StockOverview"),
-);
-const ManagerStockValue = lazy(() => import("../pages/manager/StockValue"));
-const ManagerCOGSTracking = lazy(() => import("../pages/manager/COGSTracking"));
 const ManagerStockTransfers = lazy(
   () => import("../pages/manager/StockTransfers"),
 );
-const ManagerGeneralLedger = lazy(
-  () => import("../pages/manager/GeneralLedger"),
+const ManagerVendors = lazy(() => import("../pages/manager/Vendors"));
+const ManagerPayments = lazy(() => import("../pages/manager/Payments"));
+const ManagerExpenseApprovals = lazy(
+  () => import("../pages/manager/ExpenseApprovals"),
+);
+const ManagerPurchaseOrderApprovals = lazy(
+  () => import("../pages/manager/PurchaseOrderApprovals"),
+);
+const ManagerReceiptApprovals = lazy(
+  () => import("../pages/manager/ReceiptApprovals"),
 );
 const ManagerChartOfAccounts = lazy(
   () => import("../pages/manager/ChartOfAccounts"),
@@ -90,8 +93,10 @@ const ManagerChartOfAccounts = lazy(
 const ManagerJournalEntries = lazy(
   () => import("../pages/manager/JournalEntries"),
 );
+const ManagerGeneralLedger = lazy(
+  () => import("../pages/manager/GeneralLedger"),
+);
 const ManagerTrialBalance = lazy(() => import("../pages/manager/TrialBalance"));
-const ManagerVATLedger = lazy(() => import("../pages/manager/VATLedger"));
 const ManagerIncomeStatement = lazy(
   () => import("../pages/manager/IncomeStatement"),
 );
@@ -99,20 +104,21 @@ const ManagerBalanceSheet = lazy(() => import("../pages/manager/BalanceSheet"));
 const ManagerCashFlowStatement = lazy(
   () => import("../pages/manager/CashFlowStatement"),
 );
-const ManagerRevenueReports = lazy(
-  () => import("../pages/manager/RevenueReports"),
-);
 const ManagerExpenseReports = lazy(
   () => import("../pages/manager/ExpenseReports"),
 );
-const ManagerAccountsPayable = lazy(
-  () => import("../pages/manager/AccountsPayable"),
+const ManagerSalesReports = lazy(() => import("../pages/manager/SalesReports"));
+const ManagerInventoryReports = lazy(
+  () => import("../pages/manager/InventoryReports"),
 );
-const ManagerAccountsReceivable = lazy(
-  () => import("../pages/manager/AccountsReceivable"),
+const ManagerReceivablesReports = lazy(
+  () => import("../pages/manager/ReceivablesReports"),
 );
-const ManagerSupplierLedger = lazy(
-  () => import("../pages/manager/SupplierLedger"),
+const ManagerPayablesReports = lazy(
+  () => import("../pages/manager/PayablesReports"),
+);
+const ManagerTaxVATReports = lazy(
+  () => import("../pages/manager/TaxVATReports"),
 );
 
 // Loading Spinner
@@ -121,12 +127,8 @@ const PageLoader = () => (
     <div className="flex flex-col items-center space-y-5">
       <div className="relative w-12 h-12">
         <div className="absolute inset-0 border-4 border-slate-200 dark:border-overdrive-card rounded-full"></div>
-
-        {/* Active Spinning Ring */}
         <div className="absolute inset-0 border-4 border-overdrive-yellow border-t-transparent rounded-full animate-spin"></div>
       </div>
-
-      {/* Loading Text */}
       <p className="text-slate-600 dark:text-slate-400 font-medium tracking-wide animate-pulse">
         Loading module...
       </p>
@@ -134,421 +136,8 @@ const PageLoader = () => (
   </div>
 );
 
-const AnimatedDashboardRoutes = ({ user }) => {
+const LocationBasedRoutes = ({ user }) => {
   const location = useLocation();
-
-  return (
-    <AnimatePresence mode="wait">
-      <Suspense fallback={<PageLoader />}>
-        <Routes location={location} key={location.pathname}>
-          {/* === SHARED === */}
-          <Route
-            path="/profile"
-            element={
-              <PageWrapper>
-                <UserProfilePage />
-              </PageWrapper>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <PageWrapper>
-                <AccountSettingsPage />
-              </PageWrapper>
-            }
-          />
-
-          {/* === SYS ADMIN === */}
-          <Route
-            path="/sysadmin/*"
-            element={
-              <ProtectedRoute allowedRoles={["ADMIN"]}>
-                <Routes>
-                  <Route
-                    path="dashboard/overview"
-                    element={
-                      <PageWrapper>
-                        <AdminOverview />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="management/branches-registry"
-                    element={
-                      <PageWrapper>
-                        <AdminBranches />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="management/users-accounts"
-                    element={
-                      <PageWrapper>
-                        <AdminUsers />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="settings/business-logic"
-                    element={
-                      <PageWrapper>
-                        <AdminBusinessSettings />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="settings/ai-assistant"
-                    element={
-                      <PageWrapper>
-                        <AdminAiAssistant />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="records/audit-trail"
-                    element={
-                      <PageWrapper>
-                        <AdminAuditLogs />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="records/system-health"
-                    element={
-                      <PageWrapper>
-                        <AdminSystemHealth />
-                      </PageWrapper>
-                    }
-                  />
-                </Routes>
-              </ProtectedRoute>
-            }
-          />
-
-          {/* === MANAGER === */}
-          <Route
-            path="/manager/*"
-            element={
-              <ProtectedRoute allowedRoles={["MANAGER"]}>
-                <Routes>
-                  <Route
-                    path="dashboard/overview"
-                    element={
-                      <PageWrapper>
-                        <ManagerOverview />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="approvals/expense-approvals"
-                    element={
-                      <PageWrapper>
-                        <ManagerExpenseApprovals />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="approvals/stock-adjustment"
-                    element={
-                      <PageWrapper>
-                        <ManagerStockAdjustment />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="approvals/rejection-logs"
-                    element={
-                      <PageWrapper>
-                        <ManagerRejectionLogs />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="workshop/services"
-                    element={
-                      <PageWrapper>
-                        <ManagerServices />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="workshop/mechanics"
-                    element={
-                      <PageWrapper>
-                        <ManagerMechanics />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="inventory/stock-overview"
-                    element={
-                      <PageWrapper>
-                        <ManagerStockOverview />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="inventory/stock-value"
-                    element={
-                      <PageWrapper>
-                        <ManagerStockValue />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="inventory/cogs-tracking"
-                    element={
-                      <PageWrapper>
-                        <ManagerCOGSTracking />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="inventory/stock-transfers"
-                    element={
-                      <PageWrapper>
-                        <ManagerStockTransfers />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="accounting/general-ledger"
-                    element={
-                      <PageWrapper>
-                        <ManagerGeneralLedger />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="accounting/chart-of-accounts"
-                    element={
-                      <PageWrapper>
-                        <ManagerChartOfAccounts />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="accounting/journal-entries"
-                    element={
-                      <PageWrapper>
-                        <ManagerJournalEntries />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="accounting/trial-balance"
-                    element={
-                      <PageWrapper>
-                        <ManagerTrialBalance />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="accounting/vat-ledger"
-                    element={
-                      <PageWrapper>
-                        <ManagerVATLedger />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="reports/income-statement"
-                    element={
-                      <PageWrapper>
-                        <ManagerIncomeStatement />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="reports/balance-sheet"
-                    element={
-                      <PageWrapper>
-                        <ManagerBalanceSheet />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="reports/cash-flow-statement"
-                    element={
-                      <PageWrapper>
-                        <ManagerCashFlowStatement />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="reports/revenue-reports"
-                    element={
-                      <PageWrapper>
-                        <ManagerRevenueReports />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="reports/expense-reports"
-                    element={
-                      <PageWrapper>
-                        <ManagerExpenseReports />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="balances/accounts-payable"
-                    element={
-                      <PageWrapper>
-                        <ManagerAccountsPayable />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="balances/accounts-receivable"
-                    element={
-                      <PageWrapper>
-                        <ManagerAccountsReceivable />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="balances/supplier-ledger"
-                    element={
-                      <PageWrapper>
-                        <ManagerSupplierLedger />
-                      </PageWrapper>
-                    }
-                  />
-                </Routes>
-              </ProtectedRoute>
-            }
-          />
-
-          {/* === STAFF === */}
-          <Route
-            path="/staff/*"
-            element={
-              <ProtectedRoute allowedRoles={["STAFF"]}>
-                <Routes>
-                  <Route
-                    path="dashboard/overview"
-                    element={
-                      <PageWrapper>
-                        <StaffOverview />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="sales/estimates"
-                    element={
-                      <PageWrapper>
-                        <StaffEstimates />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="sales/sales-orders"
-                    element={
-                      <PageWrapper>
-                        <StaffSalesOrders />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="sales/invoices"
-                    element={
-                      <PageWrapper>
-                        <StaffInvoices />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="sales/payments-postings"
-                    element={
-                      <PageWrapper>
-                        <StaffPaymentsPostings />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="sales/sales-history"
-                    element={
-                      <PageWrapper>
-                        <StaffSalesHistory />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="expenses/receipt-scanning"
-                    element={
-                      <PageWrapper>
-                        <StaffReceiptScanning />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="expenses/submission-status"
-                    element={
-                      <PageWrapper>
-                        <StaffSubmissionStatus />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="expenses/expense-history"
-                    element={
-                      <PageWrapper>
-                        <StaffExpenseHistory />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="inventory/stock-inventory"
-                    element={
-                      <PageWrapper>
-                        <StaffStockInventory />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="inventory/stock-adjustments"
-                    element={
-                      <PageWrapper>
-                        <StaffStockAdjustments />
-                      </PageWrapper>
-                    }
-                  />
-                  <Route
-                    path="inventory/stock-transfers"
-                    element={
-                      <PageWrapper>
-                        <StaffStockTransfers />
-                      </PageWrapper>
-                    }
-                  />
-                </Routes>
-              </ProtectedRoute>
-            }
-          />
-
-          {/* REDIRECTS INSIDE THE LAYOUT */}
-          <Route
-            path="/sysadmin"
-            element={<Navigate to="/sysadmin/dashboard/overview" replace />}
-          />
-          <Route
-            path="/manager"
-            element={<Navigate to="/manager/dashboard/overview" replace />}
-          />
-          <Route
-            path="/staff"
-            element={<Navigate to="/staff/dashboard/overview" replace />}
-          />
-        </Routes>
-      </Suspense>
-    </AnimatePresence>
-  );
-};
-
-const AppRoutes = () => {
-  const { user } = useAuth();
 
   const getDashboardRoute = (role) => {
     switch (role) {
@@ -563,8 +152,8 @@ const AppRoutes = () => {
   };
 
   return (
-    <Router>
-      <Routes>
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
         <Route
           path="/login"
           element={
@@ -583,20 +172,474 @@ const AppRoutes = () => {
         />
         <Route path="/403" element={<AccessDenied user={user} />} />
 
+        {/* Dedicated standalone 404 Route outside the layout block */}
+        <Route path="/404" element={<NotFound user={user} />} />
+
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* =========================================================
+              THE SECURE PORTAL NETWORKS
+        ========================================================= */}
         <Route
-          path="/*"
           element={
             <ProtectedRoute>
               <DashboardLayout user={user}>
-                <AnimatedDashboardRoutes user={user} />
+                <Suspense fallback={<PageLoader />}>
+                  <Outlet />
+                </Suspense>
               </DashboardLayout>
             </ProtectedRoute>
           }
-        />
+        >
+          {/* SHARED */}
+          <Route
+            path="/profile"
+            element={
+              <PageWrapper>
+                <UserProfilePage />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <PageWrapper>
+                <AccountSettingsPage />
+              </PageWrapper>
+            }
+          />
 
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<NotFound user={user} />} />
+          {/* SYSADMIN */}
+          <Route
+            path="/sysadmin"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <Outlet />
+              </ProtectedRoute>
+            }
+          >
+            <Route
+              index
+              element={<Navigate to="dashboard/overview" replace />}
+            />
+            <Route
+              path="dashboard/overview"
+              element={
+                <PageWrapper>
+                  <AdminOverview />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="management/branches-registry"
+              element={
+                <PageWrapper>
+                  <AdminBranches />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="management/users-accounts"
+              element={
+                <PageWrapper>
+                  <AdminUsers />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="settings/business-logic"
+              element={
+                <PageWrapper>
+                  <AdminBusinessSettings />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="records/audit-trail"
+              element={
+                <PageWrapper>
+                  <AdminAuditLogs />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="records/database-backups"
+              element={
+                <PageWrapper>
+                  <AdminDatabaseBackups />
+                </PageWrapper>
+              }
+            />
+
+            <Route path="*" element={<Navigate to="/404" replace />} />
+          </Route>
+
+          {/* MANAGER */}
+          <Route
+            path="/manager"
+            element={
+              <ProtectedRoute allowedRoles={["MANAGER"]}>
+                <Outlet />
+              </ProtectedRoute>
+            }
+          >
+            <Route
+              index
+              element={<Navigate to="dashboard/overview" replace />}
+            />
+
+            {/* === Dashboard === */}
+            <Route
+              path="dashboard/overview"
+              element={
+                <PageWrapper>
+                  <ManagerOverview />
+                </PageWrapper>
+              }
+            />
+
+            {/* === Services === */}
+            <Route
+              path="services/service-catalog"
+              element={
+                <PageWrapper>
+                  <ManagerServiceCatalog />
+                </PageWrapper>
+              }
+            />
+
+            {/* === Inventory === */}
+            <Route
+              path="inventory/stock-management"
+              element={
+                <PageWrapper>
+                  <ManagerStockManagement />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="inventory/stock-adjustments"
+              element={
+                <PageWrapper>
+                  <ManagerStockAdjustments />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="inventory/stock-transfers"
+              element={
+                <PageWrapper>
+                  <ManagerStockTransfers />
+                </PageWrapper>
+              }
+            />
+
+            {/* === Purchases === */}
+            <Route
+              path="purchases/vendors"
+              element={
+                <PageWrapper>
+                  <ManagerVendors />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="purchases/payments"
+              element={
+                <PageWrapper>
+                  <ManagerPayments />
+                </PageWrapper>
+              }
+            />
+
+            {/* === Approvals === */}
+            <Route
+              path="approvals/expense-approvals"
+              element={
+                <PageWrapper>
+                  <ManagerExpenseApprovals />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="approvals/purchase-order-approvals"
+              element={
+                <PageWrapper>
+                  <ManagerPurchaseOrderApprovals />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="approvals/receipt-approvals"
+              element={
+                <PageWrapper>
+                  <ManagerReceiptApprovals />
+                </PageWrapper>
+              }
+            />
+
+            {/* === Accounting === */}
+            <Route
+              path="accounting/chart-of-accounts"
+              element={
+                <PageWrapper>
+                  <ManagerChartOfAccounts />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="accounting/journal-entries"
+              element={
+                <PageWrapper>
+                  <ManagerJournalEntries />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="accounting/general-ledger"
+              element={
+                <PageWrapper>
+                  <ManagerGeneralLedger />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="accounting/trial-balance"
+              element={
+                <PageWrapper>
+                  <ManagerTrialBalance />
+                </PageWrapper>
+              }
+            />
+
+            {/* === Reports === */}
+            <Route
+              path="reports/income-statement"
+              element={
+                <PageWrapper>
+                  <ManagerIncomeStatement />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="reports/balance-sheet"
+              element={
+                <PageWrapper>
+                  <ManagerBalanceSheet />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="reports/cash-flow-statement"
+              element={
+                <PageWrapper>
+                  <ManagerCashFlowStatement />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="reports/expense-reports"
+              element={
+                <PageWrapper>
+                  <ManagerExpenseReports />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="reports/sales-reports"
+              element={
+                <PageWrapper>
+                  <ManagerSalesReports />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="reports/inventory-reports"
+              element={
+                <PageWrapper>
+                  <ManagerInventoryReports />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="reports/receivables-reports"
+              element={
+                <PageWrapper>
+                  <ManagerReceivablesReports />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="reports/payables-reports"
+              element={
+                <PageWrapper>
+                  <ManagerPayablesReports />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="reports/tax-vat-reports"
+              element={
+                <PageWrapper>
+                  <ManagerTaxVATReports />
+                </PageWrapper>
+              }
+            />
+
+            <Route path="*" element={<Navigate to="/404" replace />} />
+          </Route>
+
+          {/* STAFF */}
+          <Route
+            path="/staff"
+            element={
+              <ProtectedRoute allowedRoles={["STAFF"]}>
+                <Outlet />
+              </ProtectedRoute>
+            }
+          >
+            <Route
+              index
+              element={<Navigate to="dashboard/overview" replace />}
+            />
+
+            {/* === Dashboard === */}
+            <Route
+              path="dashboard/overview"
+              element={
+                <PageWrapper>
+                  <StaffOverview />
+                </PageWrapper>
+              }
+            />
+
+            {/* === Sales === */}
+            <Route
+              path="sales/customers"
+              element={
+                <PageWrapper>
+                  <StaffCustomers />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="sales/estimates"
+              element={
+                <PageWrapper>
+                  <StaffEstimates />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="sales/sales-orders"
+              element={
+                <PageWrapper>
+                  <StaffSalesOrders />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="sales/invoices"
+              element={
+                <PageWrapper>
+                  <StaffInvoices />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="sales/payments"
+              element={
+                <PageWrapper>
+                  <StaffPayments />
+                </PageWrapper>
+              }
+            />
+
+            {/* === Purchases === */}
+            <Route
+              path="purchases/expenses"
+              element={
+                <PageWrapper>
+                  <StaffExpenses />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="purchases/purchase-orders"
+              element={
+                <PageWrapper>
+                  <StaffPurchaseOrders />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="purchases/bills"
+              element={
+                <PageWrapper>
+                  <StaffBills />
+                </PageWrapper>
+              }
+            />
+
+            {/* === Inventory === */}
+            <Route
+              path="inventory/stock-management"
+              element={
+                <PageWrapper>
+                  <StaffStockManagement />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="inventory/stock-adjustments"
+              element={
+                <PageWrapper>
+                  <StaffStockAdjustments />
+                </PageWrapper>
+              }
+            />
+
+            {/* === Receipts === */}
+            <Route
+              path="receipts/receipt-scanner"
+              element={
+                <PageWrapper>
+                  <StaffReceiptScanner />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="receipts/verification/:id"
+              element={
+                <PageWrapper>
+                  <StaffReceiptVerification />
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="receipts/receipt-history"
+              element={
+                <PageWrapper>
+                  <StaffReceiptHistory />
+                </PageWrapper>
+              }
+            />
+
+            <Route path="*" element={<Navigate to="/404" replace />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
+    </AnimatePresence>
+  );
+};
+
+const AppRoutes = () => {
+  const { user } = useAuth();
+  return (
+    <Router>
+      <LocationBasedRoutes user={user} />
     </Router>
   );
 };

@@ -47,42 +47,18 @@ api.interceptors.response.use(
         error.response?.data?.message ||
         "";
 
-      // The Kill-Switch / Version Mismatch Catcher
+      // Clear local storage immediately to ensure absolute logout
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
       if (errorMessage.includes("Session revoked")) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        alert(
-          "SECURITY ALERT: Your session has been revoked by the Administrator. You have been securely logged out.",
-        );
-        window.location.href = "/login";
-      }
-
-      // Deactivated Account Catcher
-      if (errorMessage.includes("Account has been deactivated")) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        alert(
-          "ACCOUNT DISABLED: Your account has been deactivated by an Administrator. You have been securely logged out.",
-        );
-        window.location.href = "/login";
-      }
-
-      // Maintenance Mode Catcher
-      if (errorMessage.includes("MAINTENANCE_MODE")) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        alert(
-          "SYSTEM LOCKED: Your branch is currently under Maintenance Mode. You have been securely logged out.",
-        );
-        window.location.href = "/login";
-      }
-
-      // Archived Branch Catcher
-      if (errorMessage.includes("BRANCH_ARCHIVED")) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        alert("ACCESS DENIED: Your assigned branch has been decommissioned.");
-        window.location.href = "/login";
+        window.location.href = "/login?alert=session_revoked";
+      } else if (errorMessage.includes("Account has been deactivated")) {
+        window.location.href = "/login?alert=account_deactivated";
+      } else if (errorMessage.includes("MAINTENANCE_MODE")) {
+        window.location.href = "/login?alert=maintenance_mode";
+      } else if (errorMessage.includes("BRANCH_ARCHIVED")) {
+        window.location.href = "/login?alert=branch_archived";
       }
     }
 

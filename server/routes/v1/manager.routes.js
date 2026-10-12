@@ -2,186 +2,528 @@ const express = require("express");
 const router = express.Router();
 
 // Controllers
-const CoaController = require("../../controllers/manager/coa.controller");
-const MechanicController = require("../../controllers/manager/mechanic.controller");
 const ServiceController = require("../../controllers/manager/service.controller");
 const InventoryController = require("../../controllers/manager/inventory.controller");
-const VatController = require("../../controllers/manager/vat.controller");
-const ExpenseController = require("../../controllers/manager/expense.controller");
-const SupplierController = require("../../controllers/manager/supplier.controller");
-
 const BranchController = require("../../controllers/sysadmin/branch.controller");
+const StockAdjustmentController = require("../../controllers/manager/stockAdjustment.controller");
+const StockTransferController = require("../../controllers/manager/stockTransfer.controller");
+const POApprovalController = require("../../controllers/manager/poApproval.controller");
+const ExpenseApprovalController = require("../../controllers/manager/expenseApproval.controller");
+const ReceiptApprovalController = require("../../controllers/manager/receiptApproval.controller");
+const ChartOfAccountsController = require("../../controllers/manager/chartOfAccounts.controller");
+const ManagerVendorController = require("../../controllers/manager/vendor.controller");
+const VendorPaymentController = require("../../controllers/manager/vendorPayment.controller");
+const JournalEntryController = require("../../controllers/manager/journalEntry.controller");
+const GeneralLedgerController = require("../../controllers/manager/generalLedger.controller");
+const TrialBalanceController = require("../../controllers/manager/trialBalance.controller");
+const IncomeStatementController = require("../../controllers/manager/incomeStatement.controller");
+const BalanceSheetController = require("../../controllers/manager/balanceSheet.controller");
+const CashFlowStatementController = require("../../controllers/manager/cashFlowStatement.controller");
+const ExpenseReportController = require("../../controllers/manager/expenseReport.controller");
+const SalesReportController = require("../../controllers/manager/salesReport.controller");
+const InventoryReportController = require("../../controllers/manager/inventoryReport.controller");
+const ReceivablesReportController = require("../../controllers/manager/receivablesReport.controller");
+const PayablesReportController = require("../../controllers/manager/payablesReport.controller");
+const TaxVatReportController = require("../../controllers/manager/taxVatReport.controller");
+const ManagerDashboardController = require("../../controllers/manager/dashboard.controller");
+
+// Services
+const SettingsService = require("../../services/sysadmin/settings.service");
 
 // Middlewares
 const validate = require("../../middlewares/validateMiddleware");
+const branchGuard = require("../../middlewares/branchMiddleware");
 const {
   verifyToken,
   requireRole,
 } = require("../../middlewares/authMiddleware");
+const {
+  uploadVendorPaymentProof,
+} = require("../../middlewares/uploadMiddleware");
+
+// Constants
 const { ROLES } = require("../../constants/roles");
 
 // Validations
 const {
-  createCoaSchema,
-  updateCoaSchema,
-} = require("../../validations/manager/coa.schema");
-const {
-  createMechanicSchema,
-  updateMechanicSchema,
-} = require("../../validations/manager/mechanic.schema");
-const {
   createServiceSchema,
   updateServiceSchema,
+  getServicesSchema,
+  toggleServiceStatusSchema,
 } = require("../../validations/manager/service.schema");
 const {
-  createItemSchema,
-  updateItemSchema,
+  createInventoryItemSchema,
+  updateInventoryItemSchema,
+  toggleInventoryStatusSchema,
+  getInventorySchema,
+  adjustStockSchema,
+  getMovementHistorySchema,
 } = require("../../validations/manager/inventory.schema");
 const {
-  getLedgerSchema,
-  closePeriodSchema,
-} = require("../../validations/manager/vat.schema");
+  getAdjustmentsSchema,
+  resolveAdjustmentSchema,
+} = require("../../validations/manager/adjustment.schema");
 const {
+  executeTransferSchema,
+  getTransfersSchema,
+} = require("../../validations/manager/transfer.schema");
+const {
+  getPoApprovalsSchema,
+  approvePoSchema,
+  rejectPoSchema,
+} = require("../../validations/manager/poApproval.schema");
+const {
+  getExpenseApprovalsSchema,
   approveExpenseSchema,
   rejectExpenseSchema,
-} = require("../../validations/manager/expense.schema");
+} = require("../../validations/manager/expenseApproval.schema");
 const {
-  createSupplierSchema,
-  updateSupplierSchema,
-} = require("../../validations/manager/supplier.schema");
+  getReceiptApprovalsSchema,
+  approveReceiptSchema,
+  rejectReceiptSchema,
+} = require("../../validations/manager/receiptApproval.schema");
+const {
+  createAccountSchema,
+  updateAccountSchema,
+  toggleAccountStatusSchema,
+  getAccountsSchema,
+} = require("../../validations/manager/chartOfAccounts.schema");
+const {
+  createVendorSchema,
+  updateVendorSchema,
+  getVendorsSchema,
+} = require("../../validations/manager/vendor.schema");
+const {
+  createVendorPaymentSchema,
+  getVendorPaymentsSchema,
+} = require("../../validations/manager/vendorPayment.schema");
+const {
+  saveJournalEntrySchema,
+  getJournalEntriesSchema,
+} = require("../../validations/manager/journalEntry.schema");
+const {
+  getGeneralLedgerSchema,
+} = require("../../validations/manager/generalLedger.schema");
+const {
+  getTrialBalanceSchema,
+} = require("../../validations/manager/trialBalance.schema");
+const {
+  getIncomeStatementSchema,
+} = require("../../validations/manager/incomeStatement.schema");
+const {
+  getBalanceSheetSchema,
+} = require("../../validations/manager/balanceSheet.schema");
+const {
+  getCashFlowStatementSchema,
+} = require("../../validations/manager/cashFlowStatement.schema");
+const {
+  getExpenseReportSchema,
+} = require("../../validations/manager/expenseReport.schema");
+const {
+  getSalesReportSchema,
+} = require("../../validations/manager/salesReport.schema");
+const {
+  getInventoryReportSchema,
+} = require("../../validations/manager/inventoryReport.schema");
+const {
+  getReceivablesReportSchema,
+  getCustomerReceivableDetailsSchema,
+} = require("../../validations/manager/receivablesReport.schema");
+const {
+  getPayablesReportSchema,
+  getVendorPayableDetailsSchema,
+} = require("../../validations/manager/payablesReport.schema");
+const {
+  getTaxVatReportSchema,
+} = require("../../validations/manager/taxVatReport.schema");
+const {
+  getManagerDashboardSchema,
+} = require("../../validations/manager/dashboard.schema");
 
 // ==========================================
-// GLOBAL SECURITY: Manager & Admin Only
+// GLOBAL SECURITY: Manager & Admin Access
 // ==========================================
 router.use(verifyToken, requireRole(ROLES.MANAGER, ROLES.ADMIN));
+router.use(branchGuard);
 
 // ==========================================
-// UTILITIES
+// MODULE: DASHBOARD OVERVIEW
 // ==========================================
-router.get("/branches", BranchController.getAllBranches);
-
-router.get("/branches/active", BranchController.getActiveBranches);
-
-router.get("/suppliers/active", SupplierController.getActive);
-
-// ==========================================
-// SUB-TAB: CHART OF ACCOUNTS
-// ==========================================
-router.post(
-  "/chart-of-accounts",
-  validate(createCoaSchema),
-  CoaController.createAccount,
-);
-
-router.get("/chart-of-accounts", CoaController.getAccounts);
-
-router.put(
-  "/chart-of-accounts/:id",
-  validate(updateCoaSchema),
-  CoaController.updateAccount,
+router.get(
+  "/dashboard/overview",
+  validate(getManagerDashboardSchema),
+  ManagerDashboardController.getOverview,
 );
 
 // ==========================================
-// SUB-TAB: MECHANICS REGISTRY
-// ==========================================
-router.post(
-  "/mechanics",
-  validate(createMechanicSchema),
-  MechanicController.createMechanic,
-);
-
-router.get("/mechanics", MechanicController.getMechanics);
-
-router.put(
-  "/mechanics/:id",
-  validate(updateMechanicSchema),
-  MechanicController.updateMechanic,
-);
-
-// ==========================================
-// SUB-TAB: SERVICES (LABOR CATALOG)
+// MODULE: SERVICE CATALOG
 // ==========================================
 router.post(
   "/services",
   validate(createServiceSchema),
   ServiceController.createService,
 );
-
-router.get("/services", ServiceController.getServices);
-
+router.get(
+  "/services",
+  validate(getServicesSchema),
+  ServiceController.getServices,
+);
 router.put(
   "/services/:id",
   validate(updateServiceSchema),
   ServiceController.updateService,
 );
+router.patch(
+  "/services/:id/status",
+  validate(toggleServiceStatusSchema),
+  ServiceController.toggleServiceStatus,
+);
+router.get("/services/:id/usage", ServiceController.getServiceUsage);
 
 // ==========================================
-// SUB-TAB: STOCK OVERVIEW (INVENTORY)
+// MODULE: INVENTORY MANAGEMENT
 // ==========================================
-router.get("/inventory/settings/markup", InventoryController.getMarkup);
+router.get("/settings/markup", async (req, res) => {
+  try {
+    const settings = await SettingsService.getBusinessSettings();
+    res.status(200).json({
+      success: true,
+      data: { markup_percentage: settings.markup_percentage },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch markup configuration",
+    });
+  }
+});
+router.get("/branches/active", BranchController.getActiveBranches);
 router.post(
   "/inventory",
-  validate(createItemSchema),
-  InventoryController.createItem,
+  validate(createInventoryItemSchema),
+  InventoryController.createMasterItem,
 );
-router.get("/inventory", InventoryController.getOverview);
+router.get(
+  "/inventory",
+  validate(getInventorySchema),
+  InventoryController.getInventoryCatalog,
+);
 router.put(
   "/inventory/:id",
-  validate(updateItemSchema),
-  InventoryController.updateItem,
+  validate(updateInventoryItemSchema),
+  InventoryController.updateMasterItem,
+);
+router.patch(
+  "/inventory/:id/status",
+  validate(toggleInventoryStatusSchema),
+  InventoryController.toggleItemStatus,
+);
+router.get("/inventory/:id/breakdown", InventoryController.getBranchBreakdown);
+router.get(
+  "/inventory/:id/movements",
+  validate(getMovementHistorySchema),
+  InventoryController.getMovementHistory,
 );
 
-// ==========================================
-// SUB-TAB: SUPPLIER LEDGER
-// ==========================================
-router.post(
-  "/suppliers",
-  validate(createSupplierSchema),
-  SupplierController.create,
-);
-
-router.get("/suppliers/ledger", SupplierController.getLedger);
-
-router.get("/suppliers/:id/timeline", SupplierController.getTimeline);
-
-router.put(
-  "/suppliers/:id",
-  validate(updateSupplierSchema),
-  SupplierController.update,
-);
+router.get("/inventory/movement/:id", InventoryController.getSingleMovement);
 
 // ==========================================
-// SUB-TAB: VAT LEDGER
+// MODULE: STOCK ADJUSTMENTS (APPROVAL WORKFLOW)
 // ==========================================
 router.get(
-  "/vat-ledger",
-  validate(getLedgerSchema),
-  VatController.getDashboard,
+  "/adjustments",
+  validate(getAdjustmentsSchema),
+  StockAdjustmentController.getRequests,
 );
-
-router.post(
-  "/vat-ledger/close-period",
-  validate(closePeriodSchema),
-  VatController.closePeriod,
+router.patch(
+  "/adjustments/:id/approve",
+  validate(resolveAdjustmentSchema),
+  StockAdjustmentController.approveRequest,
+);
+router.patch(
+  "/adjustments/:id/reject",
+  validate(resolveAdjustmentSchema),
+  StockAdjustmentController.rejectRequest,
 );
 
 // ==========================================
-// SUB-TAB: EXPENSE APPROVALS (MAKER-CHECKER) & REJECTIONS
+// MODULE: STOCK TRANSFERS
 // ==========================================
-router.get("/expenses/pending", ExpenseController.getPending);
-
-router.get("/expenses/rejection-logs", ExpenseController.getRejectionLogs);
-
+router.get(
+  "/transfers",
+  validate(getTransfersSchema),
+  StockTransferController.getTransfers,
+);
 router.post(
-  "/expenses/:id/approve",
+  "/transfers",
+  validate(executeTransferSchema),
+  StockTransferController.executeTransfer,
+);
+router.get("/transfers/:id", StockTransferController.getTransferDetails);
+
+// ==========================================
+// MODULE: PURCHASE ORDER APPROVALS
+// ==========================================
+router.get(
+  "/approvals/purchase-orders/pending",
+  validate(getPoApprovalsSchema),
+  POApprovalController.getPendingApprovals,
+);
+router.get(
+  "/approvals/purchase-orders/history",
+  validate(getPoApprovalsSchema),
+  POApprovalController.getApprovalHistory,
+);
+router.get("/approvals/purchase-orders/:id", POApprovalController.getPODetails);
+router.patch(
+  "/approvals/purchase-orders/:id/approve",
+  validate(approvePoSchema),
+  POApprovalController.approvePO,
+);
+router.patch(
+  "/approvals/purchase-orders/:id/reject",
+  validate(rejectPoSchema),
+  POApprovalController.rejectPO,
+);
+
+// ==========================================
+// MODULE: EXPENSE APPROVALS (MANUAL)
+// ==========================================
+router.get(
+  "/approvals/expenses/pending",
+  validate(getExpenseApprovalsSchema),
+  ExpenseApprovalController.getPendingApprovals,
+);
+router.get(
+  "/approvals/expenses/history",
+  validate(getExpenseApprovalsSchema),
+  ExpenseApprovalController.getApprovalHistory,
+);
+router.get(
+  "/approvals/expenses/:id",
+  ExpenseApprovalController.getExpenseDetails,
+);
+router.patch(
+  "/approvals/expenses/:id/approve",
   validate(approveExpenseSchema),
-  ExpenseController.approve,
+  ExpenseApprovalController.approveExpense,
+);
+router.patch(
+  "/approvals/expenses/:id/reject",
+  validate(rejectExpenseSchema),
+  ExpenseApprovalController.rejectExpense,
 );
 
-router.post(
-  "/expenses/:id/reject",
-  validate(rejectExpenseSchema),
-  ExpenseController.reject,
+// ==========================================
+// MODULE: RECEIPT APPROVALS (OCR INGESTION)
+// ==========================================
+router.get(
+  "/approvals/receipts/pending",
+  validate(getReceiptApprovalsSchema),
+  ReceiptApprovalController.getPendingApprovals,
 );
+router.get(
+  "/approvals/receipts/history",
+  validate(getReceiptApprovalsSchema),
+  ReceiptApprovalController.getApprovalHistory,
+);
+router.get(
+  "/approvals/receipts/:id",
+  ReceiptApprovalController.getReceiptDetails,
+);
+router.patch(
+  "/approvals/receipts/:id/approve",
+  validate(approveReceiptSchema),
+  ReceiptApprovalController.approveReceipt,
+);
+router.patch(
+  "/approvals/receipts/:id/reject",
+  validate(rejectReceiptSchema),
+  ReceiptApprovalController.rejectReceipt,
+);
+
+// ==========================================
+// MODULE: ACCOUNTING - CHART OF ACCOUNTS
+// ==========================================
+router.post(
+  "/accounting/accounts",
+  validate(createAccountSchema),
+  ChartOfAccountsController.createAccount,
+);
+router.get(
+  "/accounting/accounts",
+  validate(getAccountsSchema),
+  ChartOfAccountsController.getAccounts,
+);
+router.get(
+  "/accounting/accounts/:id/usage",
+  ChartOfAccountsController.getAccountUsage,
+);
+router.get(
+  "/accounting/accounts/:id",
+  ChartOfAccountsController.getAccountDetails,
+);
+router.put(
+  "/accounting/accounts/:id",
+  validate(updateAccountSchema),
+  ChartOfAccountsController.updateAccount,
+);
+router.patch(
+  "/accounting/accounts/:id/status",
+  validate(toggleAccountStatusSchema),
+  ChartOfAccountsController.toggleStatus,
+);
+
+// ==========================================
+// MODULE: REPORTS - FINANCIAL STATEMENTS
+// ==========================================
+router.get(
+  "/reports/income-statement",
+  validate(getIncomeStatementSchema),
+  IncomeStatementController.getIncomeStatement,
+);
+
+router.get(
+  "/reports/balance-sheet",
+  validate(getBalanceSheetSchema),
+  BalanceSheetController.getBalanceSheet,
+);
+
+router.get(
+  "/reports/cash-flow",
+  validate(getCashFlowStatementSchema),
+  CashFlowStatementController.getCashFlowStatement,
+);
+
+router.get(
+  "/reports/expenses",
+  validate(getExpenseReportSchema),
+  ExpenseReportController.getExpenseReport,
+);
+
+router.get(
+  "/reports/sales",
+  validate(getSalesReportSchema),
+  SalesReportController.getSalesReport,
+);
+
+router.get(
+  "/reports/inventory",
+  validate(getInventoryReportSchema),
+  InventoryReportController.getInventoryReport,
+);
+
+router.get(
+  "/reports/receivables",
+  validate(getReceivablesReportSchema),
+  ReceivablesReportController.getReceivablesReport,
+);
+
+router.get(
+  "/reports/receivables/:customerId/details",
+  validate(getCustomerReceivableDetailsSchema),
+  ReceivablesReportController.getCustomerDetails,
+);
+
+router.get(
+  "/reports/payables",
+  validate(getPayablesReportSchema),
+  PayablesReportController.getPayablesReport,
+);
+
+router.get(
+  "/reports/payables/:vendorId/details",
+  validate(getVendorPayableDetailsSchema),
+  PayablesReportController.getVendorDetails,
+);
+
+router.get(
+  "/reports/tax-vat",
+  validate(getTaxVatReportSchema),
+  TaxVatReportController.getTaxVatReport,
+);
+
+// ==========================================
+// MODULE: ACCOUNTING - JOURNAL ENTRIES
+// ==========================================
+router.post(
+  "/accounting/journal-entries",
+  validate(saveJournalEntrySchema),
+  JournalEntryController.saveEntry,
+);
+router.put(
+  "/accounting/journal-entries/:id",
+  validate(saveJournalEntrySchema),
+  JournalEntryController.saveEntry,
+);
+router.get(
+  "/accounting/journal-entries",
+  validate(getJournalEntriesSchema),
+  JournalEntryController.getEntries,
+);
+router.get(
+  "/accounting/journal-entries/:id",
+  JournalEntryController.getEntryDetails,
+);
+router.delete(
+  "/accounting/journal-entries/:id",
+  JournalEntryController.deleteDraft,
+);
+
+// ==========================================
+// MODULE: ACCOUNTING - GENERAL LEDGER & TRIAL BALANCE
+// ==========================================
+router.get(
+  "/accounting/trial-balance",
+  validate(getTrialBalanceSchema),
+  TrialBalanceController.getTrialBalance,
+);
+
+router.get(
+  "/accounting/general-ledger/:accountId",
+  validate(getGeneralLedgerSchema),
+  GeneralLedgerController.getAccountLedger,
+);
+
+// ==========================================
+// MODULE: PURCHASES - VENDOR MASTER DATA
+// ==========================================
+router.post(
+  "/vendors",
+  validate(createVendorSchema),
+  ManagerVendorController.registerVendor,
+);
+router.get(
+  "/vendors",
+  validate(getVendorsSchema),
+  ManagerVendorController.getVendors,
+);
+router.get("/vendors/:id/ledger", ManagerVendorController.getVendorLedger);
+router.put(
+  "/vendors/:id",
+  validate(updateVendorSchema),
+  ManagerVendorController.updateVendor,
+);
+
+// ==========================================
+// MODULE: PURCHASES - VENDOR PAYMENTS (AP LIQUIDATION)
+// ==========================================
+router.get(
+  "/vendor-payments/eligible-bills/:vendorId",
+  VendorPaymentController.getEligibleBills,
+);
+router.post(
+  "/vendor-payments",
+  uploadVendorPaymentProof.single("proof"),
+  validate(createVendorPaymentSchema),
+  VendorPaymentController.recordPayment,
+);
+router.get(
+  "/vendor-payments",
+  validate(getVendorPaymentsSchema),
+  VendorPaymentController.getPayments,
+);
+router.get("/vendor-payments/:id", VendorPaymentController.getPaymentDetails);
+router.patch("/vendor-payments/:id/void", VendorPaymentController.voidPayment);
 
 module.exports = router;

@@ -4,6 +4,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const path = require("path");
+const fs = require("fs").promises;
 
 // Import Database & Utilities
 const { connectDB, query } = require("./config/db");
@@ -12,18 +13,28 @@ const { STATUS_CODES } = require("./constants/statusCodes");
 
 const app = express();
 
+const allowedOrigin =
+  process.env.NODE_ENV === "development"
+    ? process.env.FRONTEND_URL_DEV || "http://localhost:5173"
+    : process.env.FRONTEND_URL_PROD;
+
 // --- SECURITY & GLOBAL MIDDLEWARE ---
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+
+    xFrameOptions: false,
+
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "frame-ancestors": ["'self'", allowedOrigin],
+        "img-src": ["'self'", "data:", "blob:", allowedOrigin],
+      },
+    },
   }),
 );
 app.set("trust proxy", 1);
-
-const allowedOrigin =
-  process.env.NODE_ENV === "development"
-    ? process.env.FRONTEND_URL_DEV
-    : process.env.FRONTEND_URL_PROD;
 
 //Global Middleware
 app.use(
@@ -82,6 +93,68 @@ app.use((err, req, res, next) => {
     "An unexpected server error occurred.",
     err.message,
   );
+});
+
+// --- AUTOMATED BACKGROUND JOBS ---
+const cron = require("node-cron");
+const BackupService = require("./services/sysadmin/backup.service");
+
+// Runs exactly at Midnight (00:00) server time, every single day
+cron.schedule("0 0 * * *", async () => {
+  console.log("[CRON] Initiating scheduled automated database backup...");
+  try {
+    await BackupService.generateBackup(null, "127.0.0.1", false);
+    console.log("[CRON] Automated database snapshot completed successfully.");
+
+    const deletedCount = await BackupService.cleanOldBackups(7);
+    console.log(
+      `[CRON] Cleanup routine finished. Safely purged ${deletedCount} old backup archives.`,
+    );
+  } catch (err) {
+    console.error("[CRON] Automated backup failed:", err.message);
+  }
+});
+
+cron.schedule("0 2 * * *", async () => {
+  console.log("[CRON] Running Receipt Garbage Collection...");
+  try {
+    const staleScans = await query(
+      `SELECT id, file_path FROM receipt_scans 
+       WHERE status IN ('PROCESSING', 'PENDING_VERIFICATION') 
+       AND created_at < NOW() - INTERVAL '24 hours'`,
+    );
+
+    if (staleScans.rows.length > 0) {
+      for (const scan of staleScans.rows) {
+        try {
+          const cleanPath = scan.file_path.replace(/^\//, "");
+          const absolutePath = path.join(__dirname, cleanPath);
+          await fs.unlink(absolutePath);
+        } catch (err) {
+          if (err.code !== "ENOENT") {
+            console.error(
+              `[CRON] Failed to delete physical file for scan ${scan.id}:`,
+              err.message,
+            );
+          }
+        }
+
+        await query(
+          `UPDATE receipt_scans SET status = 'DISCARDED' WHERE id = $1`,
+          [scan.id],
+        );
+      }
+      console.log(
+        `[CRON] Cleaned up ${staleScans.rows.length} orphaned receipt scans.`,
+      );
+    } else {
+      console.log(
+        "[CRON] No orphaned receipts found. Server storage is clean.",
+      );
+    }
+  } catch (err) {
+    console.error("[CRON] Receipt Garbage Collection failed:", err.message);
+  }
 });
 
 // Start Server

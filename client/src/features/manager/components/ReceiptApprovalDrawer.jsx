@@ -1,0 +1,676 @@
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  X,
+  ScanLine,
+  Calendar,
+  Building2,
+  User,
+  Loader2,
+  Store,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  MessageSquare,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  ImageOff,
+  Calculator,
+  FileText,
+  BadgeCheck,
+  ClipboardList,
+} from "lucide-react";
+import { receiptApprovalService } from "../../../services/manager/receiptApproval.service";
+import StatusBadge from "../../../components/ui/StatusBadge";
+import { useApp } from "../../../context/AppContext";
+import api from "../../../services/api";
+
+const ReceiptApprovalDrawer = ({ isOpen, onClose, receiptId, onSuccess }) => {
+  const { showToast } = useApp();
+  const [receipt, setReceipt] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const [remarks, setRemarks] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState("");
+
+  // Document Viewer States
+  const [imageError, setImageError] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && receiptId) {
+      setLoading(true);
+      setError("");
+      setRemarks("");
+      setValidationError("");
+      setImageError(false);
+      setZoom(1);
+      setRotation(0);
+
+      receiptApprovalService
+        .getReceiptDetails(receiptId)
+        .then((res) => setReceipt(res.data))
+        .catch((err) => setError(err.message))
+        .finally(() => setLoading(false));
+    } else {
+      setReceipt(null);
+    }
+  }, [isOpen, receiptId]);
+
+  const handleDecision = async (decision) => {
+    setValidationError("");
+    if (decision === "REJECTED" && remarks.trim().length < 5) {
+      setValidationError(
+        "Rejection requires a detailed reason (minimum 5 characters).",
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (decision === "APPROVED") {
+        await receiptApprovalService.approveReceipt(receipt.id, remarks);
+        showToast("OCR Receipt Approved successfully.", "success");
+      } else {
+        await receiptApprovalService.rejectReceipt(receipt.id, remarks);
+        showToast("OCR Receipt Rejected.", "success");
+      }
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      setValidationError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getBadgeVariant = (status) => {
+    if (status === "APPROVED") return "success";
+    if (status === "REJECTED") return "danger";
+    if (status === "PENDING_APPROVAL") return "warning";
+    return "default";
+  };
+
+  const getConfidenceVariant = (score) => {
+    const num = parseFloat(score || 0);
+    if (num >= 85) return "success";
+    if (num >= 60) return "warning";
+    return "danger";
+  };
+
+  const getConfidenceBannerClasses = (score) => {
+    const num = parseFloat(score || 0);
+    if (num >= 85)
+      return "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
+    if (num >= 60)
+      return "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
+    return "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
+  };
+
+  const getBaseUrl = () => {
+    if (api.defaults.baseURL) {
+      return api.defaults.baseURL.replace("/api/v1", "");
+    }
+    return import.meta.env.VITE_API_URL
+      ? import.meta.env.VITE_API_URL.replace("/api/v1", "")
+      : "http://localhost:5000";
+  };
+
+  const isPdf = receipt?.file_path?.toLowerCase().endsWith(".pdf");
+  const fileUrl = receipt?.file_path
+    ? `${getBaseUrl()}${receipt.file_path}`
+    : "";
+
+  const staffNotes = receipt?.notes
+    ? receipt.notes.split("\n\n[Manager")[0].trim()
+    : "";
+  const managerNotes =
+    receipt?.status === "REJECTED"
+      ? receipt.rejection_remarks
+      : receipt?.notes?.includes("[Manager Approval Notes]:")
+        ? receipt.notes.split("[Manager Approval Notes]:")[1]?.trim()
+        : "";
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer z-40"
+            aria-hidden="true"
+          />
+
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{
+              type: "spring",
+              damping: 30,
+              stiffness: 300,
+              mass: 0.8,
+            }}
+            className="relative w-full lg:w-[900px] xl:w-[1100px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Header */}
+            <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
+                  <ScanLine size={24} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
+                    {receipt?.expense_number || "Loading..."}
+                  </h2>
+                  {receipt && (
+                    <div className="flex flex-col items-start gap-1.5 mt-1.5">
+                      <div className="flex items-center gap-2">
+                        <StatusBadge
+                          label={receipt.status.replace("_", " ")}
+                          variant={getBadgeVariant(receipt.status)}
+                        />
+                        <StatusBadge
+                          label={`AI Accuracy: ${receipt.confidence_score}%`}
+                          variant={getConfidenceVariant(
+                            receipt.confidence_score,
+                          )}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-0.5 mt-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <BadgeCheck size={12} className="text-amber-500" />
+                          Drafted by:{" "}
+                          <span className="text-slate-600 dark:text-slate-300">
+                            {receipt.created_by_name || "System"}
+                          </span>
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <Calendar size={12} className="text-slate-400" />
+                          Submitted:{" "}
+                          <span className="text-slate-600 dark:text-slate-300">
+                            {new Date(receipt.created_at).toLocaleString()}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
+                aria-label="Close panel"
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            {/* Content Body: Split Workspace */}
+            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row bg-slate-50/50 dark:bg-transparent">
+              {loading && (
+                <div className="w-full h-full flex flex-col items-center justify-center py-20 text-slate-400">
+                  <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">
+                    Retrieving OCR Session & Source Image...
+                  </p>
+                </div>
+              )}
+
+              {error && (
+                <div className="w-full p-8 flex items-center justify-center">
+                  <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-200">
+                    {error}
+                  </div>
+                </div>
+              )}
+
+              {receipt && !loading && (
+                <>
+                  {/* LEFT PANE: Source Document View */}
+                  <div className="w-full lg:w-1/2 h-[350px] lg:h-full bg-slate-100 dark:bg-[#0B1120] relative flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800">
+                    {/* Viewer Toolbar */}
+                    <div className="p-3 bg-white/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                        <FileText size={14} className="text-amber-500" /> Raw
+                        Scan File
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setZoom((z) => Math.max(0.5, z - 0.25))
+                          }
+                          disabled={isPdf}
+                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Zoom Out"
+                        >
+                          <ZoomOut size={14} />
+                        </button>
+                        <span className="text-[9px] font-black w-8 text-center text-slate-700 dark:text-slate-300">
+                          {Math.round(zoom * 100)}%
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
+                          disabled={isPdf}
+                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Zoom In"
+                        >
+                          <ZoomIn size={14} />
+                        </button>
+                        <div className="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1" />
+                        <button
+                          type="button"
+                          onClick={() => setRotation((r) => r + 90)}
+                          disabled={isPdf}
+                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Rotate"
+                        >
+                          <RotateCw size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Image Preview Canvas */}
+                    <div
+                      className={`flex-1 overflow-auto custom-scrollbar flex items-center justify-center p-4 ${
+                        isDesktop && !isPdf ? "cursor-move" : "cursor-auto"
+                      }`}
+                    >
+                      {isPdf ? (
+                        <div className="w-full h-full relative group bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden">
+                          <iframe
+                            src={fileUrl}
+                            className="w-full h-full rounded-xl shadow-md bg-white"
+                            title="PDF Receipt Scan"
+                          />
+                          <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <a
+                              href={fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl hover:bg-amber-500 transition-colors"
+                            >
+                              <FileText size={14} />
+                              Open PDF in New Tab
+                            </a>
+                          </div>
+                        </div>
+                      ) : imageError ? (
+                        <div className="flex flex-col items-center justify-center text-slate-400 p-8 text-center">
+                          <ImageOff size={36} className="opacity-40 mb-2" />
+                          <p className="text-[10px] font-black uppercase tracking-widest">
+                            Physical File Unavailable
+                          </p>
+                        </div>
+                      ) : (
+                        <motion.img
+                          drag={isDesktop && !isPdf}
+                          dragConstraints={{
+                            left: -500,
+                            right: 500,
+                            top: -500,
+                            bottom: 500,
+                          }}
+                          animate={{ scale: zoom, rotate: rotation }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 30,
+                          }}
+                          src={fileUrl}
+                          alt="Physical Receipt Scan"
+                          onError={() => setImageError(true)}
+                          className="max-w-full max-h-full object-contain rounded-xl shadow-lg"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* RIGHT PANE: Extracted Data & Approval Workspace */}
+                  <div className="w-full lg:w-1/2 flex flex-col h-full bg-slate-50 dark:bg-slate-900">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8">
+                      {validationError && (
+                        <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-xs font-bold">
+                          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                          <span>{validationError}</span>
+                        </div>
+                      )}
+
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                          <h2 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
+                            <CheckCircle2 size={16} className="text-blue-500" />{" "}
+                            Data Validation
+                          </h2>
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                            Review AI outputs and accounting categories.
+                          </p>
+                        </div>
+
+                        {/* Premium Confidence Banner */}
+                        <div
+                          className={`px-5 py-2.5 rounded-[16px] border flex items-center gap-4 shadow-sm transition-all ${getConfidenceBannerClasses(
+                            receipt.confidence_score,
+                          )}`}
+                        >
+                          <div>
+                            <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-0.5">
+                              AI Confidence
+                            </p>
+                            <p className="text-base font-black tracking-tight leading-none">
+                              {receipt.confidence_score}%
+                            </p>
+                          </div>
+                          {parseFloat(receipt.confidence_score) < 60 && (
+                            <div className="flex items-center gap-1.5 text-[9px] font-black uppercase bg-rose-500/10 px-2 py-1.5 rounded-lg border border-rose-500/20">
+                              <AlertCircle size={14} /> Low Accuracy
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Vendor & General Info Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                        <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                          <Store size={16} className="text-slate-400 mb-3" />
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                              Category & Vendor
+                            </p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate uppercase">
+                              {receipt.category}
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
+                              {receipt.vendor_name ||
+                                receipt.vendor_name_db ||
+                                "Unregistered Vendor"}
+                            </p>
+                          </div>
+                        </section>
+                        <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 rounded-[20px] sm:rounded-[24px] border border-amber-100 dark:border-amber-500/20 shadow-sm flex flex-col justify-between">
+                          <Calendar size={16} className="text-amber-400 mb-3" />
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-1">
+                              Expense Date
+                            </p>
+                            <p className="text-sm font-bold text-amber-900 dark:text-amber-400 truncate">
+                              {new Date(
+                                receipt.expense_date,
+                              ).toLocaleDateString()}
+                            </p>
+                            <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70 flex items-center gap-1 font-medium truncate mt-0.5">
+                              <Building2 size={10} /> {receipt.branch_name}
+                            </p>
+                          </div>
+                        </section>
+                      </div>
+
+                      {/* Operational Details */}
+                      <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Transaction Details
+                          </h3>
+                        </div>
+                        <div className="p-5 sm:p-6 space-y-4">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-500 font-medium">
+                              Payment Method
+                            </span>
+                            <span className="font-black text-slate-900 dark:text-white uppercase">
+                              {receipt.payment_method.replace("_", " ")}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs border-t border-slate-100 dark:border-slate-700/50 pt-3">
+                            <span className="text-slate-500 font-medium">
+                              Reference No.
+                            </span>
+                            <span className="font-black text-slate-900 dark:text-white">
+                              {receipt.reference_number || "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Line Items Breakdown */}
+                      <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                            <Calculator size={14} /> Verified Line Items
+                          </h3>
+                        </div>
+                        <div className="p-5 sm:p-6 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                          {Array.isArray(receipt.line_items) &&
+                          receipt.line_items.length > 0 ? (
+                            receipt.line_items.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between items-center text-xs p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800"
+                              >
+                                <div className="min-w-0 flex-1 pr-3">
+                                  <p className="font-bold text-slate-900 dark:text-white uppercase truncate">
+                                    {item.description}
+                                  </p>
+                                  <p className="text-[9px] font-bold text-slate-500 mt-0.5">
+                                    {item.quantity}x @ ₱
+                                    {parseFloat(
+                                      item.unit_price || 0,
+                                    ).toLocaleString(undefined, {
+                                      minimumFractionDigits: 2,
+                                    })}
+                                  </p>
+                                </div>
+                                <span className="font-black font-mono text-slate-900 dark:text-white shrink-0">
+                                  ₱
+                                  {parseFloat(
+                                    item.total_price || 0,
+                                  ).toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center text-xs text-slate-400 italic">
+                              No individual line items parsed.
+                            </div>
+                          )}
+                        </div>
+                      </section>
+
+                      {/* Financial Posting Summary */}
+                      <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
+                        <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3 flex items-center gap-1.5">
+                          <Calculator size={14} /> Financial Statement Impact
+                        </p>
+                        <div className="space-y-3 mb-5 text-sm font-medium text-slate-400">
+                          <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                            <span>Net Subtotal</span>
+                            <span className="font-bold text-slate-200 font-mono">
+                              ₱
+                              {parseFloat(receipt.subtotal || 0).toLocaleString(
+                                undefined,
+                                {
+                                  minimumFractionDigits: 2,
+                                },
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                            <span>
+                              Input VAT{" "}
+                              {receipt.is_vatable ? "(Inclusive)" : "(Exempt)"}
+                            </span>
+                            <span className="font-bold text-slate-200 font-mono">
+                              ₱
+                              {parseFloat(
+                                receipt.vat_amount || 0,
+                              ).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/50">
+                          <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
+                            Grand Total
+                          </span>
+                          <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight font-mono">
+                            ₱
+                            {parseFloat(
+                              receipt.total_amount || 0,
+                            ).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+                      </section>
+
+                      {/* Staff Notes */}
+                      {staffNotes && (
+                        <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                            <ClipboardList
+                              size={14}
+                              className="text-amber-500"
+                            />{" "}
+                            Staff Justification
+                          </p>
+                          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">
+                            "{staffNotes}"
+                          </p>
+                        </section>
+                      )}
+
+                      {/* Manager Resolution / Remarks Area */}
+                      {receipt.status === "PENDING_APPROVAL" ? (
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 flex flex-col">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-3">
+                            <MessageSquare size={14} /> Manager Remarks
+                            <span className="text-red-500 ml-1 lowercase">
+                              (Required for Rejection)
+                            </span>
+                          </label>
+                          <textarea
+                            value={remarks}
+                            onChange={(e) => setRemarks(e.target.value)}
+                            placeholder="Provide feedback or justification..."
+                            rows="4"
+                            disabled={isSubmitting}
+                            className="w-full h-full min-h-[100px] px-5 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none disabled:opacity-50 shadow-sm transition-all"
+                          />
+                        </div>
+                      ) : (
+                        <section
+                          className={`p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm ${
+                            receipt.status === "APPROVED"
+                              ? "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20"
+                              : "bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/20"
+                          }`}
+                        >
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                            <CheckCircle2
+                              size={14}
+                              className={
+                                receipt.status === "APPROVED"
+                                  ? "text-emerald-500"
+                                  : "text-rose-500"
+                              }
+                            />{" "}
+                            Manager Resolution
+                          </p>
+                          <div>
+                            <p
+                              className={`text-xs font-black uppercase tracking-widest mb-1.5 ${
+                                receipt.status === "APPROVED"
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-rose-600 dark:text-rose-400"
+                              }`}
+                            >
+                              {receipt.status.replace("_", " ")} BY{" "}
+                              {receipt.resolved_by_name ||
+                                receipt.created_by_name}
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-500 mb-4 uppercase tracking-widest">
+                              On{" "}
+                              {new Date(
+                                receipt.resolved_at || receipt.updated_at,
+                              ).toLocaleString()}
+                            </p>
+                            <div className="text-xs text-slate-700 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-4 rounded-[16px] border border-slate-100 dark:border-slate-800 shadow-sm leading-relaxed">
+                              "
+                              {managerNotes ||
+                                "No additional remarks provided."}
+                              "
+                            </div>
+                          </div>
+                        </section>
+                      )}
+                    </div>
+
+                    {/* FIXED ACTION FOOTER (Only for Pending) */}
+                    {receipt.status === "PENDING_APPROVAL" && (
+                      <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800/30 shrink-0">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleDecision("REJECTED")}
+                            disabled={isSubmitting}
+                            className="flex-1 py-3.5 sm:py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-500 hover:text-red-500 text-slate-600 dark:text-slate-300 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+                          >
+                            {isSubmitting ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <XCircle size={16} />
+                            )}
+                            Reject Request
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDecision("APPROVED")}
+                            disabled={isSubmitting}
+                            className="flex-[1.5] py-3.5 sm:py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                          >
+                            {isSubmitting ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <CheckCircle2 size={16} />
+                            )}
+                            Approve Receipt & Post
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+export default ReceiptApprovalDrawer;

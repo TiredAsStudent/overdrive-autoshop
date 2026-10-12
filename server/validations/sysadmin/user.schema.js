@@ -1,6 +1,22 @@
 const { z } = require("zod");
 const { ROLES } = require("../../constants/roles");
 
+const getRosterSchema = z.object({
+  query: z
+    .object({
+      page: z
+        .string()
+        .regex(/^\d+$/, "Page must be a valid positive number")
+        .optional(),
+      limit: z
+        .string()
+        .regex(/^\d+$/, "Limit must be a valid positive number")
+        .optional(),
+      search: z.string().optional(),
+    })
+    .optional(),
+});
+
 const inviteUserSchema = z.object({
   body: z
     .object({
@@ -52,4 +68,4 @@ const updateUserSchema = z.object({
     ),
 });
 
-module.exports = { inviteUserSchema, updateUserSchema };
+module.exports = { getRosterSchema, inviteUserSchema, updateUserSchema };

@@ -1,0 +1,261 @@
+const { query, pool } = require("../config/db");
+
+class Payment {
+  static async generatePaymentCode() {
+    const date = new Date();
+    const yearMonth = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const prefix = `PAY-${yearMonth}-`;
+
+    const sql = `SELECT payment_number FROM payments WHERE payment_number LIKE $1 ORDER BY id DESC LIMIT 1`;
+    const result = await query(sql, [`${prefix}%`]);
+
+    let sequence = 1;
+    if (result.rows[0]) {
+      const lastSequence = parseInt(
+        result.rows[0].payment_number.split("-")[2],
+        10,
+      );
+      sequence = lastSequence + 1;
+    }
+
+    return `${prefix}${String(sequence).padStart(4, "0")}`;
+  }
+
+  // ATOMIC CASH COLLECTION & ASSET LIQUIDATION ENGINE
+  static async recordPaymentTransaction(paymentData, userId) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const lockSql = `SELECT grand_total, amount_paid, branch_id FROM invoices WHERE id = $1 FOR UPDATE`;
+      const lockRes = await client.query(lockSql, [paymentData.invoice_id]);
+
+      if (lockRes.rows.length === 0) {
+        throw new Error("Invoice record not found.");
+      }
+
+      const invoice = lockRes.rows[0];
+      const outstandingBalance =
+        parseFloat(invoice.grand_total) - parseFloat(invoice.amount_paid);
+
+      // VR-04 & BR-05: Prevent Overpayment
+      if (outstandingBalance <= 0) {
+        throw new Error("This invoice has already been fully paid.");
+      }
+
+      const paymentAmount = parseFloat(paymentData.amount_received);
+      if (paymentAmount > outstandingBalance) {
+        throw new Error(
+          `Payment rejected. The amount (₱${paymentAmount}) exceeds the remaining balance (₱${outstandingBalance}).`,
+        );
+      }
+
+      paymentData.payment_number = await this.generatePaymentCode();
+      const targetDate =
+        paymentData.payment_date || new Date().toISOString().split("T")[0];
+
+      const insertSql = `
+        INSERT INTO payments (
+          payment_number, invoice_id, branch_id, amount_received, 
+          payment_method, reference_number, notes, created_by, payment_date, proof_of_payment_url
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *
+      `;
+      const insertValues = [
+        paymentData.payment_number,
+        paymentData.invoice_id,
+        invoice.branch_id,
+        paymentAmount,
+        paymentData.payment_method,
+        paymentData.reference_number,
+        paymentData.notes,
+        userId,
+        targetDate,
+        paymentData.proof_of_payment_url || null,
+      ];
+      const insertRes = await client.query(insertSql, insertValues);
+      const newPayment = insertRes.rows[0];
+
+      const updateInvoiceSql = `
+        UPDATE invoices 
+        SET 
+          amount_paid = amount_paid + $1,
+          status = CASE 
+                     WHEN (amount_paid + $1) >= grand_total THEN 'PAID'::invoice_payment_status_enum
+                     ELSE 'PARTIALLY_PAID'::invoice_payment_status_enum
+                   END,
+          updated_at = NOW()
+        WHERE id = $2
+        RETURNING status, amount_paid, grand_total
+      `;
+      const updateRes = await client.query(updateInvoiceSql, [
+        paymentAmount,
+        paymentData.invoice_id,
+      ]);
+      const updatedInvoice = updateRes.rows[0];
+
+      await client.query("COMMIT");
+
+      return { payment: newPayment, updatedInvoice };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async voidPaymentTransaction(paymentId) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // 1. Lock Payment
+      const paySql = `SELECT * FROM payments WHERE id = $1 FOR UPDATE`;
+      const payRes = await client.query(paySql, [paymentId]);
+      const payment = payRes.rows[0];
+
+      if (!payment) throw new Error("Payment not found.");
+      if (payment.status === "VOID")
+        throw new Error("This payment is already voided.");
+
+      // 2. Lock Parent Invoice
+      const invSql = `SELECT id, grand_total, amount_paid FROM invoices WHERE id = $1 FOR UPDATE`;
+      await client.query(invSql, [payment.invoice_id]);
+
+      // 3. Mark Payment as VOID
+      const updatePaySql = `UPDATE payments SET status = 'VOID' WHERE id = $1 RETURNING *`;
+      const updatedPay = await client.query(updatePaySql, [paymentId]);
+
+      const updateInvSql = `
+        UPDATE invoices
+        SET amount_paid = amount_paid - $1,
+            status = CASE
+                       WHEN (amount_paid - $1) <= 0 THEN 'UNPAID'::invoice_payment_status_enum
+                       WHEN (amount_paid - $1) >= grand_total THEN 'PAID'::invoice_payment_status_enum
+                       ELSE 'PARTIALLY_PAID'::invoice_payment_status_enum
+                     END,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING status, amount_paid, grand_total
+      `;
+      const updatedInv = await client.query(updateInvSql, [
+        payment.amount_received,
+        payment.invoice_id,
+      ]);
+
+      await client.query("COMMIT");
+      return {
+        voidedPayment: updatedPay.rows[0],
+        updatedInvoice: updatedInv.rows[0],
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async findById(id) {
+    const sql = `
+      SELECT p.*, TO_CHAR(p.payment_date, 'YYYY-MM-DD') as payment_date, 
+             i.invoice_number, i.grand_total as invoice_total, i.amount_paid as invoice_amount_paid,
+             c.full_name as customer_name, c.contact_number, c.email, c.address as customer_address, c.customer_code,
+             b.branch_name, b.address as branch_address, b.branch_code,
+             u.first_name as created_by_name, u.last_name as created_by_last_name, u.role as created_by_role
+      FROM payments p
+      JOIN invoices i ON p.invoice_id = i.id
+      JOIN customers c ON i.customer_id = c.id
+      JOIN branches b ON p.branch_id = b.id
+      LEFT JOIN users u ON p.created_by = u.id
+      WHERE p.id = $1
+    `;
+    const result = await query(sql, [id]);
+    return result.rows[0];
+  }
+
+  static async countFiltered(search, method, branchId) {
+    let sql = `
+      SELECT COUNT(DISTINCT p.id) 
+      FROM payments p 
+      JOIN invoices i ON p.invoice_id = i.id 
+      JOIN customers c ON i.customer_id = c.id
+    `;
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      conditions.push(
+        `(p.payment_number ILIKE $${paramIdx} OR i.invoice_number ILIKE $${paramIdx} OR c.full_name ILIKE $${paramIdx} OR p.reference_number ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (method && method !== "all") {
+      conditions.push(`p.payment_method = $${paramIdx}`);
+      values.push(method.toUpperCase());
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      conditions.push(`p.branch_id = $${paramIdx}`);
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedFiltered(limit, offset, search, method, branchId) {
+    const sqlParts = [];
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    sqlParts.push(`
+      SELECT p.id, p.payment_number, p.amount_received, p.payment_method, 
+             TO_CHAR(p.payment_date, 'YYYY-MM-DD') as payment_date, 
+             p.created_at, p.reference_number, p.status, p.proof_of_payment_url,
+             i.invoice_number, i.status as current_invoice_status, c.full_name as customer_name, b.branch_name
+      FROM payments p
+      JOIN invoices i ON p.invoice_id = i.id
+      JOIN customers c ON i.customer_id = c.id
+      JOIN branches b ON p.branch_id = b.id
+    `);
+
+    if (search) {
+      conditions.push(
+        `(p.payment_number ILIKE $${paramIdx} OR i.invoice_number ILIKE $${paramIdx} OR c.full_name ILIKE $${paramIdx} OR p.reference_number ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (method && method !== "all") {
+      conditions.push(`p.payment_method = $${paramIdx}`);
+      values.push(method.toUpperCase());
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      conditions.push(`p.branch_id = $${paramIdx}`);
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    if (conditions.length > 0) {
+      sqlParts.push(` WHERE ` + conditions.join(" AND "));
+    }
+
+    sqlParts.push(
+      ` ORDER BY p.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+    );
+    values.push(limit, offset);
+
+    const result = await query(sqlParts.join(""), values);
+    return result.rows;
+  }
+}
+
+module.exports = Payment;

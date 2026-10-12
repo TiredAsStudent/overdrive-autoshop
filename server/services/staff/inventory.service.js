@@ -1,0 +1,98 @@
+const InventoryModel = require("../../models/Inventory");
+const BranchModel = require("../../models/Branch");
+
+class StaffInventoryService {
+  /**
+   * Retrieves paginated, strictly branch-isolated inventory.
+   */
+  static async getBranchInventory(
+    branchId,
+    page = 1,
+    limit = 10,
+    search = "",
+    category = "all",
+    stockStatus = "all",
+  ) {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, items] = await Promise.all([
+      InventoryModel.countBranchFilteredItems(
+        search,
+        category,
+        branchId,
+        stockStatus,
+      ),
+      InventoryModel.findBranchPaginatedItems(
+        limit,
+        offset,
+        search,
+        category,
+        branchId,
+        stockStatus,
+      ),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      items,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
+  }
+
+  /**
+   * Retrieves specific item details safely scoped to the Staff's branch.
+   */
+  static async getItemDetails(itemId, branchId) {
+    const item = await InventoryModel.findById(itemId);
+    if (!item) throw new Error("Inventory item not found.");
+    if (!item.is_active)
+      throw new Error("This inventory item is currently archived.");
+
+    // Extract branch stock specific to the authenticated user's branch
+    const breakdowns = await InventoryModel.getBranchBreakdown(itemId);
+    const branchStock = breakdowns.find((b) => b.branch_id === branchId);
+
+    if (!branchStock)
+      throw new Error("Item is not configured for this branch.");
+
+    return {
+      ...item,
+      branch_stock: branchStock,
+    };
+  }
+
+  /**
+   * Retrieves paginated movement history, strictly filtering out transactions from other branches.
+   */
+  static async getItemMovementHistory(itemId, branchId, page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, historyRecords] = await Promise.all([
+      InventoryModel.countBranchMovementHistory(itemId, branchId),
+      InventoryModel.getBranchPaginatedMovementHistory(
+        itemId,
+        branchId,
+        limit,
+        offset,
+      ),
+    ]);
+
+    return {
+      history: historyRecords,
+      pagination: {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
+  }
+}
+
+module.exports = StaffInventoryService;

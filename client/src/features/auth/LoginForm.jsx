@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Eye, EyeOff, AlertCircle, Chrome } from "lucide-react";
+import { Eye, EyeOff, Chrome } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Buttons";
 import { useAuth } from "../../context/AuthContext";
+import { useApp } from "../../context/AppContext";
 
 const ROLE_REDIRECTS = {
   ADMIN: "/sysadmin/dashboard/overview",
@@ -12,26 +13,17 @@ const ROLE_REDIRECTS = {
 };
 
 const LoginForm = () => {
-  const [credentials, setCredentials] = useState({
-    email: "",
-    password: "",
-  });
+  const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const { login } = useAuth();
+  const { showToast } = useApp();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { id, value } = e.target;
-
-    setCredentials((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
-
-    if (error) setError("");
+    setCredentials((prev) => ({ ...prev, [id]: value }));
   };
 
   const validateInputs = () => {
@@ -39,14 +31,10 @@ const LoginForm = () => {
     const cleanPassword = credentials.password.trim();
 
     if (!cleanEmail || !cleanPassword) {
-      setError("Please enter your email and password.");
+      showToast("Please enter your email and password.", "warning");
       return false;
     }
-
-    return {
-      email: cleanEmail,
-      password: cleanPassword,
-    };
+    return { email: cleanEmail, password: cleanPassword };
   };
 
   const handleSubmit = async (e) => {
@@ -57,20 +45,20 @@ const LoginForm = () => {
     if (!validated) return;
 
     setLoading(true);
-    setError("");
 
     try {
       const loggedInUser = await login(validated.email, validated.password);
-
       const redirectPath = ROLE_REDIRECTS[loggedInUser.role];
 
-      if (!redirectPath) {
-        throw new Error("Unauthorized portal access.");
-      }
+      if (!redirectPath) throw new Error("Unauthorized portal access.");
 
+      showToast("Access granted. Welcome back!", "success");
       navigate(redirectPath);
     } catch (err) {
-      setError(err.message || "Access denied. Please verify your credentials.");
+      showToast(
+        err.message || "Access denied. Please verify your credentials.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
@@ -78,13 +66,6 @@ const LoginForm = () => {
 
   return (
     <div className="w-full space-y-6">
-      {error && (
-        <div className="flex items-center gap-3 p-4 text-xs font-black uppercase tracking-wide text-red-700 bg-red-50 border-l-4 border-red-600 rounded-r-xl animate-in fade-in slide-in-from-top-2 duration-300">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-4">
           <Input
@@ -113,7 +94,6 @@ const LoginForm = () => {
               autoComplete="current-password"
               className="text-slate-900 font-bold h-14 pr-12"
             />
-
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
@@ -134,7 +114,7 @@ const LoginForm = () => {
           </Link>
         </div>
 
-        <div className="space-y-3 pt-2">
+        <div className="space-y-4 pt-2">
           <Button
             type="submit"
             loading={loading}
@@ -143,13 +123,6 @@ const LoginForm = () => {
           >
             {loading ? "VERIFYING..." : "SIGN IN"}
           </Button>
-
-          <button
-            type="button"
-            className="w-full h-14 border-2 border-slate-200 rounded-2xl flex items-center justify-center gap-3 text-xs font-black text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest"
-          >
-            <Chrome size={18} /> Continue with Google
-          </button>
         </div>
       </form>
     </div>

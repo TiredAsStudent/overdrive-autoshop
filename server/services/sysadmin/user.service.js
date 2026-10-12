@@ -54,8 +54,25 @@ class UserService {
     };
   }
 
-  static async getLiveRoster() {
-    return await User.getAllUsers();
+  static async getLiveRoster(page = 1, limit = 5, search = "") {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, users] = await Promise.all([
+      User.countFilteredRoster(search),
+      User.findPaginatedRoster(limit, offset, search),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      users,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
   }
 
   static async updateEmployeeProfile(
@@ -67,7 +84,7 @@ class UserService {
     // Self-Preservation Check: Admin cannot demote or deactivate themselves
     if (
       adminUser.id === targetUserId &&
-      (updates.isActive === false || updates.role !== "ADMIN")
+      (updates.isActive === false || (updates.role && updates.role !== "ADMIN"))
     ) {
       throw new Error(
         "Security Violation: You cannot deactivate or demote your own active Administrator session.",
@@ -76,6 +93,18 @@ class UserService {
 
     const oldUser = await User.findUserById(targetUserId);
     if (!oldUser) throw new Error("User not found.");
+
+    if (updates.email && updates.email !== oldUser.email) {
+      const emailCollision = await User.checkEmailExists(
+        updates.email,
+        targetUserId,
+      );
+      if (emailCollision) {
+        throw new Error(
+          `The email address '${updates.email}' is already tied to another account.`,
+        );
+      }
+    }
 
     const sanitizedUpdates = {
       branch_id: updates.branchId !== undefined ? updates.branchId : undefined,
@@ -92,14 +121,21 @@ class UserService {
     let actionStr = "UPDATED_USER_PROFILE";
     let severity = "INFO";
 
+    const roleChanged = updatedUser.role !== oldUser.role;
+    const branchChanged = updatedUser.branch_id !== oldUser.branch_id;
+
     if (updates.isActive === false) {
       actionStr = "DEACTIVATED_USER_ACCOUNT";
       severity = "CRITICAL";
       // Auto-trigger the Session Kill Switch if deactivated
       await User.incrementTokenVersion(targetUserId);
-    } else if (updates.branchId !== oldUser.branch_id) {
-      actionStr = "BRANCH_TRANSFER_EXECUTED";
+    } else if (roleChanged || branchChanged) {
+      if (branchChanged) actionStr = "BRANCH_TRANSFER_EXECUTED";
+      if (roleChanged) actionStr = "USER_ROLE_UPDATED";
+      if (branchChanged && roleChanged) actionStr = "ROLE_AND_BRANCH_UPDATED";
       severity = "WARNING";
+
+      await User.incrementTokenVersion(targetUserId);
     }
 
     await logSecureAction(
@@ -114,11 +150,13 @@ class UserService {
         branch_id: oldUser.branch_id,
         is_active: oldUser.is_active,
         role: oldUser.role,
+        email: oldUser.email,
       },
       {
         branch_id: updatedUser.branch_id,
         is_active: updatedUser.is_active,
         role: updatedUser.role,
+        email: updatedUser.email,
       },
     );
   }

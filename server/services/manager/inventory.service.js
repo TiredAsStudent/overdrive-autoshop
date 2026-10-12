@@ -1,27 +1,93 @@
-const Inventory = require("../../models/Inventory");
-const Branch = require("../../models/Branch");
+const { pool } = require("../../config/db");
+const InventoryModel = require("../../models/Inventory");
+const COAModel = require("../../models/ChartOfAccounts");
 const { logSecureAction } = require("../../utils/auditLogger");
 
 class InventoryService {
-  static async getSystemMarkup() {
-    return await Inventory.getSystemMarkup();
-  }
+  static async createMasterItem(data, userId, ipAddress) {
+    const existing = await InventoryModel.checkSkuExists(data.sku);
+    if (existing) {
+      throw new Error(
+        `The SKU '${data.sku}' is already registered in the system.`,
+      );
+    }
 
-  static async createInventoryItem(data, managerId, ipAddress) {
-    const cleanSku = data.sku.toUpperCase().trim();
-    if (await Inventory.findBySku(cleanSku))
-      throw new Error(`SKU '${cleanSku}' already exists.`);
+    const assetAcc = await COAModel.findById(data.asset_account_id);
+    const incAcc = await COAModel.findById(data.income_account_id);
+    const expAcc = await COAModel.findById(data.expense_account_id);
 
-    const activeBranches = await Branch.findActive();
-    const newItem = await Inventory.createItem(
-      { ...data, sku: cleanSku },
-      activeBranches,
-    );
+    if (!assetAcc || assetAcc.account_type !== "ASSET")
+      throw new Error("Inventory items must map strictly to an ASSET account.");
+    if (!incAcc || incAcc.account_type !== "INCOME")
+      throw new Error(
+        "Inventory items must map strictly to an INCOME account for sales revenue.",
+      );
+    if (!expAcc || expAcc.account_type !== "EXPENSE")
+      throw new Error(
+        "Inventory items must map strictly to an EXPENSE account for shrinkage/loss.",
+      );
+
+    const client = await pool.connect();
+    let newItem = null;
+
+    try {
+      await client.query("BEGIN");
+
+      const insertItemSql = `
+        INSERT INTO inventory_items (sku, item_name, category, uom, description, unit_cost, selling_price, default_reorder_level, asset_account_id, income_account_id, expense_account_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING *
+      `;
+      const itemValues = [
+        data.sku,
+        data.item_name,
+        data.category,
+        data.uom || "pcs",
+        data.description,
+        data.unit_cost,
+        data.selling_price,
+        data.default_reorder_level || 5,
+        data.asset_account_id,
+        data.income_account_id,
+        data.expense_account_id,
+      ];
+      const itemResult = await client.query(insertItemSql, itemValues);
+      newItem = itemResult.rows[0];
+
+      const distributeSql = `
+        INSERT INTO branch_inventory (branch_id, item_id, quantity, reorder_point)
+        SELECT id, $1, 0, $2 
+        FROM branches 
+        WHERE is_active = TRUE
+        ON CONFLICT DO NOTHING
+      `;
+      await client.query(distributeSql, [
+        newItem.id,
+        newItem.default_reorder_level,
+      ]);
+
+      const initMovementSql = `
+        INSERT INTO inventory_movements (item_id, branch_id, transaction_type, transaction_reference, quantity_added, remaining_quantity, remarks, created_by)
+        SELECT $1, id, 'INITIALIZATION', 'SYSTEM_MASTER_REGISTRY', 0, 0, 'Initial branch stock allocation', $2
+        FROM branches
+        WHERE is_active = TRUE
+      `;
+      await client.query(initMovementSql, [newItem.id, userId]);
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw new Error(
+        "Database transaction failed while distributing inventory. Please try again.",
+      );
+    } finally {
+      client.release();
+    }
 
     await logSecureAction(
-      managerId,
+      userId,
       null,
-      "INVENTORY_ITEM_CREATED",
+      "MASTER_ITEM_CREATED",
       "INFO",
       ipAddress,
       "inventory_items",
@@ -32,26 +98,73 @@ class InventoryService {
     return newItem;
   }
 
-  static async updateInventoryItem(id, data, managerId, ipAddress) {
-    const oldItem = await Inventory.findById(id);
+  static async updateMasterItem(id, data, userId, ipAddress) {
+    const oldItem = await InventoryModel.findById(id);
     if (!oldItem) throw new Error("Inventory item not found.");
 
-    const updatedItem = await Inventory.update(id, data);
+    const hasMovements = parseInt(oldItem.usage_count, 10) > 0;
 
-    let actionType = "INVENTORY_ITEM_UPDATED";
-    let severity = "WARNING";
+    if (hasMovements) {
+      if (
+        data.asset_account_id &&
+        parseInt(data.asset_account_id, 10) !==
+          parseInt(oldItem.asset_account_id, 10)
+      ) {
+        throw new Error(
+          "Cannot change Asset Account mapping because this item has historical movements.",
+        );
+      }
+      if (
+        data.income_account_id &&
+        parseInt(data.income_account_id, 10) !==
+          parseInt(oldItem.income_account_id, 10)
+      ) {
+        throw new Error(
+          "Cannot change Income Account mapping because this item has historical sales.",
+        );
+      }
+      if (
+        data.expense_account_id &&
+        parseInt(data.expense_account_id, 10) !==
+          parseInt(oldItem.expense_account_id, 10)
+      ) {
+        throw new Error(
+          "Cannot change Expense Account mapping because this item has historical adjustments/loss.",
+        );
+      }
+    }
 
-    if (data.is_active === false) {
-      actionType = "INVENTORY_ITEM_ARCHIVED";
-      severity = "CRITICAL";
-    } else if (data.is_active === true && oldItem.is_active === false) {
-      actionType = "INVENTORY_ITEM_RESTORED";
+    const checkAssetId = data.asset_account_id || oldItem.asset_account_id;
+    const checkIncomeId = data.income_account_id || oldItem.income_account_id;
+    const checkExpenseId =
+      data.expense_account_id || oldItem.expense_account_id;
+
+    const assetAcc = await COAModel.findById(checkAssetId);
+    const incAcc = await COAModel.findById(checkIncomeId);
+    const expAcc = await COAModel.findById(checkExpenseId);
+
+    if (!assetAcc || assetAcc.account_type !== "ASSET")
+      throw new Error("Asset mapping must use an ASSET account.");
+    if (!incAcc || incAcc.account_type !== "INCOME")
+      throw new Error("Income mapping must use an INCOME account.");
+    if (!expAcc || expAcc.account_type !== "EXPENSE")
+      throw new Error("Expense mapping must use an EXPENSE account.");
+
+    const updatedItem = await InventoryModel.update(id, data);
+
+    let severity = "INFO";
+    if (
+      parseFloat(oldItem.unit_cost) !== parseFloat(updatedItem.unit_cost) ||
+      parseFloat(oldItem.selling_price) !==
+        parseFloat(updatedItem.selling_price)
+    ) {
+      severity = "WARNING";
     }
 
     await logSecureAction(
-      managerId,
+      userId,
       null,
-      actionType,
+      "MASTER_ITEM_UPDATED",
       severity,
       ipAddress,
       "inventory_items",
@@ -62,13 +175,171 @@ class InventoryService {
     return updatedItem;
   }
 
-  static async getStockOverview(branchId, showArchived) {
-    if (branchId) {
-      if (!(await Branch.findById(branchId)))
-        throw new Error("Branch not found.");
-      return await Inventory.getBranchOverview(branchId, showArchived);
+  static async toggleItemStatus(id, isActive, userId, ipAddress) {
+    const oldItem = await InventoryModel.findById(id);
+    if (!oldItem) throw new Error("Inventory item not found.");
+
+    const updatedItem = await InventoryModel.toggleStatus(id, isActive);
+
+    const action = isActive ? "MASTER_ITEM_RESTORED" : "MASTER_ITEM_ARCHIVED";
+    await logSecureAction(
+      userId,
+      null,
+      action,
+      isActive ? "INFO" : "WARNING",
+      ipAddress,
+      "inventory_items",
+      id,
+      { is_active: oldItem.is_active },
+      { is_active: updatedItem.is_active },
+    );
+
+    return updatedItem;
+  }
+
+  static async getInventoryCatalog(
+    page = 1,
+    limit = 10,
+    search = "",
+    category = "all",
+    branch = "all",
+    status = "all",
+    stockStatus = "all",
+  ) {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, items] = await Promise.all([
+      InventoryModel.countFilteredItems(
+        search,
+        category,
+        branch,
+        status,
+        stockStatus,
+      ),
+      InventoryModel.findPaginatedItems(
+        limit,
+        offset,
+        search,
+        category,
+        branch,
+        status,
+        stockStatus,
+      ),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      items,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
+  }
+
+  static async getItemBranchBreakdown(itemId) {
+    return await InventoryModel.getBranchBreakdown(itemId);
+  }
+
+  static async getItemMovementHistory(
+    itemId,
+    page = 1,
+    limit = 10,
+    branchId = "all",
+  ) {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, movements] = await Promise.all([
+      InventoryModel.countMovementHistory(itemId, branchId),
+      InventoryModel.findPaginatedMovementHistory(
+        itemId,
+        branchId,
+        limit,
+        offset,
+      ),
+    ]);
+
+    return {
+      movements,
+      pagination: {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
+  }
+
+  static async getSingleMovement(movementId) {
+    const movement = await InventoryModel.getSingleMovement(movementId);
+    if (!movement) throw new Error("Inventory movement record not found.");
+    return movement;
+  }
+
+  static async getSystemMarkup() {
+    try {
+      const response = await api.get("/manager/settings/markup");
+      return parseFloat(response.data.data.markup_percentage) || 0;
+    } catch (error) {
+      return 0;
     }
-    return await Inventory.getConsolidatedOverview(showArchived);
+  }
+
+  static async getActiveBranches() {
+    try {
+      const response = await api.get("/manager/branches/active");
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch branches for filter:", error);
+      return { data: [] };
+    }
+  }
+
+  static async adjustStock(data, userId, ipAddress) {
+    const movementRecord = await InventoryModel.adjustStockTransaction(
+      data,
+      userId,
+    );
+
+    const item = await InventoryModel.findById(data.item_id);
+
+    const severity = data.adjustment_type === "DEDUCT" ? "WARNING" : "INFO";
+    const actionLabel = `STOCK_ADJUSTMENT_${data.adjustment_type}`;
+
+    const oldValues = {
+      quantity:
+        movementRecord.remaining_quantity +
+        movementRecord.quantity_deducted -
+        movementRecord.quantity_added,
+    };
+    const newValues = {
+      quantity: movementRecord.remaining_quantity,
+      financial_impact:
+        data.adjustment_type === "DEDUCT"
+          ? -(
+              movementRecord.quantity_deducted *
+              movementRecord.recorded_unit_cost
+            )
+          : movementRecord.quantity_added * movementRecord.recorded_unit_cost,
+      reason: data.reason,
+    };
+
+    await logSecureAction(
+      userId,
+      data.branch_id,
+      actionLabel,
+      severity,
+      ipAddress,
+      "branch_inventory",
+      data.item_id,
+      oldValues,
+      newValues,
+    );
+
+    return movementRecord;
   }
 }
 

@@ -1,81 +1,167 @@
-const OcrService = require("../../services/staff/ocr.service");
-const StaffExpenseService = require("../../services/staff/expense.service");
+const ExpenseService = require("../../services/staff/expense.service");
 const { sendSuccess, sendError } = require("../../utils/responseHandler");
 const { STATUS_CODES } = require("../../constants/statusCodes");
+const { query } = require("../../config/db");
 
-class StaffExpenseController {
-  // Mode A: Receive image, run AI, return data for Split-Screen Review
-  static async scanReceipt(req, res) {
+class ExpenseController {
+  static async getActiveCategories(req, res) {
     try {
-      if (!req.file) {
-        return sendError(
-          res,
-          STATUS_CODES.BAD_REQUEST,
-          "No receipt image uploaded.",
-        );
-      }
-
-      // The image is already saved to disk by multer
-      const originalFilePath = req.file.path;
-      const mimeType = req.file.mimetype;
-      const imageUrl = `/uploads/receipts/${req.file.filename}`;
-
-      // Run AI Extraction
-      const extractedData = await OcrService.extractReceiptData(
-        originalFilePath,
-        mimeType,
-      );
-
+      const sql = `
+        SELECT id, account_code, account_name 
+        FROM chart_of_accounts 
+        WHERE account_type = 'EXPENSE' AND is_active = TRUE 
+        ORDER BY account_name ASC
+      `;
+      const result = await query(sql);
       return sendSuccess(
         res,
         STATUS_CODES.SUCCESS,
-        {
-          image_url: imageUrl,
-          extracted_data: extractedData,
-        },
-        "AI extraction complete. Ready for staff review.",
+        result.rows,
+        "Categories loaded.",
       );
     } catch (error) {
-      // Return the image URL anyway so the frontend can immediately switch to Mode B (Manual)
-      const imageUrl = req.file
-        ? `/uploads/receipts/${req.file.filename}`
-        : null;
-      return sendSuccess(
+      return sendError(
         res,
-        STATUS_CODES.SUCCESS,
-        {
-          image_url: imageUrl,
-          extracted_data: null,
-          error_message: error.message,
-        },
-        "AI extraction failed. Switching to manual entry mode.",
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to load categories.",
       );
     }
   }
 
-  // Mode A & B Final Submission
-  static async submitExpense(req, res) {
+  static async createExpense(req, res) {
     try {
-      // Extract branch_id securely from the JWT token, NOT the frontend body
-      const branchId = req.user.branchId;
-
-      const result = await StaffExpenseService.submitPendingExpense(
+      const expense = await ExpenseService.createExpense(
         req.body,
-        req.user.id,
-        branchId,
+        req.user,
         req.ip,
+        req.file,
       );
+      const msg = req.body.is_submitting
+        ? "Expense recorded and submitted for managerial approval."
+        : "Expense drafted successfully.";
+      return sendSuccess(res, STATUS_CODES.CREATED, expense, msg);
+    } catch (error) {
+      const code = error.message.includes("already exists")
+        ? STATUS_CODES.CONFLICT
+        : STATUS_CODES.BAD_REQUEST;
+      return sendError(res, code, error.message);
+    }
+  }
 
+  static async getExpenses(req, res) {
+    try {
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      let { search, status, expense_account_id, branch } = req.query;
+
+      if (req.user.role === "STAFF") branch = req.user.branchId;
+
+      const result = await ExpenseService.getExpenses(
+        page,
+        limit,
+        search,
+        status,
+        expense_account_id,
+        branch,
+      );
       return sendSuccess(
         res,
-        STATUS_CODES.CREATED,
+        STATUS_CODES.SUCCESS,
         result,
-        "Expense submitted to Manager for approval.",
+        "Operational expenses retrieved.",
+      );
+    } catch (error) {
+      return sendError(
+        res,
+        STATUS_CODES.INTERNAL_ERROR,
+        "Failed to fetch expenses.",
+        error.message,
+      );
+    }
+  }
+
+  static async getExpenseDetails(req, res) {
+    try {
+      const expense = await ExpenseService.getExpenseDetails(
+        req.params.id,
+        req.user,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        expense,
+        "Expense details retrieved.",
+      );
+    } catch (error) {
+      const code = error.message.includes("Unauthorized")
+        ? STATUS_CODES.FORBIDDEN
+        : STATUS_CODES.NOT_FOUND;
+      return sendError(res, code, error.message);
+    }
+  }
+
+  static async updateExpense(req, res) {
+    try {
+      const expense = await ExpenseService.updateExpense(
+        req.params.id,
+        req.body,
+        req.user,
+        req.ip,
+        req.file,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        expense,
+        "Expense updated successfully.",
+      );
+    } catch (error) {
+      const code = error.message.includes("Document Locked")
+        ? STATUS_CODES.FORBIDDEN
+        : STATUS_CODES.BAD_REQUEST;
+      return sendError(res, code, error.message);
+    }
+  }
+
+  static async updateStatus(req, res) {
+    try {
+      const expense = await ExpenseService.updateStatus(
+        req.params.id,
+        req.body.status,
+        req.user,
+        req.ip,
+      );
+      return sendSuccess(
+        res,
+        STATUS_CODES.SUCCESS,
+        expense,
+        `Expense successfully submitted for approval.`,
       );
     } catch (error) {
       return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
     }
   }
+
+  static async downloadPdf(req, res) {
+    try {
+      const { buffer, filename } = await ExpenseService.generatePdf(
+        req.params.id,
+        req.user,
+        req.ip,
+      );
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      res.setHeader("Content-Length", buffer.length);
+
+      return res.end(buffer);
+    } catch (error) {
+      const code = error.message.includes("Unauthorized")
+        ? STATUS_CODES.FORBIDDEN
+        : STATUS_CODES.BAD_REQUEST;
+      return sendError(res, code, error.message);
+    }
+  }
 }
 
-module.exports = StaffExpenseController;
+module.exports = ExpenseController;

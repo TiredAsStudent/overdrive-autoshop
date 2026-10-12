@@ -1,403 +1,386 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  FileSignature,
+  BookOpen,
   Plus,
+  Eye,
+  Edit2,
   Trash2,
-  UploadCloud,
-  AlertCircle,
-  CheckCircle2,
-  Save,
-  MapPin,
-  Calendar,
-  Hash,
-  AlignLeft,
+  ShieldCheck,
   FileText,
 } from "lucide-react";
+import { journalEntryService } from "../../services/manager/journalEntry.service";
+import { inventoryService } from "../../services/manager/inventory.service";
 
-// --- DUMMY CHART OF ACCOUNTS (COA) ---
-const MOCK_COA = [
-  { code: "1000", name: "Cash-on-Hand", type: "Asset" },
-  { code: "1100", name: "Cash in Bank", type: "Asset" },
-  { code: "1200", name: "Inventory Assets", type: "Asset" },
-  { code: "1501", name: "Accumulated Depreciation", type: "Asset" },
-  { code: "2000", name: "Accounts Payable", type: "Liability" },
-  { code: "3000", name: "Owner's Drawing", type: "Equity" },
-  { code: "4000", name: "Labor Revenue", type: "Revenue" },
-  { code: "5100", name: "Cost of Goods Sold", type: "Expense" },
-  { code: "5400", name: "Bank Service Charges", type: "Expense" },
-  { code: "5500", name: "Depreciation Expense", type: "Expense" },
-];
+import PageHeader from "../../components/shared/PageHeader";
+import DataTable from "../../components/shared/DataTable";
+import Pagination from "../../components/shared/Pagination";
+import SearchBar from "../../components/ui/SearchBar";
+import FilterButton from "../../components/ui/FilterButton";
+import StatusToggle from "../../components/ui/StatusToggle";
+import ActionButton from "../../components/ui/ActionButton";
+import FilterModal from "../../components/shared/FilterModal";
+import StatusBadge from "../../components/ui/StatusBadge";
+import ConfirmModal from "../../components/shared/ConfirmModal";
 
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
-    amount || 0,
-  );
+import JournalEntryModal from "../../features/manager/components/JournalEntryModal";
+import JournalEntryDrawer from "../../features/manager/components/JournalEntryDrawer";
+
+import { useApp } from "../../context/AppContext";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const JournalEntries = () => {
-  // --- FORM STATE ---
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split("T")[0],
-    branch: "",
-    reference: "",
-    memo: "",
-    documentAttached: false,
+  const { showToast } = useApp();
+
+  const [entries, setEntries] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filters & State
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // View States
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedEntryId, setSelectedEntryId] = useState(null);
+  const [editDraftData, setEditDraftData] = useState(null);
+
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "",
+    onConfirm: () => {},
   });
 
-  // --- DYNAMIC GRID STATE ---
-  // A journal entry must have at least 2 lines (Debit & Credit)
-  const [lines, setLines] = useState([
-    { id: 1, accountCode: "", description: "", debit: "", credit: "" },
-    { id: 2, accountCode: "", description: "", debit: "", credit: "" },
+  const activeFilterCount =
+    (branchFilter !== "all" ? 1 : 0) + (startDate ? 1 : 0) + (endDate ? 1 : 0);
+
+  useEffect(() => {
+    inventoryService
+      .getActiveBranches()
+      .then((res) => setBranches(res.data || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchQuery, statusFilter, branchFilter, startDate, endDate]);
+
+  const loadEntries = async () => {
+    try {
+      setLoading(true);
+      const res = await journalEntryService.getJournalEntries(
+        currentPage,
+        ITEMS_PER_PAGE,
+        debouncedSearchQuery,
+        statusFilter,
+        branchFilter,
+        startDate,
+        endDate,
+      );
+      setEntries(res.data?.entries || []);
+      setTotalPages(res.data?.pagination?.totalPages || 1);
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadEntries();
+  }, [
+    currentPage,
+    debouncedSearchQuery,
+    statusFilter,
+    branchFilter,
+    startDate,
+    endDate,
   ]);
 
-  // --- CALCULATIONS & HARD-LOCK VALIDATION ---
-  const totals = useMemo(() => {
-    return lines.reduce(
-      (acc, line) => {
-        acc.debit += Number(line.debit) || 0;
-        acc.credit += Number(line.credit) || 0;
-        return acc;
-      },
-      { debit: 0, credit: 0 },
-    );
-  }, [lines]);
-
-  const difference = Math.abs(totals.debit - totals.credit);
-  const isBalanced = totals.debit > 0 && difference === 0;
-
-  // The ultimate form validator: Must be balanced, have a branch, a ref, and evidence.
-  const isFormValid =
-    isBalanced &&
-    formData.branch &&
-    formData.reference &&
-    formData.documentAttached;
-
-  // --- HANDLERS ---
-  const handleAddLine = () => {
-    setLines([
-      ...lines,
-      {
-        id: Date.now(),
-        accountCode: "",
-        description: "",
-        debit: "",
-        credit: "",
-      },
-    ]);
+  const handleOpenDrawer = (id) => {
+    setSelectedEntryId(id);
+    setIsDrawerOpen(true);
   };
 
-  const handleRemoveLine = (id) => {
-    if (lines.length <= 2) return; // Enforce minimum 2 lines
-    setLines(lines.filter((line) => line.id !== id));
+  const handleEditDraft = async (id) => {
+    try {
+      setLoading(true);
+      const res = await journalEntryService.getJournalDetails(id);
+      setEditDraftData(res.data);
+      setIsModalOpen(true);
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleLineChange = (id, field, value) => {
-    setLines(
-      lines.map((line) => {
-        if (line.id === id) {
-          const newLine = { ...line, [field]: value };
-          // UX Helper: If they type in Debit, clear Credit, and vice versa
-          if (field === "debit" && value !== "") newLine.credit = "";
-          if (field === "credit" && value !== "") newLine.debit = "";
-          return newLine;
+  const handleDeleteDraft = (id, journalNumber) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Discard Draft",
+      message: `Are you sure you want to delete draft ${journalNumber}? This cannot be undone.`,
+      confirmText: "Discard Draft",
+      onConfirm: async () => {
+        try {
+          await journalEntryService.deleteDraft(id);
+          showToast("Draft successfully discarded.", "success");
+          loadEntries();
+        } catch (err) {
+          showToast(err.message, "error");
         }
-        return line;
-      }),
-    );
+      },
+    });
   };
 
-  const handleFormChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleModalSubmit = async (payload) => {
+    try {
+      const res = await journalEntryService.saveJournalEntry(payload);
+      const isPosted = res.data?.status === "POSTED";
+      showToast(
+        isPosted
+          ? "Journal Entry posted to General Ledger."
+          : "Draft saved successfully.",
+        "success",
+      );
+      setIsModalOpen(false);
+      loadEntries();
+    } catch (error) {
+      throw error; // Rethrow to modal to handle validation error state
+    }
   };
 
-  const handleSimulateUpload = () => {
-    setFormData({ ...formData, documentAttached: true });
+  const resetFilters = () => {
+    setBranchFilter("all");
+    setStartDate("");
+    setEndDate("");
+    setIsFilterModalOpen(false);
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 pb-10">
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic flex items-center gap-3">
-            <FileSignature className="text-indigo-500" size={28} />
-            General Journal
-          </h1>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-            Manual Adjustments & Forensic Entry
-          </p>
-        </div>
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+      <PageHeader
+        title="Journal Entries"
+        subtitle="Manual Adjustments & Closing Postings"
+        icon={BookOpen}
+      >
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search JRN No. or Memo..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-        {/* PERMANENCE WARNING */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl">
-          <AlertCircle
-            size={16}
-            className="text-amber-600 dark:text-amber-400"
-          />
-          <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">
-            Warning: Posted entries are permanent
-          </p>
-        </div>
-      </div>
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
 
-      {/* TOP SECTION: TRANSACTION METADATA */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm space-y-4">
-          <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest border-b border-slate-100 dark:border-white/10 pb-4 mb-4">
-            Transaction Details
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Branch Selection */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1">
-                <MapPin size={12} /> Branch Assignment{" "}
-                <span className="text-rose-500">*</span>
-              </label>
-              <select
-                name="branch"
-                value={formData.branch}
-                onChange={handleFormChange}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-              >
-                <option value="" disabled>
-                  Select target branch...
-                </option>
-                <option value="Global">Global / Head Office</option>
-                <option value="Calamba">Calamba</option>
-                <option value="Batino">Batino</option>
-                <option value="Biñan">Biñan</option>
-              </select>
-            </div>
+        <StatusToggle
+          activeValue={statusFilter}
+          onToggle={setStatusFilter}
+          options={[
+            { label: "All", value: "all" },
+            { label: "Drafts", value: "DRAFT" },
+            { label: "Posted", value: "POSTED" },
+          ]}
+        />
 
-            {/* Date */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1">
-                <Calendar size={12} /> Posting Date{" "}
-                <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleFormChange}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-              />
-            </div>
+        <ActionButton
+          label="New Entry"
+          icon={Plus}
+          onClick={() => {
+            setEditDraftData(null);
+            setIsModalOpen(true);
+          }}
+        />
+      </PageHeader>
 
-            {/* Reference Number */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1">
-                <Hash size={12} /> Reference ID / Check No.{" "}
-                <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="reference"
-                placeholder="e.g., CHK-88921 or BANK-FEE-01"
-                value={formData.reference}
-                onChange={handleFormChange}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
-              />
-            </div>
-
-            {/* Memo / Description */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1">
-                <AlignLeft size={12} /> Internal Memo
-              </label>
-              <input
-                type="text"
-                name="memo"
-                placeholder="Reason for manual adjustment..."
-                value={formData.memo}
-                onChange={handleFormChange}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* EVIDENCE UPLOAD (Mandatory for compliance) */}
-        <div className="bg-slate-900 dark:bg-black/40 p-6 rounded-3xl border border-slate-800 dark:border-white/10 shadow-sm flex flex-col justify-center items-center text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500"></div>
-          <FileText size={40} className="text-indigo-500 mb-4 opacity-80" />
-          <h3 className="text-sm font-black uppercase tracking-widest text-white mb-2">
-            Supporting Evidence
-          </h3>
-          <p className="text-xs text-slate-400 mb-6">
-            Auditors require physical proof for manual adjustments (e.g., Bank
-            Statement, Memo).
-          </p>
-
-          {formData.documentAttached ? (
-            <div className="flex items-center gap-2 px-6 py-3 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30 text-xs font-black uppercase tracking-widest w-full justify-center">
-              <CheckCircle2 size={16} /> Document Attached
-            </div>
-          ) : (
-            <button
-              onClick={handleSimulateUpload}
-              className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all w-full justify-center shadow-[0_0_15px_rgba(79,70,229,0.3)]"
-            >
-              <UploadCloud size={16} /> Upload Proof{" "}
-              <span className="text-rose-300">*</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* DYNAMIC GRID: DOUBLE-ENTRY FORM */}
-      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
-          <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest">
-            Double-Entry Ledger Lines
-          </h3>
-          <button
-            onClick={handleAddLine}
-            className="flex items-center gap-1 px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors"
+      <DataTable
+        headers={[
+          "Journal No.",
+          "Journal Date & Ref",
+          "Description",
+          "Branch Allocation",
+          "Total Amount",
+          "Status",
+          "Actions",
+        ]}
+        data={entries}
+        loading={loading}
+        emptyTitle="No Journal Entries Found"
+        emptySubtitle="Try adjusting filters or create a new manual adjustment."
+        renderRow={(entry) => (
+          <tr
+            key={entry.id}
+            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
           >
-            <Plus size={12} /> Add Line
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-100 dark:bg-black/20 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200 dark:border-white/10">
-                <th className="p-4 w-1/3">
-                  Account (COA) <span className="text-rose-500">*</span>
-                </th>
-                <th className="p-4 w-1/3">Description</th>
-                <th className="p-4 w-32 text-right">Debit (₱)</th>
-                <th className="p-4 w-32 text-right">Credit (₱)</th>
-                <th className="p-4 w-16 text-center">Act</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {lines.map((line, index) => (
-                <tr key={line.id} className="bg-white dark:bg-slate-800">
-                  <td className="p-2">
-                    <select
-                      value={line.accountCode}
-                      onChange={(e) =>
-                        handleLineChange(line.id, "accountCode", e.target.value)
-                      }
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
-                    >
-                      <option value="" disabled>
-                        Search or select account...
-                      </option>
-                      {MOCK_COA.map((acc) => (
-                        <option key={acc.code} value={acc.code}>
-                          {acc.code} - {acc.name} ({acc.type})
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Line memo..."
-                      value={line.description}
-                      onChange={(e) =>
-                        handleLineChange(line.id, "description", e.target.value)
-                      }
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="number"
-                      placeholder="0.00"
-                      value={line.debit}
-                      onChange={(e) =>
-                        handleLineChange(line.id, "debit", e.target.value)
-                      }
-                      disabled={line.credit !== ""}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-mono font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 text-right disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="number"
-                      placeholder="0.00"
-                      value={line.credit}
-                      onChange={(e) =>
-                        handleLineChange(line.id, "credit", e.target.value)
-                      }
-                      disabled={line.debit !== ""}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg text-sm font-mono font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 text-right disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800"
-                    />
-                  </td>
-                  <td className="p-2 text-center">
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
+                {entry.journal_number}
+              </span>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <p className="text-xs font-bold text-slate-900 dark:text-white">
+                {entry.entry_date}
+              </p>
+              {entry.reference_number && (
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                  REF: {entry.reference_number}
+                </p>
+              )}
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300 italic truncate max-w-[250px]">
+                "{entry.description}"
+              </p>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                {entry.branch_name || "Enterprise Global"}
+              </span>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                ₱
+                {parseFloat(entry.total_amount).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6">
+              <StatusBadge
+                label={entry.status}
+                variant={entry.status === "POSTED" ? "success" : "warning"}
+                icon={entry.status === "POSTED" ? ShieldCheck : FileText}
+              />
+            </td>
+            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+              <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+                {entry.status === "POSTED" ? (
+                  <button
+                    onClick={() => handleOpenDrawer(entry.id)}
+                    title="View Voucher"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+                  >
+                    <Eye size={14} /> View
+                  </button>
+                ) : (
+                  <>
                     <button
-                      onClick={() => handleRemoveLine(line.id)}
-                      disabled={lines.length <= 2}
-                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                      onClick={() => handleEditDraft(entry.id)}
+                      title="Edit Draft"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleDeleteDraft(entry.id, entry.journal_number)
+                      }
+                      title="Discard Draft"
+                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
                     >
                       <Trash2 size={16} />
                     </button>
-                  </td>
-                </tr>
+                  </>
+                )}
+              </div>
+            </td>
+          </tr>
+        )}
+      />
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
+
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={resetFilters}
+        title="Advanced Filters"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Branch Location
+            </label>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500"
+            >
+              <option value="all">All Locations</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.branch_name}
+                </option>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* MATH LOCK FOOTER */}
-        <div className="p-6 bg-slate-50 dark:bg-black/20 border-t border-slate-200 dark:border-white/10 flex flex-col md:flex-row justify-between items-end gap-6">
-          {/* Live Balance Checker */}
-          <div className="w-full md:w-auto">
-            <div className="flex gap-8 mb-2">
-              <div className="text-right">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                  Total Debits
-                </p>
-                <p className="text-xl font-mono font-black text-slate-900 dark:text-white">
-                  {formatCurrency(totals.debit)}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                  Total Credits
-                </p>
-                <p className="text-xl font-mono font-black text-slate-900 dark:text-white">
-                  {formatCurrency(totals.credit)}
-                </p>
-              </div>
-            </div>
-
-            {totals.debit > 0 || totals.credit > 0 ? (
-              isBalanced ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-md text-[10px] font-black uppercase tracking-widest">
-                  <CheckCircle2 size={12} /> Journal is Balanced
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 rounded-md text-[10px] font-black uppercase tracking-widest">
-                  <AlertCircle size={12} /> Out of balance by{" "}
-                  {formatCurrency(difference)}
-                </div>
-              )
-            ) : (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-md text-[10px] font-black uppercase tracking-widest">
-                Awaiting Data
-              </div>
-            )}
+            </select>
           </div>
-
-          {/* Submit Button (The Hard Validation Gate) */}
-          <button
-            disabled={!isFormValid}
-            className={`flex items-center gap-2 px-8 py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              isFormValid
-                ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)] cursor-pointer"
-                : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700"
-            }`}
-          >
-            <Save size={16} />
-            {isFormValid ? "Post Journal Entry" : "Fix Errors to Post"}
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      </FilterModal>
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant="danger"
+      />
+
+      <JournalEntryModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleModalSubmit}
+        initialData={editDraftData}
+      />
+
+      <JournalEntryDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        journalId={selectedEntryId}
+      />
     </div>
   );
 };

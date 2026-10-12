@@ -1,429 +1,530 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
-  Search,
-  MapPin,
-  Calendar,
-  Filter,
   Eye,
-  ShieldCheck,
-  FileText,
-  X,
-  Link as LinkIcon,
+  Calculator,
+  ArrowUpRight,
+  ArrowDownRight,
+  Download,
+  Search,
 } from "lucide-react";
 
-// --- DUMMY DATA FOR MOCKUP ---
-// Represents the individual lines in the general_ledger table
-const MOCK_LEDGER_LINES = [
-  // Transaction 1: Sales Invoice (Completed Job)
-  {
-    id: 101,
-    txId: "TXN-CAB-0042",
-    date: "2026-05-10",
-    branch: "Calamba",
-    accountCode: "1000",
-    accountName: "Cash-on-Hand",
-    type: "Asset",
-    debit: 8500.0,
-    credit: 0,
-    source: "Invoice #1042",
-  },
-  {
-    id: 102,
-    txId: "TXN-CAB-0042",
-    date: "2026-05-10",
-    branch: "Calamba",
-    accountCode: "4000",
-    accountName: "Labor Revenue",
-    type: "Revenue",
-    debit: 0,
-    credit: 7589.29,
-    source: "Invoice #1042",
-  },
-  {
-    id: 103,
-    txId: "TXN-CAB-0042",
-    date: "2026-05-10",
-    branch: "Calamba",
-    accountCode: "2100",
-    accountName: "Output VAT Payable",
-    type: "Liability",
-    debit: 0,
-    credit: 910.71,
-    source: "Invoice #1042",
-  },
-  // Transaction 2: OCR Expense Approval (Buying Parts)
-  {
-    id: 104,
-    txId: "TXN-BAT-0089",
-    date: "2026-05-10",
-    branch: "Batino",
-    accountCode: "1200",
-    accountName: "Inventory Assets",
-    type: "Asset",
-    debit: 12000.0,
-    credit: 0,
-    source: "OCR Receipt #89",
-  },
-  {
-    id: 105,
-    txId: "TXN-BAT-0089",
-    date: "2026-05-10",
-    branch: "Batino",
-    accountCode: "1300",
-    accountName: "Input VAT",
-    type: "Asset",
-    debit: 1440.0,
-    credit: 0,
-    source: "OCR Receipt #89",
-  },
-  {
-    id: 106,
-    txId: "TXN-BAT-0089",
-    date: "2026-05-10",
-    branch: "Batino",
-    accountCode: "2000",
-    accountName: "Accounts Payable",
-    type: "Liability",
-    debit: 0,
-    credit: 13440.0,
-    source: "OCR Receipt #89",
-  },
-  // Transaction 3: Manual Journal Entry (Depreciation)
-  {
-    id: 107,
-    txId: "TXN-BIN-0105",
-    date: "2026-05-09",
-    branch: "Biñan",
-    accountCode: "5500",
-    accountName: "Depreciation Expense",
-    type: "Expense",
-    debit: 2500.0,
-    credit: 0,
-    source: "Manual JE #05",
-  },
-  {
-    id: 108,
-    txId: "TXN-BIN-0105",
-    date: "2026-05-09",
-    branch: "Biñan",
-    accountCode: "1501",
-    accountName: "Accumulated Depreciation",
-    type: "Asset",
-    debit: 0,
-    credit: 2500.0,
-    source: "Manual JE #05",
-  },
-];
+// Services
+import { generalLedgerService } from "../../services/manager/generalLedger.service";
+import { chartOfAccountsService } from "../../services/manager/chartOfAccounts.service";
+import { inventoryService } from "../../services/manager/inventory.service";
 
-const formatCurrency = (amount) => {
-  if (amount === 0 || !amount) return "-";
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-  }).format(amount);
+// Shared Components
+import PageHeader from "../../components/shared/PageHeader";
+import DataTable from "../../components/shared/DataTable";
+import Pagination from "../../components/shared/Pagination";
+import FilterModal from "../../components/shared/FilterModal";
+
+// UI Components
+import SearchBar from "../../components/ui/SearchBar";
+import FilterButton from "../../components/ui/FilterButton";
+import ActionButton from "../../components/ui/ActionButton";
+import StatCard from "../../components/ui/StatCard";
+
+import GeneralLedgerSourceDrawer from "../../features/manager/components/GeneralLedgerSourceDrawer";
+
+import { useApp } from "../../context/AppContext";
+import { useDebounce } from "../../hooks/useDebounce";
+
+const AccountSearchableSelect = ({ value, accounts, onChange, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (value) {
+      const selected = accounts.find(
+        (a) => a.id.toString() === value.toString(),
+      );
+      if (selected)
+        setSearchTerm(`${selected.account_code} - ${selected.account_name}`);
+    } else {
+      setSearchTerm("");
+    }
+  }, [value, accounts]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setIsOpen(false);
+        const selected = accounts.find(
+          (a) => a.id.toString() === value?.toString(),
+        );
+        setSearchTerm(
+          selected ? `${selected.account_code} - ${selected.account_name}` : "",
+        );
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value, accounts]);
+
+  const filteredAccounts = accounts.filter(
+    (a) =>
+      a.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.account_code.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const grouped = {
+    ASSET: [],
+    LIABILITY: [],
+    EQUITY: [],
+    INCOME: [],
+    EXPENSE: [],
+  };
+  filteredAccounts.forEach((acc) => {
+    if (grouped[acc.account_type]) {
+      grouped[acc.account_type].push(acc);
+    }
+  });
+
+  return (
+    <div ref={wrapperRef} className="relative z-[60] w-full sm:w-[320px]">
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search size={16} className="text-slate-400" />
+        </div>
+        <input
+          type="text"
+          disabled={disabled}
+          value={isOpen ? searchTerm : value ? searchTerm : ""}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="Search by code or name..."
+          className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider focus:outline-none focus:border-amber-500 focus:ring-1 shadow-sm transition-all disabled:opacity-60 cursor-text"
+        />
+      </div>
+      <AnimatePresence>
+        {isOpen && !disabled && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-80 overflow-y-auto custom-scrollbar z-[100]"
+          >
+            {filteredAccounts.length > 0 ? (
+              Object.entries(grouped).map(
+                ([type, accList]) =>
+                  accList.length > 0 && (
+                    <div key={type}>
+                      <div className="sticky top-0 bg-slate-50 dark:bg-slate-900/90 px-4 py-2 border-b border-slate-100 dark:border-slate-700/50 backdrop-blur-md z-10">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                          {type}
+                        </span>
+                      </div>
+                      {accList.map((acc) => (
+                        <div
+                          key={acc.id}
+                          onClick={() => {
+                            onChange(acc.id.toString());
+                            setSearchTerm(
+                              `${acc.account_code} - ${acc.account_name}`,
+                            );
+                            setIsOpen(false);
+                          }}
+                          className="p-3 sm:p-4 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                        >
+                          <p className="text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                            {acc.account_code} {!acc.is_active && "(ARCHIVED)"}
+                          </p>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                            {acc.account_name}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ),
+              )
+            ) : (
+              <div className="p-6 text-center">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  No matching accounts found.
+                </p>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 };
 
 const GeneralLedger = () => {
-  const [selectedBranch, setSelectedBranch] = useState("All");
+  const { showToast } = useApp();
+  const location = useLocation();
+
+  // Master Data
+  const [accounts, setAccounts] = useState([]);
+  const [branches, setBranches] = useState([]);
+
+  // Ledger State
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [ledgerData, setLedgerData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Filters & Pagination
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTxId, setSelectedTxId] = useState(null);
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  // Filter Logic
-  const filteredLines = useMemo(() => {
-    return MOCK_LEDGER_LINES.filter((line) => {
-      const matchesBranch =
-        selectedBranch === "All" || line.branch === selectedBranch;
-      const matchesSearch =
-        line.txId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        line.accountName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        line.accountCode.includes(searchQuery);
-      return matchesBranch && matchesSearch;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+
+  // Unified Audit Drawer State
+  const [selectedSource, setSelectedSource] = useState(null);
+
+  const activeFilterCount =
+    (branchFilter !== "all" ? 1 : 0) + (startDate ? 1 : 0) + (endDate ? 1 : 0);
+
+  // 1. Initial Load: Fetch Accounts and Branches
+  useEffect(() => {
+    const fetchDependencies = async () => {
+      try {
+        const [accRes, brRes] = await Promise.all([
+          chartOfAccountsService.getAccounts(1, 500, "", "all", "all"),
+          inventoryService.getActiveBranches(),
+        ]);
+
+        const fetchedAccounts = accRes.data?.accounts || accRes.accounts || [];
+        setAccounts(fetchedAccounts);
+        setBranches(brRes.data || []);
+
+        const queryParams = new URLSearchParams(location.search);
+        const urlAccountId = queryParams.get("accountId");
+        const urlBranch = queryParams.get("branch");
+        const urlStartDate = queryParams.get("startDate");
+        const urlEndDate = queryParams.get("endDate");
+
+        if (
+          urlAccountId &&
+          fetchedAccounts.some((a) => a.id.toString() === urlAccountId)
+        ) {
+          setSelectedAccountId(urlAccountId);
+        } else if (fetchedAccounts.length > 0) {
+          setSelectedAccountId(fetchedAccounts[0].id.toString());
+        }
+
+        if (urlBranch) {
+          setBranchFilter(urlBranch);
+        }
+        if (urlStartDate) {
+          setStartDate(urlStartDate);
+        }
+        if (urlEndDate) {
+          setEndDate(urlEndDate);
+        }
+      } catch (error) {
+        showToast("Failed to load ledger dependencies.", "error");
+        setLoading(false);
+      }
+    };
+    fetchDependencies();
+  }, [showToast, location.search]);
+
+  // Reset pagination on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    debouncedSearchQuery,
+    branchFilter,
+    startDate,
+    endDate,
+    selectedAccountId,
+  ]);
+
+  // 2. Fetch Ledger Data
+  const loadLedger = async () => {
+    if (!selectedAccountId) return;
+
+    try {
+      setLoading(true);
+      const res = await generalLedgerService.getAccountLedger(
+        selectedAccountId,
+        currentPage,
+        ITEMS_PER_PAGE,
+        debouncedSearchQuery,
+        branchFilter,
+        startDate,
+        endDate,
+      );
+      setLedgerData(res.data);
+      setTotalPages(res.data?.pagination?.totalPages || 1);
+    } catch (error) {
+      showToast(error.message, "error");
+      setLedgerData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLedger();
+  }, [
+    currentPage,
+    debouncedSearchQuery,
+    branchFilter,
+    startDate,
+    endDate,
+    selectedAccountId,
+  ]);
+
+  const resetFilters = () => {
+    setBranchFilter("all");
+    setStartDate("");
+    setEndDate("");
+    setIsFilterModalOpen(false);
+  };
+
+  const handleViewSource = (sourceType, sourceId, referenceNumber) => {
+    setSelectedSource({ type: sourceType, id: sourceId, ref: referenceNumber });
+  };
+
+  const closeDrawer = () => {
+    setSelectedSource(null);
+  };
+
+  const formatCurrency = (amount) => {
+    const num = parseFloat(amount) || 0;
+    const formatted = Math.abs(num).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     });
-  }, [selectedBranch, searchQuery]);
-
-  // System Integrity Check Math (Proving Debits = Credits)
-  const totals = useMemo(() => {
-    return filteredLines.reduce(
-      (acc, line) => {
-        acc.debit += line.debit;
-        acc.credit += line.credit;
-        return acc;
-      },
-      { debit: 0, credit: 0 },
-    );
-  }, [filteredLines]);
-
-  const isBalanced = Math.abs(totals.debit - totals.credit) < 0.01; // Float math safety
-
-  // Modal Data Logic
-  const modalData = selectedTxId
-    ? MOCK_LEDGER_LINES.filter((line) => line.txId === selectedTxId)
-    : [];
-
-  const modalTotals = modalData.reduce(
-    (acc, line) => {
-      acc.debit += line.debit;
-      acc.credit += line.credit;
-      return acc;
-    },
-    { debit: 0, credit: 0 },
-  );
+    return num < 0 ? `(₱${formatted})` : `₱${formatted}`;
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 pb-10 relative">
-      {/* HEADER & CONTROLS */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic flex items-center gap-3">
-            <BookOpen className="text-indigo-500" size={28} />
-            General Ledger
-          </h1>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-            Immutable Master Accounting Record
-          </p>
-        </div>
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+      {/* PAGE HEADER & CONTROLS */}
+      <PageHeader
+        title="General Ledger"
+        subtitle="Immutable Accounting Master Record"
+        icon={BookOpen}
+      >
+        <AccountSearchableSelect
+          value={selectedAccountId}
+          accounts={accounts}
+          onChange={setSelectedAccountId}
+          disabled={accounts.length === 0}
+        />
 
-        {/* SYSTEM INTEGRITY CHECK (Proves ACID Compliance) */}
-        <div
-          className={`px-4 py-2 rounded-xl border flex items-center gap-2 ${
-            isBalanced
-              ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30"
-              : "bg-red-50 border-red-200 dark:bg-red-500/10 dark:border-red-500/30"
-          }`}
-        >
-          {isBalanced ? (
-            <ShieldCheck size={16} className="text-emerald-500" />
-          ) : (
-            <ShieldCheck size={16} className="text-red-500" />
-          )}
-          <div>
-            <p
-              className={`text-[9px] font-black uppercase tracking-widest ${isBalanced ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
-            >
-              {isBalanced ? "System Balanced" : "Imbalance Detected"}
-            </p>
-            <p className="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-400">
-              DR: {formatCurrency(totals.debit)} = CR:{" "}
-              {formatCurrency(totals.credit)}
-            </p>
-          </div>
-        </div>
-      </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search ref or description..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
 
-      {/* FILTERS */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-            size={16}
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
+
+        <ActionButton
+          label="Export"
+          icon={Download}
+          onClick={() =>
+            showToast("Excel export module queued for reporting phase.", "info")
+          }
+        />
+      </PageHeader>
+
+      {/* SUMMARY DASHBOARD */}
+      {ledgerData && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 print:hidden">
+          <StatCard
+            title="Opening Balance"
+            value={formatCurrency(ledgerData.summary.opening_balance)}
+            icon={Calculator}
+            variant="default"
           />
-          <input
-            type="text"
-            placeholder="Search by Transaction ID, Account Name, or Code..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+          <StatCard
+            title="Period Debits"
+            value={formatCurrency(ledgerData.summary.period_debit)}
+            icon={ArrowDownRight}
+            variant="success"
           />
-        </div>
-        <div className="relative w-full sm:w-48">
-          <MapPin
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-            size={16}
+          <StatCard
+            title="Period Credits"
+            value={formatCurrency(ledgerData.summary.period_credit)}
+            icon={ArrowUpRight}
+            variant="warning"
           />
-          <select
-            value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
-          >
-            <option value="All">All Branches</option>
-            <option value="Calamba">Calamba</option>
-            <option value="Batino">Batino</option>
-            <option value="Biñan">Biñan</option>
-          </select>
-        </div>
-        <button className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-600 dark:hover:bg-indigo-500 dark:hover:text-white transition-colors">
-          <Filter size={14} /> Advanced
-        </button>
-      </div>
-
-      {/* LEDGER TABLE */}
-      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-black/20 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200 dark:border-white/10">
-                <th className="p-4">Date</th>
-                <th className="p-4">Txn ID (Ref)</th>
-                <th className="p-4">Branch</th>
-                <th className="p-4">Account</th>
-                <th className="p-4 text-right">Debit (DR)</th>
-                <th className="p-4 text-right">Credit (CR)</th>
-                <th className="p-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm font-medium text-slate-700 dark:text-slate-300 divide-y divide-slate-100 dark:divide-white/5">
-              {filteredLines.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="p-8 text-center text-slate-500 italic text-xs"
-                  >
-                    No records found.
-                  </td>
-                </tr>
-              ) : (
-                filteredLines.map((line) => (
-                  <tr
-                    key={line.id}
-                    className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-                  >
-                    <td className="p-4 text-xs font-mono">{line.date}</td>
-                    <td className="p-4">
-                      <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                        {line.txId}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-200 dark:bg-slate-700 text-[10px] font-bold uppercase tracking-widest">
-                        {line.branch}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          {line.accountName}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          Code: {line.accountCode} • {line.type}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-right font-mono font-black text-slate-900 dark:text-white">
-                      {formatCurrency(line.debit)}
-                    </td>
-                    <td className="p-4 text-right font-mono font-black text-slate-900 dark:text-white">
-                      {formatCurrency(line.credit)}
-                    </td>
-                    <td className="p-4 text-center">
-                      <button
-                        onClick={() => setSelectedTxId(line.txId)}
-                        className="p-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 hover:text-indigo-600 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400 rounded-lg transition-colors"
-                        title="View Full Entry"
-                      >
-                        <Eye size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* DRILL-DOWN MODAL (Shows the full double-entry) */}
-      {selectedTxId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50 dark:bg-black/20">
-              <div>
-                <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase italic tracking-tight flex items-center gap-2">
-                  <FileText className="text-indigo-500" size={20} />
-                  Journal Entry Details
-                </h2>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                  Transaction Reference:{" "}
-                  <span className="font-mono text-indigo-500">
-                    {selectedTxId}
-                  </span>
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedTxId(null)}
-                className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white bg-white/5 rounded-xl transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body: The T-Account View */}
-            <div className="p-6 space-y-6">
-              <table className="w-full text-left border-collapse border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden">
-                <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                    <th className="p-3">Account Code & Name</th>
-                    <th className="p-3 text-right border-l border-slate-200 dark:border-white/10">
-                      Debit (₱)
-                    </th>
-                    <th className="p-3 text-right border-l border-slate-200 dark:border-white/10">
-                      Credit (₱)
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {modalData.map((line) => (
-                    <tr
-                      key={line.id}
-                      className="border-b border-slate-200 dark:border-white/10"
-                    >
-                      <td className="p-3">
-                        <span className="font-mono text-xs text-slate-400 mr-2">
-                          {line.accountCode}
-                        </span>
-                        {/* Indent credits slightly for standard accounting visualization */}
-                        <span
-                          className={
-                            line.credit > 0
-                              ? "ml-4 text-slate-600 dark:text-slate-400"
-                              : "font-bold"
-                          }
-                        >
-                          {line.accountName}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right font-mono border-l border-slate-200 dark:border-white/10">
-                        {formatCurrency(line.debit)}
-                      </td>
-                      <td className="p-3 text-right font-mono border-l border-slate-200 dark:border-white/10">
-                        {formatCurrency(line.credit)}
-                      </td>
-                    </tr>
-                  ))}
-                  {/* Modal Totals Footer */}
-                  <tr className="bg-slate-50 dark:bg-black/20">
-                    <td className="p-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      Balanced Totals
-                    </td>
-                    <td className="p-3 text-right font-mono font-black border-l border-slate-200 dark:border-white/10 text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(modalTotals.debit)}
-                    </td>
-                    <td className="p-3 text-right font-mono font-black border-l border-slate-200 dark:border-white/10 text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(modalTotals.credit)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Source Document Link (Proves the OCR integration) */}
-              <div className="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4 rounded-xl flex justify-between items-center">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-                    Source Document
-                  </p>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">
-                    {modalData[0]?.source}
-                  </p>
-                </div>
-                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 transition-colors">
-                  <LinkIcon size={12} /> View Physical Proof
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
+
+      {/* DATA TABLE */}
+      <DataTable
+        headers={[
+          "Date & Source",
+          "Reference",
+          "Particulars",
+          "Debit (₱)",
+          "Credit (₱)",
+          "Running Bal (₱)",
+          "Action",
+        ]}
+        data={ledgerData?.transactions || []}
+        loading={loading}
+        emptyTitle="No Ledger Entries Found"
+        emptySubtitle="Adjust filters or check another account."
+        minWidth="min-w-[900px]"
+        renderRow={(txn, idx) => (
+          <tr
+            key={`${txn.source_type}-${txn.source_id}-${idx}`}
+            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors print:hover:bg-transparent"
+          >
+            <td className="px-4 sm:px-8 py-4">
+              <p className="text-xs font-bold text-slate-900 dark:text-white print:text-black">
+                {new Date(txn.transaction_date).toLocaleDateString()}
+              </p>
+              <span className="inline-flex mt-1.5 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 print:bg-transparent print:border print:border-slate-400 print:text-black">
+                {txn.source_type.replace(/_/g, " ")}
+              </span>
+            </td>
+
+            <td className="px-4 sm:px-8 py-4">
+              <p className="text-xs font-black text-slate-700 dark:text-slate-300 font-mono tracking-widest uppercase print:text-black">
+                {txn.reference_number || "N/A"}
+              </p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate max-w-[120px]">
+                {txn.branch_name}
+              </p>
+            </td>
+
+            <td className="px-4 sm:px-8 py-4">
+              <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 italic truncate max-w-[200px] print:max-w-none print:whitespace-normal print:text-black">
+                "{txn.description}"
+              </p>
+            </td>
+
+            <td className="px-4 sm:px-8 py-4 text-right">
+              {txn.debit > 0 ? (
+                <span className="text-sm font-black font-mono text-slate-900 dark:text-white print:text-black">
+                  {txn.debit.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                  })}
+                </span>
+              ) : (
+                <span className="text-slate-300 dark:text-slate-700">-</span>
+              )}
+            </td>
+
+            <td className="px-4 sm:px-8 py-4 text-right">
+              {txn.credit > 0 ? (
+                <span className="text-sm font-black font-mono text-slate-900 dark:text-white print:text-black">
+                  {txn.credit.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                  })}
+                </span>
+              ) : (
+                <span className="text-slate-300 dark:text-slate-700">-</span>
+              )}
+            </td>
+
+            <td className="px-4 sm:px-8 py-4 text-right bg-slate-50/50 dark:bg-slate-900/50 print:bg-transparent border-l border-slate-100 dark:border-slate-800">
+              <span
+                className={`text-sm font-black font-mono ${txn.running_balance < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400"} print:text-black`}
+              >
+                {formatCurrency(txn.running_balance)}
+              </span>
+            </td>
+
+            <td className="px-4 sm:px-8 py-4 text-right">
+              <button
+                onClick={() =>
+                  handleViewSource(
+                    txn.source_type,
+                    txn.source_id,
+                    txn.reference_number,
+                  )
+                }
+                className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer print:hidden"
+                title="View Source Document"
+              >
+                <Eye size={16} />
+              </button>
+            </td>
+          </tr>
+        )}
+      />
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
+
+      {/* FILTER MODAL */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onClear={resetFilters}
+        title="Ledger Scope Filters"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              Branch Isolation
+            </label>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+            >
+              <option value="all">Enterprise Global (Consolidated)</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.branch_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+        </div>
+      </FilterModal>
+
+      <GeneralLedgerSourceDrawer
+        isOpen={!!selectedSource}
+        onClose={closeDrawer}
+        source={selectedSource}
+      />
     </div>
   );
 };

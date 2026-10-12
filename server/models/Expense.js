@@ -1,205 +1,582 @@
-const { pool, query } = require("../config/db");
+const { query, pool } = require("../config/db");
 
 class Expense {
-  // Fetch pending expenses for the Split-Screen UI
-  static async getPending(branchId) {
-    let sql = `
-      SELECT e.*, s.supplier_name, u.first_name || ' ' || u.last_name as staff_name
-      FROM expenses e
-      LEFT JOIN suppliers s ON e.supplier_id = s.id
-      JOIN users u ON e.submitted_by = u.id
-      WHERE e.status = 'PENDING'
-    `;
-    const values = [];
-    if (branchId) {
-      sql += ` AND e.branch_id = $1`;
-      values.push(branchId);
-    }
-    sql += ` ORDER BY e.created_at ASC`;
-    const result = await query(sql, values);
-    return result.rows;
-  }
+  static async generateExpenseCode() {
+    const date = new Date();
+    const yearMonth = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const prefix = `EXP-${yearMonth}-`;
 
-  // Duplicate Check Logic
-  static async checkDuplicate(supplierId, date, totalAmount) {
-    const sql = `
-      SELECT id FROM expenses 
-      WHERE supplier_id = $1 AND transaction_date = $2 AND total_amount = $3 AND status = 'APPROVED'
-    `;
-    const result = await query(sql, [supplierId, date, totalAmount]);
-    return result.rows.length > 0;
-  }
+    const sql = `SELECT expense_number FROM expenses WHERE expense_number LIKE $1 ORDER BY id DESC LIMIT 1`;
+    const result = await query(sql, [`${prefix}%`]);
 
-  // The Grand Atomic Transaction (All-or-Nothing)
-  static async approveAtomic(expenseId, data, branchId) {
-    const client = await pool.connect(); // Grab a dedicated connection
-    try {
-      await client.query("BEGIN"); // Lock the database state
-
-      // 1. Mark Expense as Approved & Update verified totals
-      const updateExpSql = `
-        UPDATE expenses 
-        SET status = 'APPROVED', base_amount = $1, vat_amount = $2, total_amount = $3, supplier_id = $4, updated_at = NOW()
-        WHERE id = $5 RETURNING transaction_date
-      `;
-      const expRes = await client.query(updateExpSql, [
-        data.base_amount,
-        data.vat_amount,
-        data.total_amount,
-        data.supplier_id,
-        expenseId,
-      ]);
-      const txnDate = expRes.rows[0].transaction_date;
-
-      // 2. Post to VAT Ledger (If VAT exists)
-      if (data.vat_amount > 0) {
-        const taxPeriod = txnDate.toISOString().slice(0, 7); // Format: YYYY-MM
-        const vatSql = `
-          INSERT INTO vat_ledger (transaction_date, branch_id, transaction_type, base_amount, vat_amount, total_amount, reference_type, reference_id, tax_period)
-          VALUES ($1, $2, 'INPUT', $3, $4, $5, 'SUPPLIER_RECEIPT', $6, $7)
-        `;
-        await client.query(vatSql, [
-          txnDate,
-          branchId,
-          data.base_amount,
-          data.vat_amount,
-          data.total_amount,
-          expenseId,
-          taxPeriod,
-        ]);
-      }
-
-      // 3. Post to General Ledger (Double Entry Accounting)
-
-      // DEBIT: The Dynamic Expense Account (e.g., 5000 COGS, 5100 Salaries, 5200 Utilities)
-      const debitRes = await client.query(
-        `
-        INSERT INTO general_ledger (branch_id, transaction_date, account_id, debit, reference_type, reference_id)
-        VALUES ($1, $2, (SELECT id FROM chart_of_accounts WHERE account_code = $3::text LIMIT 1), $4, 'EXPENSE_RECEIPT', $5)
-        RETURNING id
-      `,
-        [
-          branchId,
-          txnDate,
-          data.expense_account_id,
-          data.base_amount,
-          expenseId,
-        ],
+    let sequence = 1;
+    if (result.rows[0]) {
+      const lastSequence = parseInt(
+        result.rows[0].expense_number.split("-")[2],
+        10,
       );
-
-      // CAPTURE THE GENERATED GL ID FOR THE AUDIT TRAIL
-      const glTransactionId = debitRes.rows[0].id;
-
-      // DEBIT: Input VAT (Account 1300)
-      if (data.vat_amount > 0) {
-        await client.query(
-          `
-          INSERT INTO general_ledger (branch_id, transaction_date, account_id, debit, reference_type, reference_id)
-          VALUES ($1, $2, (SELECT id FROM chart_of_accounts WHERE account_code = '1300' LIMIT 1), $3, 'EXPENSE_RECEIPT', $4)
-        `,
-          [branchId, txnDate, data.vat_amount, expenseId],
-        );
-      }
-
-      // CREDIT: Dynamic Liability or Asset (Accounts Payable vs. Cash-on-Hand)
-      const creditAccountCode =
-        data.payment_method === "CASH" ? "1000" : "2000";
-      await client.query(
-        `
-        INSERT INTO general_ledger (branch_id, transaction_date, account_id, credit, reference_type, reference_id)
-        VALUES ($1, $2, (SELECT id FROM chart_of_accounts WHERE account_code = $3::text LIMIT 1), $4, 'EXPENSE_RECEIPT', $5)
-      `,
-        [branchId, txnDate, creditAccountCode, data.total_amount, expenseId],
-      );
-
-      // 4. Update Inventory & Moving Average Cost (If Line Items exist)
-      if (data.items && data.items.length > 0) {
-        for (let item of data.items) {
-          // Update Branch Quantity
-          await client.query(
-            `
-            UPDATE branch_inventory SET quantity = quantity + $1, last_restock_date = NOW()
-            WHERE branch_id = $2 AND item_id = $3
-          `,
-            [item.quantity, branchId, item.inventory_item_id],
-          );
-
-          // Moving Average Cost Calculation Formula
-          await client.query(
-            `
-            UPDATE inventory_items 
-            SET unit_cost = ((unit_cost * (SELECT COALESCE(SUM(quantity), 0) FROM branch_inventory WHERE item_id = $1)) + ($2 * $3)) / 
-                            ((SELECT COALESCE(SUM(quantity), 0) FROM branch_inventory WHERE item_id = $1) + $2)
-            WHERE id = $1
-          `,
-            [item.inventory_item_id, item.quantity, item.unit_price],
-          );
-        }
-      }
-
-      await client.query("COMMIT"); // EVERYTHING SUCCEEDS
-      return { success: true, gl_transaction_id: glTransactionId };
-    } catch (error) {
-      await client.query("ROLLBACK"); // EVERYTHING REVERTS
-      throw error;
-    } finally {
-      client.release(); // Return connection to pool
+      sequence = lastSequence + 1;
     }
-  }
-
-  // Reject an expense back to staff
-  static async reject(expenseId, reason, category) {
-    const sql = `
-      UPDATE expenses 
-      SET status = 'REJECTED', rejection_reason = $1, rejection_category = $2, updated_at = NOW()
-      WHERE id = $3 RETURNING *
-    `;
-    const result = await query(sql, [reason, category, expenseId]);
-    return result.rows[0];
-  }
-
-  // Fetch permanent archive of rejected expenses
-  static async getRejectedLogs(branchId) {
-    let sql = `
-      SELECT e.*, s.supplier_name, u.first_name || ' ' || u.last_name as staff_name
-      FROM expenses e
-      LEFT JOIN suppliers s ON e.supplier_id = s.id
-      JOIN users u ON e.submitted_by = u.id
-      WHERE e.status = 'REJECTED'
-    `;
-    const values = [];
-    if (branchId) {
-      sql += ` AND e.branch_id = $1`;
-      values.push(branchId);
-    }
-    sql += ` ORDER BY e.updated_at DESC`;
-    const result = await query(sql, values);
-    return result.rows;
+    return `${prefix}${String(sequence).padStart(4, "0")}`;
   }
 
   static async create(data) {
     const sql = `
       INSERT INTO expenses (
-        branch_id, submitted_by, supplier_id, transaction_date, 
-        base_amount, vat_amount, total_amount, 
-        receipt_image_url, ai_confidence_score, status
-      ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PENDING')
-      RETURNING *;
+        expense_number, branch_id, vendor_id, expense_account_id, description, reference_number,
+        expense_date, is_vatable, subtotal, vat_amount, total_amount, payment_method, 
+        status, notes, created_by, vendor_name, receipt_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      RETURNING *
     `;
     const values = [
+      data.expense_number,
       data.branch_id,
-      data.submitted_by,
-      data.supplier_id || null,
-      data.transaction_date,
-      data.base_amount,
+      data.vendor_id,
+      data.expense_account_id,
+      data.description,
+      data.reference_number,
+      data.expense_date,
+      data.is_vatable,
+      data.subtotal,
       data.vat_amount,
       data.total_amount,
-      data.receipt_image_url,
-      data.ai_confidence_score || 1.0,
+      data.payment_method,
+      data.status,
+      data.notes,
+      data.created_by,
+      data.vendor_name,
+      data.receipt_url || null,
     ];
     const result = await query(sql, values);
     return result.rows[0];
+  }
+
+  static async update(id, data) {
+    const setClauses = [];
+    const values = [];
+    let paramIdx = 1;
+
+    const fields = [
+      "expense_account_id",
+      "description",
+      "reference_number",
+      "expense_date",
+      "is_vatable",
+      "subtotal",
+      "vat_amount",
+      "total_amount",
+      "payment_method",
+      "notes",
+      "status",
+      "vendor_name",
+      "receipt_url",
+    ];
+
+    for (const field of fields) {
+      if (data[field] !== undefined) {
+        setClauses.push(`${field} = $${paramIdx}`);
+        values.push(data[field]);
+        paramIdx++;
+      }
+    }
+
+    if (data.vendor_id !== undefined) {
+      setClauses.push(`vendor_id = $${paramIdx}`);
+      values.push(data.vendor_id);
+      paramIdx++;
+    }
+
+    if (setClauses.length === 0) {
+      return (await query(`SELECT * FROM expenses WHERE id = $1`, [id]))
+        .rows[0];
+    }
+
+    setClauses.push(`updated_at = NOW()`);
+    values.push(id);
+
+    const sql = `UPDATE expenses SET ${setClauses.join(", ")} WHERE id = $${paramIdx} RETURNING *`;
+    const result = await query(sql, values);
+    return result.rows[0];
+  }
+
+  static async findById(id) {
+    const sql = `
+      SELECT e.*, 
+             coa.account_name AS category, coa.account_code,
+             COALESCE(v.business_name, e.vendor_name) as vendor_name,
+             v.business_address as vendor_address, v.contact_number as vendor_contact, v.tin as vendor_tin,
+             b.branch_name, b.branch_code, b.address as branch_address, 
+             u.first_name as created_by_name, u.last_name as created_by_last_name, u.role as created_by_role,
+             r.first_name as resolved_by_name, r.last_name as resolved_by_last_name, r.role as resolved_by_role
+      FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
+      LEFT JOIN vendors v ON e.vendor_id = v.id
+      JOIN branches b ON e.branch_id = b.id
+      LEFT JOIN users u ON e.created_by = u.id
+      LEFT JOIN users r ON e.resolved_by = r.id
+      WHERE e.id = $1
+    `;
+    const result = await query(sql, [id]);
+    return result.rows[0];
+  }
+
+  static async countFiltered(
+    search,
+    status,
+    expenseAccountId,
+    branchId,
+    excludeOcr = false,
+  ) {
+    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id`;
+
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (excludeOcr) {
+      conditions.push(`e.scan_id IS NULL`);
+    }
+
+    if (search) {
+      conditions.push(
+        `(e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (status && status !== "all") {
+      conditions.push(`e.status = $${paramIdx}`);
+      values.push(status.toUpperCase());
+      paramIdx++;
+    }
+    if (expenseAccountId && expenseAccountId !== "all") {
+      conditions.push(`e.expense_account_id = $${paramIdx}`);
+      values.push(expenseAccountId);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      conditions.push(`e.branch_id = $${paramIdx}`);
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedFiltered(
+    limit,
+    offset,
+    search,
+    status,
+    expenseAccountId,
+    branchId,
+    excludeOcr = false,
+  ) {
+    let sql = `
+      SELECT e.id, e.expense_number, e.expense_date, coa.account_name AS category, e.description, 
+             e.total_amount, e.status, e.scan_id, e.receipt_url, 
+             COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name,
+             u.first_name as created_by_name
+      FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
+      LEFT JOIN vendors v ON e.vendor_id = v.id
+      JOIN branches b ON e.branch_id = b.id
+      LEFT JOIN users u ON e.created_by = u.id
+    `;
+
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (excludeOcr) {
+      conditions.push(`e.scan_id IS NULL`);
+    }
+
+    if (search) {
+      conditions.push(
+        `(e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (status && status !== "all") {
+      conditions.push(`e.status = $${paramIdx}`);
+      values.push(status.toUpperCase());
+      paramIdx++;
+    }
+    if (expenseAccountId && expenseAccountId !== "all") {
+      conditions.push(`e.expense_account_id = $${paramIdx}`);
+      values.push(expenseAccountId);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      conditions.push(`e.branch_id = $${paramIdx}`);
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    if (conditions.length > 0) sql += ` WHERE ` + conditions.join(" AND ");
+    sql += ` ORDER BY e.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
+  static async countApprovalHistory(
+    search,
+    expenseAccountId,
+    branchId,
+    excludeOcr = false,
+  ) {
+    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id WHERE e.status IN ('APPROVED', 'REJECTED')`;
+    const values = [];
+    let paramIdx = 1;
+
+    if (excludeOcr) {
+      sql += ` AND e.scan_id IS NULL`;
+    }
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (expenseAccountId && expenseAccountId !== "all") {
+      sql += ` AND e.expense_account_id = $${paramIdx}`;
+      values.push(expenseAccountId);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND e.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedApprovalHistory(
+    limit,
+    offset,
+    search,
+    expenseAccountId,
+    branchId,
+    excludeOcr = false,
+  ) {
+    let sql = `
+      SELECT e.id, e.expense_number, e.expense_date, coa.account_name AS category, e.description, 
+             e.total_amount, e.status, e.resolved_at as processed_at, e.scan_id, e.receipt_url,
+             COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
+             c.first_name as created_by_name, r.first_name as resolved_by_name
+      FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
+      LEFT JOIN vendors v ON e.vendor_id = v.id
+      JOIN branches b ON e.branch_id = b.id
+      LEFT JOIN users c ON e.created_by = c.id
+      LEFT JOIN users r ON e.resolved_by = r.id
+      WHERE e.status IN ('APPROVED', 'REJECTED')
+    `;
+    const values = [];
+    let paramIdx = 1;
+
+    if (excludeOcr) {
+      sql += ` AND e.scan_id IS NULL`;
+    }
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR e.description ILIKE $${paramIdx} OR e.reference_number ILIKE $${paramIdx} OR v.business_name ILIKE $${paramIdx} OR e.vendor_name ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (expenseAccountId && expenseAccountId !== "all") {
+      sql += ` AND e.expense_account_id = $${paramIdx}`;
+      values.push(expenseAccountId);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND e.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    sql += ` ORDER BY e.resolved_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
+  static async processApprovalDecision(id, status, remarks, resolvedBy) {
+    let sql;
+    const values = [status, resolvedBy, id];
+
+    if (status === "REJECTED") {
+      sql = `
+        UPDATE expenses 
+        SET status = $1, rejection_remarks = $4, resolved_by = $2, resolved_at = NOW(), updated_at = NOW() 
+        WHERE id = $3 AND status = 'PENDING_APPROVAL' 
+        RETURNING *
+      `;
+      values.push(remarks);
+    } else {
+      if (remarks) {
+        const remarksAppend = `\n\n[Manager Approval Notes]: ${remarks}`;
+        sql = `
+          UPDATE expenses 
+          SET status = $1, notes = COALESCE(notes, '') || $4, resolved_by = $2, resolved_at = NOW(), updated_at = NOW() 
+          WHERE id = $3 AND status = 'PENDING_APPROVAL' 
+          RETURNING *
+        `;
+        values.push(remarksAppend);
+      } else {
+        sql = `
+          UPDATE expenses 
+          SET status = $1, resolved_by = $2, resolved_at = NOW(), updated_at = NOW() 
+          WHERE id = $3 AND status = 'PENDING_APPROVAL' 
+          RETURNING *
+        `;
+      }
+    }
+
+    const result = await query(sql, values);
+    return result.rows[0];
+  }
+
+  static async countReceiptApprovals(search, status, branchId) {
+    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id WHERE e.scan_id IS NOT NULL`;
+    const conditions = [];
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      conditions.push(
+        `(e.expense_number ILIKE $${paramIdx} OR COALESCE(v.business_name, e.vendor_name) ILIKE $${paramIdx})`,
+      );
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (status && status !== "all") {
+      conditions.push(`e.status = $${paramIdx}`);
+      values.push(status.toUpperCase());
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      conditions.push(`e.branch_id = $${paramIdx}`);
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    if (conditions.length > 0) sql += ` AND ` + conditions.join(" AND ");
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedReceiptApprovals(
+    limit,
+    offset,
+    search,
+    status,
+    branchId,
+  ) {
+    let sql = `
+      SELECT e.id, e.expense_number, e.expense_date, coa.account_name AS category, 
+             e.total_amount, e.status, COALESCE(v.business_name, e.vendor_name) as vendor_name, 
+             b.branch_name, rs.confidence_score, rs.created_at as scan_date,
+             u.first_name as created_by_name
+      FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
+      LEFT JOIN vendors v ON e.vendor_id = v.id
+      JOIN branches b ON e.branch_id = b.id
+      JOIN receipt_scans rs ON e.scan_id = rs.id
+      LEFT JOIN users u ON e.created_by = u.id
+      WHERE e.scan_id IS NOT NULL
+    `;
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR COALESCE(v.business_name, e.vendor_name) ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (status && status !== "all") {
+      sql += ` AND e.status = $${paramIdx}`;
+      values.push(status.toUpperCase());
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND e.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    sql += ` ORDER BY e.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
+  static async findReceiptApprovalById(id) {
+    const sql = `
+      SELECT e.*, coa.account_name AS category, COALESCE(v.business_name, e.vendor_name) as vendor_name, b.branch_name, 
+             u.first_name as created_by_name, r.first_name as resolved_by_name,
+             rs.file_path, rs.confidence_score, rs.original_filename, rs.extracted_data
+      FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
+      LEFT JOIN vendors v ON e.vendor_id = v.id
+      JOIN branches b ON e.branch_id = b.id
+      LEFT JOIN users u ON e.created_by = u.id
+      LEFT JOIN users r ON e.resolved_by = r.id
+      JOIN receipt_scans rs ON e.scan_id = rs.id
+      WHERE e.id = $1 AND e.scan_id IS NOT NULL
+    `;
+    const result = await query(sql, [id]);
+    return result.rows[0];
+  }
+
+  static async countReceiptApprovalHistory(search, branchId) {
+    let sql = `SELECT COUNT(DISTINCT e.id) FROM expenses e LEFT JOIN vendors v ON e.vendor_id = v.id WHERE e.scan_id IS NOT NULL AND e.status IN ('APPROVED', 'REJECTED')`;
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR COALESCE(v.business_name, e.vendor_name) ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND e.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedReceiptApprovalHistory(
+    limit,
+    offset,
+    search,
+    branchId,
+  ) {
+    let sql = `
+      SELECT e.id, e.expense_number, e.expense_date, coa.account_name AS category, e.total_amount, e.status, 
+             COALESCE(v.business_name, e.vendor_name) as vendor_name, e.resolved_at as processed_at,
+             b.branch_name, rs.confidence_score, 
+             c.first_name as created_by_name, r.first_name as resolved_by_name
+      FROM expenses e
+      JOIN chart_of_accounts coa ON e.expense_account_id = coa.id
+      LEFT JOIN vendors v ON e.vendor_id = v.id
+      JOIN branches b ON e.branch_id = b.id
+      JOIN receipt_scans rs ON e.scan_id = rs.id
+      LEFT JOIN users c ON e.created_by = c.id
+      LEFT JOIN users r ON e.resolved_by = r.id
+      WHERE e.scan_id IS NOT NULL AND e.status IN ('APPROVED', 'REJECTED')
+    `;
+    const values = [];
+    let paramIdx = 1;
+
+    if (search) {
+      sql += ` AND (e.expense_number ILIKE $${paramIdx} OR COALESCE(v.business_name, e.vendor_name) ILIKE $${paramIdx})`;
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (branchId && branchId !== "all") {
+      sql += ` AND e.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    sql += ` ORDER BY e.resolved_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
+  static async createFromVerification(
+    scanId,
+    data,
+    activeUserId,
+    activeBranchId,
+  ) {
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const scanRes = await client.query(
+        `SELECT * FROM receipt_scans WHERE id = $1 FOR UPDATE`,
+        [scanId],
+      );
+      const scan = scanRes.rows[0];
+
+      if (!scan) throw new Error("Receipt scan session not found.");
+      if (scan.branch_id !== activeBranchId)
+        throw new Error("Unauthorized: Cross-branch verification denied.");
+      if (scan.status !== "PENDING_VERIFICATION") {
+        throw new Error(
+          `Transaction Rejected: This receipt is currently marked as ${scan.status}.`,
+        );
+      }
+
+      const expense_number = await this.generateExpenseCode();
+      const description = `OCR Verified Expense: ${data.vendor_name}`;
+
+      const insertSql = `
+        INSERT INTO expenses (
+          expense_number, branch_id, vendor_id, vendor_name, expense_account_id, description,
+          reference_number, expense_date, is_vatable, subtotal, vat_amount, total_amount,
+          payment_method, status, scan_id, receipt_url, line_items, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) 
+        RETURNING *
+      `;
+
+      const values = [
+        expense_number,
+        scan.branch_id,
+        data.vendor_id || null,
+        data.vendor_name,
+        data.expense_account_id,
+        description,
+        data.reference_number || data.receipt_number || null,
+        data.expense_date,
+        data.is_vatable,
+        data.subtotal,
+        data.vat_amount,
+        data.total_amount,
+        data.payment_method,
+        "PENDING_APPROVAL",
+        scan.id,
+        scan.file_path,
+        JSON.stringify(data.line_items),
+        activeUserId,
+      ];
+
+      const expRes = await client.query(insertSql, values);
+      const newExpense = expRes.rows[0];
+
+      await client.query(
+        `UPDATE receipt_scans SET status = 'VERIFIED', updated_at = NOW() WHERE id = $1`,
+        [scan.id],
+      );
+
+      await client.query("COMMIT");
+
+      return { newExpense, scan };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 
