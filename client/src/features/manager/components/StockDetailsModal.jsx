@@ -15,35 +15,63 @@ import {
 } from "lucide-react";
 import { inventoryService } from "../../../services/manager/inventory.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import Pagination from "../../../components/shared/Pagination";
 
 const StockDetailsModal = ({ isOpen, onClose, item }) => {
   const [activeTab, setActiveTab] = useState("breakdown");
   const [breakdown, setBreakdown] = useState([]);
   const [history, setHistory] = useState([]);
+
+  // Loading & Error States
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState("");
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // Reset states when opening the modal
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab("breakdown");
+      setCurrentPage(1);
+    }
+  }, [isOpen, item]);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!isOpen || !item) return;
       try {
-        setLoading(true);
         setError("");
         if (activeTab === "breakdown") {
+          // Main loader for Branch Breakdown
+          setLoading(true);
           const res = await inventoryService.getBranchBreakdown(item.id);
           setBreakdown(res.data || []);
+          setLoading(false);
         } else {
-          const res = await inventoryService.getMovementHistory(item.id);
+          // Localized loader for Movement History Pagination
+          setLoadingHistory(true);
+          const res = await inventoryService.getMovementHistory(
+            item.id,
+            currentPage,
+            ITEMS_PER_PAGE,
+            "all",
+          );
           setHistory(res.data || []);
+          setTotalPages(res.pagination?.totalPages || 1);
+          setLoadingHistory(false);
         }
       } catch (err) {
         setError(err.message);
-      } finally {
         setLoading(false);
+        setLoadingHistory(false);
       }
     };
     fetchData();
-  }, [isOpen, item, activeTab]);
+  }, [isOpen, item, activeTab, currentPage]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -54,6 +82,13 @@ const StockDetailsModal = ({ isOpen, onClose, item }) => {
       hour: "numeric",
       minute: "2-digit",
     }).format(date);
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === "history") {
+      setCurrentPage(1);
+    }
   };
 
   return (
@@ -92,7 +127,7 @@ const StockDetailsModal = ({ isOpen, onClose, item }) => {
             {/* Tab Navigation */}
             <div className="flex px-6 sm:px-8 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
               <button
-                onClick={() => setActiveTab("breakdown")}
+                onClick={() => handleTabChange("breakdown")}
                 className={`px-4 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
                   activeTab === "breakdown"
                     ? "border-amber-500 text-amber-600 dark:text-amber-500"
@@ -102,7 +137,7 @@ const StockDetailsModal = ({ isOpen, onClose, item }) => {
                 <Network size={16} /> Branch Extraction
               </button>
               <button
-                onClick={() => setActiveTab("history")}
+                onClick={() => handleTabChange("history")}
                 className={`px-4 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
                   activeTab === "history"
                     ? "border-amber-500 text-amber-600 dark:text-amber-500"
@@ -193,102 +228,118 @@ const StockDetailsModal = ({ isOpen, onClose, item }) => {
 
                   {/* TAB 2: MOVEMENT HISTORY (STOCK LEDGER) */}
                   {activeTab === "history" && (
-                    <div className="animate-in fade-in">
-                      {history.length === 0 ? (
+                    <div className="animate-in fade-in space-y-4">
+                      {history.length === 0 && !loadingHistory ? (
                         <p className="text-center text-slate-400 py-8 text-xs font-bold uppercase">
                           No movement records found.
                         </p>
                       ) : (
-                        <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left whitespace-nowrap min-w-[700px]">
-                              <thead>
-                                <tr className="bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-white/5">
-                                  <th className="px-4 py-3">Date & Time</th>
-                                  <th className="px-4 py-3">Branch Location</th>
-                                  <th className="px-4 py-3">Transaction</th>
-                                  <th className="px-4 py-3 text-right">
-                                    Movement
-                                  </th>
-                                  <th className="px-4 py-3 text-right">
-                                    Balance
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-50 dark:divide-white/5">
-                                {history.map((record) => (
-                                  <tr
-                                    key={record.id}
-                                    className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
-                                  >
-                                    <td className="px-4 py-3">
-                                      <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                                        {formatDate(record.created_at)}
-                                      </p>
-                                      <p className="text-[9px] text-slate-400 uppercase mt-0.5">
-                                        By: {record.first_name || "System"}{" "}
-                                        {record.last_name || ""}
-                                      </p>
-                                    </td>
-                                    <td className="px-4 py-3 text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase">
-                                      {record.branch_name}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <StatusBadge
-                                        label={record.transaction_type.replace(
-                                          /_/g,
-                                          " ",
-                                        )}
-                                        variant={
-                                          [
-                                            "BILL_RECEIVED",
-                                            "TRANSFER_IN",
-                                          ].includes(record.transaction_type)
-                                            ? "success"
-                                            : [
-                                                  "SALES_INVOICE",
-                                                  "TRANSFER_OUT",
-                                                ].includes(
-                                                  record.transaction_type,
-                                                )
-                                              ? "danger"
-                                              : "default"
-                                        }
-                                        className="!py-0.5 !px-2"
-                                      />
-                                      <p className="text-[9px] text-blue-500 uppercase mt-1.5 tracking-widest">
-                                        {record.transaction_reference}
-                                      </p>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                      {record.quantity_added > 0 && (
-                                        <span className="inline-flex items-center gap-1 text-emerald-500 text-[11px] font-black">
-                                          <ArrowUpRight size={12} /> +
-                                          {record.quantity_added}
-                                        </span>
-                                      )}
-                                      {record.quantity_deducted > 0 && (
-                                        <span className="inline-flex items-center gap-1 text-red-500 text-[11px] font-black">
-                                          <ArrowDownRight size={12} /> -
-                                          {record.quantity_deducted}
-                                        </span>
-                                      )}
-                                      {record.quantity_added === 0 &&
-                                        record.quantity_deducted === 0 && (
-                                          <span className="text-slate-400 text-[11px] font-black">
-                                            -
+                        <>
+                          <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden relative">
+                            {loadingHistory && (
+                              <div className="absolute inset-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
+                                <Loader2 className="h-6 w-6 text-amber-500 animate-spin" />
+                              </div>
+                            )}
+
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left whitespace-nowrap min-w-[700px]">
+                                <thead>
+                                  <tr className="bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-white/5">
+                                    <th className="px-4 py-3">Date & Time</th>
+                                    <th className="px-4 py-3">
+                                      Branch Location
+                                    </th>
+                                    <th className="px-4 py-3">Transaction</th>
+                                    <th className="px-4 py-3 text-right">
+                                      Movement
+                                    </th>
+                                    <th className="px-4 py-3 text-right">
+                                      Balance
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50 dark:divide-white/5">
+                                  {history.map((record) => (
+                                    <tr
+                                      key={record.id}
+                                      className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
+                                    >
+                                      <td className="px-4 py-3">
+                                        <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                          {formatDate(record.created_at)}
+                                        </p>
+                                        <p className="text-[9px] text-slate-400 uppercase mt-0.5">
+                                          By: {record.first_name || "System"}{" "}
+                                          {record.last_name || ""}
+                                        </p>
+                                      </td>
+                                      <td className="px-4 py-3 text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase">
+                                        {record.branch_name}
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <StatusBadge
+                                          label={record.transaction_type.replace(
+                                            /_/g,
+                                            " ",
+                                          )}
+                                          variant={
+                                            [
+                                              "BILL_RECEIVED",
+                                              "TRANSFER_IN",
+                                            ].includes(record.transaction_type)
+                                              ? "success"
+                                              : [
+                                                    "SALES_INVOICE",
+                                                    "TRANSFER_OUT",
+                                                  ].includes(
+                                                    record.transaction_type,
+                                                  )
+                                                ? "danger"
+                                                : "default"
+                                          }
+                                          className="!py-0.5 !px-2"
+                                        />
+                                        <p className="text-[9px] text-blue-500 uppercase mt-1.5 tracking-widest">
+                                          {record.transaction_reference}
+                                        </p>
+                                      </td>
+                                      <td className="px-4 py-3 text-right">
+                                        {record.quantity_added > 0 && (
+                                          <span className="inline-flex items-center gap-1 text-emerald-500 text-[11px] font-black">
+                                            <ArrowUpRight size={12} /> +
+                                            {record.quantity_added}
                                           </span>
                                         )}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-sm font-black text-slate-900 dark:text-white">
-                                      {record.remaining_quantity}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                                        {record.quantity_deducted > 0 && (
+                                          <span className="inline-flex items-center gap-1 text-red-500 text-[11px] font-black">
+                                            <ArrowDownRight size={12} /> -
+                                            {record.quantity_deducted}
+                                          </span>
+                                        )}
+                                        {record.quantity_added === 0 &&
+                                          record.quantity_deducted === 0 && (
+                                            <span className="text-slate-400 text-[11px] font-black">
+                                              -
+                                            </span>
+                                          )}
+                                      </td>
+                                      <td className="px-4 py-3 text-right text-sm font-black text-slate-900 dark:text-white">
+                                        {record.remaining_quantity}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
-                        </div>
+
+                          <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                          />
+                        </>
                       )}
                     </div>
                   )}

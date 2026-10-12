@@ -99,9 +99,11 @@ export const inventoryService = {
     }
   },
 
-  getMovementHistory: async (itemId) => {
+  getMovementHistory: async (itemId, page = 1, limit = 10, branch = "all") => {
     try {
-      const response = await api.get(`/manager/inventory/${itemId}/movements`);
+      const response = await api.get(`/manager/inventory/${itemId}/movements`, {
+        params: { page, limit, branch },
+      });
       return response.data;
     } catch (error) {
       const message =
