@@ -119,15 +119,23 @@ class InventoryController {
 
   static async getMovementHistory(req, res) {
     try {
-      const history = await InventoryService.getItemMovementHistory(
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const branch = req.query.branch || "all";
+
+      const result = await InventoryService.getItemMovementHistory(
         req.params.id,
+        page,
+        limit,
+        branch,
       );
-      return sendSuccess(
-        res,
-        STATUS_CODES.SUCCESS,
-        history,
-        "Inventory movement history retrieved.",
-      );
+
+      return res.status(STATUS_CODES.SUCCESS).json({
+        success: true,
+        data: result.movements,
+        pagination: result.pagination,
+        message: "Inventory movement history retrieved successfully.",
+      });
     } catch (error) {
       return sendError(
         res,

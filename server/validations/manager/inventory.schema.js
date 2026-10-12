@@ -119,10 +119,30 @@ const adjustStockSchema = z.object({
   }),
 });
 
+const getMovementHistorySchema = z.object({
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "Valid Master Item ID is required"),
+  }),
+  query: z
+    .object({
+      page: z
+        .string()
+        .regex(/^\d+$/, "Page must be a valid positive number")
+        .optional(),
+      limit: z
+        .string()
+        .regex(/^\d+$/, "Limit must be a valid positive number")
+        .optional(),
+      branch: z.string().optional().default("all"),
+    })
+    .optional(),
+});
+
 module.exports = {
   createInventoryItemSchema,
   updateInventoryItemSchema,
   toggleInventoryStatusSchema,
   getInventorySchema,
   adjustStockSchema,
+  getMovementHistorySchema,
 };

@@ -244,8 +244,33 @@ class InventoryService {
     return await InventoryModel.getBranchBreakdown(itemId);
   }
 
-  static async getItemMovementHistory(itemId) {
-    return await InventoryModel.getMovementHistory(itemId);
+  static async getItemMovementHistory(
+    itemId,
+    page = 1,
+    limit = 10,
+    branchId = "all",
+  ) {
+    const offset = (page - 1) * limit;
+
+    const [totalItems, movements] = await Promise.all([
+      InventoryModel.countMovementHistory(itemId, branchId),
+      InventoryModel.findPaginatedMovementHistory(
+        itemId,
+        branchId,
+        limit,
+        offset,
+      ),
+    ]);
+
+    return {
+      movements,
+      pagination: {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    };
   }
 
   static async getSingleMovement(movementId) {

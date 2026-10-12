@@ -351,6 +351,59 @@ class Inventory {
     return result.rows;
   }
 
+  static async countMovementHistory(itemId, branchId = "all") {
+    let sql = `SELECT COUNT(*) FROM inventory_movements WHERE item_id = $1`;
+    const values = [itemId];
+
+    if (branchId && branchId !== "all") {
+      sql += ` AND branch_id = $2`;
+      values.push(branchId);
+    }
+
+    const result = await query(sql, values);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static async findPaginatedMovementHistory(
+    itemId,
+    branchId = "all",
+    limit,
+    offset,
+  ) {
+    let sql = `
+      SELECT 
+        m.id,
+        m.transaction_type,
+        m.transaction_reference,
+        m.quantity_added,
+        m.quantity_deducted,
+        m.remaining_quantity,
+        m.remarks,
+        m.created_at,
+        b.branch_name,
+        u.first_name,
+        u.last_name
+      FROM inventory_movements m
+      JOIN branches b ON m.branch_id = b.id
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.item_id = $1
+    `;
+    const values = [itemId];
+    let paramIdx = 2;
+
+    if (branchId && branchId !== "all") {
+      sql += ` AND m.branch_id = $${paramIdx}`;
+      values.push(branchId);
+      paramIdx++;
+    }
+
+    sql += ` ORDER BY m.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    values.push(limit, offset);
+
+    const result = await query(sql, values);
+    return result.rows;
+  }
+
   static async getSingleMovement(movementId) {
     const sql = `
       SELECT 

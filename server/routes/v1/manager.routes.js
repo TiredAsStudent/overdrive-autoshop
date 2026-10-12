@@ -57,6 +57,7 @@ const {
   toggleInventoryStatusSchema,
   getInventorySchema,
   adjustStockSchema,
+  getMovementHistorySchema,
 } = require("../../validations/manager/inventory.schema");
 const {
   getAdjustmentsSchema,
@@ -218,7 +219,11 @@ router.patch(
   InventoryController.toggleItemStatus,
 );
 router.get("/inventory/:id/breakdown", InventoryController.getBranchBreakdown);
-router.get("/inventory/:id/movements", InventoryController.getMovementHistory);
+router.get(
+  "/inventory/:id/movements",
+  validate(getMovementHistorySchema),
+  InventoryController.getMovementHistory,
+);
 
 router.get("/inventory/movement/:id", InventoryController.getSingleMovement);
 
