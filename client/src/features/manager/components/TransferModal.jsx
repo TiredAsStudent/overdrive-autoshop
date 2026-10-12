@@ -12,6 +12,7 @@ import {
   Plus,
   Trash2,
   Layers,
+  FileText,
 } from "lucide-react";
 import { inventoryService } from "../../../services/manager/inventory.service";
 import { useDebounce } from "../../../hooks/useDebounce";
