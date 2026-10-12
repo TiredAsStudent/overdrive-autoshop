@@ -269,7 +269,11 @@ const TransferModal = ({ isOpen, onClose, onSubmit, branches }) => {
                 </div>
               )}
 
-              <form id="bulkTransferForm" className="space-y-6">
+              <form
+                id="bulkTransferForm"
+                onSubmit={handleSubmit}
+                className="space-y-6"
+              >
                 {/* LOGISTICS ROUTING HEADER */}
                 <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[24px] border border-slate-200 dark:border-slate-700 relative shadow-sm">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 flex items-center gap-2">
