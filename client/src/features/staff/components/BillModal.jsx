@@ -24,6 +24,12 @@ const formatToLocalDateInput = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+const addDaysToDateInput = (dateStr, days = 30) => {
+  const d = dateStr ? new Date(`${dateStr}T00:00:00`) : new Date();
+  d.setDate(d.getDate() + days);
+  return formatToLocalDateInput(d);
+};
+
 const BillModal = ({ isOpen, onClose, onSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
@@ -44,10 +50,13 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  const todayStr = formatToLocalDateInput();
+
   const [formData, setFormData] = useState({
     purchase_order_id: "",
     vendor_invoice_number: "",
-    bill_date: formatToLocalDateInput(),
+    bill_date: todayStr,
+    due_date: addDaysToDateInput(todayStr, 30),
     notes: "",
     status: "PENDING_RECEIPT",
   });
@@ -60,6 +69,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
 
   useEffect(() => {
     if (isOpen) {
+      const currentDayStr = formatToLocalDateInput();
       setValidationError("");
       setPoDetails(null);
       setSearchTerm("");
@@ -67,7 +77,8 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
       setFormData({
         purchase_order_id: "",
         vendor_invoice_number: "",
-        bill_date: formatToLocalDateInput(),
+        bill_date: currentDayStr,
+        due_date: addDaysToDateInput(currentDayStr, 30),
         notes: "",
         status: "PENDING_RECEIPT",
       });
@@ -134,7 +145,15 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === "bill_date" && value) {
+        if (!prev.due_date || prev.due_date < value) {
+          updated.due_date = addDaysToDateInput(value, 30);
+        }
+      }
+      return updated;
+    });
   };
 
   const processFile = (file) => {
@@ -204,6 +223,14 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
       );
     if (!formData.vendor_invoice_number.trim())
       return setValidationError("Vendor Invoice / Receipt Number is required.");
+    if (!formData.bill_date)
+      return setValidationError("Billing Date is required.");
+    if (!formData.due_date)
+      return setValidationError("Payment Due Date is required.");
+    if (formData.due_date < formData.bill_date)
+      return setValidationError(
+        "Payment Due Date cannot be earlier than the Billing Date.",
+      );
     if (!poDetails || !poDetails.items)
       return setValidationError("PO line items failed to load.");
 
@@ -223,6 +250,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
             .toUpperCase()
             .trim(),
           bill_date: formData.bill_date,
+          due_date: formData.due_date,
           status: formData.status,
           notes: formData.notes,
           items,
@@ -381,7 +409,7 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 flex items-center gap-2">
                     <Calendar size={14} /> Billing Details
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                         Billing Date <span className="text-red-500">*</span>
@@ -391,6 +419,20 @@ const BillModal = ({ isOpen, onClose, onSubmit }) => {
                         type="date"
                         name="bill_date"
                         value={formData.bill_date}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                        Due Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        required
+                        type="date"
+                        name="due_date"
+                        min={formData.bill_date}
+                        value={formData.due_date}
                         onChange={handleChange}
                         className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm transition-all cursor-pointer"
                       />

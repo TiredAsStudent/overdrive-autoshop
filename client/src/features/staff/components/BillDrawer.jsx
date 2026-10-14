@@ -75,12 +75,18 @@ const BillDrawer = ({ isOpen, onClose, billId, readOnly = false }) => {
     return AlertCircle;
   };
 
-  const getAttachmentUrl = (path) => {
-    if (!path) return null;
+  const getAttachmentUrl = (filePath) => {
+    if (!filePath) return null;
     const baseUrl =
       import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
       "http://localhost:5000";
-    return `${baseUrl}/${path}`;
+    const normalized = filePath.replace(/\\/g, "/");
+    const uploadsIdx = normalized.indexOf("uploads/");
+    const cleanRelative =
+      uploadsIdx !== -1
+        ? normalized.slice(uploadsIdx)
+        : normalized.replace(/^\//, "");
+    return `${baseUrl}/${cleanRelative}`;
   };
 
   const isPdf = (path) => {
@@ -233,7 +239,7 @@ const BillDrawer = ({ isOpen, onClose, billId, readOnly = false }) => {
 
                   <section className="flex items-center gap-4 p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm">
                     <Calendar size={20} className="text-amber-500 shrink-0" />
-                    <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between min-w-0 gap-3">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 min-w-0 gap-3">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
                           Billing Date
@@ -242,17 +248,29 @@ const BillDrawer = ({ isOpen, onClose, billId, readOnly = false }) => {
                           {new Date(bill.bill_date).toLocaleDateString()}
                         </p>
                       </div>
-                      {bill.date_received && (
-                        <div className="sm:text-right border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-700/50 pt-3 sm:pt-0 sm:pl-4">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                            Date Received
-                          </p>
+                      <div className="border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-700/50 pt-3 sm:pt-0 sm:pl-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Due Date
+                        </p>
+                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                          {bill.due_date
+                            ? new Date(bill.due_date).toLocaleDateString()
+                            : "--"}
+                        </p>
+                      </div>
+                      <div className="sm:text-right border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-700/50 pt-3 sm:pt-0 sm:pl-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          Date Received
+                        </p>
+                        {bill.date_received ? (
                           <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center sm:justify-end gap-1.5">
                             <CheckCircle size={14} />
                             {new Date(bill.date_received).toLocaleDateString()}
                           </p>
-                        </div>
-                      )}
+                        ) : (
+                          <p className="text-sm font-bold text-slate-400">--</p>
+                        )}
+                      </div>
                     </div>
                   </section>
 

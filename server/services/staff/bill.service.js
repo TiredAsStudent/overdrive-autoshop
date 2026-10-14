@@ -93,13 +93,24 @@ class BillService {
         secureItems,
       );
 
+      let targetDueDateStr = data.due_date;
+      if (!targetDueDateStr) {
+        const defaultDue = new Date(data.bill_date);
+        defaultDue.setDate(defaultDue.getDate() + 30);
+        targetDueDateStr = `${defaultDue.getFullYear()}-${String(defaultDue.getMonth() + 1).padStart(2, "0")}-${String(defaultDue.getDate()).padStart(2, "0")}`;
+      }
+
+      if (new Date(targetDueDateStr) < new Date(data.bill_date)) {
+        throw new Error("Due Date cannot be earlier than the Billing Date.");
+      }
+
       const payload = {
         purchase_order_id: po.id,
         vendor_id: po.vendor_id,
         branch_id: branchId,
         vendor_invoice_number: data.vendor_invoice_number,
         bill_date: data.bill_date,
-
+        due_date: targetDueDateStr,
         status: "PENDING_RECEIPT",
         notes: data.notes,
         created_by: activeUser.id,
@@ -107,7 +118,7 @@ class BillService {
       };
 
       if (file) {
-        payload.attachment_url = file.path.replace(/\\/g, "/");
+        payload.attachment_url = `uploads/bills/${file.filename}`;
       }
 
       let retries = 3;
@@ -168,6 +179,7 @@ class BillService {
         null,
         {
           bill_number: newBill.bill_number,
+          due_date: newBill.due_date,
           status: newBill.status,
           has_attachment: !!payload.attachment_url,
         },
@@ -175,7 +187,7 @@ class BillService {
 
       return newBill;
     } catch (error) {
-      if (file) await fs.unlink(file.path).catch(console.error);
+      if (file && file.path) await fs.unlink(file.path).catch(console.error);
       throw error;
     }
   }

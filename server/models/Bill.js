@@ -28,8 +28,8 @@ class Bill {
       const headerSql = `
         INSERT INTO bills (
           bill_number, purchase_order_id, vendor_id, branch_id, vendor_invoice_number,
-          bill_date, date_received, status, subtotal, vat_amount, grand_total, notes, created_by, attachment_url
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *
+          bill_date, due_date, date_received, status, subtotal, vat_amount, grand_total, notes, created_by, attachment_url
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *
       `;
 
       const dateReceived = billData.status === "RECEIVED" ? new Date() : null;
@@ -41,6 +41,7 @@ class Bill {
         billData.branch_id,
         billData.vendor_invoice_number,
         billData.bill_date,
+        billData.due_date,
         dateReceived,
         billData.status,
         billData.subtotal,
@@ -246,7 +247,7 @@ class Bill {
     branchId,
   ) {
     let sql = `
-      SELECT b.id, b.bill_number, b.vendor_invoice_number, b.grand_total, b.status, b.payment_status, b.bill_date, b.date_received, b.attachment_url,
+      SELECT b.id, b.bill_number, b.vendor_invoice_number, b.grand_total, b.status, b.payment_status, b.bill_date, b.due_date, b.date_received, b.attachment_url,
              po.purchase_order_number, v.business_name as vendor_name, br.branch_name
       FROM bills b
       JOIN purchase_orders po ON b.purchase_order_id = po.id
