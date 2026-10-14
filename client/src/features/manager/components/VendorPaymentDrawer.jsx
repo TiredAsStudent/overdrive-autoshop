@@ -78,10 +78,26 @@ const VendorPaymentDrawer = ({
 
   const getEvidenceUrl = (path) => {
     if (!path) return null;
-    const baseUrl =
-      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
-      "http://localhost:5000";
-    return `${baseUrl}/${path}`;
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+
+    let baseUrl = api.defaults.baseURL
+      ? api.defaults.baseURL.replace("/api/v1", "")
+      : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+        "http://localhost:5000";
+
+    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+
+    const normalizedPath = path.replace(/\\/g, "/");
+
+    const uploadsIndex = normalizedPath.toLowerCase().indexOf("uploads/");
+    const cleanPath =
+      uploadsIndex !== -1
+        ? normalizedPath.slice(uploadsIndex)
+        : normalizedPath.startsWith("/")
+          ? normalizedPath.slice(1)
+          : normalizedPath;
+
+    return `${baseUrl}/${cleanPath}`;
   };
 
   const isPdf = (path) => path?.toLowerCase().endsWith(".pdf");
