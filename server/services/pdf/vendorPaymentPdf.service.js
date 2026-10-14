@@ -108,7 +108,7 @@ class VendorPaymentPdfService {
           .fontSize(16)
           .font("Helvetica-Bold")
           .fillColor(statusColor)
-          .text("DISBURSEMENT VOUCHER", 200, rightY, {
+          .text("PAYMENT VOUCHER", 200, rightY, {
             align: "right",
             width: 345,
           });
@@ -118,7 +118,7 @@ class VendorPaymentPdfService {
           .fontSize(9)
           .font("Helvetica-Bold")
           .fillColor("#64748b")
-          .text("(AP LIQUIDATION & PAYMENT RECEIPT)", 200, rightY, {
+          .text("(VENDOR PAYMENT RECEIPT)", 200, rightY, {
             align: "right",
             width: 345,
           });
@@ -167,12 +167,12 @@ class VendorPaymentPdfService {
         // --- 2. ADDRESS & REFERENCE BLOCKS ---
         const addressY = startY;
 
-        // Disbursing Branch (Left)
+        // Payment Branch (Left)
         doc
           .fontSize(8)
           .font("Helvetica-Bold")
           .fillColor("#94a3b8")
-          .text("DISBURSING BRANCH", 50, addressY);
+          .text("PAYMENT BRANCH", 50, addressY);
         doc
           .fontSize(10)
           .font("Helvetica-Bold")
@@ -311,8 +311,8 @@ class VendorPaymentPdfService {
         startY += 30;
         doc.font("Helvetica-Bold").fontSize(9).fillColor("#0f172a");
 
-        // Main Disbursement Row
-        const descriptionText = `Disbursement applied to Bill ${payment.bill_number}`;
+        // Main Payment Row
+        const descriptionText = `Payment applied to Bill ${payment.bill_number}`;
         const methodText = payment.payment_method
           ? payment.payment_method.replace(/_/g, " ")
           : "CASH";
@@ -442,14 +442,13 @@ class VendorPaymentPdfService {
           .fontSize(10)
           .font("Helvetica-Bold")
           .fillColor("#0f172a")
-          .text("Disbursement Notes:", 50, startY);
+          .text("Payment Notes:", 50, startY);
         doc
           .fontSize(9)
           .font("Helvetica-Oblique")
           .fillColor("#64748b")
           .text(
-            payment.notes ||
-              "Official Accounts Payable liquidation and disbursement voucher.",
+            payment.notes || "No additional payment notes provided.",
             50,
             startY + 15,
             { width: 495, lineGap: 2 },
@@ -463,12 +462,12 @@ class VendorPaymentPdfService {
 
         doc.fontSize(9).font("Helvetica-Bold").fillColor("#0f172a");
 
-        // Disbursed / Authorized By Signature (Left)
+        // Paid By Signature (Left)
         const preparerName = payment.created_by_name
           ? `${payment.created_by_name} ${payment.created_by_last_name || ""}`.trim()
           : "System";
         doc.text(
-          `Disbursed By: ${preparerName} (${payment.created_by_role || "Manager"})`,
+          `Paid By: ${preparerName} (${payment.created_by_role || "Manager"})`,
           50,
           startY,
         );
@@ -481,7 +480,7 @@ class VendorPaymentPdfService {
         doc
           .font("Helvetica")
           .fillColor("#475569")
-          .text("Authorized Disbursing Signature", 50, startY + 45);
+          .text("Authorized Signature", 50, startY + 45);
 
         // Vendor / Payee Received By Signature (Right)
         doc

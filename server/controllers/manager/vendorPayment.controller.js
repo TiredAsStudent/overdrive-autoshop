@@ -152,7 +152,7 @@ class VendorPaymentController {
       return sendError(
         res,
         code,
-        "Failed to generate Disbursement Voucher PDF.",
+        "Failed to generate Payment Voucher PDF.",
         error.message,
       );
     }

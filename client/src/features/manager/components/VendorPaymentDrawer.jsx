@@ -63,7 +63,7 @@ const VendorPaymentDrawer = ({
       );
     } catch (err) {
       showToast(
-        err.message || "Failed to generate Disbursement Voucher PDF.",
+        err.message || "Failed to generate Payment Voucher PDF.",
         "error",
       );
     } finally {
