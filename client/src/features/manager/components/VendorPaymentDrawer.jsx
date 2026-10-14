@@ -128,10 +128,13 @@ const VendorPaymentDrawer = ({
   const billTotal = payment ? parseFloat(payment.bill_total) : 0;
   const currentPayment = payment ? parseFloat(payment.amount_paid) : 0;
   const totalPaidOnBill = payment ? parseFloat(payment.bill_amount_paid) : 0;
-  const previouslyPaid =
-    payment?.status === "VOID"
-      ? totalPaidOnBill
-      : totalPaidOnBill - currentPayment;
+  const previouslyPaid = payment
+    ? payment.prior_amount_paid !== undefined
+      ? parseFloat(payment.prior_amount_paid)
+      : payment.status === "VOID"
+        ? totalPaidOnBill
+        : totalPaidOnBill - currentPayment
+    : 0;
   const remainingBalance = billTotal - totalPaidOnBill;
 
   return (
@@ -381,7 +384,7 @@ const VendorPaymentDrawer = ({
                     </div>
 
                     <div className="flex justify-between items-center text-sm font-medium text-slate-300 mb-4 pb-4 border-b border-white/10">
-                      <span>Remaining Balance</span>
+                      <span>Current Bill Balance</span>
                       <span className="font-mono text-rose-400">
                         ₱
                         {Math.max(0, remainingBalance).toLocaleString(

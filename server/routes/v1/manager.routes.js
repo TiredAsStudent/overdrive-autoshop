@@ -97,6 +97,7 @@ const {
   createVendorPaymentSchema,
   getVendorPaymentsSchema,
   getVendorPaymentByIdSchema,
+  getEligibleBillsSchema,
 } = require("../../validations/manager/vendorPayment.schema");
 const {
   saveJournalEntrySchema,
@@ -511,6 +512,7 @@ router.put(
 // ==========================================
 router.get(
   "/vendor-payments/eligible-bills/:vendorId",
+  validate(getEligibleBillsSchema),
   VendorPaymentController.getEligibleBills,
 );
 router.post(

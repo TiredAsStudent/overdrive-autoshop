@@ -43,7 +43,12 @@ class VendorPaymentController {
         "Disbursement successfully voided.",
       );
     } catch (error) {
-      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+      const code = error.message.includes("Unauthorized")
+        ? STATUS_CODES.FORBIDDEN
+        : error.message.toLowerCase().includes("not found")
+          ? STATUS_CODES.NOT_FOUND
+          : STATUS_CODES.BAD_REQUEST;
+      return sendError(res, code, error.message);
     }
   }
 
@@ -86,6 +91,7 @@ class VendorPaymentController {
     try {
       const payment = await VendorPaymentService.getPaymentDetails(
         req.params.id,
+        req.user,
       );
       return sendSuccess(
         res,
@@ -94,7 +100,10 @@ class VendorPaymentController {
         "Disbursement details retrieved.",
       );
     } catch (error) {
-      return sendError(res, STATUS_CODES.NOT_FOUND, error.message);
+      const code = error.message.includes("Unauthorized")
+        ? STATUS_CODES.FORBIDDEN
+        : STATUS_CODES.NOT_FOUND;
+      return sendError(res, code, error.message);
     }
   }
 
@@ -135,9 +144,11 @@ class VendorPaymentController {
       );
       return res.status(STATUS_CODES.SUCCESS).send(pdfBuffer);
     } catch (error) {
-      const code = error.message.toLowerCase().includes("not found")
-        ? STATUS_CODES.NOT_FOUND
-        : STATUS_CODES.INTERNAL_ERROR;
+      const code = error.message.includes("Unauthorized")
+        ? STATUS_CODES.FORBIDDEN
+        : error.message.toLowerCase().includes("not found")
+          ? STATUS_CODES.NOT_FOUND
+          : STATUS_CODES.INTERNAL_ERROR;
       return sendError(
         res,
         code,

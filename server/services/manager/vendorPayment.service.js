@@ -5,6 +5,19 @@ const { logSecureAction } = require("../../utils/auditLogger");
 const fs = require("fs").promises;
 
 class VendorPaymentService {
+  static _verifyBranchAccess(payment, activeUser) {
+    if (
+      activeUser &&
+      activeUser.role === "MANAGER" &&
+      activeUser.branchId &&
+      parseInt(payment.branch_id, 10) !== parseInt(activeUser.branchId, 10)
+    ) {
+      throw new Error(
+        "Unauthorized: You do not have permission to access records from another branch.",
+      );
+    }
+  }
+
   static async recordPayment(data, file, activeUser, ipAddress) {
     try {
       const requiresProof = [
@@ -54,14 +67,15 @@ class VendorPaymentService {
         activeUser.id,
         result.payment.branch_id,
         "VENDOR_PAYMENT_DISBURSED",
-        "WARNING", // Flagged as warning because cash left the business
+        "WARNING",
         ipAddress,
         "bills",
         result.payment.bill_id,
         {
-          payment_status: "PREVIOUS",
-          previous_amount_paid: result.payment.amount_paid,
-        }, // Masked for brevity
+          previous_amount_paid:
+            parseFloat(result.updatedBill.amount_paid) -
+            parseFloat(result.payment.amount_paid),
+        },
         {
           payment_number: result.payment.payment_number,
           amount_paid: result.payment.amount_paid,
@@ -72,7 +86,7 @@ class VendorPaymentService {
 
       return result;
     } catch (error) {
-      if (file) await fs.unlink(file.path).catch(console.error); // Safe Cleanup
+      if (file) await fs.unlink(file.path).catch(console.error);
       throw error;
     }
   }
@@ -80,6 +94,8 @@ class VendorPaymentService {
   static async voidPayment(id, activeUser, ipAddress) {
     const payment = await VendorPaymentModel.findById(id);
     if (!payment) throw new Error("Vendor payment record not found.");
+
+    this._verifyBranchAccess(payment, activeUser);
 
     const result = await VendorPaymentModel.voidPayment(id);
 
@@ -98,9 +114,12 @@ class VendorPaymentService {
     return result;
   }
 
-  static async getPaymentDetails(id) {
+  static async getPaymentDetails(id, activeUser = null) {
     const payment = await VendorPaymentModel.findById(id);
     if (!payment) throw new Error("Vendor payment record not found.");
+
+    this._verifyBranchAccess(payment, activeUser);
+
     return payment;
   }
 
@@ -144,6 +163,8 @@ class VendorPaymentService {
   static async generatePaymentPdf(id, activeUser, ipAddress) {
     const payment = await VendorPaymentModel.findById(id);
     if (!payment) throw new Error("Vendor payment record not found.");
+
+    this._verifyBranchAccess(payment, activeUser);
 
     const settings = await SystemSettingModel.getSettings();
     const pdfBuffer = await VendorPaymentPdfService.generate(payment, settings);

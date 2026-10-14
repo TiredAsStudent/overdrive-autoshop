@@ -14,6 +14,16 @@ class VendorPaymentPdfService {
     );
   }
 
+  static formatDate(dateVal) {
+    if (!dateVal) return "N/A";
+    const str = String(dateVal).split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const [year, month, day] = str.split("-");
+      return `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+    }
+    return new Date(dateVal).toLocaleDateString("en-US");
+  }
+
   static async generate(payment, settings) {
     return new Promise((resolve, reject) => {
       try {
@@ -136,7 +146,7 @@ class VendorPaymentPdfService {
           .fillColor("#64748b")
           .fontSize(9)
           .text(
-            `Date: ${new Date(payment.payment_date || payment.created_at).toLocaleDateString()}`,
+            `Date: ${this.formatDate(payment.payment_date || payment.created_at)}`,
             300,
             rightY,
             { align: "right", width: 245 },
@@ -199,6 +209,15 @@ class VendorPaymentPdfService {
           .text(payment.vendor_name, 300, addressY + 12);
 
         let vendY = addressY + 26;
+        if (payment.vendor_contact_person) {
+          doc
+            .fontSize(9)
+            .font("Helvetica")
+            .fillColor("#475569")
+            .text(`Attn: ${payment.vendor_contact_person}`, 300, vendY);
+          vendY += 14;
+        }
+
         if (payment.vendor_contact) {
           doc
             .fontSize(9)
@@ -235,7 +254,7 @@ class VendorPaymentPdfService {
             );
         }
 
-        startY = addressY + 95;
+        startY = Math.max(addressY + 95, vendY + 20);
 
         // References Highlight Bar
         doc
@@ -334,9 +353,11 @@ class VendorPaymentPdfService {
         const billTotal = parseFloat(payment.bill_total || 0);
         const totalPaidOnBill = parseFloat(payment.bill_amount_paid || 0);
         const previouslyPaid =
-          payment.status === "VOID"
-            ? totalPaidOnBill
-            : Math.max(0, totalPaidOnBill - amtApplied);
+          payment.prior_amount_paid !== undefined
+            ? parseFloat(payment.prior_amount_paid || 0)
+            : payment.status === "VOID"
+              ? totalPaidOnBill
+              : Math.max(0, totalPaidOnBill - amtApplied);
         const currentBalance = Math.max(0, billTotal - totalPaidOnBill);
 
         // Associated Bill Total
@@ -398,7 +419,7 @@ class VendorPaymentPdfService {
 
         // Remaining Bill Balance
         doc.font("Helvetica-Bold").fontSize(9).fillColor("#64748b");
-        doc.text("Remaining Bill Balance:", labelX, startY, {
+        doc.text("Current Bill Balance:", labelX, startY, {
           width: labelW,
           align: "right",
         });

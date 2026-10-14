@@ -68,8 +68,15 @@ const getVendorPaymentByIdSchema = z.object({
   }),
 });
 
+const getEligibleBillsSchema = z.object({
+  params: z.object({
+    vendorId: z.string().regex(/^\d+$/, "Valid Vendor ID is required."),
+  }),
+});
+
 module.exports = {
   createVendorPaymentSchema,
   getVendorPaymentsSchema,
   getVendorPaymentByIdSchema,
+  getEligibleBillsSchema,
 };
