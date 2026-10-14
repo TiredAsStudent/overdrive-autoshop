@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Loader2,
   ReceiptText,
   Eye,
   ScanText,
@@ -71,10 +70,6 @@ const ExpenseApprovals = () => {
       .catch((err) => console.error("Failed to load COA categories", err));
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, viewMode, branchFilter, expenseAccountIdFilter]);
-
   const loadExpenses = async () => {
     try {
       setLoading(true);
@@ -120,9 +115,29 @@ const ExpenseApprovals = () => {
     }
   }, [expenses.length, loading, currentPage]);
 
-  const handleOpenView = (expenseId) => {
-    setSelectedExpenseId(expenseId);
-    if (viewMode === "PENDING") {
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleViewModeToggle = (mode) => {
+    setViewMode(mode);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleCategoryFilterChange = (e) => {
+    setExpenseAccountIdFilter(e.target.value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleBranchFilterChange = (e) => {
+    setBranchFilter(e.target.value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleOpenView = (expense) => {
+    setSelectedExpenseId(expense.id);
+    if (expense.status === "PENDING_APPROVAL") {
       setIsModalOpen(true);
     } else {
       setIsDrawerOpen(true);
@@ -158,6 +173,7 @@ const ExpenseApprovals = () => {
   const resetFilters = () => {
     setBranchFilter("all");
     setExpenseAccountIdFilter("all");
+    if (currentPage !== 1) setCurrentPage(1);
     setIsFilterModalOpen(false);
   };
 
@@ -170,7 +186,7 @@ const ExpenseApprovals = () => {
       >
         <SearchBar
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           placeholder="Search Document..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
@@ -182,7 +198,7 @@ const ExpenseApprovals = () => {
 
         <StatusToggle
           activeValue={viewMode}
-          onToggle={setViewMode}
+          onToggle={handleViewModeToggle}
           options={[
             { label: "Pending", value: "PENDING" },
             { label: "History", value: "HISTORY" },
@@ -213,94 +229,106 @@ const ExpenseApprovals = () => {
             ? "Your expense review queue is completely clear."
             : "Adjust your search parameters."
         }
-        renderRow={(expense) => (
-          <tr
-            key={expense.id}
-            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
-          >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex items-center gap-1.5">
-                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
-                  {expense.expense_number}
-                </span>
-                {expense.scan_id ? (
-                  <span
-                    className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
-                    title="Generated via OCR Receipt Scanner"
-                  >
-                    <ScanText size={10} /> OCR
+        renderRow={(expense) => {
+          const processedDate =
+            expense.processed_at || expense.resolved_at || expense.updated_at;
+
+          return (
+            <tr
+              key={expense.id}
+              className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+            >
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
+                    {expense.expense_number}
                   </span>
-                ) : expense.receipt_url ? (
-                  <Paperclip
-                    size={14}
-                    className="text-amber-500"
-                    title="Attachment Present"
-                  />
-                ) : null}
-              </div>
-            </td>
+                  {expense.scan_id ? (
+                    <span
+                      className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
+                      title="Generated via OCR Receipt Scanner"
+                    >
+                      <ScanText size={10} /> OCR
+                    </span>
+                  ) : expense.receipt_url ? (
+                    <Paperclip
+                      size={14}
+                      className="text-amber-500"
+                      title="Attachment Present"
+                    />
+                  ) : null}
+                </div>
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                {viewMode === "PENDING"
-                  ? new Date(expense.expense_date).toLocaleDateString()
-                  : new Date(expense.processed_at).toLocaleString()}
-              </p>
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
-                {expense.category}
-              </p>
-              <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 truncate max-w-[200px]">
-                {expense.vendor_name || expense.description}
-              </p>
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-0.5">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[150px]">
-                  {expense.branch_name}
-                </span>
-                <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
                   {viewMode === "PENDING"
-                    ? `BY: ${expense.created_by_name || "System"}`
-                    : `BY: ${expense.resolved_by_name || expense.created_by_name || "System"}`}
+                    ? new Date(expense.expense_date).toLocaleDateString()
+                    : processedDate
+                      ? new Date(processedDate).toLocaleString()
+                      : "N/A"}
+                </p>
+              </td>
+
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
+                  {expense.category}
+                </p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 truncate max-w-[200px]">
+                  {expense.vendor_name || expense.description}
+                </p>
+              </td>
+
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <div className="flex flex-col items-start gap-0.5">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[150px]">
+                    {expense.branch_name}
+                  </span>
+                  <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+                    {viewMode === "PENDING"
+                      ? `BY: ${expense.created_by_name || "System"}`
+                      : `BY: ${expense.resolved_by_name || expense.created_by_name || "System"}`}
+                  </span>
+                </div>
+              </td>
+
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                  ₱
+                  {parseFloat(expense.total_amount || 0).toLocaleString(
+                    undefined,
+                    {
+                      minimumFractionDigits: 2,
+                    },
+                  )}
                 </span>
-              </div>
-            </td>
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                ₱
-                {parseFloat(expense.total_amount).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </td>
+              <td className="px-4 sm:px-8 py-4 sm:py-6">
+                <StatusBadge
+                  label={(expense.status || "").replace("_", " ")}
+                  variant={getBadgeVariant(expense.status)}
+                  icon={getBadgeIcon(expense.status)}
+                />
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <StatusBadge
-                label={expense.status.replace("_", " ")}
-                variant={getBadgeVariant(expense.status)}
-                icon={getBadgeIcon(expense.status)}
-              />
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <button
-                onClick={() => handleOpenView(expense.id)}
-                title={
-                  viewMode === "PENDING" ? "Review Request" : "View Details"
-                }
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
-              >
-                <Eye size={14} />
-                {viewMode === "PENDING" ? "Review" : "Details"}
-              </button>
-            </td>
-          </tr>
-        )}
+              <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+                <button
+                  onClick={() => handleOpenView(expense)}
+                  title={
+                    expense.status === "PENDING_APPROVAL"
+                      ? "Review Request"
+                      : "View Details"
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+                >
+                  <Eye size={14} />
+                  {expense.status === "PENDING_APPROVAL" ? "Review" : "Details"}
+                </button>
+              </td>
+            </tr>
+          );
+        }}
       />
 
       <Pagination
@@ -322,7 +350,7 @@ const ExpenseApprovals = () => {
             </label>
             <select
               value={expenseAccountIdFilter}
-              onChange={(e) => setExpenseAccountIdFilter(e.target.value)}
+              onChange={handleCategoryFilterChange}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
             >
               <option value="all">All Categories</option>
@@ -340,7 +368,7 @@ const ExpenseApprovals = () => {
             </label>
             <select
               value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
+              onChange={handleBranchFilterChange}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
             >
               <option value="all">All Branches</option>

@@ -16,7 +16,6 @@ import {
   Paperclip,
   Download,
   BadgeCheck,
-  Printer,
 } from "lucide-react";
 import { expenseApprovalService } from "../../../services/manager/expenseApproval.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -61,16 +60,26 @@ const ExpenseApprovalDrawer = ({ isOpen, onClose, expenseId }) => {
 
   const getAttachmentUrl = (path) => {
     if (!path) return null;
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+
     let baseUrl = api.defaults.baseURL
       ? api.defaults.baseURL.replace("/api/v1", "")
       : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
         "http://localhost:5000";
 
     if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
-    const normalizedPath = cleanPath.replace(/\\/g, "/");
 
-    return `${baseUrl}/${normalizedPath}`;
+    const normalizedPath = path.replace(/\\/g, "/");
+
+    const uploadsIndex = normalizedPath.toLowerCase().indexOf("uploads/");
+    const cleanPath =
+      uploadsIndex !== -1
+        ? normalizedPath.slice(uploadsIndex)
+        : normalizedPath.startsWith("/")
+          ? normalizedPath.slice(1)
+          : normalizedPath;
+
+    return `${baseUrl}/${cleanPath}`;
   };
 
   const isPdf = (path) => path?.toLowerCase().endsWith(".pdf");
