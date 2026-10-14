@@ -118,6 +118,34 @@ class VendorPaymentController {
       );
     }
   }
+
+  static async generatePaymentPdf(req, res) {
+    try {
+      const { pdfBuffer, paymentNumber } =
+        await VendorPaymentService.generatePaymentPdf(
+          req.params.id,
+          req.user,
+          req.ip,
+        );
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${paymentNumber}.pdf"`,
+      );
+      return res.status(STATUS_CODES.SUCCESS).send(pdfBuffer);
+    } catch (error) {
+      const code = error.message.toLowerCase().includes("not found")
+        ? STATUS_CODES.NOT_FOUND
+        : STATUS_CODES.INTERNAL_ERROR;
+      return sendError(
+        res,
+        code,
+        "Failed to generate Disbursement Voucher PDF.",
+        error.message,
+      );
+    }
+  }
 }
 
 module.exports = VendorPaymentController;

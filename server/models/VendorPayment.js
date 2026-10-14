@@ -174,8 +174,13 @@ class VendorPayment {
       SELECT vp.*, TO_CHAR(vp.payment_date, 'YYYY-MM-DD') as payment_date, 
              b.bill_number, b.grand_total as bill_total, b.vendor_invoice_number, 
              b.payment_status as current_bill_status, b.amount_paid as bill_amount_paid,
+             b.bill_date, b.due_date as bill_due_date,
              v.business_name as vendor_name, v.vendor_code,
-             u.first_name as created_by_name, br.branch_name
+             v.contact_person as vendor_contact_person, v.contact_number as vendor_contact,
+             v.email as vendor_email, v.business_address as vendor_address,
+             v.tin as vendor_tin, v.is_vat_registered,
+             br.branch_name, br.branch_code, br.address as branch_address,
+             u.first_name as created_by_name, u.last_name as created_by_last_name, u.role as created_by_role
       FROM vendor_payments vp
       JOIN bills b ON vp.bill_id = b.id
       JOIN vendors v ON vp.vendor_id = v.id

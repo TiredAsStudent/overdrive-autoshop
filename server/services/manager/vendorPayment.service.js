@@ -1,4 +1,6 @@
 const VendorPaymentModel = require("../../models/VendorPayment");
+const SystemSettingModel = require("../../models/SystemSetting");
+const VendorPaymentPdfService = require("../pdf/vendorPaymentPdf.service");
 const { logSecureAction } = require("../../utils/auditLogger");
 const fs = require("fs").promises;
 
@@ -19,7 +21,7 @@ class VendorPaymentService {
       }
 
       if (file) {
-        data.proof_of_payment_url = file.path.replace(/\\/g, "/");
+        data.proof_of_payment_url = `uploads/vendor-payments/${file.filename}`;
       }
 
       let retries = 3;
@@ -137,6 +139,31 @@ class VendorPaymentService {
 
   static async getEligibleBillsForVendor(vendorId) {
     return await VendorPaymentModel.findEligibleBillsByVendor(vendorId);
+  }
+
+  static async generatePaymentPdf(id, activeUser, ipAddress) {
+    const payment = await VendorPaymentModel.findById(id);
+    if (!payment) throw new Error("Vendor payment record not found.");
+
+    const settings = await SystemSettingModel.getSettings();
+    const pdfBuffer = await VendorPaymentPdfService.generate(payment, settings);
+
+    await logSecureAction(
+      activeUser.id,
+      payment.branch_id,
+      "VENDOR_PAYMENT_PDF_GENERATED",
+      "INFO",
+      ipAddress,
+      "vendor_payments",
+      payment.id,
+      null,
+      { payment_number: payment.payment_number, status: payment.status },
+    );
+
+    return {
+      pdfBuffer,
+      paymentNumber: payment.payment_number,
+    };
   }
 }
 

@@ -96,6 +96,7 @@ const {
 const {
   createVendorPaymentSchema,
   getVendorPaymentsSchema,
+  getVendorPaymentByIdSchema,
 } = require("../../validations/manager/vendorPayment.schema");
 const {
   saveJournalEntrySchema,
@@ -523,7 +524,20 @@ router.get(
   validate(getVendorPaymentsSchema),
   VendorPaymentController.getPayments,
 );
-router.get("/vendor-payments/:id", VendorPaymentController.getPaymentDetails);
-router.patch("/vendor-payments/:id/void", VendorPaymentController.voidPayment);
+router.get(
+  "/vendor-payments/:id/pdf",
+  validate(getVendorPaymentByIdSchema),
+  VendorPaymentController.generatePaymentPdf,
+);
+router.get(
+  "/vendor-payments/:id",
+  validate(getVendorPaymentByIdSchema),
+  VendorPaymentController.getPaymentDetails,
+);
+router.patch(
+  "/vendor-payments/:id/void",
+  validate(getVendorPaymentByIdSchema),
+  VendorPaymentController.voidPayment,
+);
 
 module.exports = router;
