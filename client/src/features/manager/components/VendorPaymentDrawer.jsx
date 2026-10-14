@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { vendorPaymentService } from "../../../services/manager/vendorPayment.service";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import { openPdfInNewTab } from "../../../utils/pdfViewer";
+import { useApp } from "../../../context/AppContext";
 import api from "../../../services/api";
 
 const VendorPaymentDrawer = ({
@@ -28,8 +30,11 @@ const VendorPaymentDrawer = ({
   paymentId,
   readOnly = false,
 }) => {
+  const { showToast } = useApp();
+
   const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [error, setError] = useState("");
   const [imageError, setImageError] = useState(false);
 
@@ -45,8 +50,26 @@ const VendorPaymentDrawer = ({
         .finally(() => setLoading(false));
     } else {
       setPayment(null);
+      setIsPrinting(false);
     }
   }, [isOpen, paymentId]);
+
+  const handlePrintVoucher = async () => {
+    if (!payment?.id || isPrinting) return;
+    try {
+      setIsPrinting(true);
+      await openPdfInNewTab(() =>
+        vendorPaymentService.getPaymentPdf(payment.id),
+      );
+    } catch (err) {
+      showToast(
+        err.message || "Failed to generate Disbursement Voucher PDF.",
+        "error",
+      );
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
   const formatCalendarDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -105,7 +128,10 @@ const VendorPaymentDrawer = ({
   const billTotal = payment ? parseFloat(payment.bill_total) : 0;
   const currentPayment = payment ? parseFloat(payment.amount_paid) : 0;
   const totalPaidOnBill = payment ? parseFloat(payment.bill_amount_paid) : 0;
-  const previouslyPaid = totalPaidOnBill - currentPayment;
+  const previouslyPaid =
+    payment?.status === "VOID"
+      ? totalPaidOnBill
+      : totalPaidOnBill - currentPayment;
   const remainingBalance = billTotal - totalPaidOnBill;
 
   return (
@@ -158,7 +184,9 @@ const VendorPaymentDrawer = ({
                         <BadgeCheck size={12} className="text-amber-500" />
                         Paid by:{" "}
                         <span className="text-slate-600 dark:text-slate-300">
-                          {payment.created_by_name || "System"}
+                          {payment.created_by_name
+                            ? `${payment.created_by_name} ${payment.created_by_last_name || ""}`.trim()
+                            : "System"}
                         </span>
                       </span>
                     </div>
@@ -420,11 +448,24 @@ const VendorPaymentDrawer = ({
             {!readOnly && payment && !loading && (
               <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex gap-3 z-10 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
                 <button
-                  onClick={() => window.print()}
-                  disabled={payment.status === "VOID"}
+                  type="button"
+                  onClick={handlePrintVoucher}
+                  disabled={isPrinting}
                   className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  <Printer size={16} /> Print Official Receipt
+                  {isPrinting ? (
+                    <>
+                      <Loader2
+                        size={16}
+                        className="animate-spin text-amber-500"
+                      />
+                      Generating Voucher...
+                    </>
+                  ) : (
+                    <>
+                      <Printer size={16} /> Print Official Receipt
+                    </>
+                  )}
                 </button>
               </div>
             )}
