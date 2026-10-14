@@ -11,18 +11,24 @@ import {
   Calculator,
   CheckCircle,
   XCircle,
+  ImageOff,
+  FileText,
+  Download,
 } from "lucide-react";
+import api from "../../../services/api";
 
 const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
   const [managerRemarks, setManagerRemarks] = useState("");
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (isOpen && request) {
       setManagerRemarks(request.manager_remarks || "");
       setValidationError("");
       setIsSubmitting(false);
+      setImageError(false);
     }
   }, [isOpen, request]);
 
@@ -32,7 +38,7 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
 
   // Financial Impact Math
   const financialImpact = (
-    request.requested_quantity * parseFloat(request.unit_cost)
+    request.requested_quantity * parseFloat(request.unit_cost || 0)
   ).toLocaleString(undefined, { minimumFractionDigits: 2 });
 
   // Resulting Stock Math
@@ -44,11 +50,29 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
 
   const getEvidenceUrl = (path) => {
     if (!path) return null;
-    const baseUrl =
-      import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
-      "http://localhost:5000";
-    return `${baseUrl}/${path}`;
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+
+    let baseUrl = api.defaults.baseURL
+      ? api.defaults.baseURL.replace("/api/v1", "")
+      : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+        "http://localhost:5000";
+
+    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+
+    const normalizedPath = path.replace(/\\/g, "/");
+
+    const uploadsIndex = normalizedPath.toLowerCase().indexOf("uploads/");
+    const cleanPath =
+      uploadsIndex !== -1
+        ? normalizedPath.slice(uploadsIndex)
+        : normalizedPath.startsWith("/")
+          ? normalizedPath.slice(1)
+          : normalizedPath;
+
+    return `${baseUrl}/${cleanPath}`;
   };
+
+  const isPdf = (path) => path?.toLowerCase().endsWith(".pdf");
 
   const handleAction = async (actionType) => {
     setValidationError("");
@@ -132,9 +156,12 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                   </p>
                   <p className="text-sm font-black text-slate-900 dark:text-white font-mono bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 inline-block">
                     ₱
-                    {parseFloat(request.unit_cost).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                    })}
+                    {parseFloat(request.unit_cost || 0).toLocaleString(
+                      undefined,
+                      {
+                        minimumFractionDigits: 2,
+                      },
+                    )}
                   </p>
                 </div>
               </section>
@@ -188,7 +215,7 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
                     Reason Code
                   </p>
                   <div className="inline-flex w-fit px-3 py-1.5 bg-white dark:bg-slate-800 rounded-lg text-[10px] font-black tracking-widest uppercase text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-700/50">
-                    {request.reason.replace(/_/g, " ")}
+                    {(request.reason || "").replace(/_/g, " ")}
                   </div>
 
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-5 mb-2">
@@ -203,26 +230,59 @@ const AdjustmentModal = ({ isOpen, onClose, onSubmit, request }) => {
               {/* PHOTO EVIDENCE VIEWER */}
               {request.evidence_url && (
                 <section className="bg-white dark:bg-slate-800 p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-                    Visual Evidence Attached
-                  </p>
-                  <a
-                    href={getEvidenceUrl(request.evidence_url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
-                  >
-                    <img
-                      src={getEvidenceUrl(request.evidence_url)}
-                      alt="Discrepancy Evidence"
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
-                        Click to enlarge
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                      Visual Evidence Attached
+                    </p>
+                    {isPdf(request.evidence_url) && (
+                      <a
+                        href={getEvidenceUrl(request.evidence_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 dark:bg-blue-500/10 px-3 py-1.5 rounded-lg"
+                      >
+                        <Download size={12} /> Download PDF
+                      </a>
+                    )}
+                  </div>
+
+                  {isPdf(request.evidence_url) ? (
+                    <div className="w-full h-36 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <FileText size={40} className="text-red-500 mb-2" />
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        PDF Document Attached
                       </span>
                     </div>
-                  </a>
+                  ) : imageError ? (
+                    <div className="w-full h-48 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700">
+                      <ImageOff
+                        size={32}
+                        className="text-slate-400 mb-3 opacity-50"
+                      />
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        Image File Unavailable
+                      </span>
+                    </div>
+                  ) : (
+                    <a
+                      href={getEvidenceUrl(request.evidence_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
+                    >
+                      <img
+                        src={getEvidenceUrl(request.evidence_url)}
+                        alt="Discrepancy Evidence"
+                        onError={() => setImageError(true)}
+                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                        <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
+                          Click to enlarge
+                        </span>
+                      </div>
+                    </a>
+                  )}
                 </section>
               )}
 
