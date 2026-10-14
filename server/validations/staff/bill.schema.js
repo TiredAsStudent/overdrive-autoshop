@@ -14,35 +14,54 @@ const billItemSchema = z.object({
 });
 
 const createBillSchema = z.object({
-  body: z.object({
-    purchase_order_id: z.coerce
-      .number()
-      .int()
-      .positive("A valid Purchase Order ID is required"),
-    vendor_invoice_number: z
-      .string()
-      .trim()
-      .min(2, "Vendor invoice number is required"),
-    bill_date: z
-      .string()
-      .refine((val) => !isNaN(Date.parse(val)), "Invalid Bill Date format"),
-    notes: z.string().trim().optional(),
+  body: z
+    .object({
+      purchase_order_id: z.coerce
+        .number()
+        .int()
+        .positive("A valid Purchase Order ID is required"),
+      vendor_invoice_number: z
+        .string()
+        .trim()
+        .min(2, "Vendor invoice number is required"),
+      bill_date: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), "Invalid Bill Date format"),
+      due_date: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), "Invalid Due Date format")
+        .optional(),
+      notes: z.string().trim().optional(),
 
-    items: z.preprocess(
-      (val) => {
-        if (typeof val === "string") {
-          try {
-            return JSON.parse(val);
-          } catch (e) {
-            return val;
+      items: z.preprocess(
+        (val) => {
+          if (typeof val === "string") {
+            try {
+              return JSON.parse(val);
+            } catch (e) {
+              return val;
+            }
           }
-        }
-        return val;
+          return val;
+        },
+        z
+          .array(billItemSchema)
+          .min(1, "At least one received item is required"),
+      ),
+      status: z
+        .enum(["PENDING_RECEIPT", "RECEIVED"])
+        .default("PENDING_RECEIPT"),
+    })
+    .refine(
+      (data) => {
+        if (!data.due_date) return true;
+        return new Date(data.due_date) >= new Date(data.bill_date);
       },
-      z.array(billItemSchema).min(1, "At least one received item is required"),
+      {
+        message: "Due Date cannot be earlier than the Billing Date.",
+        path: ["due_date"],
+      },
     ),
-    status: z.enum(["PENDING_RECEIPT", "RECEIVED"]).default("PENDING_RECEIPT"),
-  }),
 });
 
 const getBillsSchema = z.object({

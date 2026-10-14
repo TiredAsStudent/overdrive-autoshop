@@ -58,10 +58,6 @@ const StockAdjustments = () => {
       .catch((err) => console.error("Failed to load branches", err));
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter, branchFilter]);
-
   const loadRequests = async () => {
     try {
       setLoading(true);
@@ -84,6 +80,21 @@ const StockAdjustments = () => {
   useEffect(() => {
     loadRequests();
   }, [currentPage, debouncedSearchQuery, statusFilter, branchFilter]);
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleStatusToggle = (newStatus) => {
+    setStatusFilter(newStatus);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleBranchChange = (e) => {
+    setBranchFilter(e.target.value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
 
   const handleResolution = async (id, action, remarks) => {
     try {
@@ -112,6 +123,7 @@ const StockAdjustments = () => {
 
   const resetFilters = () => {
     setBranchFilter("all");
+    if (currentPage !== 1) setCurrentPage(1);
   };
 
   return (
@@ -124,7 +136,7 @@ const StockAdjustments = () => {
       >
         <SearchBar
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           placeholder="Search item or SKU..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
@@ -136,7 +148,7 @@ const StockAdjustments = () => {
 
         <StatusToggle
           activeValue={statusFilter}
-          onToggle={setStatusFilter}
+          onToggle={handleStatusToggle}
           options={[
             { label: "Pending", value: "PENDING" },
             { label: "Approved", value: "APPROVED" },
@@ -200,7 +212,7 @@ const StockAdjustments = () => {
                   {req.requested_quantity} {req.uom}
                 </div>
                 <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
-                  {req.reason.replace(/_/g, " ")}
+                  {(req.reason || "").replace(/_/g, " ")}
                 </span>
               </div>
             </td>
@@ -228,14 +240,12 @@ const StockAdjustments = () => {
                 <button
                   onClick={() => handleOpenView(req)}
                   title={
-                    statusFilter === "PENDING"
-                      ? "Review Request"
-                      : "View Details"
+                    req.status === "PENDING" ? "Review Request" : "View Details"
                   }
                   className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
                 >
                   <Eye size={14} />{" "}
-                  {statusFilter === "PENDING" ? "Review" : "Details"}
+                  {req.status === "PENDING" ? "Review" : "Details"}
                 </button>
               </div>
             </td>
@@ -263,7 +273,7 @@ const StockAdjustments = () => {
             </label>
             <select
               value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
+              onChange={handleBranchChange}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
             >
               <option value="all">All Branches</option>

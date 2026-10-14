@@ -1,4 +1,5 @@
 import api from "../api";
+import { extractBlobError } from "../../utils/fileDownloader";
 
 export const vendorPaymentService = {
   getPayments: async (
@@ -85,6 +86,18 @@ export const vendorPaymentService = {
         error.response?.data?.error?.message ||
           "Failed to void vendor payment.",
       );
+    }
+  },
+
+  getPaymentPdf: async (id) => {
+    try {
+      const response = await api.get(`/manager/vendor-payments/${id}/pdf`, {
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      const message = await extractBlobError(error);
+      throw new Error(message);
     }
   },
 };

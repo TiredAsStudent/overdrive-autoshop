@@ -73,6 +73,7 @@ export const billService = {
       formData.append("purchase_order_id", billData.purchase_order_id);
       formData.append("vendor_invoice_number", billData.vendor_invoice_number);
       formData.append("bill_date", billData.bill_date);
+      formData.append("due_date", billData.due_date);
       formData.append("status", billData.status);
 
       if (billData.notes) formData.append("notes", billData.notes);

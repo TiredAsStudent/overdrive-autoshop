@@ -264,6 +264,14 @@ const Bills = () => {
                     {new Date(bill.bill_date).toLocaleDateString()}
                   </span>
                 </span>
+                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
+                  Due:{" "}
+                  <span className="text-amber-600 dark:text-amber-400 ml-1">
+                    {bill.due_date
+                      ? new Date(bill.due_date).toLocaleDateString()
+                      : "--"}
+                  </span>
+                </span>
                 <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
                   Rcvd:{" "}
                   <span className="text-emerald-600 dark:text-emerald-400 ml-1">

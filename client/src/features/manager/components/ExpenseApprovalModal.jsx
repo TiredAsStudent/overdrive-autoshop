@@ -102,16 +102,26 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
 
   const getAttachmentUrl = (path) => {
     if (!path) return null;
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+
     let baseUrl = api.defaults.baseURL
       ? api.defaults.baseURL.replace("/api/v1", "")
       : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
         "http://localhost:5000";
 
     if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
-    const normalizedPath = cleanPath.replace(/\\/g, "/");
 
-    return `${baseUrl}/${normalizedPath}`;
+    const normalizedPath = path.replace(/\\/g, "/");
+
+    const uploadsIndex = normalizedPath.toLowerCase().indexOf("uploads/");
+    const cleanPath =
+      uploadsIndex !== -1
+        ? normalizedPath.slice(uploadsIndex)
+        : normalizedPath.startsWith("/")
+          ? normalizedPath.slice(1)
+          : normalizedPath;
+
+    return `${baseUrl}/${cleanPath}`;
   };
 
   const isPdf = (path) => path?.toLowerCase().endsWith(".pdf");
@@ -335,6 +345,16 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                             PDF Document Attached
                           </span>
                         </div>
+                      ) : imageError ? (
+                        <div className="w-full h-48 sm:h-64 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700">
+                          <ImageOff
+                            size={32}
+                            className="text-slate-400 mb-3 opacity-50"
+                          />
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            Image File Unavailable
+                          </span>
+                        </div>
                       ) : (
                         <a
                           href={getAttachmentUrl(expense.receipt_url)}
@@ -342,28 +362,17 @@ const ExpenseApprovalModal = ({ isOpen, onClose, expenseId, onSuccess }) => {
                           rel="noopener noreferrer"
                           className="block relative group overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900 cursor-zoom-in"
                         >
-                          {imageError ? (
-                            <div className="w-full h-48 sm:h-64 flex flex-col items-center justify-center text-slate-400 space-y-2">
-                              <ImageOff size={32} className="opacity-50" />
-                              <p className="text-[10px] font-bold uppercase tracking-widest">
-                                Image file unavailable
-                              </p>
-                            </div>
-                          ) : (
-                            <>
-                              <img
-                                src={getAttachmentUrl(expense.receipt_url)}
-                                alt="Expense Receipt"
-                                onError={() => setImageError(true)}
-                                className="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-500"
-                              />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
-                                  Click to enlarge
-                                </span>
-                              </div>
-                            </>
-                          )}
+                          <img
+                            src={getAttachmentUrl(expense.receipt_url)}
+                            alt="Expense Receipt"
+                            onError={() => setImageError(true)}
+                            className="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                            <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase transition-opacity backdrop-blur-sm">
+                              Click to enlarge
+                            </span>
+                          </div>
                         </a>
                       )}
                     </section>

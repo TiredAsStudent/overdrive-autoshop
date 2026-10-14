@@ -43,7 +43,12 @@ class VendorPaymentController {
         "Disbursement successfully voided.",
       );
     } catch (error) {
-      return sendError(res, STATUS_CODES.BAD_REQUEST, error.message);
+      const code = error.message.includes("Unauthorized")
+        ? STATUS_CODES.FORBIDDEN
+        : error.message.toLowerCase().includes("not found")
+          ? STATUS_CODES.NOT_FOUND
+          : STATUS_CODES.BAD_REQUEST;
+      return sendError(res, code, error.message);
     }
   }
 
@@ -86,6 +91,7 @@ class VendorPaymentController {
     try {
       const payment = await VendorPaymentService.getPaymentDetails(
         req.params.id,
+        req.user,
       );
       return sendSuccess(
         res,
@@ -94,7 +100,10 @@ class VendorPaymentController {
         "Disbursement details retrieved.",
       );
     } catch (error) {
-      return sendError(res, STATUS_CODES.NOT_FOUND, error.message);
+      const code = error.message.includes("Unauthorized")
+        ? STATUS_CODES.FORBIDDEN
+        : STATUS_CODES.NOT_FOUND;
+      return sendError(res, code, error.message);
     }
   }
 
@@ -114,6 +123,36 @@ class VendorPaymentController {
         res,
         STATUS_CODES.INTERNAL_ERROR,
         "Failed to fetch outstanding bills.",
+        error.message,
+      );
+    }
+  }
+
+  static async generatePaymentPdf(req, res) {
+    try {
+      const { pdfBuffer, paymentNumber } =
+        await VendorPaymentService.generatePaymentPdf(
+          req.params.id,
+          req.user,
+          req.ip,
+        );
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${paymentNumber}.pdf"`,
+      );
+      return res.status(STATUS_CODES.SUCCESS).send(pdfBuffer);
+    } catch (error) {
+      const code = error.message.includes("Unauthorized")
+        ? STATUS_CODES.FORBIDDEN
+        : error.message.toLowerCase().includes("not found")
+          ? STATUS_CODES.NOT_FOUND
+          : STATUS_CODES.INTERNAL_ERROR;
+      return sendError(
+        res,
+        code,
+        "Failed to generate Payment Voucher PDF.",
         error.message,
       );
     }
