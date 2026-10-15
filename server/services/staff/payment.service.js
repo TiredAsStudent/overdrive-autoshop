@@ -41,7 +41,7 @@ class PaymentService {
     }
 
     if (file) {
-      data.proof_of_payment_url = file.path.replace(/\\/g, "/");
+      data.proof_of_payment_url = `uploads/payments/${file.filename}`;
     }
 
     // 2. Execute Atomic Payment Collection
