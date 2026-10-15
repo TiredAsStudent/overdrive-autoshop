@@ -13,6 +13,7 @@ import {
   UploadCloud,
   FileCode2,
   Image as ImageIcon,
+  ImageOff,
 } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
@@ -145,6 +146,7 @@ const ExpenseModal = ({
   const fileInputRef = useRef(null);
   const [attachmentFile, setAttachmentFile] = useState(null);
   const [attachmentPreview, setAttachmentPreview] = useState(null);
+  const [imageError, setImageError] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
   const [isAttachmentRemoved, setIsAttachmentRemoved] = useState(false);
@@ -163,18 +165,22 @@ const ExpenseModal = ({
     is_submitting: false,
   });
 
-  const getAttachmentUrl = (path) => {
-    if (!path) return null;
-    let baseUrl = api.defaults.baseURL
+  const getAttachmentUrl = (filePath) => {
+    if (!filePath) return null;
+    const rawBaseUrl = api.defaults.baseURL
       ? api.defaults.baseURL.replace("/api/v1", "")
       : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
         "http://localhost:5000";
 
-    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
-    const normalizedPath = cleanPath.replace(/\\/g, "/");
+    const baseUrl = rawBaseUrl.replace(/\/$/, "");
+    const normalized = filePath.replace(/\\/g, "/");
+    const uploadsIdx = normalized.indexOf("uploads/");
+    const cleanRelative =
+      uploadsIdx !== -1
+        ? normalized.slice(uploadsIdx)
+        : normalized.replace(/^\//, "");
 
-    return `${baseUrl}/${normalizedPath}`;
+    return `${baseUrl}/${cleanRelative}`;
   };
 
   useEffect(() => {
@@ -209,6 +215,7 @@ const ExpenseModal = ({
         URL.revokeObjectURL(attachmentPreview);
       setAttachmentFile(null);
       setAttachmentPreview(null);
+      setImageError(false);
       setIsDragging(false);
       setIsAttachmentRemoved(false);
 
@@ -310,6 +317,8 @@ const ExpenseModal = ({
       URL.revokeObjectURL(attachmentPreview);
     setAttachmentFile(file);
     setAttachmentPreview(URL.createObjectURL(file));
+    setImageError(false);
+    setIsAttachmentRemoved(false);
     setValidationError("");
   };
 
@@ -335,6 +344,7 @@ const ExpenseModal = ({
       URL.revokeObjectURL(attachmentPreview);
     setAttachmentFile(null);
     setAttachmentPreview(null);
+    setImageError(false);
 
     if (mode === "EDIT" && initialData?.receipt_url) {
       setIsAttachmentRemoved(true);
@@ -434,7 +444,6 @@ const ExpenseModal = ({
                 className="space-y-5 sm:space-y-6 pb-2 mx-1 sm:mx-0"
               >
                 {/* SECTION 1: EXPENSE PARTICULARS */}
-
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-50">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 sm:mb-4 flex items-center gap-2">
                     <FileText size={14} /> Expense Particulars
@@ -490,7 +499,6 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 2: PAYEE & DOCUMENTATION */}
-
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-40">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 sm:mb-4 flex items-center gap-2">
                     <Store size={14} /> Payee & Documentation
@@ -564,7 +572,6 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 3: FINANCIAL DETAILS */}
-
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-30">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-3 sm:mb-4 flex items-center gap-2">
                     <DollarSign size={14} /> Financial Details
@@ -679,7 +686,6 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 4: DOCUMENTARY PROOF / ATTACHMENT */}
-
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
                   <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                     <FileCode2 size={14} className="text-amber-500 shrink-0" />
@@ -728,7 +734,7 @@ const ExpenseModal = ({
                   ) : (
                     <div className="relative rounded-[16px] sm:rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-white dark:bg-slate-800 p-2">
                       {attachmentFile?.type === "application/pdf" ||
-                      attachmentPreview.endsWith(".pdf") ? (
+                      attachmentPreview.toLowerCase().endsWith(".pdf") ? (
                         <div className="w-full h-28 sm:h-32 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg">
                           <FileText
                             size={32}
@@ -738,10 +744,21 @@ const ExpenseModal = ({
                             {attachmentFile?.name || "Attached PDF Document"}
                           </p>
                         </div>
+                      ) : imageError ? (
+                        <div className="w-full h-40 sm:h-48 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
+                          <ImageOff
+                            size={32}
+                            className="text-slate-400 mb-2 opacity-50"
+                          />
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            Image File Unavailable
+                          </span>
+                        </div>
                       ) : (
                         <img
                           src={attachmentPreview}
                           alt="Document Preview"
+                          onError={() => setImageError(true)}
                           className="w-full h-40 sm:h-48 md:h-56 object-contain bg-slate-50 dark:bg-slate-900 rounded-lg"
                         />
                       )}
@@ -759,7 +776,6 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 5: NOTES */}
-
                 <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 sm:mb-4 flex items-center gap-2">
                     <ClipboardList size={14} /> Internal Notes
