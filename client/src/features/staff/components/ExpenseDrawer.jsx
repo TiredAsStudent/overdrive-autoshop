@@ -17,6 +17,7 @@ import {
   Paperclip,
   Download,
   Image as ImageIcon,
+  ImageOff,
 } from "lucide-react";
 import { expenseService } from "../../../services/staff/expense.service";
 import { catalogService } from "../../../services/staff/catalog.service";
@@ -29,12 +30,16 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
   const { showToast } = useApp();
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [imageError, setImageError] = useState(false);
   const [vatRate, setVatRate] = useState(12);
   const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     if (isOpen && expenseId) {
       setLoading(true);
+      setError("");
+      setImageError(false);
 
       catalogService
         .getSettings()
@@ -47,7 +52,10 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
       expenseService
         .getExpenseDetails(expenseId)
         .then((res) => setExpense(res.data))
-        .catch((err) => console.error("Failed to load expense:", err))
+        .catch((err) => {
+          console.error("Failed to load expense:", err);
+          setError(err.message || "Failed to load expense details.");
+        })
         .finally(() => setLoading(false));
     } else {
       setExpense(null);
@@ -68,18 +76,22 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
     return FileText;
   };
 
-  const getAttachmentUrl = (path) => {
-    if (!path) return null;
-    let baseUrl = api.defaults.baseURL
+  const getAttachmentUrl = (filePath) => {
+    if (!filePath) return null;
+    const rawBaseUrl = api.defaults.baseURL
       ? api.defaults.baseURL.replace("/api/v1", "")
       : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
         "http://localhost:5000";
 
-    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
-    const normalizedPath = cleanPath.replace(/\\/g, "/");
+    const baseUrl = rawBaseUrl.replace(/\/$/, "");
+    const normalized = filePath.replace(/\\/g, "/");
+    const uploadsIdx = normalized.indexOf("uploads/");
+    const cleanRelative =
+      uploadsIdx !== -1
+        ? normalized.slice(uploadsIdx)
+        : normalized.replace(/^\//, "");
 
-    return `${baseUrl}/${normalizedPath}`;
+    return `${baseUrl}/${cleanRelative}`;
   };
 
   const isPdf = (path) => {
@@ -155,14 +167,22 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
 
             {/* Standardized Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-5 sm:space-y-6 lg:space-y-8 bg-slate-50/50 dark:bg-transparent">
-              {loading ? (
+              {loading && (
                 <div className="flex flex-col items-center justify-center py-20 opacity-70">
                   <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                     Retrieving Record...
                   </p>
                 </div>
-              ) : expense ? (
+              )}
+
+              {error && !loading && (
+                <div className="p-4 text-center bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-200">
+                  {error}
+                </div>
+              )}
+
+              {expense && !loading && (
                 <>
                   {/* STATUS & DATE SECTION */}
                   <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 lg:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm">
@@ -362,6 +382,20 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                             Click download to view full document
                           </span>
                         </div>
+                      ) : imageError ? (
+                        <div className="w-full h-40 sm:h-48 lg:h-56 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700">
+                          <ImageOff
+                            size={32}
+                            className="text-slate-400 mb-3 opacity-50"
+                          />
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            Image File Unavailable
+                          </span>
+                          <span className="text-[9px] text-slate-400 text-center max-w-[200px] mt-1">
+                            The file may have been moved or deleted from the
+                            server.
+                          </span>
+                        </div>
                       ) : (
                         <a
                           href={getAttachmentUrl(expense.receipt_url)}
@@ -372,6 +406,7 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                           <img
                             src={getAttachmentUrl(expense.receipt_url)}
                             alt="Documentary Evidence"
+                            onError={() => setImageError(true)}
                             className="w-full h-40 sm:h-48 lg:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
@@ -384,7 +419,7 @@ const ExpenseDrawer = ({ isOpen, onClose, expenseId }) => {
                     </section>
                   )}
                 </>
-              ) : null}
+              )}
             </div>
 
             {/* Print Footer */}

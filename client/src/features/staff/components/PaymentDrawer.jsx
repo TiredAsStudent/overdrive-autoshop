@@ -65,12 +65,19 @@ const PaymentDrawer = ({ isOpen, onClose, paymentId, readOnly = false }) => {
     }
   };
 
-  const getEvidenceUrl = (path) => {
-    if (!path) return null;
-    const baseUrl =
+  const getEvidenceUrl = (filePath) => {
+    if (!filePath) return null;
+    const baseUrl = (
       import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
-      "http://localhost:5000";
-    return `${baseUrl}/${path}`;
+      "http://localhost:5000"
+    ).replace(/\/$/, "");
+    const normalized = filePath.replace(/\\/g, "/");
+    const uploadsIdx = normalized.indexOf("uploads/");
+    const cleanRelative =
+      uploadsIdx !== -1
+        ? normalized.slice(uploadsIdx)
+        : normalized.replace(/^\//, "");
+    return `${baseUrl}/${cleanRelative}`;
   };
 
   const handlePrint = async () => {

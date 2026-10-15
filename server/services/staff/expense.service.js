@@ -7,6 +7,16 @@ const fs = require("fs").promises;
 const path = require("path");
 
 class ExpenseService {
+  static _resolveReceiptDiskPath(receiptUrl) {
+    if (!receiptUrl) return null;
+    const normalized = receiptUrl.replace(/\\/g, "/");
+    const uploadsIdx = normalized.indexOf("uploads/");
+    if (uploadsIdx !== -1) {
+      return path.join(__dirname, "../..", normalized.slice(uploadsIdx));
+    }
+    return path.resolve(receiptUrl);
+  }
+
   static async _calculateTaxes(totalAmount, isVatable) {
     const numericTotal = parseFloat(totalAmount);
     const booleanVatable = String(isVatable) === "true";
@@ -94,7 +104,7 @@ class ExpenseService {
       };
 
       if (file) {
-        payload.receipt_url = file.path.replace(/\\/g, "/");
+        payload.receipt_url = `uploads/expenses/${file.filename}`;
       }
 
       let retries = 3;
@@ -247,11 +257,14 @@ class ExpenseService {
       };
 
       if (file) {
-        payload.receipt_url = file.path.replace(/\\/g, "/");
+        payload.receipt_url = `uploads/expenses/${file.filename}`;
 
         if (oldExpense.receipt_url && !oldExpense.scan_id) {
           try {
-            await fs.unlink(path.resolve(oldExpense.receipt_url));
+            const oldDiskPath = this._resolveReceiptDiskPath(
+              oldExpense.receipt_url,
+            );
+            if (oldDiskPath) await fs.unlink(oldDiskPath);
           } catch (err) {
             console.warn(
               "Could not delete replaced expense attachment:",
@@ -264,7 +277,10 @@ class ExpenseService {
 
         if (oldExpense.receipt_url && !oldExpense.scan_id) {
           try {
-            await fs.unlink(path.resolve(oldExpense.receipt_url));
+            const oldDiskPath = this._resolveReceiptDiskPath(
+              oldExpense.receipt_url,
+            );
+            if (oldDiskPath) await fs.unlink(oldDiskPath);
           } catch (err) {
             console.warn(
               "Could not delete removed expense attachment:",
