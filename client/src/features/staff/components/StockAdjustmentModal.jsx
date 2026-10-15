@@ -25,6 +25,15 @@ const REASON_CODES = [
 
 const REQUIRES_EVIDENCE = ["DAMAGED", "STOLEN_OR_LOST"];
 
+const getItemStockQuantity = (item) => {
+  if (!item) return 0;
+  const rawQty =
+    item.branch_quantity !== undefined
+      ? item.branch_quantity
+      : item.total_company_quantity;
+  return parseInt(rawQty, 10) || 0;
+};
+
 const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
@@ -40,6 +49,7 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
 
   const [evidenceFile, setEvidenceFile] = useState(null);
   const [evidencePreview, setEvidencePreview] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [formData, setFormData] = useState({
     item_id: "",
@@ -47,6 +57,14 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
     reason: "",
     staff_remarks: "",
   });
+
+  useEffect(() => {
+    return () => {
+      if (evidencePreview) {
+        URL.revokeObjectURL(evidencePreview);
+      }
+    };
+  }, [evidencePreview]);
 
   useEffect(() => {
     if (isOpen) {
@@ -61,8 +79,11 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
       setSearchResults([]);
       setSelectedItemData(null);
       setIsDropdownOpen(false);
+      if (evidencePreview) URL.revokeObjectURL(evidencePreview);
       setEvidenceFile(null);
       setEvidencePreview(null);
+      setIsDragging(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }, [isOpen]);
 
@@ -108,37 +129,69 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const processFile = (file) => {
+    if (!file) return;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      setValidationError(
+        "Invalid file format. Only JPEG, PNG, and WEBP images are allowed.",
+      );
+      removeFile();
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setValidationError("Image exceeds the maximum 5MB size limit.");
+      removeFile();
+      return;
+    }
+
+    if (evidencePreview) URL.revokeObjectURL(evidencePreview);
+    setEvidenceFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setEvidencePreview(objectUrl);
+    setValidationError("");
+  };
+
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    processFile(e.target.files?.[0]);
+  };
 
-      if (!allowedTypes.includes(file.type)) {
-        setValidationError(
-          "Invalid file format. Only JPEG, PNG, and WEBP images are allowed.",
-        );
-        removeFile();
-        return;
-      }
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
 
-      if (file.size > 5 * 1024 * 1024) {
-        setValidationError("Image exceeds the maximum 5MB size limit.");
-        removeFile();
-        return;
-      }
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
 
-      setEvidenceFile(file);
-      const objectUrl = URL.createObjectURL(file);
-      setEvidencePreview(objectUrl);
-      setValidationError("");
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFile(e.dataTransfer.files[0]);
     }
   };
 
   const removeFile = () => {
+    if (evidencePreview) URL.revokeObjectURL(evidencePreview);
     setEvidenceFile(null);
     setEvidencePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+
+  const currentSystemQty = getItemStockQuantity(selectedItemData);
+  const physicalCountVal = parseInt(formData.physical_count, 10);
+  const isCountValid =
+    formData.physical_count !== "" && !isNaN(physicalCountVal);
+  const variance = isCountValid ? physicalCountVal - currentSystemQty : 0;
+  const financialImpact =
+    selectedItemData && isCountValid
+      ? Math.abs(variance) * parseFloat(selectedItemData.unit_cost)
+      : 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -159,7 +212,7 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
     if (formData.staff_remarks.trim().length < 5)
       return setValidationError("Please provide a clearer explanation.");
 
-    if (parseInt(selectedItemData.total_company_quantity) === physicalCount) {
+    if (currentSystemQty === physicalCount) {
       return setValidationError(
         "Physical count exactly matches system stock. No adjustment needed.",
       );
@@ -180,17 +233,6 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
       setIsSubmitting(false);
     }
   };
-
-  const currentSystemQty = selectedItemData
-    ? parseInt(selectedItemData.total_company_quantity, 10)
-    : 0;
-  const physicalCountVal = parseInt(formData.physical_count, 10);
-  const isCountValid = !isNaN(physicalCountVal);
-  const variance = isCountValid ? physicalCountVal - currentSystemQty : 0;
-  const financialImpact =
-    selectedItemData && isCountValid
-      ? Math.abs(variance) * parseFloat(selectedItemData.unit_cost)
-      : 0;
 
   return (
     <AnimatePresence>
@@ -292,7 +334,7 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
                                   <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase">
                                     System Stock Snapshot:{" "}
                                     <span className="font-black text-slate-700 dark:text-slate-300">
-                                      {item.total_company_quantity} {item.uom}
+                                      {getItemStockQuantity(item)} {item.uom}
                                     </span>
                                   </p>
                                 </div>
@@ -324,7 +366,9 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
                       System Snapshot
                     </label>
                     <div className="w-full px-5 py-4 bg-slate-200/50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl text-base font-black text-slate-500 dark:text-slate-400 cursor-not-allowed">
-                      {selectedItemData ? currentSystemQty : "---"}
+                      {selectedItemData
+                        ? `${currentSystemQty} ${selectedItemData.uom || ""}`.trim()
+                        : "---"}
                     </div>
                   </div>
 
@@ -348,7 +392,7 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
                   </div>
                 </section>
 
-                {/* Live Variance Preview  */}
+                {/* Live Variance Preview */}
                 <AnimatePresence>
                   {selectedItemData && isCountValid && variance !== 0 && (
                     <motion.section
@@ -400,7 +444,10 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
                           {variance}
                         </span>
                         <span className="block text-[10px] font-bold opacity-70 tracking-widest uppercase mt-0.5">
-                          Impact: ₱{financialImpact.toLocaleString()}
+                          Impact: ₱
+                          {financialImpact.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
                         </span>
                       </div>
                     </motion.section>
@@ -449,41 +496,65 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
                   <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
                     <label className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
                       <ImageIcon size={14} /> Photo Evidence
-                      {REQUIRES_EVIDENCE.includes(formData.reason) && (
+                      {REQUIRES_EVIDENCE.includes(formData.reason) ? (
                         <span className="text-red-500">
                           *(Required for {formData.reason.replace(/_/g, " ")})
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-medium lowercase">
+                          (Optional)
                         </span>
                       )}
                     </label>
 
                     {!evidencePreview ? (
-                      <div className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 flex flex-col items-center justify-center bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors relative">
+                      <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`w-full border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer relative overflow-hidden ${
+                          isDragging
+                            ? "border-amber-500 bg-amber-50 dark:bg-amber-500/10"
+                            : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        }`}
+                      >
                         <input
                           type="file"
                           ref={fileInputRef}
                           onChange={handleFileChange}
                           accept="image/jpeg, image/png, image/webp"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          className="hidden"
                         />
                         <UploadCloud
                           size={32}
-                          className="text-slate-400 mb-3"
+                          className={`mb-3 transition-colors ${
+                            isDragging ? "text-amber-500" : "text-slate-400"
+                          }`}
                         />
-                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                          Click or drag image to upload
+                        <p
+                          className={`text-xs font-bold ${
+                            isDragging
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-slate-600 dark:text-slate-300"
+                          }`}
+                        >
+                          {isDragging
+                            ? "Drop image here"
+                            : "Click or drag image to upload"}
                         </p>
                         <p className="text-[10px] text-slate-400 mt-1">
-                          JPEG, PNG up to 5MB
+                          JPEG, PNG, WEBP up to 5MB
                         </p>
                       </div>
                     ) : (
-                      <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group">
+                      <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-white dark:bg-slate-800 p-2">
                         <img
                           src={evidencePreview}
-                          alt="Evidence"
-                          className="w-full h-48 sm:h-64 object-cover"
+                          alt="Evidence Preview"
+                          className="w-full h-48 sm:h-64 object-contain bg-slate-50 dark:bg-slate-900 rounded-lg"
                         />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
                           <button
                             type="button"
                             onClick={removeFile}
