@@ -112,13 +112,13 @@ const SalesOrders = () => {
     try {
       if (modalMode === "CREATE") {
         await salesOrderService.createSalesOrder(formData);
-        showToast("Work Order initialized successfully.", "success");
+        showToast("Job Order initialized successfully.", "success");
       } else {
         await salesOrderService.updateSalesOrder(
           selectedOrderData.id,
           formData,
         );
-        showToast("Work Order details updated.", "success");
+        showToast("Job Order details updated.", "success");
       }
       setIsModalOpen(false);
       loadOrders();
@@ -142,7 +142,7 @@ const SalesOrders = () => {
 
     setConfirmConfig({
       isOpen: true,
-      title: `${isCompleted ? "Complete" : isProgress ? "Start" : "Cancel"} Work Order`,
+      title: `${isCompleted ? "Complete" : isProgress ? "Start" : "Cancel"} Job Order`,
       message: message,
       confirmText: `Yes, Mark ${newStatus}`,
       variant: isCompleted ? "info" : isProgress ? "warning" : "danger",
@@ -158,7 +158,7 @@ const SalesOrders = () => {
               "success",
             );
           } else {
-            showToast(`Work order marked as ${newStatus}.`, "success");
+            showToast(`Job order marked as ${newStatus}.`, "success");
           }
 
           loadOrders();
