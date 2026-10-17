@@ -11,6 +11,7 @@ import {
   Search,
   UploadCloud,
   ImageIcon,
+  ImageOff,
 } from "lucide-react";
 import { inventoryService } from "../../../services/staff/inventory.service";
 import { useDebounce } from "../../../hooks/useDebounce";
@@ -24,15 +25,6 @@ const REASON_CODES = [
 ];
 
 const REQUIRES_EVIDENCE = ["DAMAGED", "STOLEN_OR_LOST"];
-
-const getItemStockQuantity = (item) => {
-  if (!item) return 0;
-  const rawQty =
-    item.branch_quantity !== undefined
-      ? item.branch_quantity
-      : item.total_company_quantity;
-  return parseInt(rawQty, 10) || 0;
-};
 
 const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +41,7 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
 
   const [evidenceFile, setEvidenceFile] = useState(null);
   const [evidencePreview, setEvidencePreview] = useState(null);
+  const [imageError, setImageError] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -57,14 +50,6 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
     reason: "",
     staff_remarks: "",
   });
-
-  useEffect(() => {
-    return () => {
-      if (evidencePreview) {
-        URL.revokeObjectURL(evidencePreview);
-      }
-    };
-  }, [evidencePreview]);
 
   useEffect(() => {
     if (isOpen) {
@@ -79,9 +64,12 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
       setSearchResults([]);
       setSelectedItemData(null);
       setIsDropdownOpen(false);
-      if (evidencePreview) URL.revokeObjectURL(evidencePreview);
+      if (evidencePreview && !evidencePreview.startsWith("http")) {
+        URL.revokeObjectURL(evidencePreview);
+      }
       setEvidenceFile(null);
       setEvidencePreview(null);
+      setImageError(false);
       setIsDragging(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -147,10 +135,14 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
       return;
     }
 
-    if (evidencePreview) URL.revokeObjectURL(evidencePreview);
+    if (evidencePreview && !evidencePreview.startsWith("http")) {
+      URL.revokeObjectURL(evidencePreview);
+    }
+
     setEvidenceFile(file);
     const objectUrl = URL.createObjectURL(file);
     setEvidencePreview(objectUrl);
+    setImageError(false);
     setValidationError("");
   };
 
@@ -177,21 +169,14 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   const removeFile = () => {
-    if (evidencePreview) URL.revokeObjectURL(evidencePreview);
+    if (evidencePreview && !evidencePreview.startsWith("http")) {
+      URL.revokeObjectURL(evidencePreview);
+    }
     setEvidenceFile(null);
     setEvidencePreview(null);
+    setImageError(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-
-  const currentSystemQty = getItemStockQuantity(selectedItemData);
-  const physicalCountVal = parseInt(formData.physical_count, 10);
-  const isCountValid =
-    formData.physical_count !== "" && !isNaN(physicalCountVal);
-  const variance = isCountValid ? physicalCountVal - currentSystemQty : 0;
-  const financialImpact =
-    selectedItemData && isCountValid
-      ? Math.abs(variance) * parseFloat(selectedItemData.unit_cost)
-      : 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -212,7 +197,9 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
     if (formData.staff_remarks.trim().length < 5)
       return setValidationError("Please provide a clearer explanation.");
 
-    if (currentSystemQty === physicalCount) {
+    if (
+      parseInt(selectedItemData.total_company_quantity, 10) === physicalCount
+    ) {
       return setValidationError(
         "Physical count exactly matches system stock. No adjustment needed.",
       );
@@ -233,6 +220,18 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
       setIsSubmitting(false);
     }
   };
+
+  const currentSystemQty = selectedItemData
+    ? parseInt(selectedItemData.total_company_quantity, 10)
+    : 0;
+  const physicalCountVal = parseInt(formData.physical_count, 10);
+  const isCountValid =
+    formData.physical_count !== "" && !isNaN(physicalCountVal);
+  const variance = isCountValid ? physicalCountVal - currentSystemQty : 0;
+  const financialImpact =
+    selectedItemData && isCountValid
+      ? Math.abs(variance) * parseFloat(selectedItemData.unit_cost)
+      : 0;
 
   return (
     <AnimatePresence>
@@ -334,7 +333,7 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
                                   <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1 font-medium tracking-widest uppercase">
                                     System Stock Snapshot:{" "}
                                     <span className="font-black text-slate-700 dark:text-slate-300">
-                                      {getItemStockQuantity(item)} {item.uom}
+                                      {item.total_company_quantity} {item.uom}
                                     </span>
                                   </p>
                                 </div>
@@ -366,9 +365,7 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
                       System Snapshot
                     </label>
                     <div className="w-full px-5 py-4 bg-slate-200/50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-xl text-base font-black text-slate-500 dark:text-slate-400 cursor-not-allowed">
-                      {selectedItemData
-                        ? `${currentSystemQty} ${selectedItemData.uom || ""}`.trim()
-                        : "---"}
+                      {selectedItemData ? currentSystemQty : "---"}
                     </div>
                   </div>
 
@@ -549,11 +546,24 @@ const StockAdjustmentModal = ({ isOpen, onClose, onSubmit }) => {
                       </div>
                     ) : (
                       <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-white dark:bg-slate-800 p-2">
-                        <img
-                          src={evidencePreview}
-                          alt="Evidence Preview"
-                          className="w-full h-48 sm:h-64 object-contain bg-slate-50 dark:bg-slate-900 rounded-lg"
-                        />
+                        {imageError ? (
+                          <div className="w-full h-48 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
+                            <ImageOff
+                              size={32}
+                              className="text-slate-400 mb-2 opacity-50"
+                            />
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                              Image Preview Unavailable
+                            </span>
+                          </div>
+                        ) : (
+                          <img
+                            src={evidencePreview}
+                            alt="Evidence"
+                            onError={() => setImageError(true)}
+                            className="w-full h-48 sm:h-64 object-contain bg-slate-50 dark:bg-slate-900 rounded-lg"
+                          />
+                        )}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
                           <button
                             type="button"
