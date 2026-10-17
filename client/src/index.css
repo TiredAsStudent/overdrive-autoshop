@@ -1,5 +1,5 @@
-/* 1. Import Inter Font FIRST */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
+/* 1. Import Official Fonts FIRST (Inter for UI, JetBrains Mono for Accounting Ledgers) */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:ital,wght@0,400..800;1,400..800&display=swap");
 
 /* 2. Import Tailwind v4 SECOND */
 @import "tailwindcss";
@@ -7,27 +7,134 @@
 /* 3. Enable Class-based Dark Mode */
 @variant dark (&:where(.dark, .dark *));
 
-/* 4. Theme Configuration */
+/* 4. Official Overdrive Design System Tokens */
 @theme {
-  --font-sans: "Inter", sans-serif;
+  /* Typography */
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
+
+  /* Official Overdrive Brand Palette (Preserved & Extended) */
   --color-overdrive-yellow: #ffb800;
+  --color-overdrive-yellow-hover: #f59e0b;
   --color-overdrive-dark: #0f172a;
   --color-overdrive-card: #1e293b;
   --color-overdrive-red: #e11d48;
+
+  /* Semantic Status Colors */
+  --color-status-success: #10b981;
+  --color-status-warning: #f59e0b;
+  --color-status-danger: #ef4444;
+  --color-status-info: #3b82f6;
+
+  /* Standardized Border Radii */
+  --radius-control: 0.75rem; /* 12px - Inputs, Buttons, Badges (rounded-xl) */
+  --radius-card: 1.25rem; /* 20px - Inner Sections & Stat Cards (rounded-[20px]) */
+  --radius-panel: 1.5rem; /* 24px - Drawers & Modals (rounded-[24px]) */
+  --radius-container: 2rem; /* 32px - Primary Data Tables & Containers (rounded-[32px]) */
+
+  /* Standardized Elevation Shadows */
+  --shadow-card:
+    0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+  --shadow-elevated:
+    0 20px 25px -5px rgba(15, 23, 42, 0.15),
+    0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  --shadow-brand:
+    0 10px 15px -3px rgba(245, 158, 11, 0.2),
+    0 4px 6px -4px rgba(245, 158, 11, 0.1);
 }
 
-/* 5. Base Styles */
+/* 5. Centralized Light & Dark Mode Theme Variables & Base Rules */
 @layer base {
+  :root {
+    color-scheme: light;
+
+    /* Light Mode Surfaces */
+    --bg-app: #f8fafc; /* slate-50 */
+    --bg-surface: #ffffff; /* white */
+    --bg-surface-muted: #f8fafc; /* slate-50 */
+    --bg-surface-elevated: #ffffff;
+    --bg-input: #ffffff;
+
+    /* Light Mode Typography */
+    --text-primary: #0f172a; /* slate-900 */
+    --text-secondary: #475569; /* slate-600 */
+    --text-muted: #64748b; /* slate-500 */
+    --text-subtle: #94a3b8; /* slate-400 */
+
+    /* Light Mode Borders & Dividers */
+    --border-default: #e2e8f0; /* slate-200 */
+    --border-subtle: #f1f5f9; /* slate-100 */
+    --border-focus: #f59e0b; /* amber-500 */
+
+    /* Brand Accent */
+    --brand-primary: #f59e0b;
+    --brand-yellow: #ffb800;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    /* Dark Mode Surfaces */
+    --bg-app: #0f172a; /* overdrive-dark / slate-900 */
+    --bg-surface: #1e293b; /* overdrive-card / slate-800 */
+    --bg-surface-muted: rgba(15, 23, 42, 0.5);
+    --bg-surface-elevated: #0f172a;
+    --bg-input: #0f172a;
+
+    /* Dark Mode Typography */
+    --text-primary: #ffffff;
+    --text-secondary: #cbd5e1; /* slate-300 */
+    --text-muted: #94a3b8; /* slate-400 */
+    --text-subtle: #64748b; /* slate-500 */
+
+    /* Dark Mode Borders & Dividers */
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-focus: #f59e0b;
+
+    /* Brand Accent */
+    --brand-primary: #f59e0b;
+    --brand-yellow: #ffb800;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+  }
+
   body {
     font-family: var(--font-sans);
-    /* Use @apply to let Tailwind handle the Light/Dark switch smoothly on the whole page */
+    /* Smooth Light/Dark switch across the entire application */
     @apply bg-slate-50 text-slate-900 dark:bg-overdrive-dark dark:text-white transition-colors duration-300;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Enforce Tabular Figures on Monospace & Financial Values for Accounting Alignment */
+  .font-mono,
+  code,
+  pre {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Prevent Lucide SVG Icons from shrinking inside flex containers */
+  svg.lucide {
+    flex-shrink: 0;
+  }
+
+  /* Branded Text Selection */
+  ::selection {
+    background-color: rgba(245, 158, 11, 0.25);
+    color: inherit;
   }
 }
 
-/* Progress Bar Animation for Toasts */
+/* 6. Progress Bar Animation for Toasts */
 @layer utilities {
   @keyframes shrink {
     0% {
@@ -42,8 +149,15 @@
   }
 }
 
-/* Custom Scrollbar for sleek mobile/desktop horizontal scrolling */
+/* 7. Custom Scrollbar for sleek mobile/desktop scrolling */
 @layer utilities {
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+  }
+  .dark .custom-scrollbar {
+    scrollbar-color: rgba(51, 65, 85, 0.8) transparent;
+  }
   .custom-scrollbar::-webkit-scrollbar {
     height: 6px;
     width: 6px;
