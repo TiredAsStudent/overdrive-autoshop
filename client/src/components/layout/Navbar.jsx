@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { /* Link, */ useNavigate, useLocation } from "react-router-dom";
 import {
   Menu,
   UserCircle,
@@ -8,8 +8,8 @@ import {
   LogOut,
   Sun,
   Moon,
-  User,
-  Settings,
+  /* User, */
+  /* Settings, */
   Building2,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
@@ -76,8 +76,8 @@ const Navbar = ({ user, onMenuClick }) => {
     user?.role,
   );
 
-  const isProfileActive = location.pathname.startsWith("/profile");
-  const isSettingsActive = location.pathname.startsWith("/settings");
+  // const isProfileActive = location.pathname.startsWith("/profile");
+  // const isSettingsActive = location.pathname.startsWith("/settings");
 
   return (
     <>
@@ -201,6 +201,7 @@ const Navbar = ({ user, onMenuClick }) => {
                 </div>
 
                 <div className="flex flex-col py-1">
+                  {/*
                   <Link
                     to="/profile"
                     role="menuitem"
@@ -244,6 +245,7 @@ const Navbar = ({ user, onMenuClick }) => {
                   </Link>
 
                   <div className="h-px bg-slate-100 dark:bg-white/10 my-1.5 mx-3" />
+                  */}
 
                   <button
                     type="button"
