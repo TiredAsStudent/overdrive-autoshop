@@ -185,7 +185,20 @@ export const staffMenu = [
   },
 ];
 
-// === SHARED NAVIGATION HELPERS ===
+// === SHARED NAVIGATION & PORTAL HELPERS ===
+export const getDashboardRoute = (role) => {
+  const normalizedRole = role?.toUpperCase();
+  switch (normalizedRole) {
+    case "ADMIN":
+      return "/sysadmin/dashboard/overview";
+    case "MANAGER":
+      return "/manager/dashboard/overview";
+    case "STAFF":
+    default:
+      return "/staff/dashboard/overview";
+  }
+};
+
 export const getMenuByRole = (role) => {
   const normalizedRole = role?.toUpperCase();
   if (normalizedRole === "ADMIN") return sysAdminMenu;

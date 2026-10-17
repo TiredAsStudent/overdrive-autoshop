@@ -87,20 +87,24 @@ const Navbar = ({ user, onMenuClick }) => {
           <button
             type="button"
             onClick={onMenuClick}
-            className="p-2 -ml-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white transition-colors lg:hidden cursor-pointer shrink-0"
+            className="p-2 -ml-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white transition-colors lg:hidden cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             aria-label="Open Sidebar Menu"
           >
-            <Menu size={22} />
+            <Menu size={22} aria-hidden="true" />
           </button>
 
           {/* Dynamic Breadcrumb & Portal Indicator */}
-          <div className="flex items-center gap-2 min-w-0">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center gap-2 min-w-0"
+          >
             <span className="hidden md:inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 shrink-0">
               {portalLabel}
             </span>
 
             <ChevronRight
               size={14}
+              aria-hidden="true"
               className="hidden md:block text-slate-400 dark:text-slate-600 shrink-0"
             />
 
@@ -110,13 +114,17 @@ const Navbar = ({ user, onMenuClick }) => {
               </span>
               <ChevronRight
                 size={13}
+                aria-hidden="true"
                 className="hidden sm:block text-slate-300 dark:text-slate-600 shrink-0"
               />
-              <span className="text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase truncate">
+              <span
+                aria-current="page"
+                className="text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase truncate"
+              >
                 {pageName}
               </span>
             </div>
-          </div>
+          </nav>
         </div>
 
         {/* Right Side Actions */}
@@ -126,6 +134,7 @@ const Navbar = ({ user, onMenuClick }) => {
             <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-600 dark:text-slate-300">
               <Building2
                 size={14}
+                aria-hidden="true"
                 className="text-amber-500 dark:text-overdrive-yellow"
               />
               <span className="truncate max-w-[160px]">{user.branch_name}</span>
@@ -136,7 +145,7 @@ const Navbar = ({ user, onMenuClick }) => {
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-overdrive-yellow border border-transparent hover:border-slate-200 dark:hover:border-white/10 transition-all cursor-pointer active:scale-95"
+            className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-overdrive-yellow border border-transparent hover:border-slate-200 dark:hover:border-white/10 transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             aria-label={
               theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
             }
@@ -144,20 +153,29 @@ const Navbar = ({ user, onMenuClick }) => {
               theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
             }
           >
-            {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+            {theme === "dark" ? (
+              <Sun size={19} aria-hidden="true" />
+            ) : (
+              <Moon size={19} aria-hidden="true" />
+            )}
           </button>
 
           {/* DIVIDER */}
-          <div className="h-7 w-px bg-slate-200 dark:bg-white/10 hidden sm:block transition-colors" />
+          <div
+            aria-hidden="true"
+            className="h-7 w-px bg-slate-200 dark:bg-white/10 hidden sm:block transition-colors"
+          />
 
           {/* USER PROFILE DROPDOWN */}
           <div className="relative" ref={dropdownRef}>
             <button
+              id="user-menu-button"
               type="button"
               onClick={() => setIsDropdownOpen((prev) => !prev)}
               aria-expanded={isDropdownOpen}
               aria-haspopup="menu"
-              className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group p-1.5 rounded-xl hover:bg-slate-100/80 dark:hover:bg-white/5 border border-transparent hover:border-slate-200/80 dark:hover:border-white/10 transition-all"
+              aria-label="Open user account menu"
+              className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group p-1.5 rounded-xl hover:bg-slate-100/80 dark:hover:bg-white/5 border border-transparent hover:border-slate-200/80 dark:hover:border-white/10 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             >
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-black text-slate-900 dark:text-white leading-none transition-colors">
@@ -169,11 +187,16 @@ const Navbar = ({ user, onMenuClick }) => {
               </div>
 
               <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 group-hover:border-amber-500 dark:group-hover:border-overdrive-yellow group-hover:text-amber-600 dark:group-hover:text-overdrive-yellow transition-colors shrink-0">
-                <UserCircle size={20} className="sm:w-5 sm:h-5" />
+                <UserCircle
+                  size={20}
+                  aria-hidden="true"
+                  className="sm:w-5 sm:h-5"
+                />
               </div>
 
               <ChevronDown
                 size={14}
+                aria-hidden="true"
                 className={`text-slate-400 dark:text-slate-400 hidden sm:block transition-transform duration-200 ${
                   isDropdownOpen ? "rotate-180 text-amber-500" : ""
                 }`}
@@ -184,6 +207,7 @@ const Navbar = ({ user, onMenuClick }) => {
             {isDropdownOpen && (
               <div
                 role="menu"
+                aria-labelledby="user-menu-button"
                 className="absolute right-0 top-full mt-2 w-60 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-white/10 py-2 z-50 transition-all origin-top-right"
               >
                 <div className="px-4 py-3 border-b border-slate-100 dark:border-white/10">
@@ -254,9 +278,9 @@ const Navbar = ({ user, onMenuClick }) => {
                       setIsDropdownOpen(false);
                       setIsLogoutModalOpen(true);
                     }}
-                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors w-full text-left cursor-pointer"
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors w-full text-left cursor-pointer focus-visible:outline-none focus-visible:bg-red-50 dark:focus-visible:bg-red-500/10"
                   >
-                    <LogOut size={15} />
+                    <LogOut size={15} aria-hidden="true" />
                     Log Out
                   </button>
                 </div>

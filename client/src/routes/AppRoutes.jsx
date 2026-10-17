@@ -7,6 +7,7 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getDashboardRoute } from "../config/navigation";
 
 import ProtectedRoute from "./ProtectedRoute";
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -119,15 +120,19 @@ const ManagerTaxVATReports = lazy(
   () => import("../pages/manager/TaxVATReports"),
 );
 
-// Loading Spinner
+// Accessible Loading Spinner
 const PageLoader = () => (
-  <div className="flex h-[80vh] w-full items-center justify-center">
+  <div
+    role="status"
+    aria-live="polite"
+    className="flex h-[80vh] w-full items-center justify-center"
+  >
     <div className="flex flex-col items-center space-y-5">
-      <div className="relative w-12 h-12">
+      <div className="relative w-12 h-12" aria-hidden="true">
         <div className="absolute inset-0 border-4 border-slate-200 dark:border-overdrive-card rounded-full"></div>
         <div className="absolute inset-0 border-4 border-overdrive-yellow border-t-transparent rounded-full animate-spin"></div>
       </div>
-      <p className="text-slate-600 dark:text-slate-400 font-medium tracking-wide animate-pulse">
+      <p className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 animate-pulse">
         Loading module...
       </p>
     </div>
@@ -135,18 +140,6 @@ const PageLoader = () => (
 );
 
 const LocationBasedRoutes = ({ user }) => {
-  const getDashboardRoute = (role) => {
-    switch (role) {
-      case "ADMIN":
-        return "/sysadmin/dashboard/overview";
-      case "MANAGER":
-        return "/manager/dashboard/overview";
-      case "STAFF":
-      default:
-        return "/staff/dashboard/overview";
-    }
-  };
-
   return (
     <Routes>
       <Route

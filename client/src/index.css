@@ -16,6 +16,14 @@
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     monospace;
 
+  /* Shared Responsive Breakpoints */
+  --breakpoint-xs: 30rem; /* 480px - Compact Mobile Landscape / Phablets */
+  --breakpoint-sm: 40rem; /* 640px - Large Phones / Small Tablets */
+  --breakpoint-md: 48rem; /* 768px - Tablets (Portrait) */
+  --breakpoint-lg: 64rem; /* 1024px - Desktop Sidebar Threshold */
+  --breakpoint-xl: 80rem; /* 1280px - Standard Desktop Displays */
+  --breakpoint-2xl: 96rem; /* 1536px - Widescreen Monitors */
+
   /* Official Overdrive Brand Palette (Preserved & Extended) */
   --color-overdrive-yellow: #ffb800;
   --color-overdrive-yellow-hover: #f59e0b;
@@ -103,6 +111,7 @@
   html {
     font-family: var(--font-sans);
     scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
@@ -112,6 +121,26 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+  }
+
+  /* Accessible Keyboard Focus Ring (Only visible when navigating via keyboard) */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
+
+  /* Standardized Disabled Control Usability */
+  button:disabled,
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
   }
 
   /* Enforce Tabular Figures on Monospace & Financial Values for Accounting Alignment */
@@ -132,6 +161,18 @@
     background-color: rgba(245, 158, 11, 0.25);
     color: inherit;
   }
+
+  /* Respect OS Reduced Motion Accessibility Setting */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 /* 6. Progress Bar Animation for Toasts */
@@ -149,11 +190,12 @@
   }
 }
 
-/* 7. Custom Scrollbar for sleek mobile/desktop scrolling */
+/* 7. Custom Scrollbar & Responsive Touch Scroll Utilities */
 @layer utilities {
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+    -webkit-overflow-scrolling: touch;
   }
   .dark .custom-scrollbar {
     scrollbar-color: rgba(51, 65, 85, 0.8) transparent;

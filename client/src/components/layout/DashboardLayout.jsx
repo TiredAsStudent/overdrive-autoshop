@@ -39,7 +39,15 @@ const DashboardLayout = ({ user, children }) => {
   }, []);
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 text-slate-900 dark:bg-overdrive-dark dark:text-white overflow-hidden transition-colors duration-300">
+    <div className="flex h-screen h-dvh w-full bg-slate-50 text-slate-900 dark:bg-overdrive-dark dark:text-white overflow-hidden transition-colors duration-300">
+      {/* Accessibility: Skip to Main Content Link for Keyboard Users */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2.5 focus:rounded-xl focus:bg-amber-500 focus:text-slate-900 focus:font-black focus:text-xs focus:uppercase focus:tracking-widest focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
       {/* Sidebar receives the state and the setter to close itself */}
       <Sidebar
         user={user}
@@ -52,8 +60,10 @@ const DashboardLayout = ({ user, children }) => {
         <Navbar user={user} onMenuClick={() => setIsMobileMenuOpen(true)} />
 
         <main
+          id="main-content"
           ref={mainContentRef}
-          className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar p-4 sm:p-6 lg:p-8 xl:p-10 relative"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar p-4 sm:p-6 lg:p-8 xl:p-10 relative focus:outline-none"
         >
           <div className="w-full max-w-[1600px] mx-auto min-h-full">
             {children}
