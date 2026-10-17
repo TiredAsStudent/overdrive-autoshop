@@ -175,7 +175,39 @@
   }
 }
 
-/* 6. Progress Bar Animation for Toasts */
+/* 6. Standardized Form, Button, Modal & Table Component Rules */
+@layer components {
+  /* Standardized Form Labels & Required Indicators */
+  .form-label {
+    @apply block text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 mb-2;
+  }
+
+  .form-required {
+    @apply text-red-500 ml-0.5;
+  }
+
+  /* Standardized Input, Select & Textarea Controls */
+  .form-input,
+  .form-select,
+  .form-textarea {
+    @apply w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800/60 transition-all shadow-2xs;
+  }
+
+  .form-error-banner {
+    @apply p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 rounded-xl flex items-start gap-3 text-xs sm:text-sm font-bold;
+  }
+
+  /* Standardized Table Row & Action Button Patterns */
+  .table-row-hover {
+    @apply hover:bg-slate-50/80 dark:hover:bg-white/[0.03] transition-colors;
+  }
+
+  .row-action-btn {
+    @apply p-2 rounded-xl text-slate-400 hover:text-amber-600 dark:hover:text-overdrive-yellow hover:bg-amber-50 dark:hover:bg-amber-500/10 border border-transparent hover:border-amber-200/60 dark:hover:border-amber-500/20 transition-all cursor-pointer active:scale-95;
+  }
+}
+
+/* 7. Progress Bar Animation for Toasts */
 @layer utilities {
   @keyframes shrink {
     0% {
@@ -190,7 +222,7 @@
   }
 }
 
-/* 7. Custom Scrollbar & Responsive Touch Scroll Utilities */
+/* 8. Custom Scrollbar & Responsive Touch Scroll Utilities */
 @layer utilities {
   .custom-scrollbar {
     scrollbar-width: thin;
