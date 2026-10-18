@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import {
   Receipt,
@@ -42,6 +42,8 @@ const STATUS_FILTERS = [
   { value: "VOID", label: "Void" },
 ];
 
+const ITEMS_PER_PAGE = 10;
+
 const Invoices = () => {
   const { showToast } = useApp();
   const navigate = useNavigate();
@@ -50,17 +52,15 @@ const Invoices = () => {
 
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [isEditingRow, setIsEditingRow] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState(
-    searchParams.get("status") || "all",
+    () => searchParams.get("status") || "all",
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("CREATE");
@@ -75,6 +75,7 @@ const Invoices = () => {
     invoiceNumber: "",
   });
 
+  // Handle incoming Sales Order-to-Invoice conversion handoff
   useEffect(() => {
     if (location.state?.salesOrderId) {
       setModalMode("CREATE");
@@ -84,11 +85,33 @@ const Invoices = () => {
     }
   }, [location.state]);
 
+  // Synchronize status filter if URL query param changes
   useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter]);
+    const paramStatus = searchParams.get("status") || "all";
+    setStatusFilter((prev) => {
+      if (prev !== paramStatus) {
+        setCurrentPage(1);
+        return paramStatus;
+      }
+      return prev;
+    });
+  }, [searchParams]);
 
-  const loadInvoices = async () => {
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
+
+  const loadInvoices = useCallback(async () => {
     try {
       setLoading(true);
       const response = await invoiceService.getInvoices(
@@ -98,20 +121,30 @@ const Invoices = () => {
         statusFilter,
         "all",
       );
-      setInvoices(response.data?.invoices || []);
-      setTotalPages(response.data?.pagination?.totalPages || 1);
+
+      const fetchedInvoices = response.data?.invoices || [];
+      const fetchedTotalPages = response.data?.pagination?.totalPages || 1;
+
+      if (fetchedInvoices.length === 0 && currentPage > fetchedTotalPages) {
+        setCurrentPage(Math.max(1, fetchedTotalPages));
+        return;
+      }
+
+      setInvoices(fetchedInvoices);
+      setTotalPages(fetchedTotalPages);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(error.message || "Unable to load invoice records.", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearchQuery, statusFilter, showToast]);
 
   useEffect(() => {
     loadInvoices();
-  }, [currentPage, debouncedSearchQuery, statusFilter]);
+  }, [loadInvoices]);
 
   const handleEditClick = async (invoiceId) => {
+    if (isEditingRow) return;
     try {
       setIsEditingRow(invoiceId);
       const res = await invoiceService.getInvoiceDetails(invoiceId);
@@ -126,22 +159,19 @@ const Invoices = () => {
   };
 
   const handleModalSubmit = async (formData) => {
-    try {
-      if (modalMode === "CREATE") {
-        await invoiceService.createInvoice(formData);
-        showToast(
-          "Invoice generated. Accounts Receivable posted successfully.",
-          "success",
-        );
-      } else {
-        await invoiceService.updateInvoice(selectedInvoiceData.id, formData);
-        showToast("Invoice metadata updated successfully.", "success");
-      }
-      setIsModalOpen(false);
-      loadInvoices();
-    } catch (error) {
-      throw error;
+    if (modalMode === "CREATE") {
+      await invoiceService.createInvoice(formData);
+      showToast(
+        "Invoice generated. Accounts Receivable posted successfully.",
+        "success",
+      );
+    } else {
+      await invoiceService.updateInvoice(selectedInvoiceData.id, formData);
+      showToast("Invoice metadata updated successfully.", "success");
     }
+    setIsModalOpen(false);
+    setSelectedInvoiceData(null);
+    loadInvoices();
   };
 
   const handleConfirmVoid = async () => {
@@ -153,7 +183,7 @@ const Invoices = () => {
       showToast("Invoice marked as VOID.", "success");
       loadInvoices();
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(error.message || "Failed to void invoice.", "error");
     } finally {
       setVoidConfig({ isOpen: false, invoiceId: null, invoiceNumber: "" });
     }
@@ -193,7 +223,23 @@ const Invoices = () => {
   const formatCalendarDate = (dateString) => {
     if (!dateString) return "N/A";
     const [year, month, day] = dateString.split("T")[0].split("-");
-    return `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+    if (!year || !month || !day) return dateString;
+    return new Date(
+      parseInt(year, 10),
+      parseInt(month, 10) - 1,
+      parseInt(day, 10),
+    ).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  };
+
+  const formatCurrency = (val) => {
+    return (parseFloat(val) || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   const checkIsOverdue = (dateString, status) => {
@@ -208,7 +254,7 @@ const Invoices = () => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       <PageHeader
         title="Invoices"
         subtitle="Official Billing & Receivables"
@@ -216,12 +262,13 @@ const Invoices = () => {
       >
         <StatusToggle
           activeValue={statusFilter}
-          onToggle={setStatusFilter}
+          onToggle={handleStatusFilterChange}
+          ariaLabel="Filter invoices by billing status"
           options={STATUS_FILTERS}
         />
         <SearchBar
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           isSearching={searchQuery !== debouncedSearchQuery}
           placeholder="Search Invoice..."
         />
@@ -237,6 +284,8 @@ const Invoices = () => {
       </PageHeader>
 
       <DataTable
+        caption="Sales Invoices and Accounts Receivable Directory"
+        minWidth="min-w-[840px]"
         headers={[
           "Invoice",
           "Client Link",
@@ -248,48 +297,64 @@ const Invoices = () => {
         data={invoices}
         loading={loading}
         emptyTitle="No Billing Records Found"
+        emptySubtitle="Try adjusting your search or filter criteria, or bill a completed sales order."
         renderRow={(inv) => {
-          const balance =
-            parseFloat(inv.grand_total) - parseFloat(inv.amount_paid);
+          const balance = Math.max(
+            0,
+            (parseFloat(inv.grand_total) || 0) -
+              (parseFloat(inv.amount_paid) || 0),
+          );
+          const isOverdue = checkIsOverdue(inv.due_date, inv.status);
+
           return (
             <tr
               key={inv.id}
-              className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+              className="group table-row-hover border-b border-slate-100 dark:border-white/5 last:border-0"
             >
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
+              {/* Invoice Number */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 text-xs font-mono tabular-nums font-black tracking-widest uppercase">
                   {inv.invoice_number}
                 </span>
               </td>
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
+
+              {/* Client Link */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <p
+                  className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight truncate max-w-[180px] sm:max-w-[240px]"
+                  title={inv.customer_name}
+                >
                   {inv.customer_name}
                 </p>
               </td>
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
+
+              {/* Due Date */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
                 <p
-                  className={`text-xs font-bold ${checkIsOverdue(inv.due_date, inv.status) ? "text-rose-500" : "text-slate-600 dark:text-slate-400"}`}
+                  className={`text-xs font-mono tabular-nums font-bold ${
+                    isOverdue
+                      ? "text-rose-600 dark:text-rose-400"
+                      : "text-slate-700 dark:text-slate-300"
+                  }`}
                 >
                   {formatCalendarDate(inv.due_date)}
                 </p>
               </td>
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <p className="text-sm font-black text-slate-900 dark:text-white">
-                  ₱
-                  {balance.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
+
+              {/* Balance Due & Paid */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <p className="text-xs sm:text-sm font-mono tabular-nums font-black text-slate-900 dark:text-white">
+                  ₱{formatCurrency(balance)}
                 </p>
-                <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">
-                  Paid: ₱
-                  {parseFloat(inv.amount_paid).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
+                <p className="text-[10px] font-mono tabular-nums font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mt-0.5">
+                  Paid: ₱{formatCurrency(inv.amount_paid)}
                 </p>
               </td>
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
+
+              {/* Status */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
                 <StatusBadge
-                  label={inv.status.replace("_", " ")}
+                  label={inv.status ? inv.status.replace(/_/g, " ") : "UNPAID"}
                   variant={getStatusVariant(inv.status)}
                   icon={getStatusIcon(inv.status)}
                   className={
@@ -297,39 +362,47 @@ const Invoices = () => {
                   }
                 />
               </td>
-              <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-                <div className="flex items-center justify-end gap-1 sm:gap-2">
+
+              {/* Actions */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
+                <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                   <button
+                    type="button"
                     onClick={() => {
                       setSelectedInvoiceId(inv.id);
                       setIsDrawerOpen(true);
                     }}
-                    title="View Invoice"
-                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                    title={`View ${inv.invoice_number}`}
+                    aria-label={`View invoice ${inv.invoice_number}`}
+                    className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-200/60 dark:hover:border-blue-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                   >
-                    <FileSearch size={16} />
+                    <FileSearch size={16} aria-hidden="true" />
                   </button>
 
                   {inv.status !== "PAID" && inv.status !== "VOID" && (
                     <button
+                      type="button"
                       onClick={() => handleEditClick(inv.id)}
                       disabled={isEditingRow === inv.id}
-                      title="Edit Due Date & Notes"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                      title={`Edit ${inv.invoice_number} Due Date & Notes`}
+                      aria-label={`Edit due date and notes for ${inv.invoice_number}`}
+                      className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-amber-600 dark:hover:text-overdrive-yellow hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-200/60 dark:hover:border-amber-500/20 rounded-xl transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                     >
                       {isEditingRow === inv.id ? (
                         <Loader2
                           size={16}
+                          aria-hidden="true"
                           className="animate-spin text-amber-500"
                         />
                       ) : (
-                        <Edit2 size={16} />
+                        <Edit2 size={16} aria-hidden="true" />
                       )}
                     </button>
                   )}
 
                   {inv.status === "UNPAID" && (
                     <button
+                      type="button"
                       onClick={() => {
                         setVoidConfig({
                           isOpen: true,
@@ -337,24 +410,27 @@ const Invoices = () => {
                           invoiceNumber: inv.invoice_number,
                         });
                       }}
-                      title="Void Invoice"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
+                      title={`Void ${inv.invoice_number}`}
+                      aria-label={`Void invoice ${inv.invoice_number}`}
+                      className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:border-rose-200/60 dark:hover:border-rose-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                     >
-                      <Ban size={16} />
+                      <Ban size={16} aria-hidden="true" />
                     </button>
                   )}
 
                   {inv.status !== "PAID" && inv.status !== "VOID" && (
                     <button
+                      type="button"
                       onClick={() =>
                         navigate("/staff/sales/payments", {
                           state: { invoiceId: inv.id },
                         })
                       }
-                      title="Record Payment"
-                      className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer"
+                      title={`Record Payment for ${inv.invoice_number}`}
+                      aria-label={`Record payment for ${inv.invoice_number}`}
+                      className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:border-emerald-200/60 dark:hover:border-emerald-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                     >
-                      <CreditCard size={16} />
+                      <CreditCard size={16} aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -372,7 +448,10 @@ const Invoices = () => {
 
       <InvoiceModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedInvoiceData(null);
+        }}
         onSubmit={handleModalSubmit}
         mode={modalMode}
         initialData={selectedInvoiceData}
@@ -393,6 +472,7 @@ const Invoices = () => {
         title="Void Invoice"
         message={`Are you sure you want to VOID Invoice ${voidConfig.invoiceNumber}? This cannot be undone.`}
         confirmText="Void Invoice"
+        cancelText="Cancel"
         variant="danger"
       />
     </div>
