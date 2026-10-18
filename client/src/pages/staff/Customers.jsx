@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Users,
   UserPlus,
@@ -27,6 +27,8 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
+const ITEMS_PER_PAGE = 10;
+
 const Customers = () => {
   const { showToast } = useApp();
 
@@ -40,7 +42,6 @@ const Customers = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   // Modals & Drawers
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,11 +56,21 @@ const Customers = () => {
     onConfirm: () => {},
   });
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, showArchived]);
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
 
-  const loadCustomers = async () => {
+  const handleToggleArchived = (value) => {
+    setShowArchived(value);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
+
+  const loadCustomers = useCallback(async () => {
     try {
       setLoading(true);
       const statusParam = showArchived ? "archived" : "active";
@@ -71,33 +82,38 @@ const Customers = () => {
         statusParam,
         "all",
       );
-      setCustomers(response.data?.customers || []);
-      setTotalPages(response.data?.pagination?.totalPages || 1);
+
+      const fetchedCustomers = response.data?.customers || [];
+      const fetchedTotalPages = response.data?.pagination?.totalPages || 1;
+
+      if (fetchedCustomers.length === 0 && currentPage > fetchedTotalPages) {
+        setCurrentPage(Math.max(1, fetchedTotalPages));
+        return;
+      }
+
+      setCustomers(fetchedCustomers);
+      setTotalPages(fetchedTotalPages);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(error.message || "Unable to load customer records.", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearchQuery, showArchived, showToast]);
 
   useEffect(() => {
     loadCustomers();
-  }, [currentPage, debouncedSearchQuery, showArchived]);
+  }, [loadCustomers]);
 
   const handleModalSubmit = async (formData) => {
-    try {
-      if (selectedCustomer) {
-        await customerService.updateCustomer(selectedCustomer.id, formData);
-        showToast("Customer profile updated successfully.", "success");
-      } else {
-        await customerService.registerCustomer(formData);
-        showToast("New customer registered successfully.", "success");
-      }
-      setIsModalOpen(false);
-      loadCustomers();
-    } catch (error) {
-      throw error;
+    if (selectedCustomer) {
+      await customerService.updateCustomer(selectedCustomer.id, formData);
+      showToast("Customer profile updated successfully.", "success");
+    } else {
+      await customerService.registerCustomer(formData);
+      showToast("New customer registered successfully.", "success");
     }
+    setIsModalOpen(false);
+    loadCustomers();
   };
 
   const handleToggleStatus = (customerData) => {
@@ -115,19 +131,24 @@ const Customers = () => {
             is_active: !customerData.is_active,
           });
           showToast(
-            `${customerData.full_name} ${customerData.is_active ? "archived" : "restored"} successfully.`,
+            `${customerData.full_name} ${
+              customerData.is_active ? "archived" : "restored"
+            } successfully.`,
             "success",
           );
           loadCustomers();
         } catch (error) {
-          showToast(error.message, "error");
+          showToast(
+            error.message || `Unable to ${action.toLowerCase()} customer.`,
+            "error",
+          );
         }
       },
     });
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       {/* UNIVERSAL PAGE HEADER */}
       <PageHeader
         title="Customers"
@@ -136,7 +157,8 @@ const Customers = () => {
       >
         <StatusToggle
           activeValue={showArchived}
-          onToggle={setShowArchived}
+          onToggle={handleToggleArchived}
+          ariaLabel="Filter customers by active or archived status"
           options={[
             { label: "Active", value: false },
             { label: "Archived", value: true },
@@ -145,7 +167,7 @@ const Customers = () => {
 
         <SearchBar
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           placeholder="Search name or phone..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
@@ -162,6 +184,8 @@ const Customers = () => {
 
       {/* DATA TABLE */}
       <DataTable
+        caption="Customer Masterfile Directory"
+        minWidth="min-w-[760px]"
         headers={[
           "Customer Profile",
           "Contact Data",
@@ -172,43 +196,72 @@ const Customers = () => {
         data={customers}
         loading={loading}
         emptyTitle={`No ${showArchived ? "archived" : "active"} customers found`}
+        emptySubtitle="Try adjusting your search query or register a new client."
         renderRow={(customer) => (
           <tr
             key={customer.id}
-            className={`group transition-colors ${!customer.is_active ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale" : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"}`}
+            className={`group border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors ${
+              !customer.is_active
+                ? "bg-slate-50/70 dark:bg-slate-900/40"
+                : "table-row-hover"
+            }`}
           >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-1">
-                <p className="text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[250px]">
+            {/* Customer Profile */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+              <div
+                className={`flex flex-col items-start gap-1 ${
+                  !customer.is_active ? "opacity-75" : ""
+                }`}
+              >
+                <p
+                  className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight truncate max-w-[180px] sm:max-w-[260px]"
+                  title={customer.full_name}
+                >
                   {customer.full_name}
                 </p>
-                <span className="inline-flex px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 text-[9px] font-black tracking-widest uppercase">
+                <span className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 text-[9px] font-mono tabular-nums font-black tracking-widest uppercase">
                   {customer.customer_code}
                 </span>
               </div>
             </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 tracking-wider">
-                <span className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>{" "}
-                  {customer.contact_number}
+            {/* Contact Data */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+              <div
+                className={`flex flex-col gap-1 text-xs font-bold text-slate-700 dark:text-slate-300 ${
+                  !customer.is_active ? "opacity-75" : ""
+                }`}
+              >
+                <span className="flex items-center gap-2 font-mono tabular-nums">
+                  <span
+                    aria-hidden="true"
+                    className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-overdrive-yellow shrink-0"
+                  />
+                  <span>{customer.contact_number}</span>
                 </span>
                 {customer.email && (
-                  <span className="text-[10px] opacity-80 pl-3.5 lowercase">
+                  <span
+                    className="text-[11px] font-medium text-slate-500 dark:text-slate-400 pl-3.5 lowercase truncate max-w-[180px] sm:max-w-[240px]"
+                    title={customer.email}
+                  >
                     {customer.email}
                   </span>
                 )}
               </div>
             </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+            {/* Origin Location */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+              <span
+                className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 truncate block max-w-[160px]"
+                title={customer.branch_name || "Global"}
+              >
                 {customer.branch_name || "Global"}
               </span>
             </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+            {/* Status */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
               <StatusBadge
                 label={customer.is_active ? "Active" : "Archived"}
                 variant={customer.is_active ? "success" : "danger"}
@@ -216,45 +269,58 @@ const Customers = () => {
               />
             </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-1 sm:gap-2">
+            {/* Actions */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
+              <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedCustomer(customer);
                     setIsDrawerOpen(true);
                   }}
-                  title="View Profile"
-                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                  title={`View ${customer.full_name} Profile`}
+                  aria-label={`View profile for ${customer.full_name}`}
+                  className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-200/60 dark:hover:border-blue-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                 >
-                  <FileText size={16} />
+                  <FileText size={16} aria-hidden="true" />
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedCustomer(customer);
                     setIsModalOpen(true);
                   }}
-                  title="Edit Profile"
-                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
+                  title={`Edit ${customer.full_name} Profile`}
+                  aria-label={`Edit profile for ${customer.full_name}`}
+                  className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-amber-600 dark:hover:text-overdrive-yellow hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-200/60 dark:hover:border-amber-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                 >
-                  <Edit2 size={16} />
+                  <Edit2 size={16} aria-hidden="true" />
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => handleToggleStatus(customer)}
                   title={
-                    customer.is_active ? "Archive Customer" : "Restore Customer"
-                  }
-                  className={`p-1.5 sm:p-2.5 rounded-xl transition-colors cursor-pointer ${
                     customer.is_active
-                      ? "text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
-                      : "text-emerald-500 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                      ? `Archive ${customer.full_name}`
+                      : `Restore ${customer.full_name}`
+                  }
+                  aria-label={
+                    customer.is_active
+                      ? `Archive ${customer.full_name}`
+                      : `Restore ${customer.full_name}`
+                  }
+                  className={`p-2 sm:p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${
+                    customer.is_active
+                      ? "text-slate-400 border-transparent hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200/60 dark:hover:border-red-500/20"
+                      : "text-emerald-700 dark:text-emerald-400 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:hover:bg-emerald-500/20"
                   }`}
                 >
                   {customer.is_active ? (
-                    <Archive size={16} />
+                    <Archive size={16} aria-hidden="true" />
                   ) : (
-                    <RotateCcw size={16} />
+                    <RotateCcw size={16} aria-hidden="true" />
                   )}
                 </button>
               </div>
@@ -283,7 +349,7 @@ const Customers = () => {
       />
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
-        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
         onConfirm={confirmConfig.onConfirm}
         title={confirmConfig.title}
         message={confirmConfig.message}
