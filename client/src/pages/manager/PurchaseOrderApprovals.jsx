@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { ClipboardCheck, Eye, Clock, CheckCircle, XCircle } from "lucide-react";
+import React, { useState, useEffect, useCallback, useId } from "react";
+import {
+  ClipboardCheck,
+  Eye,
+  Clock,
+  CheckCircle,
+  XCircle,
+  ChevronDown,
+} from "lucide-react";
 import { poApprovalService } from "../../services/manager/poApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
 import POApprovalModal from "../../features/manager/components/POApprovalModal";
@@ -15,8 +22,16 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
+const VIEW_MODE_OPTIONS = [
+  { label: "Pending", value: "PENDING" },
+  { label: "History", value: "HISTORY" },
+];
+
+const ITEMS_PER_PAGE = 10;
+
 const PurchaseOrderApprovals = () => {
   const { showToast } = useApp();
+  const branchFilterSelectId = useId();
 
   const [orders, setOrders] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -33,7 +48,6 @@ const PurchaseOrderApprovals = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   // View States
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -49,11 +63,28 @@ const PurchaseOrderApprovals = () => {
       .catch((err) => console.error("Failed to load branches", err));
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, viewMode, branchFilter]);
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
 
-  const loadOrders = async () => {
+  const handleViewModeToggle = (mode) => {
+    setViewMode(mode);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleBranchFilterChange = (value) => {
+    setBranchFilter(value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const resetFilters = () => {
+    setBranchFilter("all");
+    if (currentPage !== 1) setCurrentPage(1);
+    setIsFilterModalOpen(false);
+  };
+
+  const loadOrders = useCallback(async () => {
     try {
       setLoading(true);
       const res =
@@ -71,26 +102,33 @@ const PurchaseOrderApprovals = () => {
               branchFilter,
             );
 
-      setOrders(res.data?.purchaseOrders || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
+      const fetchedOrders = res.data?.purchaseOrders || [];
+      const fetchedTotalPages = res.data?.pagination?.totalPages || 1;
+
+      if (fetchedOrders.length === 0 && currentPage > fetchedTotalPages) {
+        setCurrentPage(Math.max(1, fetchedTotalPages));
+        return;
+      }
+
+      setOrders(fetchedOrders);
+      setTotalPages(fetchedTotalPages);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(
+        error.message || "Unable to load purchase order approval records.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearchQuery, viewMode, branchFilter, showToast]);
 
   useEffect(() => {
     loadOrders();
-  }, [currentPage, debouncedSearchQuery, viewMode, branchFilter]);
+  }, [loadOrders]);
 
-  const resetFilters = () => {
-    setBranchFilter("all");
-  };
-
-  const handleOpenView = (orderId) => {
-    setSelectedOrderId(orderId);
-    if (viewMode === "PENDING") {
+  const handleOpenView = (order) => {
+    setSelectedOrderId(order.id);
+    if (order.status === "PENDING_APPROVAL" || viewMode === "PENDING") {
       setIsModalOpen(true);
     } else {
       setIsDrawerOpen(true);
@@ -110,8 +148,45 @@ const PurchaseOrderApprovals = () => {
     }
   };
 
+  const getBadgeIcon = (status) => {
+    if (status === "APPROVED") return CheckCircle;
+    if (status === "REJECTED") return XCircle;
+    return Clock;
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return String(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return String(dateString);
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  const formatCurrency = (val) => {
+    return (parseFloat(val) || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       <PageHeader
         title="Purchase Order Approvals"
         subtitle="Managerial Procurement Oversight"
@@ -119,7 +194,7 @@ const PurchaseOrderApprovals = () => {
       >
         <SearchBar
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           placeholder="Search PO or Vendor..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
@@ -131,15 +206,15 @@ const PurchaseOrderApprovals = () => {
 
         <StatusToggle
           activeValue={viewMode}
-          onToggle={setViewMode}
-          options={[
-            { label: "Pending", value: "PENDING" },
-            { label: "History", value: "HISTORY" },
-          ]}
+          onToggle={handleViewModeToggle}
+          ariaLabel="Toggle between pending purchase order approvals and approval history"
+          options={VIEW_MODE_OPTIONS}
         />
       </PageHeader>
 
       <DataTable
+        caption="Managerial Purchase Order Approvals and Procurement Queue"
+        minWidth="min-w-[850px]"
         headers={
           viewMode === "PENDING"
             ? [
@@ -171,83 +246,102 @@ const PurchaseOrderApprovals = () => {
         emptySubtitle={
           viewMode === "PENDING"
             ? "Your review queue is completely clear."
-            : "Adjust your search parameters."
+            : "Adjust your search parameters or filter criteria."
         }
-        renderRow={(order) => (
-          <tr
-            key={order.id}
-            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
-          >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
-                {order.purchase_order_number}
-              </span>
-            </td>
+        renderRow={(order) => {
+          const processedDate =
+            order.processed_at || order.resolved_at || order.updated_at;
+          const isPending =
+            order.status === "PENDING_APPROVAL" || viewMode === "PENDING";
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                {viewMode === "PENDING"
-                  ? new Date(order.created_at).toLocaleDateString()
-                  : new Date(order.processed_at).toLocaleString()}
-              </p>
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[150px]">
-                {order.vendor_name}
-              </p>
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-0.5">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[150px]">
-                  {order.branch_name}
+          return (
+            <tr
+              key={order.id}
+              className="group table-row-hover border-b border-slate-100 dark:border-white/5 last:border-0"
+            >
+              {/* PO Number */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 text-xs font-mono tabular-nums font-black tracking-widest uppercase w-max">
+                  {order.purchase_order_number}
                 </span>
-                <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+              </td>
+
+              {/* Purchase Date / Date Processed */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <p className="text-xs font-mono tabular-nums font-bold text-slate-600 dark:text-slate-300">
                   {viewMode === "PENDING"
-                    ? `BY: ${order.created_by_name}`
-                    : `BY: ${order.resolved_by_name || order.created_by_name}`}
+                    ? formatDate(order.created_at)
+                    : formatDateTime(processedDate)}
+                </p>
+              </td>
+
+              {/* Vendor */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <p
+                  className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[180px] sm:max-w-[220px]"
+                  title={order.vendor_name}
+                >
+                  {order.vendor_name}
+                </p>
+              </td>
+
+              {/* Branch & Staff / Decision */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <div className="flex flex-col items-start gap-0.5">
+                  <span
+                    className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[160px]"
+                    title={order.branch_name}
+                  >
+                    {order.branch_name}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[160px]">
+                    {viewMode === "PENDING"
+                      ? `BY: ${order.created_by_name || "System"}`
+                      : `BY: ${order.resolved_by_name || order.created_by_name || "System"}`}
+                  </span>
+                </div>
+              </td>
+
+              {/* Total Amount */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono tabular-nums">
+                  ₱{formatCurrency(order.grand_total)}
                 </span>
-              </div>
-            </td>
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                ₱
-                {parseFloat(order.grand_total).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </td>
+              {/* Status / Decision */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <StatusBadge
+                  label={(order.status || "").replace(/_/g, " ")}
+                  variant={getBadgeVariant(order.status)}
+                  icon={getBadgeIcon(order.status)}
+                />
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <StatusBadge
-                label={order.status.replace("_", " ")}
-                variant={getBadgeVariant(order.status)}
-                icon={
-                  order.status === "APPROVED"
-                    ? CheckCircle
-                    : order.status === "REJECTED"
-                      ? XCircle
-                      : Clock
-                }
-              />
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <button
-                onClick={() => handleOpenView(order.id)}
-                title={
-                  viewMode === "PENDING" ? "Review Request" : "View Details"
-                }
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
-              >
-                <Eye size={14} />
-                {viewMode === "PENDING" ? "Review" : "Details"}
-              </button>
-            </td>
-          </tr>
-        )}
+              {/* Actions */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={() => handleOpenView(order)}
+                  title={
+                    isPending
+                      ? `Review Purchase Order ${order.purchase_order_number}`
+                      : `View Purchase Order ${order.purchase_order_number}`
+                  }
+                  aria-label={
+                    isPending
+                      ? `Review pending purchase order ${order.purchase_order_number}`
+                      : `View details for purchase order ${order.purchase_order_number}`
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer"
+                >
+                  <Eye size={14} aria-hidden="true" />
+                  <span>{isPending ? "Review" : "Details"}</span>
+                </button>
+              </td>
+            </tr>
+          );
+        }}
       />
 
       <Pagination
@@ -264,21 +358,29 @@ const PurchaseOrderApprovals = () => {
       >
         <div className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={branchFilterSelectId} className="form-label">
               Branch Location
             </label>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
-            >
-              <option value="all">All Branches</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.branch_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={branchFilterSelectId}
+                value={branchFilter}
+                onChange={(e) => handleBranchFilterChange(e.target.value)}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">All Branches</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.branch_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
         </div>
       </FilterModal>
