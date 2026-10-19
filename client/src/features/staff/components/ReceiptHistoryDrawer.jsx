@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -27,6 +27,8 @@ import api from "../../../services/api";
 
 const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
   const navigate = useNavigate();
+  const drawerTitleId = useId();
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,7 +36,9 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
   // Viewer States
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.innerWidth >= 1024,
+  );
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
@@ -44,6 +48,7 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
     if (isOpen && scanId) {
       setLoading(true);
       setError("");
@@ -52,28 +57,55 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
       setImageError(false);
       receiptService
         .getHistoryDetails(scanId)
-        .then((res) => setData(res.data))
-        .catch((err) => setError(err.message))
-        .finally(() => setLoading(false));
+        .then((res) => {
+          if (isMounted) setData(res.data);
+        })
+        .catch((err) => {
+          if (isMounted) {
+            setError(
+              err.message || "Unable to retrieve archived receipt record.",
+            );
+          }
+        })
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
     } else {
       setData(null);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, scanId]);
 
-  if (!isOpen) return null;
+  // Close drawer on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose?.();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const handleNavigateToExpense = () => {
-    onClose();
-    navigate(`/staff/purchases/expenses?search=${data.expense_number}`);
+    if (!data?.expense_number) return;
+    onClose?.();
+    navigate(
+      `/staff/purchases/expenses?search=${encodeURIComponent(data.expense_number)}`,
+    );
   };
 
   const getConfidenceBannerClasses = (score) => {
     const num = parseFloat(score || 0);
     if (num >= 85)
-      return "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
+      return "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
     if (num >= 60)
-      return "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
-    return "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
+      return "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
+    return "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
   };
 
   const getStatusBadgeVariant = (status) => {
@@ -90,23 +122,85 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
     return FileText;
   };
 
-  const getBaseUrl = () => {
-    if (api.defaults.baseURL) {
-      return api.defaults.baseURL.replace("/api/v1", "");
-    }
-    return import.meta.env.VITE_API_URL
-      ? import.meta.env.VITE_API_URL.replace("/api/v1", "")
-      : "http://localhost:5000";
+  const getAttachmentUrl = (filePath) => {
+    if (!filePath) return "";
+    const rawBaseUrl = api.defaults.baseURL
+      ? api.defaults.baseURL.replace("/api/v1", "")
+      : import.meta.env.VITE_API_URL?.replace("/api/v1", "") ||
+        "http://localhost:5000";
+
+    const baseUrl = rawBaseUrl.replace(/\/$/, "");
+    const normalized = filePath.replace(/\\/g, "/");
+    const uploadsIdx = normalized.indexOf("uploads/");
+    const cleanRelative =
+      uploadsIdx !== -1
+        ? normalized.slice(uploadsIdx)
+        : normalized.replace(/^\//, "");
+
+    return `${baseUrl}/${cleanRelative}`;
   };
 
-  const isPdf = data?.original_filename?.toLowerCase().endsWith(".pdf");
-  const fileUrl = data?.file_path ? `${getBaseUrl()}${data.file_path}` : "";
+  const formatDate = (dateString, includeTime = false) => {
+    if (!dateString) return "N/A";
+    if (!includeTime) {
+      const datePart = String(dateString).split("T")[0];
+      const [year, month, day] = datePart.split("-");
+      if (year && month && day) {
+        return new Date(
+          parseInt(year, 10),
+          parseInt(month, 10) - 1,
+          parseInt(day, 10),
+        ).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        });
+      }
+    }
+    const parsed = new Date(dateString);
+    if (isNaN(parsed.getTime())) return String(dateString);
+    return includeTime
+      ? parsed.toLocaleString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : parsed.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        });
+  };
 
-  const parsedData = data?.extracted_data
-    ? typeof data.extracted_data === "string"
-      ? JSON.parse(data.extracted_data)
-      : data.extracted_data
-    : {};
+  const formatCurrency = (val) => {
+    return (parseFloat(val) || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const isPdf =
+    data?.mime_type === "application/pdf" ||
+    data?.original_filename?.toLowerCase().endsWith(".pdf") ||
+    data?.file_path?.toLowerCase().endsWith(".pdf");
+
+  const fileUrl = data?.file_path ? getAttachmentUrl(data.file_path) : "";
+
+  const parsedData = useMemo(() => {
+    if (!data?.extracted_data) return {};
+    if (typeof data.extracted_data === "string") {
+      try {
+        return JSON.parse(data.extracted_data);
+      } catch (err) {
+        console.error("Failed to parse archived OCR JSON:", err);
+        return {};
+      }
+    }
+    return data.extracted_data;
+  }, [data]);
+
   const refNumber =
     parsedData?.receipt_number || parsedData?.reference_number || "N/A";
 
@@ -131,7 +225,7 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer z-40"
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm cursor-pointer z-40"
             aria-hidden="true"
           />
 
@@ -145,61 +239,87 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
               stiffness: 300,
               mass: 0.8,
             }}
-            className="relative w-full lg:w-[900px] xl:w-[1100px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800"
+            className="relative h-full h-dvh w-full lg:w-[900px] xl:w-[1100px] bg-slate-50 dark:bg-slate-900 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800"
             role="dialog"
             aria-modal="true"
+            aria-labelledby={drawerTitleId}
           >
             {/* Header */}
-            <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
+            <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-xs">
+              <div className="flex items-start gap-4 min-w-0">
+                <div
+                  aria-hidden="true"
+                  className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-600 dark:text-overdrive-yellow shrink-0"
+                >
                   <History size={24} />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
+                  <h2
+                    id={drawerTitleId}
+                    className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[220px] sm:max-w-[340px]"
+                  >
                     Archived Document Record
                   </h2>
                   <div className="flex flex-col items-start gap-1.5 mt-1.5">
                     {data && (
                       <StatusBadge
                         label={
-                          data.expense_status?.replace("_", " ") || "UNKNOWN"
+                          data.expense_status
+                            ? data.expense_status.replace(/_/g, " ")
+                            : "UNKNOWN"
                         }
                         variant={getStatusBadgeVariant(data.expense_status)}
                         icon={getStatusBadgeIcon(data.expense_status)}
                       />
                     )}
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1 mt-1">
-                      <BadgeCheck size={12} className="text-amber-500" />
-                      Immutable Audit Trail
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-0.5">
+                      <BadgeCheck
+                        size={12}
+                        aria-hidden="true"
+                        className="text-amber-500 dark:text-overdrive-yellow shrink-0"
+                      />
+                      <span>Immutable Audit Trail</span>
                     </span>
                   </div>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={onClose}
                 className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
-                aria-label="Close panel"
+                aria-label="Close archived receipt drawer"
               >
-                <X size={20} />
+                <X size={20} aria-hidden="true" />
               </button>
             </header>
 
             {/* Content Body: Split Workspace */}
-            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row bg-slate-50/50 dark:bg-transparent">
+            <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row bg-slate-50/50 dark:bg-transparent">
               {loading && (
-                <div className="w-full h-full flex flex-col items-center justify-center py-20 text-slate-400 opacity-70">
-                  <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="w-full h-full flex flex-col items-center justify-center py-20 opacity-80"
+                >
+                  <Loader2
+                    aria-hidden="true"
+                    className="w-8 h-8 animate-spin mb-3 text-amber-500"
+                  />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                     Retrieving Archive...
                   </p>
                 </div>
               )}
 
-              {error && (
-                <div className="w-full p-8 flex items-center justify-center">
-                  <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-200">
-                    {error}
+              {error && !loading && (
+                <div className="w-full p-6 sm:p-8">
+                  <div role="alert" className="form-error-banner">
+                    <AlertCircle
+                      size={18}
+                      aria-hidden="true"
+                      className="shrink-0 mt-0.5"
+                    />
+                    <span>{error}</span>
                   </div>
                 </div>
               )}
@@ -207,12 +327,20 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
               {data && !loading && (
                 <>
                   {/* LEFT PANE: Source Document View */}
-                  <div className="w-full lg:w-1/2 h-[350px] lg:h-full bg-slate-100 dark:bg-[#0B1120] relative flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800">
+                  <div className="w-full lg:w-1/2 h-[360px] sm:h-[420px] lg:h-full shrink-0 bg-slate-100 dark:bg-slate-950 relative flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800">
                     {/* Viewer Toolbar */}
-                    <div className="p-3 bg-white/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                        <FileText size={14} className="text-amber-500" /> Raw
-                        Scan File
+                    <div
+                      role="toolbar"
+                      aria-label="Raw scan viewer controls"
+                      className="p-3 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0"
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <FileText
+                          size={14}
+                          aria-hidden="true"
+                          className="text-amber-500 dark:text-overdrive-yellow"
+                        />
+                        <span>Raw Scan File</span>
                       </span>
                       <div className="flex items-center gap-1">
                         <button
@@ -221,32 +349,48 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                             setZoom((z) => Math.max(0.5, z - 0.25))
                           }
                           disabled={isPdf}
-                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-overdrive-yellow rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          aria-label="Zoom out"
                           title="Zoom Out"
                         >
-                          <ZoomOut size={14} />
+                          <ZoomOut size={14} aria-hidden="true" />
                         </button>
-                        <span className="text-[9px] font-black w-8 text-center text-slate-700 dark:text-slate-300">
+                        <button
+                          type="button"
+                          disabled={isPdf}
+                          onClick={() => {
+                            setZoom(1);
+                            setRotation(0);
+                          }}
+                          aria-label="Reset zoom and rotation"
+                          title="Click to Reset View"
+                          className="text-[10px] font-mono tabular-nums font-black w-11 py-1 text-center text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-overdrive-yellow rounded-md transition-colors cursor-pointer disabled:opacity-50"
+                        >
                           {Math.round(zoom * 100)}%
-                        </span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
                           disabled={isPdf}
-                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-overdrive-yellow rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          aria-label="Zoom in"
                           title="Zoom In"
                         >
-                          <ZoomIn size={14} />
+                          <ZoomIn size={14} aria-hidden="true" />
                         </button>
-                        <div className="w-px h-3 bg-slate-300 dark:bg-slate-700 mx-1" />
+                        <div
+                          aria-hidden="true"
+                          className="w-px h-3.5 bg-slate-300 dark:bg-slate-700 mx-1"
+                        />
                         <button
                           type="button"
-                          onClick={() => setRotation((r) => r + 90)}
+                          onClick={() => setRotation((r) => (r + 90) % 360)}
                           disabled={isPdf}
-                          className="p-1.5 text-slate-500 hover:text-amber-500 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                          title="Rotate"
+                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-overdrive-yellow rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          aria-label="Rotate image 90 degrees clockwise"
+                          title="Rotate 90°"
                         >
-                          <RotateCw size={14} />
+                          <RotateCw size={14} aria-hidden="true" />
                         </button>
                       </div>
                     </div>
@@ -262,28 +406,32 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                           <iframe
                             src={fileUrl}
                             className="w-full h-full bg-white"
-                            title="Document PDF"
+                            title="Archived Receipt PDF Document"
                             onError={() => setImageError(true)}
                           />
-                          <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute bottom-4 right-4 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                             <a
                               href={fileUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl hover:bg-amber-500 transition-colors"
+                              className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl hover:bg-amber-500 hover:text-slate-900 transition-colors"
                             >
-                              <FileText size={14} />
-                              Open PDF in New Tab
+                              <FileText size={14} aria-hidden="true" />
+                              <span>Open PDF in New Tab</span>
                             </a>
                           </div>
                         </div>
                       ) : imageError ? (
-                        <div className="flex flex-col items-center justify-center p-10 bg-slate-100 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-center shadow-lg">
-                          <ImageOff size={48} className="mb-4 opacity-50" />
-                          <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-1">
+                        <div className="flex flex-col items-center justify-center p-10 bg-white dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-center shadow-xs">
+                          <ImageOff
+                            size={44}
+                            aria-hidden="true"
+                            className="mb-3 opacity-50"
+                          />
+                          <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
                             File Unavailable
                           </h3>
-                          <p className="text-[10px] font-medium max-w-[200px]">
+                          <p className="text-[10px] font-medium max-w-[200px] text-slate-400 dark:text-slate-500">
                             The source document could not be loaded from the
                             storage server.
                           </p>
@@ -304,102 +452,129 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                             damping: 30,
                           }}
                           src={fileUrl}
-                          alt="Physical Receipt Scan"
+                          alt={`Archived receipt scan for ${data.expense_number}`}
                           onError={() => setImageError(true)}
-                          className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+                          className="max-w-full max-h-full object-contain rounded-xl shadow-2xl select-none"
                         />
                       )}
                     </div>
                   </div>
 
                   {/* RIGHT PANE: Extracted Data Workspace */}
-                  <div className="w-full lg:w-1/2 flex flex-col h-full bg-slate-50 dark:bg-slate-900">
-                    <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8">
+                  <div className="w-full lg:w-1/2 flex flex-col lg:h-full min-h-0 bg-slate-50 dark:bg-slate-900">
+                    <div className="flex-1 lg:overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8">
                       {/* Ledger Linkage Top Bar */}
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 sm:p-5 bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
                         <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
                             Official Ledger Record
                           </p>
-                          <p className="text-sm font-black text-amber-600 dark:text-amber-500">
+                          <p className="text-sm font-mono tabular-nums font-black text-amber-600 dark:text-overdrive-yellow">
                             {data.expense_number}
                           </p>
                         </div>
                         <button
+                          type="button"
                           onClick={handleNavigateToExpense}
-                          className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 rounded-xl hover:border-amber-500 hover:text-amber-500 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+                          className="w-full sm:w-auto justify-center px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 rounded-xl hover:border-amber-500 hover:text-amber-600 dark:hover:text-overdrive-yellow transition-all flex items-center gap-2 shadow-2xs cursor-pointer active:scale-95"
                         >
-                          Open Expense <ExternalLink size={14} />
+                          <span>Open Expense</span>
+                          <ExternalLink size={14} aria-hidden="true" />
                         </button>
                       </div>
 
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
-                          <h2 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
-                            <CheckCircle2 size={16} className="text-blue-500" />{" "}
-                            Data Validation
-                          </h2>
-                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                          <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
+                            <CheckCircle2
+                              size={16}
+                              aria-hidden="true"
+                              className="text-blue-600 dark:text-blue-400"
+                            />
+                            <span>Data Validation</span>
+                          </h3>
+                          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
                             Review AI outputs and verified accounting data.
                           </p>
                         </div>
 
                         {/* Premium Confidence Banner */}
                         <div
-                          className={`px-5 py-2.5 rounded-[16px] border flex items-center gap-4 shadow-sm transition-all ${getConfidenceBannerClasses(
+                          className={`px-4 py-2.5 rounded-2xl border flex items-center gap-3 shadow-2xs transition-all ${getConfidenceBannerClasses(
                             data.confidence_score,
                           )}`}
                         >
                           <div>
-                            <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-0.5">
+                            <p className="text-[9px] font-black uppercase tracking-widest opacity-80 mb-0.5">
                               AI Confidence
                             </p>
-                            <p className="text-base font-black tracking-tight leading-none">
-                              {data.confidence_score}%
+                            <p className="text-base font-mono tabular-nums font-black tracking-tight leading-none">
+                              {data.confidence_score ?? 0}%
                             </p>
                           </div>
-                          {parseFloat(data.confidence_score) < 60 && (
+                          {parseFloat(data.confidence_score || 0) < 60 && (
                             <div className="flex items-center gap-1.5 text-[9px] font-black uppercase bg-rose-500/10 px-2 py-1.5 rounded-lg border border-rose-500/20">
-                              <AlertCircle size={14} /> Low Accuracy
+                              <AlertCircle size={14} aria-hidden="true" />
+                              <span>Low Accuracy</span>
                             </div>
                           )}
                         </div>
                       </div>
 
                       {/* Vendor & General Info Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                        <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
-                          <Store size={16} className="text-slate-400 mb-3" />
-                          <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                      <div className="grid grid-cols-1 xs:grid-cols-2 gap-4 sm:gap-5">
+                        <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col justify-between min-w-0">
+                          <Store
+                            size={16}
+                            aria-hidden="true"
+                            className="text-amber-600 dark:text-overdrive-yellow mb-3"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
                               Vendor Identity
                             </p>
-                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate uppercase">
+                            <p
+                              className="text-sm font-bold text-slate-900 dark:text-white truncate uppercase"
+                              title={data.vendor_name || "Unregistered Vendor"}
+                            >
                               {data.vendor_name || "Unregistered Vendor"}
                             </p>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                            <p
+                              className="text-[10px] font-mono tabular-nums font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1 truncate"
+                              title={refNumber}
+                            >
                               REF: {refNumber}
                             </p>
                           </div>
                         </section>
-                        <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 rounded-[20px] sm:rounded-[24px] border border-amber-100 dark:border-amber-500/20 shadow-sm flex flex-col justify-between">
-                          <Calendar size={16} className="text-amber-400 mb-3" />
-                          <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-1">
+
+                        <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 rounded-[20px] sm:rounded-[24px] border border-amber-200 dark:border-amber-500/20 shadow-xs flex flex-col justify-between min-w-0">
+                          <Calendar
+                            size={16}
+                            aria-hidden="true"
+                            className="text-amber-600 dark:text-overdrive-yellow mb-3"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-overdrive-yellow mb-1">
                               Expense Date
                             </p>
-                            <p className="text-sm font-bold text-amber-900 dark:text-amber-400 truncate">
-                              {new Date(data.expense_date).toLocaleDateString()}
+                            <p className="text-sm font-mono tabular-nums font-bold text-amber-900 dark:text-amber-300 truncate">
+                              {formatDate(data.expense_date)}
                             </p>
                           </div>
                         </section>
                       </div>
 
                       {/* Line Items Breakdown */}
-                      <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                      <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-xs flex flex-col overflow-hidden">
                         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
-                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                            <FileText size={14} /> Verified Line Items
+                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                            <FileText
+                              size={14}
+                              aria-hidden="true"
+                              className="text-amber-500 dark:text-overdrive-yellow"
+                            />
+                            <span>Verified Line Items</span>
                           </h3>
                         </div>
                         <div className="p-5 sm:p-6 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
@@ -408,33 +583,27 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                             data.line_items.map((item, idx) => (
                               <div
                                 key={idx}
-                                className="flex justify-between items-center text-xs p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800"
+                                className="flex justify-between items-center gap-3 text-xs p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800"
                               >
-                                <div className="min-w-0 flex-1 pr-3">
-                                  <p className="font-bold text-slate-900 dark:text-white uppercase truncate">
+                                <div className="min-w-0 flex-1">
+                                  <p
+                                    className="font-bold text-slate-900 dark:text-white uppercase truncate"
+                                    title={item.description}
+                                  >
                                     {item.description}
                                   </p>
-                                  <p className="text-[9px] font-bold text-slate-500 mt-0.5">
+                                  <p className="text-[10px] font-mono tabular-nums font-bold text-slate-500 dark:text-slate-400 mt-0.5">
                                     {item.quantity}x @ ₱
-                                    {parseFloat(
-                                      item.unit_price || 0,
-                                    ).toLocaleString(undefined, {
-                                      minimumFractionDigits: 2,
-                                    })}
+                                    {formatCurrency(item.unit_price)}
                                   </p>
                                 </div>
-                                <span className="font-black font-mono text-slate-900 dark:text-white shrink-0">
-                                  ₱
-                                  {parseFloat(
-                                    item.total_price || 0,
-                                  ).toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                  })}
+                                <span className="font-black font-mono tabular-nums text-slate-900 dark:text-white shrink-0">
+                                  ₱{formatCurrency(item.total_price)}
                                 </span>
                               </div>
                             ))
                           ) : (
-                            <div className="text-center text-xs text-slate-400 italic">
+                            <div className="text-center text-xs text-slate-500 dark:text-slate-400 italic py-2">
                               No individual line items parsed.
                             </div>
                           )}
@@ -442,91 +611,85 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                       </section>
 
                       {/* Financial Posting Summary */}
-                      <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
-                        <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3 flex items-center gap-1.5">
-                          <Calculator size={14} /> Financial Statement Impact
-                        </p>
-                        <div className="space-y-3 mb-5 text-sm font-medium text-slate-400">
-                          <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                      <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl border border-slate-800 dark:border-white/10">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 dark:text-overdrive-yellow mb-4 border-b border-white/10 pb-3 flex items-center gap-1.5">
+                          <Calculator size={14} aria-hidden="true" />
+                          <span>Financial Statement Impact</span>
+                        </h3>
+                        <div className="space-y-3 mb-5 text-xs sm:text-sm font-medium text-slate-400">
+                          <div className="flex justify-between items-center bg-slate-800/60 dark:bg-slate-900 p-3 sm:p-4 rounded-xl gap-3">
                             <span>Net Subtotal</span>
-                            <span className="font-bold text-slate-200 font-mono">
-                              ₱
-                              {parseFloat(data.subtotal || 0).toLocaleString(
-                                undefined,
-                                {
-                                  minimumFractionDigits: 2,
-                                },
-                              )}
+                            <span className="font-bold text-slate-200 font-mono tabular-nums">
+                              ₱{formatCurrency(data.subtotal)}
                             </span>
                           </div>
-                          <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                          <div className="flex justify-between items-center bg-slate-800/60 dark:bg-slate-900 p-3 sm:p-4 rounded-xl gap-3">
                             <span>Input VAT Allocation</span>
-                            <span className="font-bold text-slate-200 font-mono">
-                              ₱
-                              {parseFloat(data.vat_amount || 0).toLocaleString(
-                                undefined,
-                                {
-                                  minimumFractionDigits: 2,
-                                },
-                              )}
+                            <span className="font-bold text-slate-200 font-mono tabular-nums">
+                              ₱{formatCurrency(data.vat_amount)}
                             </span>
                           </div>
                         </div>
-                        <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/50">
+                        <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-800 gap-3">
                           <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
                             Grand Total
                           </span>
-                          <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight font-mono">
-                            ₱
-                            {parseFloat(data.grand_total || 0).toLocaleString(
-                              undefined,
-                              {
-                                minimumFractionDigits: 2,
-                              },
-                            )}
+                          <span className="text-2xl sm:text-3xl font-black text-amber-500 dark:text-overdrive-yellow tracking-tight font-mono tabular-nums">
+                            ₱{formatCurrency(data.grand_total)}
                           </span>
                         </div>
                       </section>
 
                       {/* Staff Justification / Notes */}
                       {staffNotes && (
-                        <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-                            <FileText size={14} className="text-amber-500" />{" "}
-                            Staff Justification
-                          </p>
-                          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">
+                        <section className="bg-white dark:bg-slate-800 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-xs">
+                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                            <FileText
+                              size={14}
+                              aria-hidden="true"
+                              className="text-amber-500 dark:text-overdrive-yellow"
+                            />
+                            <span>Staff Justification</span>
+                          </h3>
+                          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 italic leading-relaxed break-words">
                             "{staffNotes}"
                           </p>
                         </section>
                       )}
 
                       {/* Human Verification Trace */}
-                      <section className="p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
-                          <ClipboardList size={14} className="text-slate-400" />{" "}
-                          Human Verification Trace
-                        </p>
+                      <section className="p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-xs bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+                          <ClipboardList
+                            size={14}
+                            aria-hidden="true"
+                            className="text-amber-500 dark:text-overdrive-yellow"
+                          />
+                          <span>Human Verification Trace</span>
+                        </h3>
                         <div>
-                          <p className="text-xs font-black uppercase tracking-widest mb-1.5 text-slate-700 dark:text-slate-300">
-                            VERIFIED BY {data.verified_by_first}{" "}
-                            {data.verified_by_last}
+                          <p className="text-xs font-black uppercase tracking-widest mb-1.5 text-slate-800 dark:text-slate-200">
+                            VERIFIED BY {data.verified_by_first || "Staff"}{" "}
+                            {data.verified_by_last || ""}
                           </p>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                            On{" "}
-                            {new Date(data.verification_date).toLocaleString()}
+                          <p className="text-[10px] font-mono tabular-nums font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                            On {formatDate(data.verification_date, true)}
                           </p>
                         </div>
                       </section>
 
                       {/* Manager Resolution Area */}
                       {data.expense_status === "PENDING_APPROVAL" ? (
-                        <section className="p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border flex items-center gap-3 shadow-sm bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 text-blue-800 dark:text-blue-300">
-                          <Clock size={20} className="shrink-0" />
+                        <section className="p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border flex items-center gap-3 shadow-xs bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 text-blue-800 dark:text-blue-300">
+                          <Clock
+                            size={20}
+                            aria-hidden="true"
+                            className="shrink-0"
+                          />
                           <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">
                               Manager Review
-                            </p>
+                            </h3>
                             <p className="text-xs font-bold leading-relaxed">
                               Pending Approval Process
                             </p>
@@ -534,23 +697,28 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                         </section>
                       ) : (
                         <section
-                          className={`p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-sm ${
+                          className={`p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border flex flex-col shadow-xs ${
                             data.expense_status === "APPROVED"
                               ? "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20"
                               : "bg-rose-50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-500/20"
                           }`}
                         >
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
                             {data.expense_status === "APPROVED" ? (
                               <CheckCircle2
                                 size={14}
+                                aria-hidden="true"
                                 className="text-emerald-500"
                               />
                             ) : (
-                              <XCircle size={14} className="text-rose-500" />
-                            )}{" "}
-                            Manager Resolution
-                          </p>
+                              <XCircle
+                                size={14}
+                                aria-hidden="true"
+                                className="text-rose-500"
+                              />
+                            )}
+                            <span>Manager Resolution</span>
+                          </h3>
                           <div>
                             <p
                               className={`text-xs font-black uppercase tracking-widest mb-1.5 ${
@@ -559,16 +727,19 @@ const ReceiptHistoryDrawer = ({ isOpen, onClose, scanId }) => {
                                   : "text-rose-600 dark:text-rose-400"
                               }`}
                             >
-                              {data.expense_status.replace("_", " ")} BY{" "}
-                              {data.resolved_by_name || "Manager"}
+                              {data.expense_status
+                                ? data.expense_status.replace(/_/g, " ")
+                                : "RESOLVED"}{" "}
+                              BY {data.resolved_by_name || "Manager"}
                             </p>
-                            <p className="text-[10px] font-bold text-slate-500 mb-4 uppercase tracking-widest">
+                            <p className="text-[10px] font-mono tabular-nums font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-widest">
                               On{" "}
-                              {new Date(
+                              {formatDate(
                                 data.resolved_at || data.updated_at,
-                              ).toLocaleString()}
+                                true,
+                              )}
                             </p>
-                            <div className="text-xs text-slate-700 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-4 rounded-[16px] border border-slate-100 dark:border-slate-800 shadow-sm leading-relaxed">
+                            <div className="text-xs text-slate-700 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-2xs leading-relaxed break-words">
                               "
                               {managerNotes ||
                                 "No additional remarks provided."}
