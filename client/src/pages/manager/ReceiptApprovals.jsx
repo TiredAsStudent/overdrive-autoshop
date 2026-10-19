@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
 import {
-  Loader2,
   ScanLine,
   Eye,
   CheckCircle,
   Clock,
   XCircle,
   FileText,
+  ChevronDown,
 } from "lucide-react";
 import { receiptApprovalService } from "../../services/manager/receiptApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
@@ -22,8 +22,16 @@ import FilterModal from "../../components/shared/FilterModal";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
+const VIEW_MODE_OPTIONS = [
+  { label: "Pending", value: "PENDING" },
+  { label: "History", value: "HISTORY" },
+];
+
+const ITEMS_PER_PAGE = 10;
+
 const ReceiptApprovals = () => {
   const { showToast } = useApp();
+  const branchFilterSelectId = useId();
 
   const [receipts, setReceipts] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -40,7 +48,6 @@ const ReceiptApprovals = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   // Drawer State
   const [selectedReceiptId, setSelectedReceiptId] = useState(null);
@@ -55,12 +62,28 @@ const ReceiptApprovals = () => {
       .catch((err) => console.error("Failed to load branches", err));
   }, []);
 
-  // Reset to page 1 when search, view, or filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, viewMode, branchFilter]);
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
 
-  const loadReceipts = async () => {
+  const handleViewModeToggle = (mode) => {
+    setViewMode(mode);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleBranchFilterChange = (value) => {
+    setBranchFilter(value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const resetFilters = () => {
+    setBranchFilter("all");
+    if (currentPage !== 1) setCurrentPage(1);
+    setIsFilterModalOpen(false);
+  };
+
+  const loadReceipts = useCallback(async () => {
     try {
       setLoading(true);
       const res =
@@ -78,30 +101,29 @@ const ReceiptApprovals = () => {
               branchFilter,
             );
 
-      setReceipts(res.data?.receipts || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
+      const fetchedReceipts = res.data?.receipts || [];
+      const fetchedTotalPages = res.data?.pagination?.totalPages || 1;
+
+      if (fetchedReceipts.length === 0 && currentPage > fetchedTotalPages) {
+        setCurrentPage(Math.max(1, fetchedTotalPages));
+        return;
+      }
+
+      setReceipts(fetchedReceipts);
+      setTotalPages(fetchedTotalPages);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(
+        error.message || "Unable to load OCR receipt approval records.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearchQuery, viewMode, branchFilter, showToast]);
 
   useEffect(() => {
     loadReceipts();
-  }, [currentPage, debouncedSearchQuery, viewMode, branchFilter]);
-
-  // Defensive Fallback: If current page becomes empty after processing an item, fall back 1 page
-  useEffect(() => {
-    if (!loading && receipts.length === 0 && currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
-    }
-  }, [receipts.length, loading, currentPage]);
-
-  const resetFilters = () => {
-    setBranchFilter("all");
-    setIsFilterModalOpen(false);
-  };
+  }, [loadReceipts]);
 
   const getBadgeVariant = (status) => {
     switch (status) {
@@ -136,8 +158,39 @@ const ReceiptApprovals = () => {
     return "danger";
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return String(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "--";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return String(dateString);
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  const formatCurrency = (val) => {
+    return (parseFloat(val) || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       {/* UNIVERSAL PAGE HEADER */}
       <PageHeader
         title="Receipt Approvals"
@@ -146,7 +199,7 @@ const ReceiptApprovals = () => {
       >
         <SearchBar
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           placeholder="Search Ref or Vendor..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
@@ -158,16 +211,16 @@ const ReceiptApprovals = () => {
 
         <StatusToggle
           activeValue={viewMode}
-          onToggle={setViewMode}
-          options={[
-            { label: "Pending", value: "PENDING" },
-            { label: "History", value: "HISTORY" },
-          ]}
+          onToggle={handleViewModeToggle}
+          ariaLabel="Toggle between pending receipt approvals and approval history"
+          options={VIEW_MODE_OPTIONS}
         />
       </PageHeader>
 
       {/* DATA TABLE */}
       <DataTable
+        caption="OCR Receipt Validation and Expense Approval Queue"
+        minWidth="min-w-[920px]"
         headers={[
           "Document Ref",
           viewMode === "PENDING" ? "Expense Date" : "Date Processed",
@@ -188,94 +241,120 @@ const ReceiptApprovals = () => {
         emptySubtitle={
           viewMode === "PENDING"
             ? "Your OCR receipt validation queue is clear."
-            : "Adjust your search parameters."
+            : "Adjust your search parameters or filter criteria."
         }
-        renderRow={(receipt) => (
-          <tr
-            key={receipt.id}
-            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
-          >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col gap-1 text-left">
-                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
+        renderRow={(receipt) => {
+          const processedDate =
+            receipt.processed_at || receipt.resolved_at || receipt.updated_at;
+          const isPending =
+            receipt.status === "PENDING_APPROVAL" || viewMode === "PENDING";
+
+          return (
+            <tr
+              key={receipt.id}
+              className="group table-row-hover border-b border-slate-100 dark:border-white/5 last:border-0"
+            >
+              {/* Document Ref */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 text-xs font-mono tabular-nums font-black tracking-widest uppercase w-max">
                   {receipt.expense_number}
                 </span>
-              </div>
-            </td>
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                {viewMode === "PENDING"
-                  ? new Date(receipt.expense_date).toLocaleDateString()
-                  : receipt.processed_at
-                    ? new Date(receipt.processed_at).toLocaleString()
-                    : "--"}
-              </p>
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
-                {receipt.vendor_name || "Unregistered Vendor"}
-              </p>
-              <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 truncate max-w-[200px]">
-                {receipt.category}
-              </p>
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-0.5">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[150px]">
-                  {receipt.branch_name}
-                </span>
-                <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+              {/* Expense Date / Date Processed */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <p className="text-xs font-mono tabular-nums font-bold text-slate-600 dark:text-slate-300">
                   {viewMode === "PENDING"
-                    ? `BY: ${receipt.created_by_name || "System"}`
-                    : `BY: ${receipt.resolved_by_name || receipt.created_by_name || "System"}`}
+                    ? formatDate(receipt.expense_date)
+                    : formatDateTime(processedDate)}
+                </p>
+              </td>
+
+              {/* Vendor & Category */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <p
+                  className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]"
+                  title={receipt.vendor_name || "Unregistered Vendor"}
+                >
+                  {receipt.vendor_name || "Unregistered Vendor"}
+                </p>
+                <p
+                  className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-0.5 truncate max-w-[200px]"
+                  title={receipt.category}
+                >
+                  {receipt.category}
+                </p>
+              </td>
+
+              {/* Branch & Staff / Decision */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <div className="flex flex-col items-start gap-0.5">
+                  <span
+                    className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[160px]"
+                    title={receipt.branch_name}
+                  >
+                    {receipt.branch_name}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[160px]">
+                    {viewMode === "PENDING"
+                      ? `BY: ${receipt.created_by_name || "System"}`
+                      : `BY: ${receipt.resolved_by_name || receipt.created_by_name || "System"}`}
+                  </span>
+                </div>
+              </td>
+
+              {/* AI Accuracy */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <StatusBadge
+                  label={`${receipt.confidence_score ?? 0}%`}
+                  variant={getConfidenceVariant(receipt.confidence_score)}
+                  className="font-mono tabular-nums"
+                />
+              </td>
+
+              {/* Total Amount */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <span className="text-xs sm:text-sm font-black font-mono tabular-nums text-slate-900 dark:text-white">
+                  ₱{formatCurrency(receipt.total_amount)}
                 </span>
-              </div>
-            </td>
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <StatusBadge
-                label={`${receipt.confidence_score}%`}
-                variant={getConfidenceVariant(receipt.confidence_score)}
-              />
-            </td>
+              {/* Status / Decision */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <StatusBadge
+                  label={(receipt.status || "").replace(/_/g, " ")}
+                  variant={getBadgeVariant(receipt.status)}
+                  icon={getBadgeIcon(receipt.status)}
+                />
+              </td>
 
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black font-mono text-slate-900 dark:text-white">
-                ₱
-                {parseFloat(receipt.total_amount).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <StatusBadge
-                label={receipt.status.replace("_", " ")}
-                variant={getBadgeVariant(receipt.status)}
-                icon={getBadgeIcon(receipt.status)}
-              />
-            </td>
-
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <button
-                onClick={() => {
-                  setSelectedReceiptId(receipt.id);
-                  setIsDrawerOpen(true);
-                }}
-                title={
-                  viewMode === "PENDING" ? "Review Request" : "View Details"
-                }
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
-              >
-                <Eye size={14} />
-                {viewMode === "PENDING" ? "Review" : "Details"}
-              </button>
-            </td>
-          </tr>
-        )}
+              {/* Actions */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedReceiptId(receipt.id);
+                    setIsDrawerOpen(true);
+                  }}
+                  title={
+                    isPending
+                      ? `Review OCR Receipt ${receipt.expense_number}`
+                      : `View OCR Receipt ${receipt.expense_number}`
+                  }
+                  aria-label={
+                    isPending
+                      ? `Review pending OCR receipt ${receipt.expense_number}`
+                      : `View details for OCR receipt ${receipt.expense_number}`
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer"
+                >
+                  <Eye size={14} aria-hidden="true" />
+                  <span>{isPending ? "Review" : "Details"}</span>
+                </button>
+              </td>
+            </tr>
+          );
+        }}
       />
 
       <Pagination
@@ -293,21 +372,29 @@ const ReceiptApprovals = () => {
       >
         <div className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={branchFilterSelectId} className="form-label">
               Branch Location
             </label>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
-            >
-              <option value="all">All Branches</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.branch_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={branchFilterSelectId}
+                value={branchFilter}
+                onChange={(e) => handleBranchFilterChange(e.target.value)}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">All Branches</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.branch_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
         </div>
       </FilterModal>
