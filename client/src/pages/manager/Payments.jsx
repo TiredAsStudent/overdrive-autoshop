@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
 import {
   CreditCard,
   FileSearch,
@@ -9,6 +9,7 @@ import {
   Paperclip,
   Building2,
   Ban,
+  ChevronDown,
 } from "lucide-react";
 import { vendorPaymentService } from "../../services/manager/vendorPayment.service";
 import { managerVendorService } from "../../services/manager/vendor.service";
@@ -39,8 +40,15 @@ const METHOD_FILTERS = [
   { id: "BANK_TRANSFER", label: "Bank" },
 ];
 
+const ITEMS_PER_PAGE = 10;
+
 const Payments = () => {
   const { showToast } = useApp();
+
+  // Accessible Filter Control IDs
+  const branchFilterSelectId = useId();
+  const vendorFilterSelectId = useId();
+  const methodFilterSelectId = useId();
 
   const [payments, setPayments] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -55,7 +63,6 @@ const Payments = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState(null);
@@ -81,11 +88,35 @@ const Payments = () => {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, methodFilter, branchFilter, vendorFilter]);
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
 
-  const loadPayments = async () => {
+  const handleBranchFilterChange = (value) => {
+    setBranchFilter(value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleVendorFilterChange = (value) => {
+    setVendorFilter(value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleMethodFilterChange = (value) => {
+    setMethodFilter(value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const resetFilters = () => {
+    setBranchFilter("all");
+    setVendorFilter("all");
+    setMethodFilter("all");
+    if (currentPage !== 1) setCurrentPage(1);
+    setIsFilterModalOpen(false);
+  };
+
+  const loadPayments = useCallback(async () => {
     try {
       setLoading(true);
       const response = await vendorPaymentService.getPayments(
@@ -96,40 +127,49 @@ const Payments = () => {
         branchFilter,
         vendorFilter,
       );
-      setPayments(response.data?.payments || []);
-      setTotalPages(response.data?.pagination?.totalPages || 1);
+
+      const fetchedPayments = response.data?.payments || [];
+      const fetchedTotalPages = response.data?.pagination?.totalPages || 1;
+
+      if (fetchedPayments.length === 0 && currentPage > fetchedTotalPages) {
+        setCurrentPage(Math.max(1, fetchedTotalPages));
+        return;
+      }
+
+      setPayments(fetchedPayments);
+      setTotalPages(fetchedTotalPages);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(
+        error.message || "Unable to load vendor payment records.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadPayments();
   }, [
     currentPage,
     debouncedSearchQuery,
     methodFilter,
     branchFilter,
     vendorFilter,
+    showToast,
   ]);
 
+  useEffect(() => {
+    loadPayments();
+  }, [loadPayments]);
+
   const handleModalSubmit = async (formData, proofFile) => {
-    try {
-      const res = await vendorPaymentService.recordPayment(formData, proofFile);
-      const isFullyPaid = res.data?.updatedBill?.payment_status === "PAID";
-      showToast(
-        isFullyPaid
-          ? "Vendor payment successful. Bill fully settled."
-          : "Partial vendor payment recorded.",
-        "success",
-      );
-      setIsModalOpen(false);
-      loadPayments();
-    } catch (error) {
-      throw error;
-    }
+    const res = await vendorPaymentService.recordPayment(formData, proofFile);
+    const isFullyPaid = res.data?.updatedBill?.payment_status === "PAID";
+    showToast(
+      isFullyPaid
+        ? "Vendor payment successful. Bill fully settled."
+        : "Partial vendor payment recorded.",
+      "success",
+    );
+    setIsModalOpen(false);
+    loadPayments();
   };
 
   const handleConfirmVoid = async () => {
@@ -142,22 +182,23 @@ const Payments = () => {
       );
       loadPayments();
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(error.message || "Failed to void vendor payment.", "error");
       throw error;
     }
   };
 
-  const resetFilters = () => {
-    setBranchFilter("all");
-    setVendorFilter("all");
-    setMethodFilter("all");
-    setIsFilterModalOpen(false);
-  };
-
   const formatCalendarDate = (dateString) => {
     if (!dateString) return "N/A";
-    const [year, month, day] = dateString.split("T")[0].split("-");
+    const [year, month, day] = String(dateString).split("T")[0].split("-");
+    if (!year || !month || !day) return String(dateString);
     return `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+  };
+
+  const formatCurrency = (val) => {
+    return (parseFloat(val) || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   const renderMethodBadge = (method) => {
@@ -168,7 +209,7 @@ const Payments = () => {
       case "BANK_TRANSFER":
         return (
           <StatusBadge
-            label={method.replace("_", " ")}
+            label={method.replace(/_/g, " ")}
             variant="info"
             icon={Landmark}
           />
@@ -183,7 +224,7 @@ const Payments = () => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       <PageHeader
         title="Payments"
         subtitle="Accounts Payable Liquidation Hub"
@@ -191,7 +232,7 @@ const Payments = () => {
       >
         <SearchBar
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           placeholder="Search Payment No. or Vendor..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
@@ -207,6 +248,8 @@ const Payments = () => {
       </PageHeader>
 
       <DataTable
+        caption="Accounts Payable Vendor Disbursements and Payment Ledger"
+        minWidth="min-w-[850px]"
         headers={[
           "Payment No.",
           "Vendor & Bill",
@@ -219,108 +262,137 @@ const Payments = () => {
         loading={loading}
         emptyTitle="No Payments Found"
         emptySubtitle="Try adjusting filters or record a new payment."
-        renderRow={(pay) => (
-          <tr
-            key={pay.id}
-            className={`group transition-colors ${pay.status === "VOID" ? "opacity-60 bg-slate-50/50 dark:bg-slate-800/20" : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"}`}
-          >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col">
+        renderRow={(pay) => {
+          const isVoid = pay.status === "VOID";
+
+          return (
+            <tr
+              key={pay.id}
+              className={`group border-b border-slate-100 dark:border-white/5 last:border-0 ${
+                isVoid
+                  ? "opacity-65 bg-slate-50/60 dark:bg-slate-900/40"
+                  : "table-row-hover"
+              }`}
+            >
+              {/* Payment No. */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`inline-flex w-fit px-2.5 py-1 rounded-md text-xs font-black tracking-widest uppercase ${pay.status === "VOID" ? "bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 line-through" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
+                    className={`inline-flex w-fit px-2.5 py-1 rounded-md text-xs font-mono tabular-nums font-black tracking-widest uppercase border ${
+                      isVoid
+                        ? "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200/80 dark:border-rose-500/20 line-through"
+                        : "bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-300 border-slate-200/80 dark:border-white/10"
+                    }`}
                   >
                     {pay.payment_number}
                   </span>
-                  {pay.status === "VOID" && (
-                    <StatusBadge label="VOID" variant="danger" />
-                  )}
+                  {isVoid && <StatusBadge label="VOID" variant="danger" />}
                 </div>
-              </div>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="min-w-0 max-w-[200px] sm:max-w-[250px]">
-                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">
-                  {pay.vendor_name}
-                </p>
-                <div className="flex flex-col gap-1 mt-1">
-                  <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest truncate">
-                    {pay.bill_number}
-                  </span>
-                  {pay.current_bill_status && (
-                    <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">
-                      Status: {pay.current_bill_status.replace("_", " ")}
-                    </p>
-                  )}
-                  <span className="text-[9px] font-medium text-slate-500 flex items-center gap-1 truncate uppercase tracking-widest">
-                    <Building2 size={10} className="shrink-0" />
-                    {pay.branch_name}
-                  </span>
-                </div>
-              </div>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span
-                className={`text-sm font-black ${pay.status === "VOID" ? "text-slate-400 line-through" : "text-rose-600 dark:text-rose-500"}`}
-              >
-                - ₱
-                {parseFloat(pay.amount_paid).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-1">
-                {renderMethodBadge(pay.payment_method)}
-                <div className="flex items-center gap-1.5 mt-1">
-                  {pay.reference_number && (
-                    <span className="text-[8px] text-slate-400 font-mono tracking-wider truncate max-w-[120px]">
-                      {pay.reference_number}
-                    </span>
-                  )}
-                  {pay.proof_of_payment_url && (
-                    <Paperclip
-                      size={12}
-                      className="text-amber-500"
-                      title="Proof Attached"
-                    />
-                  )}
-                </div>
-              </div>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                {formatCalendarDate(pay.payment_date || pay.created_at)}
-              </span>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-1.5 sm:gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedPaymentId(pay.id);
-                    setIsDrawerOpen(true);
-                  }}
-                  title="View Payment"
-                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
-                >
-                  <FileSearch size={16} />
-                </button>
-                {pay.status !== "VOID" && (
-                  <button
-                    onClick={() => {
-                      setPaymentToVoid(pay);
-                      setIsVoidModalOpen(true);
-                    }}
-                    title="Void Payment"
-                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+              </td>
+
+              {/* Vendor & Bill */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <div className="min-w-0 max-w-[200px] sm:max-w-[260px]">
+                  <p
+                    className="text-xs sm:text-sm font-black text-slate-900 dark:text-white italic uppercase truncate"
+                    title={pay.vendor_name}
                   >
-                    <Ban size={16} />
+                    {pay.vendor_name}
+                  </p>
+                  <div className="flex flex-col gap-0.5 mt-1">
+                    <span className="text-[10px] font-mono tabular-nums font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest truncate">
+                      {pay.bill_number}
+                    </span>
+                    {pay.current_bill_status && (
+                      <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                        Status: {pay.current_bill_status.replace(/_/g, " ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </td>
+
+              {/* Amount Paid */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <span
+                  className={`text-xs sm:text-sm font-mono tabular-nums font-black ${
+                    isVoid
+                      ? "text-slate-400 dark:text-slate-500 line-through"
+                      : "text-rose-600 dark:text-rose-400"
+                  }`}
+                >
+                  -₱{formatCurrency(pay.amount_paid)}
+                </span>
+              </td>
+
+              {/* Channel */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <div className="flex flex-col items-start gap-1">
+                  {renderMethodBadge(pay.payment_method)}
+                  {(pay.reference_number || pay.proof_of_payment_url) && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {pay.reference_number && (
+                        <span
+                          className="text-[10px] text-slate-500 dark:text-slate-400 font-mono tabular-nums tracking-wider truncate max-w-[130px]"
+                          title={pay.reference_number}
+                        >
+                          {pay.reference_number}
+                        </span>
+                      )}
+                      {pay.proof_of_payment_url && (
+                        <Paperclip
+                          size={12}
+                          aria-label="Documentary proof attached"
+                          className="text-amber-500 dark:text-overdrive-yellow shrink-0"
+                          title="Proof Attached"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </td>
+
+              {/* Payment Date */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <span className="text-xs font-mono tabular-nums font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">
+                  {formatCalendarDate(pay.payment_date || pay.created_at)}
+                </span>
+              </td>
+
+              {/* Actions */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
+                <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPaymentId(pay.id);
+                      setIsDrawerOpen(true);
+                    }}
+                    title={`View Payment ${pay.payment_number}`}
+                    aria-label={`View payment voucher details for ${pay.payment_number}`}
+                    className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-200/60 dark:hover:border-blue-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
+                  >
+                    <FileSearch size={16} aria-hidden="true" />
                   </button>
-                )}
-              </div>
-            </td>
-          </tr>
-        )}
+                  {!isVoid && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaymentToVoid(pay);
+                        setIsVoidModalOpen(true);
+                      }}
+                      title={`Void Payment ${pay.payment_number}`}
+                      aria-label={`Void payment ${pay.payment_number}`}
+                      className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:border-rose-200/60 dark:hover:border-rose-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Ban size={16} aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          );
+        }}
       />
 
       <Pagination
@@ -335,56 +407,82 @@ const Payments = () => {
         onClear={resetFilters}
         title="Advanced Filters"
       >
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={branchFilterSelectId} className="form-label">
               Filter by Branch
             </label>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-            >
-              <option value="all">All Branch</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.branch_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={branchFilterSelectId}
+                value={branchFilter}
+                onChange={(e) => handleBranchFilterChange(e.target.value)}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">All Branches</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.branch_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
+
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={vendorFilterSelectId} className="form-label">
               Filter by Vendor
             </label>
-            <select
-              value={vendorFilter}
-              onChange={(e) => setVendorFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-            >
-              <option value="all">All Vendors</option>
-              {vendors.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.business_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={vendorFilterSelectId}
+                value={vendorFilter}
+                onChange={(e) => handleVendorFilterChange(e.target.value)}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">All Vendors</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.business_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
+
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={methodFilterSelectId} className="form-label">
               Filter by Payment Method
             </label>
-            <select
-              value={methodFilter}
-              onChange={(e) => setMethodFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-            >
-              {METHOD_FILTERS.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={methodFilterSelectId}
+                value={methodFilter}
+                onChange={(e) => handleMethodFilterChange(e.target.value)}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                {METHOD_FILTERS.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
         </div>
       </FilterModal>
@@ -401,16 +499,12 @@ const Payments = () => {
           paymentToVoid ? (
             <>
               Are you sure you want to void payment{" "}
-              <span className="font-bold font-mono text-slate-700 dark:text-slate-200">
+              <span className="font-bold font-mono tabular-nums text-slate-700 dark:text-slate-200">
                 {paymentToVoid.payment_number}
               </span>
               ? This action cannot be undone. The{" "}
-              <span className="font-bold text-slate-700 dark:text-slate-200">
-                ₱
-                {parseFloat(paymentToVoid.amount_paid).toLocaleString(
-                  undefined,
-                  { minimumFractionDigits: 2 },
-                )}
+              <span className="font-bold font-mono tabular-nums text-slate-700 dark:text-slate-200">
+                ₱{formatCurrency(paymentToVoid.amount_paid)}
               </span>{" "}
               payment will be reversed, and the bill balance will be restored.
             </>

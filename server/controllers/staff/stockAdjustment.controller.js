@@ -8,7 +8,7 @@ class StaffStockAdjustmentController {
   static async createRequest(req, res) {
     try {
       if (req.file) {
-        req.body.evidence_url = req.file.path.replace(/\\/g, "/");
+        req.body.evidence_url = `uploads/adjustments/${req.file.filename}`;
       }
 
       const request = await StaffStockAdjustmentService.createRequest(
@@ -27,8 +27,9 @@ class StaffStockAdjustmentController {
     } catch (error) {
       if (req.file && req.file.path) {
         fs.unlink(path.resolve(req.file.path), (err) => {
-          if (err)
+          if (err && err.code !== "ENOENT") {
             console.error("Failed to delete orphaned evidence file:", err);
+          }
         });
       }
 

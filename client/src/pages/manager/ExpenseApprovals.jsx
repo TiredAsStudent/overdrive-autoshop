@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
 import {
   ReceiptText,
   Eye,
@@ -8,6 +8,7 @@ import {
   Clock,
   XCircle,
   FileText,
+  ChevronDown,
 } from "lucide-react";
 import { expenseApprovalService } from "../../services/manager/expenseApproval.service";
 import { inventoryService } from "../../services/manager/inventory.service";
@@ -27,8 +28,19 @@ import StatusToggle from "../../components/ui/StatusToggle";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
+const VIEW_MODE_OPTIONS = [
+  { label: "Pending", value: "PENDING" },
+  { label: "History", value: "HISTORY" },
+];
+
+const ITEMS_PER_PAGE = 10;
+
 const ExpenseApprovals = () => {
   const { showToast } = useApp();
+
+  // Accessible Filter IDs
+  const categoryFilterSelectId = useId();
+  const branchFilterSelectId = useId();
 
   const [expenses, setExpenses] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -47,7 +59,6 @@ const ExpenseApprovals = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   // UI View States
   const [selectedExpenseId, setSelectedExpenseId] = useState(null);
@@ -70,7 +81,7 @@ const ExpenseApprovals = () => {
       .catch((err) => console.error("Failed to load COA categories", err));
   }, []);
 
-  const loadExpenses = async () => {
+  const loadExpenses = useCallback(async () => {
     try {
       setLoading(true);
       const res =
@@ -90,30 +101,36 @@ const ExpenseApprovals = () => {
               branchFilter,
             );
 
-      setExpenses(res.data?.expenses || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
+      const fetchedExpenses = res.data?.expenses || [];
+      const fetchedTotalPages = res.data?.pagination?.totalPages || 1;
+
+      if (fetchedExpenses.length === 0 && currentPage > fetchedTotalPages) {
+        setCurrentPage(Math.max(1, fetchedTotalPages));
+        return;
+      }
+
+      setExpenses(fetchedExpenses);
+      setTotalPages(fetchedTotalPages);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(
+        error.message || "Unable to load expense approval records.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadExpenses();
   }, [
     currentPage,
     debouncedSearchQuery,
     viewMode,
     branchFilter,
     expenseAccountIdFilter,
+    showToast,
   ]);
 
   useEffect(() => {
-    if (!loading && expenses.length === 0 && currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
-    }
-  }, [expenses.length, loading, currentPage]);
+    loadExpenses();
+  }, [loadExpenses]);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -177,8 +194,39 @@ const ExpenseApprovals = () => {
     setIsFilterModalOpen(false);
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return String(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return String(dateString);
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  const formatCurrency = (val) => {
+    return (parseFloat(val) || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       <PageHeader
         title="Expense Approvals"
         subtitle="Operational Expense Governance"
@@ -199,15 +247,15 @@ const ExpenseApprovals = () => {
         <StatusToggle
           activeValue={viewMode}
           onToggle={handleViewModeToggle}
-          options={[
-            { label: "Pending", value: "PENDING" },
-            { label: "History", value: "HISTORY" },
-          ]}
+          ariaLabel="Toggle between pending expense approvals and approval history"
+          options={VIEW_MODE_OPTIONS}
         />
       </PageHeader>
 
       {/* DATA TABLE */}
       <DataTable
+        caption="Operational Expense Governance and Approval Queue"
+        minWidth="min-w-[900px]"
         headers={[
           "Expense No.",
           viewMode === "PENDING" ? "Expense Date" : "Date Processed",
@@ -227,64 +275,78 @@ const ExpenseApprovals = () => {
         emptySubtitle={
           viewMode === "PENDING"
             ? "Your expense review queue is completely clear."
-            : "Adjust your search parameters."
+            : "Adjust your search parameters or filter criteria."
         }
         renderRow={(expense) => {
           const processedDate =
             expense.processed_at || expense.resolved_at || expense.updated_at;
+          const isPending = expense.status === "PENDING_APPROVAL";
 
           return (
             <tr
               key={expense.id}
-              className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+              className="group table-row-hover border-b border-slate-100 dark:border-white/5 last:border-0"
             >
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
+              {/* Expense No. */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
                 <div className="flex items-center gap-1.5">
-                  <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase w-max">
+                  <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 text-xs font-mono tabular-nums font-black tracking-widest uppercase w-max">
                     {expense.expense_number}
                   </span>
                   {expense.scan_id ? (
                     <span
-                      className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
+                      className="bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 border border-blue-200/80 dark:border-blue-500/20 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-1"
                       title="Generated via OCR Receipt Scanner"
                     >
-                      <ScanText size={10} /> OCR
+                      <ScanText size={10} aria-hidden="true" />
+                      <span>OCR</span>
                     </span>
                   ) : expense.receipt_url ? (
                     <Paperclip
                       size={14}
-                      className="text-amber-500"
+                      aria-label="Receipt attachment present"
+                      className="text-amber-500 dark:text-overdrive-yellow shrink-0"
                       title="Attachment Present"
                     />
                   ) : null}
                 </div>
               </td>
 
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+              {/* Expense Date / Date Processed */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <p className="text-xs font-mono tabular-nums font-bold text-slate-600 dark:text-slate-300">
                   {viewMode === "PENDING"
-                    ? new Date(expense.expense_date).toLocaleDateString()
-                    : processedDate
-                      ? new Date(processedDate).toLocaleString()
-                      : "N/A"}
+                    ? formatDate(expense.expense_date)
+                    : formatDateTime(processedDate)}
                 </p>
               </td>
 
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
+              {/* Particulars */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <p
+                  className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[220px]"
+                  title={expense.category}
+                >
                   {expense.category}
                 </p>
-                <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 truncate max-w-[200px]">
+                <p
+                  className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-0.5 truncate max-w-[220px]"
+                  title={expense.vendor_name || expense.description}
+                >
                   {expense.vendor_name || expense.description}
                 </p>
               </td>
 
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
+              {/* Branch & Staff / Decision */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
                 <div className="flex flex-col items-start gap-0.5">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[150px]">
+                  <span
+                    className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate max-w-[160px]"
+                    title={expense.branch_name}
+                  >
                     {expense.branch_name}
                   </span>
-                  <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[160px]">
                     {viewMode === "PENDING"
                       ? `BY: ${expense.created_by_name || "System"}`
                       : `BY: ${expense.resolved_by_name || expense.created_by_name || "System"}`}
@@ -292,38 +354,41 @@ const ExpenseApprovals = () => {
                 </div>
               </td>
 
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
-                <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                  ₱
-                  {parseFloat(expense.total_amount || 0).toLocaleString(
-                    undefined,
-                    {
-                      minimumFractionDigits: 2,
-                    },
-                  )}
+              {/* Total Amount */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono tabular-nums">
+                  ₱{formatCurrency(expense.total_amount)}
                 </span>
               </td>
 
-              <td className="px-4 sm:px-8 py-4 sm:py-6">
+              {/* Status / Decision */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
                 <StatusBadge
-                  label={(expense.status || "").replace("_", " ")}
+                  label={(expense.status || "").replace(/_/g, " ")}
                   variant={getBadgeVariant(expense.status)}
                   icon={getBadgeIcon(expense.status)}
                 />
               </td>
 
-              <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
+              {/* Actions */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
                 <button
+                  type="button"
                   onClick={() => handleOpenView(expense)}
                   title={
-                    expense.status === "PENDING_APPROVAL"
-                      ? "Review Request"
-                      : "View Details"
+                    isPending
+                      ? `Review Expense ${expense.expense_number}`
+                      : `View Expense ${expense.expense_number}`
                   }
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+                  aria-label={
+                    isPending
+                      ? `Review pending expense request ${expense.expense_number}`
+                      : `View details for expense ${expense.expense_number}`
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer"
                 >
-                  <Eye size={14} />
-                  {expense.status === "PENDING_APPROVAL" ? "Review" : "Details"}
+                  <Eye size={14} aria-hidden="true" />
+                  <span>{isPending ? "Review" : "Details"}</span>
                 </button>
               </td>
             </tr>
@@ -345,39 +410,55 @@ const ExpenseApprovals = () => {
       >
         <div className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={categoryFilterSelectId} className="form-label">
               COA Expense Category
             </label>
-            <select
-              value={expenseAccountIdFilter}
-              onChange={handleCategoryFilterChange}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
-            >
-              <option value="all">All Categories</option>
-              {expenseCategories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.account_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={categoryFilterSelectId}
+                value={expenseAccountIdFilter}
+                onChange={handleCategoryFilterChange}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">All Categories</option>
+                {expenseCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.account_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={branchFilterSelectId} className="form-label">
               Branch Location
             </label>
-            <select
-              value={branchFilter}
-              onChange={handleBranchFilterChange}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
-            >
-              <option value="all">All Branches</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.branch_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={branchFilterSelectId}
+                value={branchFilter}
+                onChange={handleBranchFilterChange}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">All Branches</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.branch_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
         </div>
       </FilterModal>

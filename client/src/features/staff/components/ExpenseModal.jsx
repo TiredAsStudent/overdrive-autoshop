@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -12,8 +12,8 @@ import {
   Search,
   UploadCloud,
   FileCode2,
-  Image as ImageIcon,
   ImageOff,
+  ChevronDown,
 } from "lucide-react";
 import { vendorService } from "../../../services/staff/vendor.service";
 import { catalogService } from "../../../services/staff/catalog.service";
@@ -29,10 +29,11 @@ const formatToLocalDateInput = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
+const VendorSearchableSelect = ({ id, value, vendors, onChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const wrapperRef = useRef(null);
+  const listboxId = useId();
 
   useEffect(() => {
     if (value) {
@@ -68,14 +69,19 @@ const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
   return (
     <div ref={wrapperRef} className="relative z-50">
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
-          <Search
-            size={16}
-            className="text-slate-400 sm:w-[18px] sm:h-[18px]"
-          />
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"
+        >
+          <Search size={16} className="text-slate-400" />
         </div>
         <input
+          id={id}
           type="text"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
           disabled={disabled}
           value={isOpen ? searchTerm : value ? searchTerm : ""}
           onChange={(e) => {
@@ -84,13 +90,21 @@ const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
             if (value) onChange("");
           }}
           onFocus={() => setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && isOpen) {
+              e.stopPropagation();
+              setIsOpen(false);
+            }
+          }}
           placeholder="Search registered vendor..."
-          className="w-full pl-9 sm:pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-1 transition-all shadow-sm disabled:opacity-60"
+          className="form-input pl-10"
         />
       </div>
       <AnimatePresence>
         {isOpen && !disabled && (
           <motion.div
+            id={listboxId}
+            role="listbox"
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 5 }}
@@ -98,25 +112,28 @@ const VendorSearchableSelect = ({ value, vendors, onChange, disabled }) => {
           >
             {filtered.length > 0 ? (
               filtered.map((v) => (
-                <div
+                <button
                   key={v.id}
+                  type="button"
+                  role="option"
+                  aria-selected={value?.toString() === v.id.toString()}
                   onClick={() => {
                     onChange(v.id);
                     setSearchTerm(v.business_name);
                     setIsOpen(false);
                   }}
-                  className="p-3 sm:p-4 md:p-5 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
+                  className="w-full text-left p-3.5 sm:p-4 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors"
                 >
-                  <p className="text-[9px] sm:text-[10px] font-black text-amber-500 tracking-widest uppercase">
+                  <p className="text-[10px] font-mono tabular-nums font-black text-amber-600 dark:text-overdrive-yellow tracking-widest uppercase">
                     {v.vendor_code}
                   </p>
-                  <p className="text-[11px] sm:text-xs md:text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
                     {v.business_name}
                   </p>
-                </div>
+                </button>
               ))
             ) : (
-              <div className="p-6 text-center text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-widest">
+              <div className="p-6 text-center text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                 No matching vendors found.
               </div>
             )}
@@ -138,6 +155,20 @@ const ExpenseModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
 
+  // Accessible IDs
+  const modalTitleId = useId();
+  const expenseDateInputId = useId();
+  const coaCategorySelectId = useId();
+  const descriptionInputId = useId();
+  const vendorInputId = useId();
+  const payeeNameInputId = useId();
+  const referenceNumberInputId = useId();
+  const totalAmountInputId = useId();
+  const paymentMethodSelectId = useId();
+  const vatableCheckboxId = useId();
+  const attachmentInputId = useId();
+  const notesInputId = useId();
+
   const [vendors, setVendors] = useState([]);
   const [isLoadingVendors, setIsLoadingVendors] = useState(false);
   const [vatRate, setVatRate] = useState(12);
@@ -148,7 +179,6 @@ const ExpenseModal = ({
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [imageError, setImageError] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-
   const [isAttachmentRemoved, setIsAttachmentRemoved] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -191,7 +221,20 @@ const ExpenseModal = ({
     };
   }, [attachmentPreview]);
 
+  // Close modal on Escape key when not submitting
   useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !isSubmitting) {
+        onClose?.();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isSubmitting, onClose]);
+
+  useEffect(() => {
+    let isMounted = true;
     if (isOpen) {
       setValidationError("");
       setIsLoadingVendors(true);
@@ -199,6 +242,7 @@ const ExpenseModal = ({
       catalogService
         .getSettings()
         .then((res) => {
+          if (!isMounted) return;
           const fetchedVat = parseFloat(res.data?.vat_percentage);
           if (!isNaN(fetchedVat)) setVatRate(fetchedVat);
         })
@@ -206,9 +250,15 @@ const ExpenseModal = ({
 
       vendorService
         .getActiveLookup()
-        .then((res) => setVendors(res.data || []))
-        .catch(() => setValidationError("Could not load vendor registry."))
-        .finally(() => setIsLoadingVendors(false));
+        .then((res) => {
+          if (isMounted) setVendors(res.data || []);
+        })
+        .catch(() => {
+          if (isMounted) setValidationError("Could not load vendor registry.");
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingVendors(false);
+        });
 
       // Reset File States completely
       if (attachmentPreview && !attachmentPreview.startsWith("http"))
@@ -255,6 +305,7 @@ const ExpenseModal = ({
         expenseService
           .getExpenseDetails(initialData.id)
           .then((res) => {
+            if (!isMounted) return;
             const fullData = res.data;
             setFormData({
               expense_date: formatToLocalDateInput(fullData.expense_date),
@@ -276,18 +327,40 @@ const ExpenseModal = ({
           })
           .catch((err) => {
             console.error("Fetch Details Error:", err);
-            setValidationError("Could not fetch full expense details.");
+            if (isMounted) {
+              setValidationError("Could not fetch full expense details.");
+            }
           });
       }
     }
+
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, mode, initialData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    setValidationError("");
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  const removeFile = () => {
+    if (attachmentPreview && !attachmentPreview.startsWith("http"))
+      URL.revokeObjectURL(attachmentPreview);
+    setAttachmentFile(null);
+    setAttachmentPreview(null);
+    setImageError(false);
+
+    if (mode === "EDIT" && initialData?.receipt_url) {
+      setIsAttachmentRemoved(true);
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const processFile = (file) => {
@@ -322,7 +395,7 @@ const ExpenseModal = ({
     setValidationError("");
   };
 
-  const handleFileChange = (e) => processFile(e.target.files[0]);
+  const handleFileChange = (e) => processFile(e.target.files?.[0]);
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragging(true);
@@ -337,20 +410,6 @@ const ExpenseModal = ({
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       processFile(e.dataTransfer.files[0]);
     }
-  };
-
-  const removeFile = () => {
-    if (attachmentPreview && !attachmentPreview.startsWith("http"))
-      URL.revokeObjectURL(attachmentPreview);
-    setAttachmentFile(null);
-    setAttachmentPreview(null);
-    setImageError(false);
-
-    if (mode === "EDIT" && initialData?.receipt_url) {
-      setIsAttachmentRemoved(true);
-    }
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSubmit = async (e, submitForApproval = false) => {
@@ -369,6 +428,7 @@ const ExpenseModal = ({
 
     const payload = {
       ...formData,
+      description: formData.description.trim(),
       total_amount: parseFloat(formData.total_amount),
       expense_account_id: parseInt(formData.expense_account_id, 10),
       vendor_id: formData.vendor_id ? parseInt(formData.vendor_id, 10) : null,
@@ -376,6 +436,8 @@ const ExpenseModal = ({
         !formData.vendor_id && formData.vendor_name?.trim()
           ? formData.vendor_name.trim()
           : null,
+      reference_number: formData.reference_number?.trim() || "",
+      notes: formData.notes?.trim() || "",
       is_submitting: submitForApproval,
     };
     delete payload.category;
@@ -399,122 +461,165 @@ const ExpenseModal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-900/60 backdrop-blur-sm">
+        <div
+          onClick={() => !isSubmitting && onClose?.()}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm"
+        >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={modalTitleId}
+            onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95dvh] sm:max-h-[95vh]"
+            className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden max-h-[95dvh] sm:max-h-[92vh]"
           >
             {/* Header */}
-            <div className="flex justify-between items-start sm:items-center p-4 sm:p-6 md:p-8 pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0 gap-4">
+            <div className="flex justify-between items-center p-5 sm:p-8 pb-4 border-b border-slate-100 dark:border-slate-700/50 shrink-0 gap-4">
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="p-2 sm:p-2.5 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-500 shrink-0">
-                  <ReceiptText className="w-5 h-5 sm:w-6 sm:h-6" />
+                <div
+                  aria-hidden="true"
+                  className="p-2.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-overdrive-yellow shrink-0"
+                >
+                  <ReceiptText size={20} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate">
+                  <h2
+                    id={modalTitleId}
+                    className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate"
+                  >
                     {mode === "CREATE" ? "Record Expense" : "Edit Expense"}
                   </h2>
-                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
-                    Operational Expenditure
+                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5 truncate">
+                    {mode === "EDIT" && initialData?.expense_number
+                      ? `Document: ${initialData.expense_number}`
+                      : "Operational Expenditure"}
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="p-3 sm:p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                aria-label="Close expense modal"
+                className="p-2 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50 shrink-0"
               >
-                <X size={24} />
+                <X size={22} aria-hidden="true" />
               </button>
             </div>
 
             {/* Scrollable Body */}
-            <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 overflow-y-auto custom-scrollbar flex-1 space-y-4 sm:space-y-6">
+            <div className="px-5 sm:px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               {validationError && (
-                <div className="p-3 sm:p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 rounded-xl flex items-start gap-3 text-xs sm:text-sm font-bold mx-1 sm:mx-0">
-                  <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                <div role="alert" className="form-error-banner">
+                  <AlertCircle
+                    size={18}
+                    aria-hidden="true"
+                    className="shrink-0 mt-0.5"
+                  />
                   <span>{validationError}</span>
                 </div>
               )}
 
               <form
                 id="expenseForm"
-                className="space-y-5 sm:space-y-6 pb-2 mx-1 sm:mx-0"
+                onSubmit={(e) => handleSubmit(e, true)}
+                className="space-y-6"
               >
                 {/* SECTION 1: EXPENSE PARTICULARS */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-50">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 sm:mb-4 flex items-center gap-2">
-                    <FileText size={14} /> Expense Particulars
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-50">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-overdrive-yellow mb-4 flex items-center gap-2">
+                    <FileText size={14} aria-hidden="true" /> Expense
+                    Particulars
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-5">
                     <div>
-                      <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2">
-                        Expense Date <span className="text-red-500">*</span>
+                      <label
+                        htmlFor={expenseDateInputId}
+                        className="form-label"
+                      >
+                        Expense Date <span className="form-required">*</span>
                       </label>
                       <input
+                        id={expenseDateInputId}
                         required
                         type="date"
+                        disabled={isSubmitting}
                         name="expense_date"
                         value={formData.expense_date}
                         onChange={handleChange}
-                        className="w-full px-3 sm:px-4 py-3 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition-all cursor-pointer shadow-sm"
+                        className="form-input font-mono tabular-nums cursor-pointer"
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2">
-                        COA Category <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        required
-                        name="expense_account_id"
-                        value={formData.expense_account_id}
-                        onChange={handleChange}
-                        className="w-full px-3 sm:px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm cursor-pointer"
+                      <label
+                        htmlFor={coaCategorySelectId}
+                        className="form-label"
                       >
-                        <option value="">-- Select Category --</option>
-                        {categories.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.account_name}
-                          </option>
-                        ))}
-                      </select>
+                        COA Category <span className="form-required">*</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          id={coaCategorySelectId}
+                          required
+                          disabled={isSubmitting}
+                          name="expense_account_id"
+                          value={formData.expense_account_id}
+                          onChange={handleChange}
+                          className="form-select appearance-none pr-10 cursor-pointer"
+                        >
+                          <option value="">-- Select Category --</option>
+                          {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.account_name}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown
+                          size={15}
+                          aria-hidden="true"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                        />
+                      </div>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2">
-                      Description <span className="text-red-500">*</span>
+                    <label htmlFor={descriptionInputId} className="form-label">
+                      Description <span className="form-required">*</span>
                     </label>
                     <input
+                      id={descriptionInputId}
                       required
                       type="text"
+                      disabled={isSubmitting}
                       name="description"
                       value={formData.description}
                       onChange={handleChange}
                       placeholder="e.g., Shop floor cleaning supplies"
-                      className="w-full px-3 sm:px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
+                      className="form-input"
                     />
                   </div>
                 </section>
 
                 {/* SECTION 2: PAYEE & DOCUMENTATION */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-40">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 sm:mb-4 flex items-center gap-2">
-                    <Store size={14} /> Payee & Documentation
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-40">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-overdrive-yellow mb-4 flex items-center gap-2">
+                    <Store size={14} aria-hidden="true" /> Payee & Documentation
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                     <div className="relative z-50">
-                      <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2 flex items-center flex-wrap">
+                      <label htmlFor={vendorInputId} className="form-label">
                         Registered Vendor{" "}
-                        <span className="lowercase font-medium text-slate-400 ml-1">
+                        <span className="lowercase font-medium text-slate-400 dark:text-slate-500">
                           (Optional)
                         </span>
                       </label>
                       <VendorSearchableSelect
+                        id={vendorInputId}
                         value={formData.vendor_id}
                         vendors={vendors}
-                        disabled={isLoadingVendors}
+                        disabled={isLoadingVendors || isSubmitting}
                         onChange={(val) => {
                           handleChange({
                             target: {
@@ -532,105 +637,138 @@ const ExpenseModal = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2 flex items-center flex-wrap">
+                      <label htmlFor={payeeNameInputId} className="form-label">
                         Payee Name{" "}
-                        <span className="lowercase font-medium text-slate-400 ml-1">
+                        <span className="lowercase font-medium text-slate-400 dark:text-slate-500">
                           (Unregistered)
                         </span>
                       </label>
                       <input
+                        id={payeeNameInputId}
                         type="text"
                         name="vendor_name"
                         value={formData.vendor_name || ""}
                         onChange={handleChange}
-                        disabled={!!formData.vendor_id}
+                        disabled={Boolean(formData.vendor_id) || isSubmitting}
                         placeholder={
                           formData.vendor_id
                             ? "Using Registered Vendor"
                             : "e.g., Local Hardware Store"
                         }
-                        className="w-full px-3 sm:px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] sm:text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm disabled:opacity-50"
+                        className="form-input uppercase"
                       />
                     </div>
                     <div className="sm:col-span-2 relative">
-                      <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2 flex items-center flex-wrap">
+                      <label
+                        htmlFor={referenceNumberInputId}
+                        className="form-label"
+                      >
                         Reference / Receipt #{" "}
-                        <span className="lowercase font-medium text-slate-400 ml-1">
+                        <span className="lowercase font-medium text-slate-400 dark:text-slate-500">
                           (Optional)
                         </span>
                       </label>
                       <input
+                        id={referenceNumberInputId}
                         type="text"
+                        disabled={isSubmitting}
                         name="reference_number"
                         value={formData.reference_number || ""}
                         onChange={handleChange}
                         placeholder="e.g., OR-10293"
-                        className="w-full px-3 sm:px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] sm:text-xs font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-sm"
+                        className="form-input font-mono tabular-nums uppercase"
                       />
                     </div>
                   </div>
                 </section>
 
                 {/* SECTION 3: FINANCIAL DETAILS */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-30">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-3 sm:mb-4 flex items-center gap-2">
-                    <DollarSign size={14} /> Financial Details
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-30">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-2">
+                    <DollarSign size={14} aria-hidden="true" /> Financial
+                    Details
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-5">
                     <div>
-                      <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2">
-                        Total Amount (₱) <span className="text-red-500">*</span>
+                      <label
+                        htmlFor={totalAmountInputId}
+                        className="form-label"
+                      >
+                        Total Amount (₱){" "}
+                        <span className="form-required">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-mono font-bold pointer-events-none"
+                        >
                           ₱
                         </span>
                         <input
+                          id={totalAmountInputId}
                           required
                           type="number"
                           min="0.01"
                           step="0.01"
+                          disabled={isSubmitting}
                           name="total_amount"
                           value={formData.total_amount}
                           onChange={handleChange}
                           placeholder="0.00"
-                          className="w-full pl-8 sm:pl-9 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base sm:text-lg font-black text-slate-900 dark:text-emerald-500 focus:outline-none focus:border-emerald-500 shadow-sm"
+                          className="form-input pl-8 text-sm font-mono tabular-nums font-black"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 sm:mb-2">
+                      <label
+                        htmlFor={paymentMethodSelectId}
+                        className="form-label"
+                      >
                         Payment Method
                       </label>
-                      <select
-                        name="payment_method"
-                        value={formData.payment_method}
-                        onChange={handleChange}
-                        className="w-full px-3 sm:px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 shadow-sm cursor-pointer"
-                      >
-                        <option value="CASH">Cash</option>
-                        <option value="PETTY_CASH">Petty Cash</option>
-                        <option value="GCASH">GCash</option>
-                        <option value="MAYA">Maya</option>
-                        <option value="BANK_TRANSFER">Bank Transfer</option>
-                        <option value="CHECK">Check</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          id={paymentMethodSelectId}
+                          disabled={isSubmitting}
+                          name="payment_method"
+                          value={formData.payment_method}
+                          onChange={handleChange}
+                          className="form-select appearance-none pr-10 cursor-pointer"
+                        >
+                          <option value="CASH">Cash</option>
+                          <option value="PETTY_CASH">Petty Cash</option>
+                          <option value="GCASH">GCash</option>
+                          <option value="MAYA">Maya</option>
+                          <option value="BANK_TRANSFER">Bank Transfer</option>
+                          <option value="CHECK">Check</option>
+                        </select>
+                        <ChevronDown
+                          size={15}
+                          aria-hidden="true"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <label className="flex items-start sm:items-center gap-2 sm:gap-3 cursor-pointer mb-4">
+                  <label
+                    htmlFor={vatableCheckboxId}
+                    className="flex items-start sm:items-center gap-3 cursor-pointer mb-4"
+                  >
                     <input
+                      id={vatableCheckboxId}
                       type="checkbox"
+                      disabled={isSubmitting}
                       name="is_vatable"
                       checked={formData.is_vatable}
                       onChange={handleChange}
-                      className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 sm:mt-0 rounded text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 shrink-0 cursor-pointer"
+                      className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 sm:mt-0 rounded accent-amber-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 shrink-0 cursor-pointer"
                     />
                     <div className="flex flex-col min-w-0">
-                      <span className="text-[11px] sm:text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate">
+                      <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest truncate">
                         Input VAT Applicable
                       </span>
-                      <span className="text-[9px] sm:text-[10px] text-slate-500 break-words pr-2">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 break-words">
                         System will automatically extract {vatRate}% for Tax
                         Ledger.
                       </span>
@@ -638,18 +776,18 @@ const ExpenseModal = ({
                   </label>
 
                   {formData.total_amount && !isNaN(formData.total_amount) && (
-                    <div className="p-3 sm:p-4 bg-emerald-50/50 dark:bg-emerald-500/10 rounded-xl flex justify-between items-center border border-emerald-200 dark:border-emerald-500/20 gap-3">
+                    <div className="p-4 bg-emerald-50/70 dark:bg-emerald-500/10 rounded-xl flex justify-between items-center border border-emerald-200 dark:border-emerald-500/20 gap-3">
                       <div className="flex flex-col min-w-0">
-                        <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 truncate">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400 truncate">
                           Live VAT Breakdown
                         </span>
-                        <span className="text-[11px] sm:text-xs font-bold text-emerald-900 dark:text-emerald-200 truncate">
+                        <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 truncate">
                           {formData.is_vatable
                             ? `${vatRate}% Extracted`
                             : "VAT Exempt"}
                         </span>
                       </div>
-                      <div className="text-right font-mono text-[10px] sm:text-xs font-black text-emerald-700 dark:text-emerald-400 shrink-0">
+                      <div className="text-right font-mono tabular-nums text-xs font-black text-emerald-800 dark:text-emerald-400 shrink-0">
                         <p>
                           Subtotal: ₱
                           {formData.is_vatable
@@ -669,7 +807,7 @@ const ExpenseModal = ({
                               )}
                         </p>
                         {formData.is_vatable && (
-                          <p className="text-[8px] sm:text-[10px] text-emerald-600 dark:text-emerald-500 mt-0.5 sm:mt-1">
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-0.5">
                             VAT: ₱
                             {(
                               parseFloat(formData.total_amount) -
@@ -686,89 +824,120 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 4: DOCUMENTARY PROOF / ATTACHMENT */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-                    <FileCode2 size={14} className="text-amber-500 shrink-0" />
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center flex-wrap">
-                      Documentary Proof{" "}
-                      <span className="lowercase text-slate-400 font-medium ml-1">
-                        (Optional)
-                      </span>
-                    </h3>
-                  </div>
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-20">
+                  <label
+                    htmlFor={attachmentInputId}
+                    className="form-label flex flex-wrap items-center gap-1.5 mb-3"
+                  >
+                    <FileCode2
+                      size={14}
+                      aria-hidden="true"
+                      className="text-amber-500 dark:text-overdrive-yellow shrink-0"
+                    />
+                    <span>Documentary Proof</span>
+                    <span className="lowercase text-slate-400 dark:text-slate-500 font-medium">
+                      (Optional)
+                    </span>
+                  </label>
 
                   {!attachmentPreview ? (
                     <div
+                      role="button"
+                      tabIndex={0}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`w-full border-2 border-dashed rounded-[16px] sm:rounded-xl p-6 sm:p-8 flex flex-col items-center justify-center transition-all cursor-pointer relative overflow-hidden ${
+                      onClick={() =>
+                        !isSubmitting && fileInputRef.current?.click()
+                      }
+                      onKeyDown={(e) => {
+                        if (
+                          !isSubmitting &&
+                          (e.key === "Enter" || e.key === " ")
+                        ) {
+                          e.preventDefault();
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                      className={`w-full border-2 border-dashed rounded-xl p-6 sm:p-8 flex flex-col items-center justify-center transition-all cursor-pointer relative overflow-hidden ${
                         isDragging
                           ? "border-amber-500 bg-amber-50 dark:bg-amber-500/10"
-                          : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+                          : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60"
                       }`}
                     >
                       <input
+                        id={attachmentInputId}
                         type="file"
                         ref={fileInputRef}
+                        disabled={isSubmitting}
                         onChange={handleFileChange}
                         accept="image/jpeg, image/png, image/webp, application/pdf"
-                        className="hidden"
+                        className="sr-only"
                       />
                       <UploadCloud
-                        size={28}
-                        className={`mb-2 sm:mb-3 transition-colors sm:w-[32px] sm:h-[32px] ${isDragging ? "text-amber-500" : "text-slate-400"}`}
+                        size={30}
+                        aria-hidden="true"
+                        className={`mb-2.5 transition-colors ${
+                          isDragging ? "text-amber-500" : "text-slate-400"
+                        }`}
                       />
                       <p
-                        className={`text-[11px] sm:text-xs font-bold text-center ${isDragging ? "text-amber-600 dark:text-amber-400" : "text-slate-600 dark:text-slate-300"}`}
+                        className={`text-xs font-bold text-center ${
+                          isDragging
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-slate-600 dark:text-slate-300"
+                        }`}
                       >
                         {isDragging
                           ? "Drop document here"
                           : "Click or drag Receipt to attach"}
                       </p>
-                      <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1 text-center">
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 text-center">
                         PDF, JPEG, PNG, WEBP up to 10MB
                       </p>
                     </div>
                   ) : (
-                    <div className="relative rounded-[16px] sm:rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-white dark:bg-slate-800 p-2">
+                    <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-white dark:bg-slate-800 p-2">
                       {attachmentFile?.type === "application/pdf" ||
                       attachmentPreview.toLowerCase().endsWith(".pdf") ? (
-                        <div className="w-full h-28 sm:h-32 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg">
+                        <div className="w-full h-32 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg">
                           <FileText
-                            size={32}
-                            className="text-red-500 mb-2 sm:w-[40px] sm:h-[40px]"
+                            size={36}
+                            aria-hidden="true"
+                            className="text-red-500 mb-2"
                           />
-                          <p className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[80%]">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[85%]">
                             {attachmentFile?.name || "Attached PDF Document"}
                           </p>
                         </div>
                       ) : imageError ? (
-                        <div className="w-full h-40 sm:h-48 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
+                        <div className="w-full h-44 sm:h-48 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
                           <ImageOff
                             size={32}
+                            aria-hidden="true"
                             className="text-slate-400 mb-2 opacity-50"
                           />
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                             Image File Unavailable
                           </span>
                         </div>
                       ) : (
                         <img
                           src={attachmentPreview}
-                          alt="Document Preview"
+                          alt="Expense receipt preview"
                           onError={() => setImageError(true)}
-                          className="w-full h-40 sm:h-48 md:h-56 object-contain bg-slate-50 dark:bg-slate-900 rounded-lg"
+                          className="w-full h-44 sm:h-52 object-contain bg-slate-50 dark:bg-slate-900 rounded-lg"
                         />
                       )}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl sm:rounded-[16px]">
+                      <div className="absolute inset-0 bg-black/30 sm:bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity flex items-end sm:items-center justify-end sm:justify-center p-3 rounded-xl">
                         <button
                           type="button"
+                          disabled={isSubmitting}
                           onClick={removeFile}
-                          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500 text-white rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1.5 sm:gap-2 hover:bg-red-600 transition-colors cursor-pointer"
+                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg transition-colors cursor-pointer"
                         >
-                          <X size={14} /> Remove Document
+                          <X size={14} aria-hidden="true" />
+                          <span>Remove Document</span>
                         </button>
                       </div>
                     </div>
@@ -776,29 +945,50 @@ const ExpenseModal = ({
                 </section>
 
                 {/* SECTION 5: NOTES */}
-                <section className="bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-5 md:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3 sm:mb-4 flex items-center gap-2">
-                    <ClipboardList size={14} /> Internal Notes
-                  </h3>
+                <section className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 relative z-10">
+                  <label
+                    htmlFor={notesInputId}
+                    className="form-label flex items-center gap-2 mb-3"
+                  >
+                    <ClipboardList
+                      size={14}
+                      aria-hidden="true"
+                      className="text-amber-500 dark:text-overdrive-yellow"
+                    />
+                    <span>Internal Notes</span>
+                    <span className="lowercase text-slate-400 dark:text-slate-500 font-medium">
+                      (Optional)
+                    </span>
+                  </label>
                   <textarea
+                    id={notesInputId}
+                    disabled={isSubmitting}
                     name="notes"
                     value={formData.notes || ""}
                     onChange={handleChange}
-                    rows="2"
+                    rows={2}
                     placeholder="Any justification for this expense..."
-                    className="w-full px-3 sm:px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] sm:text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 resize-none shadow-sm transition-all"
+                    className="form-textarea resize-none font-medium"
                   />
                 </section>
               </form>
             </div>
 
             {/* Footer */}
-            <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0 flex flex-col sm:flex-row gap-3">
+            <div className="p-5 sm:p-6 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/30 shrink-0 flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="w-full sm:w-auto px-5 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 onClick={(e) => handleSubmit(e, false)}
                 disabled={isSubmitting}
-                className="flex-1 py-3.5 sm:py-4 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer text-center"
+                className="flex-1 py-3.5 sm:py-4 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer text-center"
               >
                 {isSubmitting ? "Processing..." : "Save as Draft"}
               </button>
@@ -809,11 +999,15 @@ const ExpenseModal = ({
                 className="flex-1 py-3.5 sm:py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? (
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader2
+                    size={16}
+                    aria-hidden="true"
+                    className="animate-spin"
+                  />
                 ) : (
-                  <ReceiptText size={16} />
+                  <ReceiptText size={16} aria-hidden="true" />
                 )}
-                Submit for Approval
+                <span>Submit for Approval</span>
               </button>
             </div>
           </motion.div>

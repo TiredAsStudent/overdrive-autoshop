@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -22,6 +22,7 @@ import {
   CreditCard,
   Building2,
   ArrowRight,
+  ChevronDown,
 } from "lucide-react";
 
 // Services
@@ -42,21 +43,29 @@ import StatusBadge from "../../components/ui/StatusBadge";
 
 import { useApp } from "../../context/AppContext";
 
+const DATE_PRESET_OPTIONS = [
+  { label: "This Month", value: "this_month" },
+  { label: "This Quarter", value: "this_quarter" },
+  { label: "This Year", value: "this_year" },
+];
+
 // --- Date Utility Helpers ---
 const getPresetDates = (preset) => {
   const today = new Date();
-  let start, end;
+  let start;
+  let end;
 
   switch (preset) {
     case "this_month":
       start = new Date(today.getFullYear(), today.getMonth(), 1);
       end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       break;
-    case "this_quarter":
+    case "this_quarter": {
       const currentQuarter = Math.floor(today.getMonth() / 3);
       start = new Date(today.getFullYear(), currentQuarter * 3, 1);
       end = new Date(today.getFullYear(), currentQuarter * 3 + 3, 0);
       break;
+    }
     case "this_year":
       start = new Date(today.getFullYear(), 0, 1);
       end = new Date(today.getFullYear(), 11, 31);
@@ -75,7 +84,12 @@ const getPresetDates = (preset) => {
 const Overview = () => {
   const { showToast } = useApp();
   const navigate = useNavigate();
-  const initialDates = getPresetDates("this_month");
+
+  // Accessible Filter IDs
+  const branchSelectId = useId();
+  const periodSelectId = useId();
+  const startDateInputId = useId();
+  const endDateInputId = useId();
 
   // State
   const [data, setData] = useState(null);
@@ -86,8 +100,12 @@ const Overview = () => {
   // Filters
   const [branchFilter, setBranchFilter] = useState("all");
   const [datePreset, setDatePreset] = useState("this_month");
-  const [startDate, setStartDate] = useState(initialDates.start);
-  const [endDate, setEndDate] = useState(initialDates.end);
+  const [startDate, setStartDate] = useState(
+    () => getPresetDates("this_month").start,
+  );
+  const [endDate, setEndDate] = useState(
+    () => getPresetDates("this_month").end,
+  );
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const activeFilterCount =
@@ -102,48 +120,65 @@ const Overview = () => {
   }, []);
 
   // Fetch Dashboard Data
-  const loadOverviewData = async (isManualRefresh = false) => {
-    if (!startDate || !endDate) return;
+  const loadOverviewData = useCallback(
+    async (isManualRefresh = false) => {
+      if (!startDate || !endDate) return;
 
-    try {
-      if (isManualRefresh) setIsRefreshing(true);
-      else setLoading(true);
+      try {
+        if (isManualRefresh) setIsRefreshing(true);
+        else setLoading(true);
 
-      const res = await managerDashboardService.getOverviewData({
-        branch: branchFilter,
-        start_date: startDate,
-        end_date: endDate,
-      });
+        const res = await managerDashboardService.getOverviewData({
+          branch: branchFilter,
+          start_date: startDate,
+          end_date: endDate,
+        });
 
-      setData(res.data);
-      if (isManualRefresh) showToast("Dashboard synchronized.", "success");
-    } catch (error) {
-      showToast(error.message, "error");
-      if (!isManualRefresh) setData(null);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+        setData(res.data);
+        if (isManualRefresh) showToast("Dashboard synchronized.", "success");
+      } catch (error) {
+        showToast(
+          error.message || "Unable to compile executive dashboard.",
+          "error",
+        );
+        if (!isManualRefresh) setData(null);
+      } finally {
+        setLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [branchFilter, startDate, endDate, showToast],
+  );
 
   useEffect(() => {
-    loadOverviewData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchFilter, startDate, endDate]);
+    loadOverviewData(false);
+  }, [loadOverviewData]);
 
   const handlePresetChange = (val) => {
     setDatePreset(val);
     if (val !== "custom") {
-      const { start, end } = getPresetDates(val);
-      setStartDate(start);
-      setEndDate(end);
+      const presetDates = getPresetDates(val);
+      if (presetDates) {
+        setStartDate(presetDates.start);
+        setEndDate(presetDates.end);
+      }
     }
   };
 
   const handleCustomDateChange = (field, value) => {
     setDatePreset("custom");
-    if (field === "start") setStartDate(value);
-    if (field === "end") setEndDate(value);
+    if (field === "start") {
+      setStartDate(value);
+      if (value && endDate && value > endDate) {
+        setEndDate(value);
+      }
+    }
+    if (field === "end") {
+      setEndDate(value);
+      if (value && startDate && value < startDate) {
+        setStartDate(value);
+      }
+    }
   };
 
   const resetFilters = () => {
@@ -182,6 +217,23 @@ const Overview = () => {
     return num < 0 ? `-₱${formatted}` : `₱${formatted}`;
   };
 
+  const formatActivityDate = (dateString) => {
+    if (!dateString) return { date: "--", time: "--" };
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return { date: String(dateString), time: "" };
+    return {
+      date: d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      }),
+      time: d.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+  };
+
   const getSourceBadge = (moduleStr) => {
     switch (moduleStr) {
       case "INVOICE":
@@ -196,7 +248,7 @@ const Overview = () => {
             label="Supplier Bill"
             variant="default"
             icon={Store}
-            className="!text-purple-600 dark:!text-purple-400 !bg-purple-50 dark:!bg-purple-500/10 !border-purple-200"
+            className="!text-purple-700 dark:!text-purple-400 !bg-purple-50 dark:!bg-purple-500/10 !border-purple-200 dark:!border-purple-500/20"
           />
         );
       case "VENDOR_PAYMENT":
@@ -216,7 +268,11 @@ const Overview = () => {
           <StatusBadge label="OCR Receipt" variant="warning" icon={ScanText} />
         );
       default:
-        return <span className="text-[9px] text-slate-400">{moduleStr}</span>;
+        return (
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            {moduleStr || "SYSTEM"}
+          </span>
+        );
     }
   };
 
@@ -233,17 +289,19 @@ const Overview = () => {
 
   const hasAlerts =
     data &&
-    (data.alerts.approvals.pending_pos > 0 ||
-      data.alerts.approvals.pending_manual_expenses > 0 ||
-      data.alerts.approvals.pending_ocr_receipts > 0 ||
-      data.alerts.approvals.pending_stock_adjustments > 0 ||
-      data.alerts.inventory.out_of_stock_count > 0 ||
-      data.alerts.inventory.low_stock_count > 0 ||
-      data.alerts.financial.overdue_invoices > 0 ||
-      data.alerts.financial.overdue_bills > 0);
+    (data.alerts?.approvals?.pending_pos > 0 ||
+      data.alerts?.approvals?.pending_manual_expenses > 0 ||
+      data.alerts?.approvals?.pending_ocr_receipts > 0 ||
+      data.alerts?.approvals?.pending_stock_adjustments > 0 ||
+      data.alerts?.inventory?.out_of_stock_count > 0 ||
+      data.alerts?.inventory?.low_stock_count > 0 ||
+      data.alerts?.financial?.overdue_invoices > 0 ||
+      data.alerts?.financial?.overdue_bills > 0);
+
+  const netOperatingMargin = parseFloat(data?.kpis?.net_operating_margin) || 0;
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       {/* PAGE HEADER */}
       <PageHeader
         title="Overview"
@@ -254,11 +312,8 @@ const Overview = () => {
           <StatusToggle
             activeValue={datePreset}
             onToggle={handlePresetChange}
-            options={[
-              { label: "This Month", value: "this_month" },
-              { label: "This Quarter", value: "this_quarter" },
-              { label: "This Year", value: "this_year" },
-            ]}
+            ariaLabel="Select dashboard reporting period preset"
+            options={DATE_PRESET_OPTIONS}
           />
         </div>
 
@@ -267,125 +322,173 @@ const Overview = () => {
           activeCount={activeFilterCount}
         />
 
-        <div className="flex gap-2 w-full sm:w-auto mt-3 sm:mt-0">
-          <ActionButton
-            label={isRefreshing ? "Syncing..." : "Refresh"}
-            icon={isRefreshing ? Loader2 : RefreshCw}
-            onClick={() => loadOverviewData(true)}
-            disabled={loading || isRefreshing}
-            className={isRefreshing ? "opacity-80 cursor-wait" : ""}
-          />
-        </div>
+        <ActionButton
+          label={isRefreshing ? "Syncing..." : "Refresh"}
+          icon={RefreshCw}
+          loading={isRefreshing}
+          onClick={() => loadOverviewData(true)}
+          disabled={loading || isRefreshing}
+        />
       </PageHeader>
 
       {loading && !data ? (
-        <div className="flex flex-col items-center justify-center py-32 text-slate-400">
-          <Loader2 className="w-10 h-10 animate-spin mb-4 text-amber-500" />
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex flex-col items-center justify-center py-32 text-slate-400"
+        >
+          <Loader2
+            aria-hidden="true"
+            className="w-10 h-10 animate-spin mb-4 text-amber-500"
+          />
+          <p className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
             Compiling Executive Dashboard...
           </p>
         </div>
-      ) : data ? (
+      ) : !data ? (
+        <div
+          role="alert"
+          className="bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] border border-slate-200 dark:border-white/10 p-10 sm:p-16 text-center shadow-xs flex flex-col items-center justify-center"
+        >
+          <div className="p-4 bg-amber-50 dark:bg-amber-500/10 rounded-full text-amber-500 mb-4 border border-amber-200/60 dark:border-amber-500/20">
+            <AlertTriangle size={28} aria-hidden="true" />
+          </div>
+          <h2 className="text-sm sm:text-base font-black uppercase tracking-widest text-slate-900 dark:text-white">
+            Unable to Load Dashboard Data
+          </h2>
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 max-w-md leading-relaxed mb-6">
+            We could not retrieve the latest metrics for the selected reporting
+            period. Please verify your connection and try again.
+          </p>
+          <ActionButton
+            label="Retry Connection"
+            icon={RefreshCw}
+            onClick={() => loadOverviewData(false)}
+          />
+        </div>
+      ) : (
         <div className="space-y-6 sm:space-y-8">
           {/* ACTIONABLE ALERT CENTER */}
           {hasAlerts && (
-            <div className="bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
-                <AlertTriangle size={14} className="text-amber-500" /> Action
-                Required Center
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            <section
+              aria-label="Action Required Center"
+              className="bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-xs"
+            >
+              <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-2">
+                <AlertTriangle
+                  size={14}
+                  aria-hidden="true"
+                  className="text-amber-500 dark:text-overdrive-yellow"
+                />
+                <span>Action Required Center</span>
+              </h2>
+              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Pending Approvals (Amber) */}
                 {data.alerts.approvals.pending_pos > 0 && (
                   <button
+                    type="button"
                     onClick={() =>
                       handleDeepLink(
                         "/manager/approvals/purchase-order-approvals",
                       )
                     }
-                    className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
+                    className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100/80 dark:hover:bg-amber-500/20 transition-all active:scale-[0.98] text-left group cursor-pointer"
                   >
                     <ShoppingCart
                       size={20}
-                      className="text-amber-600 dark:text-amber-500 mb-2"
+                      aria-hidden="true"
+                      className="text-amber-600 dark:text-overdrive-yellow mb-2"
                     />
-                    <span className="text-2xl font-black font-mono tracking-tight text-amber-700 dark:text-amber-400">
+                    <span className="text-2xl font-black font-mono tabular-nums tracking-tight text-amber-800 dark:text-amber-400">
                       {data.alerts.approvals.pending_pos}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-500 mt-1 flex items-center justify-between w-full">
-                      Pending POs{" "}
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-500 mt-1 flex items-center justify-between w-full gap-2">
+                      <span className="truncate">Pending POs</span>
                       <ArrowRight
                         size={12}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-hidden="true"
+                        className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0"
                       />
                     </span>
                   </button>
                 )}
+
                 {data.alerts.approvals.pending_ocr_receipts > 0 && (
                   <button
+                    type="button"
                     onClick={() =>
                       handleDeepLink("/manager/approvals/receipt-approvals")
                     }
-                    className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
+                    className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100/80 dark:hover:bg-amber-500/20 transition-all active:scale-[0.98] text-left group cursor-pointer"
                   >
                     <ScanText
                       size={20}
-                      className="text-amber-600 dark:text-amber-500 mb-2"
+                      aria-hidden="true"
+                      className="text-amber-600 dark:text-overdrive-yellow mb-2"
                     />
-                    <span className="text-2xl font-black font-mono tracking-tight text-amber-700 dark:text-amber-400">
+                    <span className="text-2xl font-black font-mono tabular-nums tracking-tight text-amber-800 dark:text-amber-400">
                       {data.alerts.approvals.pending_ocr_receipts}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-500 mt-1 flex items-center justify-between w-full">
-                      OCR Approvals{" "}
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-500 mt-1 flex items-center justify-between w-full gap-2">
+                      <span className="truncate">OCR Approvals</span>
                       <ArrowRight
                         size={12}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-hidden="true"
+                        className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0"
                       />
                     </span>
                   </button>
                 )}
+
                 {data.alerts.approvals.pending_manual_expenses > 0 && (
                   <button
+                    type="button"
                     onClick={() =>
                       handleDeepLink("/manager/approvals/expense-approvals")
                     }
-                    className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
+                    className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100/80 dark:hover:bg-amber-500/20 transition-all active:scale-[0.98] text-left group cursor-pointer"
                   >
                     <ReceiptText
                       size={20}
-                      className="text-amber-600 dark:text-amber-500 mb-2"
+                      aria-hidden="true"
+                      className="text-amber-600 dark:text-overdrive-yellow mb-2"
                     />
-                    <span className="text-2xl font-black font-mono tracking-tight text-amber-700 dark:text-amber-400">
+                    <span className="text-2xl font-black font-mono tabular-nums tracking-tight text-amber-800 dark:text-amber-400">
                       {data.alerts.approvals.pending_manual_expenses}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-500 mt-1 flex items-center justify-between w-full">
-                      Expense Approvals{" "}
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-500 mt-1 flex items-center justify-between w-full gap-2">
+                      <span className="truncate">Expense Approvals</span>
                       <ArrowRight
                         size={12}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-hidden="true"
+                        className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0"
                       />
                     </span>
                   </button>
                 )}
+
                 {data.alerts.approvals.pending_stock_adjustments > 0 && (
                   <button
+                    type="button"
                     onClick={() =>
                       handleDeepLink("/manager/inventory/stock-adjustments")
                     }
-                    className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-left group"
+                    className="flex flex-col items-start p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100/80 dark:hover:bg-amber-500/20 transition-all active:scale-[0.98] text-left group cursor-pointer"
                   >
                     <Scale
                       size={20}
-                      className="text-amber-600 dark:text-amber-500 mb-2"
+                      aria-hidden="true"
+                      className="text-amber-600 dark:text-overdrive-yellow mb-2"
                     />
-                    <span className="text-2xl font-black font-mono tracking-tight text-amber-700 dark:text-amber-400">
+                    <span className="text-2xl font-black font-mono tabular-nums tracking-tight text-amber-800 dark:text-amber-400">
                       {data.alerts.approvals.pending_stock_adjustments}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-500 mt-1 flex items-center justify-between w-full">
-                      Stock Adjustments{" "}
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-500 mt-1 flex items-center justify-between w-full gap-2">
+                      <span className="truncate">Stock Adjustments</span>
                       <ArrowRight
                         size={12}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-hidden="true"
+                        className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0"
                       />
                     </span>
                   </button>
@@ -394,113 +497,133 @@ const Overview = () => {
                 {/* Critical Liabilities & Shortages (Rose) */}
                 {data.alerts.inventory.out_of_stock_count > 0 && (
                   <button
+                    type="button"
                     onClick={() =>
                       handleDeepLink("/manager/inventory/stock-management", {
                         stock_status: "out_of_stock",
                       })
                     }
-                    className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
+                    className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 transition-all active:scale-[0.98] text-left group cursor-pointer"
                   >
                     <PackageX
                       size={20}
-                      className="text-rose-600 dark:text-rose-500 mb-2"
+                      aria-hidden="true"
+                      className="text-rose-600 dark:text-rose-400 mb-2"
                     />
-                    <span className="text-2xl font-black font-mono tracking-tight text-rose-700 dark:text-rose-400">
+                    <span className="text-2xl font-black font-mono tabular-nums tracking-tight text-rose-800 dark:text-rose-400">
                       {data.alerts.inventory.out_of_stock_count}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-600 dark:text-rose-500 mt-1 flex items-center justify-between w-full">
-                      Out of Stock{" "}
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700 dark:text-rose-500 mt-1 flex items-center justify-between w-full gap-2">
+                      <span className="truncate">Out of Stock</span>
                       <ArrowRight
                         size={12}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-hidden="true"
+                        className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0"
                       />
                     </span>
                   </button>
                 )}
+
                 {data.alerts.inventory.low_stock_count > 0 && (
                   <button
+                    type="button"
                     onClick={() =>
                       handleDeepLink("/manager/inventory/stock-management", {
                         stock_status: "low_stock",
                       })
                     }
-                    className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
+                    className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 transition-all active:scale-[0.98] text-left group cursor-pointer"
                   >
                     <AlertTriangle
                       size={20}
-                      className="text-rose-600 dark:text-rose-500 mb-2"
+                      aria-hidden="true"
+                      className="text-rose-600 dark:text-rose-400 mb-2"
                     />
-                    <span className="text-2xl font-black font-mono tracking-tight text-rose-700 dark:text-rose-400">
+                    <span className="text-2xl font-black font-mono tabular-nums tracking-tight text-rose-800 dark:text-rose-400">
                       {data.alerts.inventory.low_stock_count}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-600 dark:text-rose-500 mt-1 flex items-center justify-between w-full">
-                      Low Stock{" "}
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700 dark:text-rose-500 mt-1 flex items-center justify-between w-full gap-2">
+                      <span className="truncate">Low Stock</span>
                       <ArrowRight
                         size={12}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-hidden="true"
+                        className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0"
                       />
                     </span>
                   </button>
                 )}
+
                 {data.alerts.financial.overdue_invoices > 0 && (
                   <button
+                    type="button"
                     onClick={() =>
                       handleDeepLink("/manager/reports/receivables-reports", {
                         payment_status: "OVERDUE",
                       })
                     }
-                    className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
+                    className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 transition-all active:scale-[0.98] text-left group cursor-pointer"
                   >
                     <Users
                       size={20}
-                      className="text-rose-600 dark:text-rose-500 mb-2"
+                      aria-hidden="true"
+                      className="text-rose-600 dark:text-rose-400 mb-2"
                     />
-                    <span className="text-2xl font-black font-mono tracking-tight text-rose-700 dark:text-rose-400">
+                    <span className="text-2xl font-black font-mono tabular-nums tracking-tight text-rose-800 dark:text-rose-400">
                       {data.alerts.financial.overdue_invoices}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-600 dark:text-rose-500 mt-1 flex items-center justify-between w-full">
-                      Overdue A/R{" "}
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700 dark:text-rose-500 mt-1 flex items-center justify-between w-full gap-2">
+                      <span className="truncate">Overdue A/R</span>
                       <ArrowRight
                         size={12}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-hidden="true"
+                        className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0"
                       />
                     </span>
                   </button>
                 )}
+
                 {data.alerts.financial.overdue_bills > 0 && (
                   <button
+                    type="button"
                     onClick={() =>
                       handleDeepLink("/manager/reports/payables-reports", {
                         payment_status: "OVERDUE",
                       })
                     }
-                    className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors text-left group"
+                    className="flex flex-col items-start p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 transition-all active:scale-[0.98] text-left group cursor-pointer"
                   >
                     <Store
                       size={20}
-                      className="text-rose-600 dark:text-rose-500 mb-2"
+                      aria-hidden="true"
+                      className="text-rose-600 dark:text-rose-400 mb-2"
                     />
-                    <span className="text-2xl font-black font-mono tracking-tight text-rose-700 dark:text-rose-400">
+                    <span className="text-2xl font-black font-mono tabular-nums tracking-tight text-rose-800 dark:text-rose-400">
                       {data.alerts.financial.overdue_bills}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-600 dark:text-rose-500 mt-1 flex items-center justify-between w-full">
-                      Overdue A/P{" "}
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700 dark:text-rose-500 mt-1 flex items-center justify-between w-full gap-2">
+                      <span className="truncate">Overdue A/P</span>
                       <ArrowRight
                         size={12}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-hidden="true"
+                        className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0"
                       />
                     </span>
                   </button>
                 )}
               </div>
-            </div>
+            </section>
           )}
 
           {/* KPI GRID */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <div
+          <section
+            aria-label="Key Performance Indicators"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+          >
+            <button
+              type="button"
               onClick={() => handleDeepLink("/manager/reports/sales-reports")}
-              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+              aria-label={`View Sales Reports: Net Sales Revenue ${formatCurrency(data.kpis.total_sales)}`}
+              className="w-full text-left rounded-[20px] sm:rounded-[24px] cursor-pointer transition-transform active:scale-[0.98] hover:opacity-95"
             >
               <StatCard
                 title="Net Sales Revenue"
@@ -508,10 +631,13 @@ const Overview = () => {
                 icon={TrendingUp}
                 variant="success"
               />
-            </div>
-            <div
+            </button>
+
+            <button
+              type="button"
               onClick={() => handleDeepLink("/manager/reports/expense-reports")}
-              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+              aria-label={`View Expense Reports: Operating Expenses ${formatCurrency(data.kpis.total_expenses)}`}
+              className="w-full text-left rounded-[20px] sm:rounded-[24px] cursor-pointer transition-transform active:scale-[0.98] hover:opacity-95"
             >
               <StatCard
                 title="Operating Expenses"
@@ -519,27 +645,31 @@ const Overview = () => {
                 icon={TrendingDown}
                 variant="danger"
               />
-            </div>
-            <div
+            </button>
+
+            <button
+              type="button"
               onClick={() =>
                 handleDeepLink("/manager/reports/income-statement")
               }
-              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+              aria-label={`View Income Statement: Net Operating Margin ${formatCurrency(netOperatingMargin)}`}
+              className="w-full text-left rounded-[20px] sm:rounded-[24px] cursor-pointer transition-transform active:scale-[0.98] hover:opacity-95"
             >
               <StatCard
                 title="Net Operating Margin"
-                value={formatCurrency(data.kpis.net_operating_margin)}
+                value={formatCurrency(netOperatingMargin)}
                 icon={Calculator}
-                variant={
-                  data.kpis.net_operating_margin >= 0 ? "success" : "danger"
-                }
+                variant={netOperatingMargin >= 0 ? "success" : "danger"}
               />
-            </div>
-            <div
+            </button>
+
+            <button
+              type="button"
               onClick={() =>
                 handleDeepLink("/manager/reports/receivables-reports")
               }
-              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+              aria-label={`View Receivables Reports: Accounts Receivable ${formatCurrency(data.kpis.total_ar)}`}
+              className="w-full text-left rounded-[20px] sm:rounded-[24px] cursor-pointer transition-transform active:scale-[0.98] hover:opacity-95"
             >
               <StatCard
                 title="Accounts Receivable"
@@ -547,12 +677,15 @@ const Overview = () => {
                 icon={Users}
                 variant="warning"
               />
-            </div>
-            <div
+            </button>
+
+            <button
+              type="button"
               onClick={() =>
                 handleDeepLink("/manager/reports/payables-reports")
               }
-              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+              aria-label={`View Payables Reports: Accounts Payable ${formatCurrency(data.kpis.total_ap)}`}
+              className="w-full text-left rounded-[20px] sm:rounded-[24px] cursor-pointer transition-transform active:scale-[0.98] hover:opacity-95"
             >
               <StatCard
                 title="Accounts Payable"
@@ -560,12 +693,15 @@ const Overview = () => {
                 icon={Store}
                 variant="danger"
               />
-            </div>
-            <div
+            </button>
+
+            <button
+              type="button"
               onClick={() =>
                 handleDeepLink("/manager/reports/inventory-reports")
               }
-              className="cursor-pointer transition-transform active:scale-[0.98] hover:opacity-90"
+              aria-label={`View Inventory Reports: Inventory Asset Value ${formatCurrency(data.kpis.total_inventory_value)}`}
+              className="w-full text-left rounded-[20px] sm:rounded-[24px] cursor-pointer transition-transform active:scale-[0.98] hover:opacity-95"
             >
               <StatCard
                 title="Inventory Asset Value"
@@ -573,83 +709,99 @@ const Overview = () => {
                 icon={Boxes}
                 variant="info"
               />
-            </div>
-          </div>
+            </button>
+          </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
             {/* BRANCH PERFORMANCE DISTRIBUTION */}
-            <div className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
-              <div className="p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                  <Building2 size={14} className="text-amber-500" /> Branch
-                  Performance
-                </h3>
+            <section
+              aria-label="Branch Performance Distribution"
+              className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden flex flex-col"
+            >
+              <div className="p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/70 dark:bg-slate-900/50 flex items-center justify-between">
+                <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                  <Building2
+                    size={14}
+                    aria-hidden="true"
+                    className="text-amber-500 dark:text-overdrive-yellow"
+                  />
+                  <span>Branch Performance</span>
+                </h2>
               </div>
               <div className="p-5 flex-1 overflow-y-auto custom-scrollbar space-y-5">
-                {data.distributions.branch_performance.length === 0 ? (
-                  <p className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-8">
+                {!data.distributions?.branch_performance ||
+                data.distributions.branch_performance.length === 0 ? (
+                  <p className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 py-8">
                     No branch data available.
                   </p>
                 ) : (
                   data.distributions.branch_performance.map((branch) => {
-                    // Safe calculation for percentages to prevent NaN or Infinity
-                    const maxMetric = Math.max(
-                      branch.total_sales,
-                      branch.total_expenses,
-                    );
+                    const salesVal = parseFloat(branch.total_sales) || 0;
+                    const expVal = parseFloat(branch.total_expenses) || 0;
+                    const netMargin = parseFloat(branch.net_margin) || 0;
+                    const maxMetric = Math.max(salesVal, expVal);
                     const salesWidth =
-                      maxMetric > 0
-                        ? (branch.total_sales / maxMetric) * 100
-                        : 0;
+                      maxMetric > 0 ? (salesVal / maxMetric) * 100 : 0;
                     const expWidth =
-                      maxMetric > 0
-                        ? (branch.total_expenses / maxMetric) * 100
-                        : 0;
+                      maxMetric > 0 ? (expVal / maxMetric) * 100 : 0;
 
                     return (
                       <div
                         key={branch.branch_id}
-                        className="space-y-3 pb-5 border-b border-slate-100 dark:border-slate-800 last:border-0 last:pb-0"
+                        className="space-y-3 pb-5 border-b border-slate-100 dark:border-slate-700/60 last:border-0 last:pb-0"
                       >
-                        <div className="flex justify-between items-end">
-                          <span className="text-sm font-black uppercase text-slate-900 dark:text-white truncate pr-4">
+                        <div className="flex justify-between items-end gap-2">
+                          <span
+                            className="text-xs sm:text-sm font-black uppercase italic text-slate-900 dark:text-white truncate"
+                            title={branch.branch_name}
+                          >
                             {branch.branch_name}
                           </span>
                           <span
-                            className={`font-mono text-xs font-black ${branch.net_margin >= 0 ? "text-emerald-500" : "text-rose-500"}`}
+                            className={`font-mono tabular-nums text-xs font-black shrink-0 ${
+                              netMargin >= 0
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-rose-600 dark:text-rose-400"
+                            }`}
                           >
-                            {formatCurrency(branch.net_margin)} Net
+                            {formatCurrency(netMargin)} Net
                           </span>
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                           {/* Revenue Bar */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-[8px] font-black uppercase text-slate-400 w-8 text-right">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 w-7 text-right shrink-0">
                               Rev
                             </span>
-                            <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              aria-hidden="true"
+                              className="flex-1 h-2 bg-slate-100 dark:bg-slate-700/80 rounded-full overflow-hidden"
+                            >
                               <div
-                                className="h-full bg-emerald-500 rounded-full transition-all duration-1000"
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-700"
                                 style={{ width: `${salesWidth}%` }}
                               />
                             </div>
-                            <span className="text-[9px] font-mono text-slate-600 dark:text-slate-300 w-16 text-right">
-                              {formatCurrency(branch.total_sales)}
+                            <span className="text-[10px] font-mono tabular-nums font-bold text-slate-700 dark:text-slate-300 min-w-[88px] text-right shrink-0">
+                              {formatCurrency(salesVal)}
                             </span>
                           </div>
                           {/* Expense Bar */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-[8px] font-black uppercase text-slate-400 w-8 text-right">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 w-7 text-right shrink-0">
                               Exp
                             </span>
-                            <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              aria-hidden="true"
+                              className="flex-1 h-2 bg-slate-100 dark:bg-slate-700/80 rounded-full overflow-hidden"
+                            >
                               <div
-                                className="h-full bg-rose-500 rounded-full transition-all duration-1000"
+                                className="h-full bg-rose-500 rounded-full transition-all duration-700"
                                 style={{ width: `${expWidth}%` }}
                               />
                             </div>
-                            <span className="text-[9px] font-mono text-slate-600 dark:text-slate-300 w-16 text-right">
-                              {formatCurrency(branch.total_expenses)}
+                            <span className="text-[10px] font-mono tabular-nums font-bold text-slate-700 dark:text-slate-300 min-w-[88px] text-right shrink-0">
+                              {formatCurrency(expVal)}
                             </span>
                           </div>
                         </div>
@@ -658,14 +810,19 @@ const Overview = () => {
                   })
                 )}
               </div>
-            </div>
+            </section>
 
             {/* RECENT ACTIVITY STREAM */}
-            <div className="lg:col-span-2">
-              <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-blue-500 mb-4 flex items-center gap-2">
-                <Calendar size={16} /> Recent Enterprise Activity
-              </h3>
+            <section
+              aria-label="Recent Enterprise Activity"
+              className="lg:col-span-2"
+            >
+              <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-4 flex items-center gap-2">
+                <Calendar size={16} aria-hidden="true" />
+                <span>Recent Enterprise Activity</span>
+              </h2>
               <DataTable
+                caption="Recent Enterprise Financial and Operational Activity"
                 headers={[
                   "Date & Time",
                   "Module / Activity",
@@ -673,8 +830,8 @@ const Overview = () => {
                   "Amount (₱)",
                   "Status",
                 ]}
-                data={data.recent_activities}
-                loading={loading}
+                data={data.recent_activities || []}
+                loading={loading || isRefreshing}
                 emptyTitle="No recent activity found"
                 emptySubtitle="No transactions match the selected reporting period."
                 minWidth="min-w-[700px]"
@@ -684,46 +841,59 @@ const Overview = () => {
                     "EXPENSE",
                     "OCR_RECEIPT",
                   ].includes(activity.module);
+                  const { date, time } = formatActivityDate(
+                    activity.activity_date,
+                  );
+                  const branchObj = branches.find(
+                    (b) => Number(b.id) === Number(activity.branch_id),
+                  );
+
                   return (
                     <tr
                       key={`${activity.module}-${activity.reference}-${idx}`}
-                      className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+                      className="group table-row-hover border-b border-slate-100 dark:border-white/5 last:border-0"
                     >
-                      <td className="px-4 sm:px-6 py-4">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">
-                          {new Date(activity.activity_date).toLocaleDateString(
-                            undefined,
-                            { month: "short", day: "numeric", year: "numeric" },
-                          )}
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <p className="text-xs font-mono tabular-nums font-bold text-slate-900 dark:text-white">
+                          {date}
                         </p>
-                        <p className="text-[9px] font-medium text-slate-500 mt-1 uppercase tracking-widest">
-                          {new Date(activity.activity_date).toLocaleTimeString(
-                            undefined,
-                            { hour: "2-digit", minute: "2-digit" },
-                          )}
+                        <p className="text-[10px] font-mono tabular-nums font-bold text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-widest">
+                          {time}
                         </p>
                       </td>
-                      <td className="px-4 sm:px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                         {getSourceBadge(activity.module)}
                         {branchFilter === "all" && (
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 flex items-center gap-1 truncate max-w-[150px]">
-                            <Building2 size={10} />{" "}
-                            {branches.find((b) => b.id === activity.branch_id)
-                              ?.branch_name || "Enterprise"}
+                          <p
+                            className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1.5 flex items-center gap-1 truncate max-w-[160px]"
+                            title={branchObj?.branch_name || "Enterprise"}
+                          >
+                            <Building2
+                              size={10}
+                              aria-hidden="true"
+                              className="shrink-0"
+                            />
+                            <span className="truncate">
+                              {branchObj?.branch_name || "Enterprise"}
+                            </span>
                           </p>
                         )}
                       </td>
-                      <td className="px-4 sm:px-6 py-4">
-                        <span className="text-xs font-black text-slate-700 dark:text-slate-300 font-mono tracking-widest uppercase">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <span className="text-xs font-black text-slate-700 dark:text-slate-200 font-mono tabular-nums tracking-widest uppercase">
                           {activity.reference}
                         </span>
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-right">
+                      <td className="px-4 sm:px-6 py-4 text-right whitespace-nowrap">
                         <span
-                          className={`text-sm font-black font-mono ${isNegative ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"}`}
+                          className={`text-xs sm:text-sm font-black font-mono tabular-nums ${
+                            isNegative
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "text-slate-900 dark:text-white"
+                          }`}
                         >
                           {isNegative ? "-" : ""}
-                          {parseFloat(activity.amount).toLocaleString(
+                          {(parseFloat(activity.amount) || 0).toLocaleString(
                             undefined,
                             {
                               minimumFractionDigits: 2,
@@ -732,9 +902,12 @@ const Overview = () => {
                           )}
                         </span>
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-right">
+                      <td className="px-4 sm:px-6 py-4 text-right whitespace-nowrap">
                         <StatusBadge
-                          label={activity.status.replace(/_/g, " ")}
+                          label={(activity.status || "PENDING").replace(
+                            /_/g,
+                            " ",
+                          )}
                           variant={getStatusVariant(activity.status)}
                         />
                       </td>
@@ -742,10 +915,10 @@ const Overview = () => {
                   );
                 }}
               />
-            </div>
+            </section>
           </div>
         </div>
-      ) : null}
+      )}
 
       {/* FILTER MODAL */}
       <FilterModal
@@ -756,64 +929,86 @@ const Overview = () => {
       >
         <div className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={branchSelectId} className="form-label">
               Branch Scope
             </label>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
-            >
-              <option value="all">Enterprise Global (Consolidated)</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.branch_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={branchSelectId}
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">Enterprise Global (Consolidated)</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.branch_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-700/50">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-              Reporting Period
-            </label>
-            <select
-              value={datePreset}
-              onChange={(e) => handlePresetChange(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 mb-3 cursor-pointer"
-            >
-              <option value="this_month">This Month</option>
-              <option value="this_quarter">This Quarter</option>
-              <option value="this_year">This Year</option>
-              <option value="custom">Custom Date Range</option>
-            </select>
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4">
+            <div>
+              <label htmlFor={periodSelectId} className="form-label">
+                Reporting Period
+              </label>
+              <div className="relative">
+                <select
+                  id={periodSelectId}
+                  value={datePreset}
+                  onChange={(e) => handlePresetChange(e.target.value)}
+                  className="form-select appearance-none pr-10 cursor-pointer"
+                >
+                  <option value="this_month">This Month</option>
+                  <option value="this_quarter">This Quarter</option>
+                  <option value="this_year">This Year</option>
+                  <option value="custom">Custom Date Range</option>
+                </select>
+                <ChevronDown
+                  size={15}
+                  aria-hidden="true"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              </div>
+            </div>
 
             {datePreset === "custom" && (
-              <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                  <label htmlFor={startDateInputId} className="form-label">
                     Start Date
                   </label>
                   <input
+                    id={startDateInputId}
                     type="date"
+                    max={endDate || undefined}
                     value={startDate}
                     onChange={(e) =>
                       handleCustomDateChange("start", e.target.value)
                     }
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                    className="form-input font-mono tabular-nums cursor-pointer"
                   />
                 </div>
                 <div>
-                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                  <label htmlFor={endDateInputId} className="form-label">
                     End Date
                   </label>
                   <input
+                    id={endDateInputId}
                     type="date"
+                    min={startDate || undefined}
                     value={endDate}
                     onChange={(e) =>
                       handleCustomDateChange("end", e.target.value)
                     }
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                    className="form-input font-mono tabular-nums cursor-pointer"
                   />
                 </div>
               </div>

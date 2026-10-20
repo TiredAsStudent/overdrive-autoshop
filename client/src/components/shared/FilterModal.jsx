@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Filter, X } from "lucide-react";
 
@@ -9,40 +9,77 @@ const FilterModal = ({
   title = "Advanced Filters",
   children,
 }) => {
+  const titleId = useId();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose?.();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div
+          onClick={onClose}
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+        >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="bg-white dark:bg-slate-800 rounded-[24px] w-full max-w-sm shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden"
+            className="bg-white dark:bg-slate-800 rounded-[24px] w-full max-w-sm max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden"
           >
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700/50">
-              <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-slate-900 dark:text-white">
-                <Filter size={16} className="text-amber-500" /> {title}
+            {/* Header */}
+            <div className="flex justify-between items-center p-5 sm:p-6 border-b border-slate-100 dark:border-slate-700/50 shrink-0">
+              <h3
+                id={titleId}
+                className="text-xs sm:text-sm font-black uppercase tracking-widest flex items-center gap-2 text-slate-900 dark:text-white"
+              >
+                <Filter
+                  size={16}
+                  aria-hidden="true"
+                  className="text-amber-500 dark:text-overdrive-yellow"
+                />
+                <span>{title}</span>
               </h3>
               <button
+                type="button"
                 onClick={onClose}
-                className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                aria-label="Close filters modal"
+                className="p-1.5 -mr-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
               >
-                <X size={20} />
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
 
-            <div className="p-6">{children}</div>
+            {/* Scrollable Filter Controls Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+              {children}
+            </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-white/10 flex gap-3">
+            {/* Footer Actions */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-white/10 flex gap-3 shrink-0">
               <button
+                type="button"
                 onClick={onClear}
-                className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 Clear
               </button>
               <button
+                type="button"
                 onClick={onClose}
-                className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors bg-amber-500 hover:bg-amber-600 text-slate-900 shadow-sm cursor-pointer"
+                className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-[0.98] bg-amber-500 hover:bg-amber-600 text-slate-900 shadow-sm shadow-amber-500/20 cursor-pointer"
               >
                 Apply
               </button>

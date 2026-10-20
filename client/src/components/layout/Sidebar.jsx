@@ -1,29 +1,53 @@
-import React, { useState } from "react";
-import { ChevronRight, X } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ChevronRight, X, ShieldCheck } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import BannerLogo from "../../assets/OverdriveLogo2.png";
 
-import { sysAdminMenu, managerMenu, staffMenu } from "../../config/navigation";
+import {
+  getMenuByRole,
+  getPortalLabelByRole,
+  getDashboardRoute,
+  isNavItemActive,
+} from "../../config/navigation";
 
 const Sidebar = ({ user, isOpen, setIsOpen }) => {
   const location = useLocation();
-  const [openSubMenu, setOpenSubMenu] = useState(null);
+  const menuGroups = getMenuByRole(user?.role);
+  const portalLabel = getPortalLabelByRole(user?.role);
+  const homeDashboardPath = getDashboardRoute(user?.role);
 
-  const isSysAdmin = user?.role?.toUpperCase() === "ADMIN";
-  const isManager = user?.role?.toUpperCase() === "MANAGER";
+  // Track expanded menu groups; automatically open the group matching the active route
+  const [openGroups, setOpenGroups] = useState(() => {
+    const activeGroup = menuGroups.find((group) =>
+      group.items.some((item) => isNavItemActive(location.pathname, item)),
+    );
+    return activeGroup ? { [activeGroup.label]: true } : {};
+  });
 
-  let menuGroups = staffMenu;
-  if (isSysAdmin) menuGroups = sysAdminMenu;
-  else if (isManager) menuGroups = managerMenu;
+  // Sync expanded group when navigating to a new route
+  useEffect(() => {
+    const activeGroup = menuGroups.find((group) =>
+      group.items.some((item) => isNavItemActive(location.pathname, item)),
+    );
+    if (activeGroup) {
+      setOpenGroups((prev) => ({
+        ...prev,
+        [activeGroup.label]: true,
+      }));
+    }
+  }, [location.pathname, user?.role]);
 
   const toggleSubMenu = (label) => {
-    setOpenSubMenu(openSubMenu === label ? null : label);
+    setOpenGroups((prev) => ({
+      ...prev,
+      [label]: !prev[label],
+    }));
   };
 
-  // Closes the sidebar automatically when a link is clicked on mobile devices
+  // Closes the sidebar automatically when a link is clicked on mobile/tablet devices
   const handleLinkClick = () => {
-    if (window.innerWidth < 1024) {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
       setIsOpen(false);
     }
   };
@@ -31,82 +55,120 @@ const Sidebar = ({ user, isOpen, setIsOpen }) => {
   return (
     <>
       {/* MOBILE OVERLAY: Darkens the screen behind the sidebar when open on mobile */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-40 lg:hidden cursor-pointer"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
 
-      {/* SIDEBAR CONTAINER: Responsive transform logic applied here */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 h-screen w-64 bg-white dark:bg-overdrive-dark text-slate-900 dark:text-white flex flex-col border-r border-slate-200 dark:border-white/5 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+      {/* SIDEBAR CONTAINER */}
+      <aside
+        aria-label="Sidebar Navigation"
+        className={`fixed inset-y-0 left-0 z-50 h-screen h-dvh w-64 shrink-0 bg-white dark:bg-overdrive-dark text-slate-900 dark:text-white flex flex-col border-r border-slate-200 dark:border-white/10 shadow-xl lg:shadow-none transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* BRAND HEADER */}
         <div
-          className="relative h-20 flex items-center justify-center shrink-0 border-b-2 border-yellow-600 shadow-lg overflow-hidden"
+          className="relative h-20 flex items-center justify-center shrink-0 border-b-2 border-yellow-600 shadow-md overflow-hidden"
           style={{
             backgroundImage:
               "repeating-linear-gradient(90deg, #facc15 0px, #facc15 16px, #ca8a04 16px, #ca8a04 20px)",
           }}
         >
-          <img
-            src={BannerLogo}
-            alt="Logo"
-            className="w-full h-full object-contain scale-110 relative z-10"
-          />
+          <Link
+            to={homeDashboardPath}
+            onClick={handleLinkClick}
+            aria-label="Go to Dashboard Overview"
+            className="w-full h-full flex items-center justify-center relative z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-900"
+          >
+            <img
+              src={BannerLogo}
+              alt="Overdrive Auto Shop Logo"
+              className="w-full h-full object-contain scale-110 select-none pointer-events-none"
+            />
+          </Link>
+
           {/* Mobile Close Button */}
           <button
+            type="button"
             onClick={() => setIsOpen(false)}
-            className="absolute top-1/2 -translate-y-1/2 right-3 z-20 p-1.5 bg-black/30 hover:bg-black/50 text-white rounded-full lg:hidden transition-colors"
+            aria-label="Close Sidebar Menu"
+            className="absolute top-1/2 -translate-y-1/2 right-3 z-20 p-1.5 bg-slate-900/50 hover:bg-slate-900/75 text-white rounded-xl lg:hidden transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* NAVIGATION LIST */}
-        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1 custom-scrollbar">
-          <h3 className="px-2 mb-2 text-[10px] font-bold uppercase text-slate-500 dark:text-gray-500">
-            Main Menu
-          </h3>
+        <nav
+          aria-label="Main Portal Navigation"
+          className="flex-1 overflow-y-auto px-3.5 py-5 space-y-1.5 custom-scrollbar"
+        >
+          <div className="px-2.5 mb-3 flex items-center justify-between">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              Main Menu
+            </h3>
+            <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-overdrive-yellow border border-amber-500/20">
+              {user?.role || "STAFF"}
+            </span>
+          </div>
 
           {menuGroups.map((group) => {
             const isGroupActive = group.items.some((item) =>
-              location.pathname.includes(item.path),
+              isNavItemActive(location.pathname, item),
             );
-            const isOpenGroup = openSubMenu === group.label || isGroupActive;
+            const isOpenGroup = !!openGroups[group.label];
+            const submenuId = `sidebar-submenu-${group.label
+              .toLowerCase()
+              .replace(/\s+/g, "-")}`;
 
             return (
-              <div key={group.label} className="mb-1">
+              <div key={group.label} className="space-y-1">
                 <button
+                  type="button"
                   onClick={() => toggleSubMenu(group.label)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group ${
+                  aria-expanded={isOpenGroup}
+                  aria-controls={submenuId}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                     isGroupActive
-                      ? "text-slate-900 dark:text-overdrive-yellow bg-slate-100 dark:bg-white/5"
-                      : "text-slate-600 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white"
+                      ? "text-slate-900 dark:text-overdrive-yellow bg-amber-50/80 dark:bg-white/5 border border-amber-200/70 dark:border-white/10 shadow-2xs"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <group.icon
                       size={18}
+                      aria-hidden="true"
                       className={
                         isGroupActive
-                          ? "text-amber-500 dark:text-overdrive-yellow"
-                          : "text-slate-400 dark:text-gray-500 group-hover:text-amber-500 dark:group-hover:text-overdrive-yellow transition-colors"
+                          ? "text-amber-600 dark:text-overdrive-yellow"
+                          : "text-slate-400 dark:text-slate-500 group-hover:text-amber-500 dark:group-hover:text-overdrive-yellow transition-colors"
                       }
                     />
-                    {group.label}
+                    <span className="truncate">{group.label}</span>
                   </div>
 
                   <motion.div
                     animate={{ rotate: isOpenGroup ? 90 : 0 }}
                     transition={{ duration: 0.2 }}
+                    aria-hidden="true"
                   >
                     <ChevronRight
                       size={14}
-                      className="text-slate-400 dark:text-gray-500"
+                      className={
+                        isGroupActive
+                          ? "text-amber-600 dark:text-overdrive-yellow"
+                          : "text-slate-400 dark:text-slate-500"
+                      }
                     />
                   </motion.div>
                 </button>
@@ -114,34 +176,41 @@ const Sidebar = ({ user, isOpen, setIsOpen }) => {
                 <AnimatePresence initial={false}>
                   {isOpenGroup && (
                     <motion.div
+                      id={submenuId}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      transition={{ duration: 0.22, ease: "easeInOut" }}
                       className="overflow-hidden"
                     >
-                      <div className="ml-9 mt-1 space-y-1 border-l border-slate-200 dark:border-white/10">
+                      <div className="ml-6 pl-3 my-1 space-y-1 border-l-2 border-slate-200 dark:border-slate-800">
                         {group.items.map((subItem) => {
-                          const isSubActive =
-                            location.pathname === subItem.path;
+                          const isSubActive = isNavItemActive(
+                            location.pathname,
+                            subItem,
+                          );
                           return (
                             <Link
-                              key={subItem.name}
+                              key={subItem.path}
                               to={subItem.path}
-                              onClick={handleLinkClick} // Attached auto-close logic here
-                              className={`block px-4 py-2 text-xs transition-all relative ${
+                              onClick={handleLinkClick}
+                              aria-current={isSubActive ? "page" : undefined}
+                              className={`block px-3 py-2 rounded-lg text-xs transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                                 isSubActive
-                                  ? "text-slate-900 dark:text-overdrive-yellow font-bold"
-                                  : "font-medium text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:translate-x-1"
+                                  ? "text-amber-700 dark:text-overdrive-yellow font-black bg-amber-50/60 dark:bg-amber-500/10"
+                                  : "font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 hover:translate-x-0.5"
                               }`}
                             >
                               {isSubActive && (
                                 <motion.div
                                   layoutId="activeDot"
-                                  className="absolute left-[-1px] top-1/2 -translate-y-1/2 w-1 h-4 bg-amber-500 dark:bg-overdrive-yellow rounded-r-full"
+                                  aria-hidden="true"
+                                  className="absolute -left-[14px] top-1/2 -translate-y-1/2 w-1 h-5 bg-amber-500 dark:bg-overdrive-yellow rounded-r-full"
                                 />
                               )}
-                              {subItem.name}
+                              <span className="truncate block">
+                                {subItem.name}
+                              </span>
                             </Link>
                           );
                         })}
@@ -153,7 +222,27 @@ const Sidebar = ({ user, isOpen, setIsOpen }) => {
             );
           })}
         </nav>
-      </div>
+
+        {/* SIDEBAR FOOTER: Portal & Branch Context */}
+        <div className="p-4 border-t border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-slate-900/50 shrink-0">
+          <div className="flex items-center gap-3 px-2 py-1.5">
+            <div
+              aria-hidden="true"
+              className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-overdrive-yellow border border-amber-500/20 shrink-0"
+            >
+              <ShieldCheck size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white truncate">
+                {portalLabel}
+              </p>
+              <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                {user?.branch_name || "Overdrive Auto Shop"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </aside>
     </>
   );
 };

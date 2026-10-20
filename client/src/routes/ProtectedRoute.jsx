@@ -1,3 +1,4 @@
+import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -6,13 +7,17 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-50 dark:bg-overdrive-dark">
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex h-screen h-dvh w-full items-center justify-center bg-slate-50 dark:bg-overdrive-dark"
+      >
         <div className="flex flex-col items-center space-y-5">
-          <div className="relative w-12 h-12">
+          <div className="relative w-12 h-12" aria-hidden="true">
             <div className="absolute inset-0 border-4 border-slate-200 dark:border-overdrive-card rounded-full"></div>
             <div className="absolute inset-0 border-4 border-overdrive-yellow border-t-transparent rounded-full animate-spin"></div>
           </div>
-          <p className="text-slate-600 dark:text-slate-400 font-medium tracking-wide animate-pulse">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 animate-pulse">
             Verifying secure session...
           </p>
         </div>
@@ -24,7 +29,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  const normalizedUserRole = user.role?.toUpperCase();
+  if (
+    Array.isArray(allowedRoles) &&
+    !allowedRoles.map((r) => r.toUpperCase()).includes(normalizedUserRole)
+  ) {
     return <Navigate to="/403" replace />;
   }
 

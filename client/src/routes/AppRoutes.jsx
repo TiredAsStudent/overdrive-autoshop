@@ -4,11 +4,10 @@ import {
   Routes,
   Route,
   Navigate,
-  useLocation,
   Outlet,
 } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { getDashboardRoute } from "../config/navigation";
 
 import ProtectedRoute from "./ProtectedRoute";
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -121,15 +120,19 @@ const ManagerTaxVATReports = lazy(
   () => import("../pages/manager/TaxVATReports"),
 );
 
-// Loading Spinner
+// Accessible Loading Spinner
 const PageLoader = () => (
-  <div className="flex h-[80vh] w-full items-center justify-center">
+  <div
+    role="status"
+    aria-live="polite"
+    className="flex h-[80vh] w-full items-center justify-center"
+  >
     <div className="flex flex-col items-center space-y-5">
-      <div className="relative w-12 h-12">
+      <div className="relative w-12 h-12" aria-hidden="true">
         <div className="absolute inset-0 border-4 border-slate-200 dark:border-overdrive-card rounded-full"></div>
         <div className="absolute inset-0 border-4 border-overdrive-yellow border-t-transparent rounded-full animate-spin"></div>
       </div>
-      <p className="text-slate-600 dark:text-slate-400 font-medium tracking-wide animate-pulse">
+      <p className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 animate-pulse">
         Loading module...
       </p>
     </div>
@@ -137,501 +140,476 @@ const PageLoader = () => (
 );
 
 const LocationBasedRoutes = ({ user }) => {
-  const location = useLocation();
-
-  const getDashboardRoute = (role) => {
-    switch (role) {
-      case "ADMIN":
-        return "/sysadmin/dashboard/overview";
-      case "MANAGER":
-        return "/manager/dashboard/overview";
-      case "STAFF":
-      default:
-        return "/staff/dashboard/overview";
-    }
-  };
-
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          user ? (
+            <Navigate to={getDashboardRoute(user.role)} replace />
+          ) : (
+            <LoginPage />
+          )
+        }
+      />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route
+        path="/activate"
+        element={user ? <Navigate to="/" replace /> : <ActivateAccount />}
+      />
+      <Route path="/403" element={<AccessDenied user={user} />} />
+
+      {/* Dedicated standalone 404 Route outside the layout block */}
+      <Route path="/404" element={<NotFound user={user} />} />
+
+      <Route path="/" element={<Navigate to="/login" replace />} />
+
+      {/* =========================================================
+            THE SECURE PORTAL NETWORKS
+      ========================================================= */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <DashboardLayout user={user}>
+              <Suspense fallback={<PageLoader />}>
+                <Outlet />
+              </Suspense>
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      >
+        {/* SHARED */}
         <Route
-          path="/login"
+          path="/profile"
           element={
-            user ? (
-              <Navigate to={getDashboardRoute(user.role)} replace />
-            ) : (
-              <LoginPage />
-            )
+            <PageWrapper>
+              <UserProfilePage />
+            </PageWrapper>
           }
         />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
-          path="/activate"
-          element={user ? <Navigate to="/" replace /> : <ActivateAccount />}
-        />
-        <Route path="/403" element={<AccessDenied user={user} />} />
-
-        {/* Dedicated standalone 404 Route outside the layout block */}
-        <Route path="/404" element={<NotFound user={user} />} />
-
-        <Route path="/" element={<Navigate to="/login" replace />} />
-
-        {/* =========================================================
-              THE SECURE PORTAL NETWORKS
-        ========================================================= */}
-        <Route
+          path="/settings"
           element={
-            <ProtectedRoute>
-              <DashboardLayout user={user}>
-                <Suspense fallback={<PageLoader />}>
-                  <Outlet />
-                </Suspense>
-              </DashboardLayout>
+            <PageWrapper>
+              <AccountSettingsPage />
+            </PageWrapper>
+          }
+        />
+
+        {/* SYSADMIN */}
+        <Route
+          path="/sysadmin"
+          element={
+            <ProtectedRoute allowedRoles={["ADMIN"]}>
+              <Outlet />
             </ProtectedRoute>
           }
         >
-          {/* SHARED */}
+          <Route index element={<Navigate to="dashboard/overview" replace />} />
           <Route
-            path="/profile"
+            path="dashboard/overview"
             element={
               <PageWrapper>
-                <UserProfilePage />
+                <AdminOverview />
               </PageWrapper>
             }
           />
           <Route
-            path="/settings"
+            path="management/branches-registry"
             element={
               <PageWrapper>
-                <AccountSettingsPage />
+                <AdminBranches />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="management/users-accounts"
+            element={
+              <PageWrapper>
+                <AdminUsers />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="settings/business-logic"
+            element={
+              <PageWrapper>
+                <AdminBusinessSettings />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="records/audit-trail"
+            element={
+              <PageWrapper>
+                <AdminAuditLogs />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="records/database-backups"
+            element={
+              <PageWrapper>
+                <AdminDatabaseBackups />
               </PageWrapper>
             }
           />
 
-          {/* SYSADMIN */}
-          <Route
-            path="/sysadmin"
-            element={
-              <ProtectedRoute allowedRoles={["ADMIN"]}>
-                <Outlet />
-              </ProtectedRoute>
-            }
-          >
-            <Route
-              index
-              element={<Navigate to="dashboard/overview" replace />}
-            />
-            <Route
-              path="dashboard/overview"
-              element={
-                <PageWrapper>
-                  <AdminOverview />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="management/branches-registry"
-              element={
-                <PageWrapper>
-                  <AdminBranches />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="management/users-accounts"
-              element={
-                <PageWrapper>
-                  <AdminUsers />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="settings/business-logic"
-              element={
-                <PageWrapper>
-                  <AdminBusinessSettings />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="records/audit-trail"
-              element={
-                <PageWrapper>
-                  <AdminAuditLogs />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="records/database-backups"
-              element={
-                <PageWrapper>
-                  <AdminDatabaseBackups />
-                </PageWrapper>
-              }
-            />
-
-            <Route path="*" element={<Navigate to="/404" replace />} />
-          </Route>
-
-          {/* MANAGER */}
-          <Route
-            path="/manager"
-            element={
-              <ProtectedRoute allowedRoles={["MANAGER"]}>
-                <Outlet />
-              </ProtectedRoute>
-            }
-          >
-            <Route
-              index
-              element={<Navigate to="dashboard/overview" replace />}
-            />
-
-            {/* === Dashboard === */}
-            <Route
-              path="dashboard/overview"
-              element={
-                <PageWrapper>
-                  <ManagerOverview />
-                </PageWrapper>
-              }
-            />
-
-            {/* === Services === */}
-            <Route
-              path="services/service-catalog"
-              element={
-                <PageWrapper>
-                  <ManagerServiceCatalog />
-                </PageWrapper>
-              }
-            />
-
-            {/* === Inventory === */}
-            <Route
-              path="inventory/stock-management"
-              element={
-                <PageWrapper>
-                  <ManagerStockManagement />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="inventory/stock-adjustments"
-              element={
-                <PageWrapper>
-                  <ManagerStockAdjustments />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="inventory/stock-transfers"
-              element={
-                <PageWrapper>
-                  <ManagerStockTransfers />
-                </PageWrapper>
-              }
-            />
-
-            {/* === Purchases === */}
-            <Route
-              path="purchases/vendors"
-              element={
-                <PageWrapper>
-                  <ManagerVendors />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="purchases/payments"
-              element={
-                <PageWrapper>
-                  <ManagerPayments />
-                </PageWrapper>
-              }
-            />
-
-            {/* === Approvals === */}
-            <Route
-              path="approvals/expense-approvals"
-              element={
-                <PageWrapper>
-                  <ManagerExpenseApprovals />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="approvals/purchase-order-approvals"
-              element={
-                <PageWrapper>
-                  <ManagerPurchaseOrderApprovals />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="approvals/receipt-approvals"
-              element={
-                <PageWrapper>
-                  <ManagerReceiptApprovals />
-                </PageWrapper>
-              }
-            />
-
-            {/* === Accounting === */}
-            <Route
-              path="accounting/chart-of-accounts"
-              element={
-                <PageWrapper>
-                  <ManagerChartOfAccounts />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="accounting/journal-entries"
-              element={
-                <PageWrapper>
-                  <ManagerJournalEntries />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="accounting/general-ledger"
-              element={
-                <PageWrapper>
-                  <ManagerGeneralLedger />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="accounting/trial-balance"
-              element={
-                <PageWrapper>
-                  <ManagerTrialBalance />
-                </PageWrapper>
-              }
-            />
-
-            {/* === Reports === */}
-            <Route
-              path="reports/income-statement"
-              element={
-                <PageWrapper>
-                  <ManagerIncomeStatement />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="reports/balance-sheet"
-              element={
-                <PageWrapper>
-                  <ManagerBalanceSheet />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="reports/cash-flow-statement"
-              element={
-                <PageWrapper>
-                  <ManagerCashFlowStatement />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="reports/expense-reports"
-              element={
-                <PageWrapper>
-                  <ManagerExpenseReports />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="reports/sales-reports"
-              element={
-                <PageWrapper>
-                  <ManagerSalesReports />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="reports/inventory-reports"
-              element={
-                <PageWrapper>
-                  <ManagerInventoryReports />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="reports/receivables-reports"
-              element={
-                <PageWrapper>
-                  <ManagerReceivablesReports />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="reports/payables-reports"
-              element={
-                <PageWrapper>
-                  <ManagerPayablesReports />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="reports/tax-vat-reports"
-              element={
-                <PageWrapper>
-                  <ManagerTaxVATReports />
-                </PageWrapper>
-              }
-            />
-
-            <Route path="*" element={<Navigate to="/404" replace />} />
-          </Route>
-
-          {/* STAFF */}
-          <Route
-            path="/staff"
-            element={
-              <ProtectedRoute allowedRoles={["STAFF"]}>
-                <Outlet />
-              </ProtectedRoute>
-            }
-          >
-            <Route
-              index
-              element={<Navigate to="dashboard/overview" replace />}
-            />
-
-            {/* === Dashboard === */}
-            <Route
-              path="dashboard/overview"
-              element={
-                <PageWrapper>
-                  <StaffOverview />
-                </PageWrapper>
-              }
-            />
-
-            {/* === Sales === */}
-            <Route
-              path="sales/customers"
-              element={
-                <PageWrapper>
-                  <StaffCustomers />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="sales/estimates"
-              element={
-                <PageWrapper>
-                  <StaffEstimates />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="sales/sales-orders"
-              element={
-                <PageWrapper>
-                  <StaffSalesOrders />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="sales/invoices"
-              element={
-                <PageWrapper>
-                  <StaffInvoices />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="sales/payments"
-              element={
-                <PageWrapper>
-                  <StaffPayments />
-                </PageWrapper>
-              }
-            />
-
-            {/* === Purchases === */}
-            <Route
-              path="purchases/expenses"
-              element={
-                <PageWrapper>
-                  <StaffExpenses />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="purchases/purchase-orders"
-              element={
-                <PageWrapper>
-                  <StaffPurchaseOrders />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="purchases/bills"
-              element={
-                <PageWrapper>
-                  <StaffBills />
-                </PageWrapper>
-              }
-            />
-
-            {/* === Inventory === */}
-            <Route
-              path="inventory/stock-management"
-              element={
-                <PageWrapper>
-                  <StaffStockManagement />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="inventory/stock-adjustments"
-              element={
-                <PageWrapper>
-                  <StaffStockAdjustments />
-                </PageWrapper>
-              }
-            />
-
-            {/* === Receipts === */}
-            <Route
-              path="receipts/receipt-scanner"
-              element={
-                <PageWrapper>
-                  <StaffReceiptScanner />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="receipts/verification/:id"
-              element={
-                <PageWrapper>
-                  <StaffReceiptVerification />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="receipts/receipt-history"
-              element={
-                <PageWrapper>
-                  <StaffReceiptHistory />
-                </PageWrapper>
-              }
-            />
-
-            <Route path="*" element={<Navigate to="/404" replace />} />
-          </Route>
+          <Route path="*" element={<Navigate to="/404" replace />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/404" replace />} />
-      </Routes>
-    </AnimatePresence>
+        {/* MANAGER */}
+        <Route
+          path="/manager"
+          element={
+            <ProtectedRoute allowedRoles={["MANAGER"]}>
+              <Outlet />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard/overview" replace />} />
+
+          {/* === Dashboard === */}
+          <Route
+            path="dashboard/overview"
+            element={
+              <PageWrapper>
+                <ManagerOverview />
+              </PageWrapper>
+            }
+          />
+
+          {/* === Services === */}
+          <Route
+            path="services/service-catalog"
+            element={
+              <PageWrapper>
+                <ManagerServiceCatalog />
+              </PageWrapper>
+            }
+          />
+
+          {/* === Inventory === */}
+          <Route
+            path="inventory/stock-management"
+            element={
+              <PageWrapper>
+                <ManagerStockManagement />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="inventory/stock-adjustments"
+            element={
+              <PageWrapper>
+                <ManagerStockAdjustments />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="inventory/stock-transfers"
+            element={
+              <PageWrapper>
+                <ManagerStockTransfers />
+              </PageWrapper>
+            }
+          />
+
+          {/* === Purchases === */}
+          <Route
+            path="purchases/vendors"
+            element={
+              <PageWrapper>
+                <ManagerVendors />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="purchases/payments"
+            element={
+              <PageWrapper>
+                <ManagerPayments />
+              </PageWrapper>
+            }
+          />
+
+          {/* === Approvals === */}
+          <Route
+            path="approvals/expense-approvals"
+            element={
+              <PageWrapper>
+                <ManagerExpenseApprovals />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="approvals/purchase-order-approvals"
+            element={
+              <PageWrapper>
+                <ManagerPurchaseOrderApprovals />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="approvals/receipt-approvals"
+            element={
+              <PageWrapper>
+                <ManagerReceiptApprovals />
+              </PageWrapper>
+            }
+          />
+
+          {/* === Accounting === */}
+          <Route
+            path="accounting/chart-of-accounts"
+            element={
+              <PageWrapper>
+                <ManagerChartOfAccounts />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="accounting/journal-entries"
+            element={
+              <PageWrapper>
+                <ManagerJournalEntries />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="accounting/general-ledger"
+            element={
+              <PageWrapper>
+                <ManagerGeneralLedger />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="accounting/trial-balance"
+            element={
+              <PageWrapper>
+                <ManagerTrialBalance />
+              </PageWrapper>
+            }
+          />
+
+          {/* === Reports === */}
+          <Route
+            path="reports/income-statement"
+            element={
+              <PageWrapper>
+                <ManagerIncomeStatement />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="reports/balance-sheet"
+            element={
+              <PageWrapper>
+                <ManagerBalanceSheet />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="reports/cash-flow-statement"
+            element={
+              <PageWrapper>
+                <ManagerCashFlowStatement />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="reports/expense-reports"
+            element={
+              <PageWrapper>
+                <ManagerExpenseReports />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="reports/sales-reports"
+            element={
+              <PageWrapper>
+                <ManagerSalesReports />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="reports/inventory-reports"
+            element={
+              <PageWrapper>
+                <ManagerInventoryReports />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="reports/receivables-reports"
+            element={
+              <PageWrapper>
+                <ManagerReceivablesReports />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="reports/payables-reports"
+            element={
+              <PageWrapper>
+                <ManagerPayablesReports />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="reports/tax-vat-reports"
+            element={
+              <PageWrapper>
+                <ManagerTaxVATReports />
+              </PageWrapper>
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/404" replace />} />
+        </Route>
+
+        {/* STAFF */}
+        <Route
+          path="/staff"
+          element={
+            <ProtectedRoute allowedRoles={["STAFF"]}>
+              <Outlet />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard/overview" replace />} />
+
+          {/* === Dashboard === */}
+          <Route
+            path="dashboard/overview"
+            element={
+              <PageWrapper>
+                <StaffOverview />
+              </PageWrapper>
+            }
+          />
+
+          {/* === Sales === */}
+          <Route
+            path="sales/customers"
+            element={
+              <PageWrapper>
+                <StaffCustomers />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="sales/estimates"
+            element={
+              <PageWrapper>
+                <StaffEstimates />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="sales/sales-orders"
+            element={
+              <PageWrapper>
+                <StaffSalesOrders />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="sales/invoices"
+            element={
+              <PageWrapper>
+                <StaffInvoices />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="sales/payments"
+            element={
+              <PageWrapper>
+                <StaffPayments />
+              </PageWrapper>
+            }
+          />
+
+          {/* === Purchases === */}
+          <Route
+            path="purchases/expenses"
+            element={
+              <PageWrapper>
+                <StaffExpenses />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="purchases/purchase-orders"
+            element={
+              <PageWrapper>
+                <StaffPurchaseOrders />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="purchases/bills"
+            element={
+              <PageWrapper>
+                <StaffBills />
+              </PageWrapper>
+            }
+          />
+
+          {/* === Inventory === */}
+          <Route
+            path="inventory/stock-management"
+            element={
+              <PageWrapper>
+                <StaffStockManagement />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="inventory/stock-adjustments"
+            element={
+              <PageWrapper>
+                <StaffStockAdjustments />
+              </PageWrapper>
+            }
+          />
+
+          {/* === Receipts === */}
+          <Route
+            path="receipts/receipt-scanner"
+            element={
+              <PageWrapper>
+                <StaffReceiptScanner />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="receipts/verification/:id"
+            element={
+              <PageWrapper>
+                <StaffReceiptVerification />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="receipts/receipt-history"
+            element={
+              <PageWrapper>
+                <StaffReceiptHistory />
+              </PageWrapper>
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/404" replace />} />
+        </Route>
+      </Route>
+
+      <Route path="*" element={<Navigate to="/404" replace />} />
+    </Routes>
   );
 };
 

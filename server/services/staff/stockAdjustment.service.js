@@ -25,6 +25,15 @@ class StaffStockAdjustmentService {
       );
     }
 
+    const requiresEvidence = ["DAMAGED", "STOLEN_OR_LOST"].includes(
+      data.reason,
+    );
+    if (requiresEvidence && !data.evidence_url) {
+      throw new Error(
+        `Photo evidence is mandatory for "${data.reason.replace(/_/g, " ")}" adjustments.`,
+      );
+    }
+
     const existingPending = await StockAdjustmentModel.checkPendingRequest(
       data.item_id,
       branchId,

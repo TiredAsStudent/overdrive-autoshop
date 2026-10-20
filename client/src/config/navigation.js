@@ -175,8 +175,100 @@ export const staffMenu = [
     label: "Receipts",
     icon: ScanText,
     items: [
-      { name: "Receipt Scanner", path: "/staff/receipts/receipt-scanner" },
+      {
+        name: "Receipt Scanner",
+        path: "/staff/receipts/receipt-scanner",
+        matchPaths: ["/staff/receipts/verification"],
+      },
       { name: "Receipt History", path: "/staff/receipts/receipt-history" },
     ],
   },
 ];
+
+// === SHARED NAVIGATION & PORTAL HELPERS ===
+export const getDashboardRoute = (role) => {
+  const normalizedRole = role?.toUpperCase();
+  switch (normalizedRole) {
+    case "ADMIN":
+      return "/sysadmin/dashboard/overview";
+    case "MANAGER":
+      return "/manager/dashboard/overview";
+    case "STAFF":
+    default:
+      return "/staff/dashboard/overview";
+  }
+};
+
+export const getMenuByRole = (role) => {
+  const normalizedRole = role?.toUpperCase();
+  if (normalizedRole === "ADMIN") return sysAdminMenu;
+  if (normalizedRole === "MANAGER") return managerMenu;
+  return staffMenu;
+};
+
+export const getPortalLabelByRole = (role) => {
+  const normalizedRole = role?.toUpperCase();
+  if (normalizedRole === "ADMIN") return "System Admin Portal";
+  if (normalizedRole === "MANAGER") return "Manager Portal";
+  return "Staff Portal";
+};
+
+export const isNavItemActive = (pathname, item) => {
+  if (!pathname || !item?.path) return false;
+  if (pathname === item.path || pathname.startsWith(`${item.path}/`)) {
+    return true;
+  }
+  if (Array.isArray(item.matchPaths)) {
+    return item.matchPaths.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+  }
+  return false;
+};
+
+export const getActiveNavigationContext = (pathname, role) => {
+  const portalLabel = getPortalLabelByRole(role);
+
+  if (pathname === "/profile" || pathname.startsWith("/profile/")) {
+    return {
+      portalLabel,
+      groupLabel: "Account",
+      pageName: "My Profile",
+    };
+  }
+
+  if (pathname === "/settings" || pathname.startsWith("/settings/")) {
+    return {
+      portalLabel,
+      groupLabel: "Account",
+      pageName: "Account Settings",
+    };
+  }
+
+  if (pathname.startsWith("/staff/receipts/verification")) {
+    return {
+      portalLabel,
+      groupLabel: "Receipts",
+      pageName: "Receipt Verification",
+    };
+  }
+
+  const menuGroups = getMenuByRole(role);
+  for (const group of menuGroups) {
+    for (const item of group.items) {
+      if (isNavItemActive(pathname, item)) {
+        return {
+          portalLabel,
+          groupLabel: group.label,
+          pageName: item.name,
+        };
+      }
+    }
+  }
+
+  return {
+    portalLabel,
+    groupLabel: "Workspace",
+    pageName: "Overview",
+  };
+};

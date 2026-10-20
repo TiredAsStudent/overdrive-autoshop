@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   ReceiptText,
@@ -12,6 +12,7 @@ import {
   FileText,
   Paperclip,
   ScanText,
+  ChevronDown,
 } from "lucide-react";
 import { expenseService } from "../../services/staff/expense.service";
 import ExpenseModal from "../../features/staff/components/ExpenseModal";
@@ -39,9 +40,12 @@ const STATUS_FILTERS = [
   { value: "REJECTED", label: "Rejected" },
 ];
 
+const ITEMS_PER_PAGE = 10;
+
 const Expenses = () => {
   const { showToast } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
+  const categoryFilterSelectId = useId();
 
   const [expenses, setExpenses] = useState([]);
   const [expenseCategories, setExpenseCategories] = useState([]);
@@ -49,7 +53,7 @@ const Expenses = () => {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState(
-    searchParams.get("search") || "",
+    () => searchParams.get("search") || "",
   );
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -57,7 +61,6 @@ const Expenses = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   // Modals & Drawers
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,16 +92,29 @@ const Expenses = () => {
   const handleSearchChange = (e) => {
     const val = e.target.value;
     setSearchQuery(val);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
     if (!val) {
-      setSearchParams({});
+      setSearchParams({}, { replace: true });
     } else {
-      setSearchParams({ search: val });
+      setSearchParams({ search: val }, { replace: true });
     }
   };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter, expenseAccountIdFilter]);
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
+
+  const handleAccountFilterChange = (value) => {
+    setExpenseAccountIdFilter(value);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
 
   const loadExpenses = useCallback(async () => {
     try {
@@ -111,10 +127,19 @@ const Expenses = () => {
         expenseAccountIdFilter,
         "all",
       );
-      setExpenses(response.data?.expenses || []);
-      setTotalPages(response.data?.pagination?.totalPages || 1);
+
+      const fetchedExpenses = response.data?.expenses || [];
+      const fetchedTotalPages = response.data?.pagination?.totalPages || 1;
+
+      if (fetchedExpenses.length === 0 && currentPage > fetchedTotalPages) {
+        setCurrentPage(Math.max(1, fetchedTotalPages));
+        return;
+      }
+
+      setExpenses(fetchedExpenses);
+      setTotalPages(fetchedTotalPages);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(error.message || "Unable to load expense records.", "error");
     } finally {
       setLoading(false);
     }
@@ -131,47 +156,44 @@ const Expenses = () => {
   }, [loadExpenses]);
 
   const handleModalSubmit = async (formData, attachmentFile) => {
-    try {
-      if (modalMode === "CREATE") {
-        const res = await expenseService.createExpense(
-          formData,
-          attachmentFile,
-        );
-        showToast(
-          res.data.status === "PENDING_APPROVAL"
-            ? "Expense submitted for approval."
-            : "Draft expense created.",
-          "success",
-        );
-      } else {
-        await expenseService.updateExpense(
-          selectedExpenseData.id,
-          formData,
-          attachmentFile,
-        );
-        showToast("Expense updated successfully.", "success");
-      }
-      setIsModalOpen(false);
-      loadExpenses();
-    } catch (error) {
-      throw error;
+    if (modalMode === "CREATE") {
+      const res = await expenseService.createExpense(formData, attachmentFile);
+      showToast(
+        res.data.status === "PENDING_APPROVAL"
+          ? "Expense submitted for approval."
+          : "Draft expense created.",
+        "success",
+      );
+    } else {
+      await expenseService.updateExpense(
+        selectedExpenseData.id,
+        formData,
+        attachmentFile,
+      );
+      showToast("Expense updated successfully.", "success");
     }
+    setIsModalOpen(false);
+    setSelectedExpenseData(null);
+    loadExpenses();
   };
 
   const handleDirectSubmitForApproval = (expense) => {
     setConfirmConfig({
       isOpen: true,
-      title: `Submit Expense for Approval`,
+      title: "Submit Expense for Approval",
       message: `Are you sure you want to submit ${expense.expense_number} to the Manager? It will be locked from further edits until a decision is made.`,
-      confirmText: `Yes, Submit Now`,
+      confirmText: "Yes, Submit Now",
       variant: "info",
       onConfirm: async () => {
         try {
           await expenseService.updateStatus(expense.id, "PENDING_APPROVAL");
-          showToast(`Expense successfully submitted for review.`, "success");
+          showToast("Expense successfully submitted for review.", "success");
           loadExpenses();
         } catch (error) {
-          showToast(error.message, "error");
+          showToast(
+            error.message || "Failed to submit expense for approval.",
+            "error",
+          );
         }
       },
     });
@@ -184,6 +206,9 @@ const Expenses = () => {
 
   const resetFilters = () => {
     setExpenseAccountIdFilter("all");
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
     setIsFilterModalOpen(false);
   };
 
@@ -201,52 +226,67 @@ const Expenses = () => {
     return FileText;
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  };
+
+  const formatCurrency = (val) => {
+    return (parseFloat(val) || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const emptyStatusLabel =
+    statusFilter !== "all"
+      ? `${statusFilter.replace(/_/g, " ").toLowerCase()} `
+      : "";
+
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       <PageHeader
         title="Expenses"
         subtitle="Branch Cost Registry"
         icon={ReceiptText}
       >
-        <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 w-full mt-2 lg:mt-0">
-          <div className="w-full xl:w-auto overflow-x-auto custom-scrollbar pb-2 xl:pb-0">
-            <StatusToggle
-              activeValue={statusFilter}
-              onToggle={setStatusFilter}
-              options={STATUS_FILTERS}
-            />
-          </div>
+        <StatusToggle
+          activeValue={statusFilter}
+          onToggle={handleStatusFilterChange}
+          ariaLabel="Filter expenses by approval status"
+          options={STATUS_FILTERS}
+        />
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto xl:ml-auto">
-            <SearchBar
-              value={searchQuery}
-              onChange={handleSearchChange}
-              placeholder="Search Expense No. or Desc..."
-              isSearching={searchQuery !== debouncedSearchQuery}
-              className="w-full sm:w-64 shrink-0"
-            />
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <FilterButton
-                onClick={() => setIsFilterModalOpen(true)}
-                activeCount={activeFilterCount}
-                className="flex-1 sm:flex-none"
-              />
-              <ActionButton
-                onClick={() => {
-                  setModalMode("CREATE");
-                  setSelectedExpenseData(null);
-                  setIsModalOpen(true);
-                }}
-                label="Record Expense"
-                icon={Plus}
-                className="flex-1 sm:flex-none"
-              />
-            </div>
-          </div>
-        </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Search Expense No. or Desc..."
+          isSearching={searchQuery !== debouncedSearchQuery}
+        />
+
+        <FilterButton
+          onClick={() => setIsFilterModalOpen(true)}
+          activeCount={activeFilterCount}
+        />
+
+        <ActionButton
+          onClick={() => {
+            setModalMode("CREATE");
+            setSelectedExpenseData(null);
+            setIsModalOpen(true);
+          }}
+          label="Record Expense"
+          icon={Plus}
+        />
       </PageHeader>
 
       <DataTable
+        caption="Branch Operational Expenses Registry"
+        minWidth="min-w-[860px]"
         headers={[
           "Expense No.",
           "Particulars",
@@ -257,99 +297,128 @@ const Expenses = () => {
         ]}
         data={expenses}
         loading={loading}
-        emptyTitle={`No ${statusFilter !== "all" ? statusFilter.toLowerCase() : ""} expenses found`}
+        emptyTitle={`No ${emptyStatusLabel}expenses found`}
+        emptySubtitle="Try adjusting your search or filter criteria, or record a new branch expense."
         renderRow={(expense) => (
           <tr
             key={expense.id}
-            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+            className="group table-row-hover border-b border-slate-100 dark:border-white/5 last:border-0"
           >
-            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle">
-              <div className="flex flex-col items-start gap-1 min-w-[140px]">
+            {/* Expense No. & Date */}
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle whitespace-nowrap">
+              <div className="flex flex-col items-start gap-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
+                  <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 text-xs font-mono tabular-nums font-black tracking-widest uppercase">
                     {expense.expense_number}
                   </span>
                   {/* Visual Evidence Indicators */}
                   {expense.scan_id ? (
                     <span
-                      className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0"
+                      className="bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/20 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0"
                       title="Generated via OCR Receipt Scanner"
                     >
-                      <ScanText size={10} /> OCR
+                      <ScanText size={10} aria-hidden="true" />
+                      <span>OCR</span>
                     </span>
                   ) : expense.receipt_url ? (
-                    <Paperclip
-                      size={14}
-                      className="text-amber-500 shrink-0"
+                    <span
                       title="Attachment Present"
-                    />
+                      aria-label="Attachment Present"
+                      className="inline-flex text-amber-500 dark:text-overdrive-yellow shrink-0"
+                    >
+                      <Paperclip size={14} aria-hidden="true" />
+                    </span>
                   ) : null}
                 </div>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                  {new Date(expense.expense_date).toLocaleDateString()}
+                <span className="text-[10px] font-mono tabular-nums font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
+                  {formatDate(expense.expense_date)}
                 </span>
               </div>
             </td>
+
+            {/* Particulars */}
             <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle">
-              <div className="flex flex-col items-start gap-1 min-w-[180px] max-w-[200px] sm:max-w-[280px] whitespace-normal">
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-snug">
+              <div className="flex flex-col items-start gap-1 min-w-[180px] max-w-[220px] sm:max-w-[280px] whitespace-normal">
+                <p
+                  className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-snug line-clamp-2"
+                  title={expense.description}
+                >
                   {expense.description}
                 </p>
-                <p className="text-[9px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest mt-0.5">
+                <p
+                  className="text-[10px] font-black text-amber-600 dark:text-overdrive-yellow uppercase tracking-widest mt-0.5 truncate max-w-full"
+                  title={expense.category}
+                >
                   {expense.category}
                 </p>
               </div>
             </td>
-            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle">
-              <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest truncate min-w-[120px] max-w-[150px]">
+
+            {/* Payee */}
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle whitespace-nowrap">
+              <p
+                className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider truncate max-w-[160px]"
+                title={expense.vendor_name || "N/A"}
+              >
                 {expense.vendor_name || "N/A"}
               </p>
             </td>
-            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle">
-              <span className="text-sm font-mono font-black text-slate-900 dark:text-white min-w-[100px] block">
-                ₱
-                {parseFloat(expense.total_amount).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
+
+            {/* Amount */}
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle whitespace-nowrap">
+              <span className="text-xs sm:text-sm font-mono tabular-nums font-black text-slate-900 dark:text-white block">
+                ₱{formatCurrency(expense.total_amount)}
               </span>
             </td>
-            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle w-max">
+
+            {/* Status */}
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 align-top sm:align-middle whitespace-nowrap">
               <StatusBadge
-                label={expense.status.replace("_", " ")}
+                label={
+                  expense.status ? expense.status.replace(/_/g, " ") : "DRAFT"
+                }
                 variant={getStatusBadgeVariant(expense.status)}
                 icon={getStatusBadgeIcon(expense.status)}
               />
             </td>
-            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 text-right align-top sm:align-middle">
+
+            {/* Actions */}
+            <td className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 text-right align-top sm:align-middle whitespace-nowrap">
               <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                 <button
+                  type="button"
                   onClick={() => openDrawer(expense.id)}
-                  title="View Details"
-                  className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
+                  title={`View ${expense.expense_number} Details`}
+                  aria-label={`View details for ${expense.expense_number}`}
+                  className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-200/60 dark:hover:border-blue-500/20 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
                 >
-                  <FileSearch size={16} />
+                  <FileSearch size={16} aria-hidden="true" />
                 </button>
 
                 {(expense.status === "DRAFT" ||
                   expense.status === "REJECTED") && (
                   <>
                     <button
+                      type="button"
                       onClick={() => {
                         setModalMode("EDIT");
                         setSelectedExpenseData(expense);
                         setIsModalOpen(true);
                       }}
-                      title="Edit Expense"
-                      className="p-2 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
+                      title={`Edit ${expense.expense_number}`}
+                      aria-label={`Edit expense ${expense.expense_number}`}
+                      className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-amber-600 dark:hover:text-overdrive-yellow hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-200/60 dark:hover:border-amber-500/20 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
                     >
-                      <Edit2 size={16} />
+                      <Edit2 size={16} aria-hidden="true" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleDirectSubmitForApproval(expense)}
-                      title="Submit to Manager"
-                      className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer shrink-0"
+                      title={`Submit ${expense.expense_number} to Manager`}
+                      aria-label={`Submit ${expense.expense_number} to Manager for approval`}
+                      className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:border-emerald-200/60 dark:hover:border-emerald-500/20 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
                     >
-                      <ArrowUpRight size={16} />
+                      <ArrowUpRight size={16} aria-hidden="true" />
                     </button>
                   </>
                 )}
@@ -371,30 +440,41 @@ const Expenses = () => {
         onClear={resetFilters}
         title="Advanced Filters"
       >
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={categoryFilterSelectId} className="form-label">
               Filter by COA Category
             </label>
-            <select
-              value={expenseAccountIdFilter}
-              onChange={(e) => setExpenseAccountIdFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-            >
-              <option value="all">All Expense Accounts</option>
-              {expenseCategories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.account_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={categoryFilterSelectId}
+                value={expenseAccountIdFilter}
+                onChange={(e) => handleAccountFilterChange(e.target.value)}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">All Expense Accounts</option>
+                {expenseCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.account_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
         </div>
       </FilterModal>
 
       <ExpenseModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedExpenseData(null);
+        }}
         onSubmit={handleModalSubmit}
         mode={modalMode}
         initialData={selectedExpenseData}
@@ -407,7 +487,7 @@ const Expenses = () => {
       />
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
-        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
         onConfirm={confirmConfig.onConfirm}
         title={confirmConfig.title}
         message={confirmConfig.message}

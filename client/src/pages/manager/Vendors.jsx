@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
 import {
   Store,
   Plus,
@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   MinusCircle,
   CheckCircle,
+  ChevronDown,
 } from "lucide-react";
 import { managerVendorService } from "../../services/manager/vendor.service";
 import VendorModal from "../../features/manager/components/VendorModal";
@@ -28,8 +29,16 @@ import FilterModal from "../../components/shared/FilterModal";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
+const STATUS_OPTIONS = [
+  { label: "Active", value: false },
+  { label: "Archived", value: true },
+];
+
+const ITEMS_PER_PAGE = 10;
+
 const Vendors = () => {
   const { showToast } = useApp();
+  const vatFilterSelectId = useId();
 
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +51,6 @@ const Vendors = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   // Modals & Drawers
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -60,11 +68,28 @@ const Vendors = () => {
 
   const activeFilterCount = vatFilter !== "all" ? 1 : 0;
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, showArchived, vatFilter]);
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
 
-  const loadVendors = async () => {
+  const handleStatusToggle = (value) => {
+    setShowArchived(value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const handleVatFilterChange = (value) => {
+    setVatFilter(value);
+    if (currentPage !== 1) setCurrentPage(1);
+  };
+
+  const resetFilters = () => {
+    setVatFilter("all");
+    if (currentPage !== 1) setCurrentPage(1);
+    setIsFilterModalOpen(false);
+  };
+
+  const loadVendors = useCallback(async () => {
     try {
       setLoading(true);
       const statusParam = showArchived ? "inactive" : "active";
@@ -76,33 +101,41 @@ const Vendors = () => {
         vatFilter,
         "all",
       );
-      setVendors(response.data?.vendors || []);
-      setTotalPages(response.data?.pagination?.totalPages || 1);
+
+      const fetchedVendors = response.data?.vendors || [];
+      const fetchedTotalPages = response.data?.pagination?.totalPages || 1;
+
+      if (fetchedVendors.length === 0 && currentPage > fetchedTotalPages) {
+        setCurrentPage(Math.max(1, fetchedTotalPages));
+        return;
+      }
+
+      setVendors(fetchedVendors);
+      setTotalPages(fetchedTotalPages);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(
+        error.message || "Unable to load supplier master directory.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearchQuery, showArchived, vatFilter, showToast]);
 
   useEffect(() => {
     loadVendors();
-  }, [currentPage, debouncedSearchQuery, showArchived, vatFilter]);
+  }, [loadVendors]);
 
   const handleModalSubmit = async (formData) => {
-    try {
-      if (selectedVendor) {
-        await managerVendorService.updateVendor(selectedVendor.id, formData);
-        showToast("Vendor master data updated successfully.", "success");
-      } else {
-        await managerVendorService.registerVendor(formData);
-        showToast("New vendor registered successfully.", "success");
-      }
-      setIsModalOpen(false);
-      loadVendors();
-    } catch (error) {
-      throw error;
+    if (selectedVendor) {
+      await managerVendorService.updateVendor(selectedVendor.id, formData);
+      showToast("Vendor master data updated successfully.", "success");
+    } else {
+      await managerVendorService.registerVendor(formData);
+      showToast("New vendor registered successfully.", "success");
     }
+    setIsModalOpen(false);
+    loadVendors();
   };
 
   const handleToggleStatus = (vendor) => {
@@ -111,37 +144,41 @@ const Vendors = () => {
     setConfirmConfig({
       isOpen: true,
       title: `${action} Vendor Profile`,
-      message: `Are you sure you want to ${action.toLowerCase()} ${vendor.business_name}? ${vendor.is_active ? "They will be blocked from future purchase orders." : ""}`,
+      message: `Are you sure you want to ${action.toLowerCase()} ${vendor.business_name}? ${
+        vendor.is_active
+          ? "They will be blocked from future purchase orders."
+          : ""
+      }`,
       confirmText: `Yes, ${action}`,
-      variant: variant,
+      variant,
       onConfirm: async () => {
         try {
           await managerVendorService.updateVendor(vendor.id, {
             is_active: !vendor.is_active,
           });
           showToast(
-            `${vendor.business_name} ${vendor.is_active ? "archived" : "restored"} successfully.`,
+            `${vendor.business_name} ${
+              vendor.is_active ? "archived" : "restored"
+            } successfully.`,
             "success",
           );
           loadVendors();
         } catch (error) {
-          showToast(error.message, "error");
+          showToast(
+            error.message || "Failed to update vendor status.",
+            "error",
+          );
         }
       },
     });
   };
 
-  const resetFilters = () => {
-    setVatFilter("all");
-    setIsFilterModalOpen(false);
-  };
-
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       <PageHeader title="Vendors" subtitle="Supplier Master Data" icon={Store}>
         <SearchBar
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           placeholder="Search Vendor..."
           isSearching={searchQuery !== debouncedSearchQuery}
         />
@@ -153,11 +190,9 @@ const Vendors = () => {
 
         <StatusToggle
           activeValue={showArchived}
-          onToggle={setShowArchived}
-          options={[
-            { label: "Active", value: false },
-            { label: "Archived", value: true },
-          ]}
+          onToggle={handleStatusToggle}
+          ariaLabel="Filter vendors by active or archived status"
+          options={STATUS_OPTIONS}
         />
 
         <ActionButton
@@ -171,6 +206,8 @@ const Vendors = () => {
       </PageHeader>
 
       <DataTable
+        caption="Supplier Master Data and Vendor Directory"
+        minWidth="min-w-[850px]"
         headers={[
           "Vendor Code",
           "Business Identity",
@@ -182,37 +219,58 @@ const Vendors = () => {
         data={vendors}
         loading={loading}
         emptyTitle={`No ${showArchived ? "archived" : "active"} vendors found`}
+        emptySubtitle="Try adjusting your search or tax filter criteria, or register a new supplier."
         renderRow={(vendor) => (
           <tr
             key={vendor.id}
-            className={`group transition-colors ${!vendor.is_active ? "bg-slate-50 dark:bg-slate-900/40 opacity-75 grayscale" : "hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"}`}
+            className={`group border-b border-slate-100 dark:border-white/5 last:border-0 ${
+              !vendor.is_active
+                ? "bg-slate-50/70 dark:bg-slate-900/40 opacity-75"
+                : "table-row-hover"
+            }`}
           >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
+            {/* Vendor Code */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 text-xs font-mono tabular-nums font-black tracking-widest uppercase">
                 {vendor.vendor_code}
               </span>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-1 max-w-[250px]">
-                <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate w-full">
+
+            {/* Business Identity */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+              <div className="flex flex-col items-start gap-1 max-w-[240px] sm:max-w-[280px]">
+                <p
+                  className="text-xs sm:text-sm font-black text-slate-900 dark:text-white italic uppercase truncate w-full"
+                  title={vendor.business_name}
+                >
                   {vendor.business_name}
                 </p>
-                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate w-full">
+                <p
+                  className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate w-full"
+                  title={vendor.business_address || "Global Entity"}
+                >
                   {vendor.business_address || "Global Entity"}
                 </p>
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col gap-1 text-xs font-bold text-slate-600 dark:text-slate-400">
-                <span className="truncate max-w-[150px]">
+
+            {/* Primary Contact */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+              <div className="flex flex-col gap-1 text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span
+                  className="truncate max-w-[160px]"
+                  title={vendor.contact_person}
+                >
                   {vendor.contact_person}
                 </span>
-                <span className="text-[10px] text-amber-600 dark:text-amber-500 tracking-wider">
+                <span className="text-[10px] font-mono tabular-nums text-amber-600 dark:text-overdrive-yellow tracking-wider">
                   {vendor.contact_number}
                 </span>
               </div>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+
+            {/* VAT Status */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
               {vendor.is_vat_registered ? (
                 <StatusBadge
                   label="VAT Registered"
@@ -227,7 +285,9 @@ const Vendors = () => {
                 />
               )}
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+
+            {/* Status */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
               {vendor.is_active ? (
                 <StatusBadge
                   label="Active"
@@ -242,41 +302,59 @@ const Vendors = () => {
                 />
               )}
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-1.5">
+
+            {/* Actions */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
+              <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedVendor(vendor);
                     setIsDrawerOpen(true);
                   }}
-                  title="View Profile"
-                  className="p-2.5 bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-500/10 text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-xl transition-all cursor-pointer"
+                  title={`View Profile for ${vendor.business_name}`}
+                  aria-label={`View vendor profile and ledger for ${vendor.business_name}`}
+                  className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-200/60 dark:hover:border-blue-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                 >
-                  <FileText size={16} />
+                  <FileText size={16} aria-hidden="true" />
                 </button>
+
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedVendor(vendor);
                     setIsModalOpen(true);
                   }}
-                  title="Edit Profile"
-                  className="p-2.5 bg-slate-100 hover:bg-amber-50 dark:bg-slate-800 dark:hover:bg-amber-500/10 text-slate-600 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 rounded-xl transition-all cursor-pointer"
+                  title={`Edit ${vendor.business_name}`}
+                  aria-label={`Edit vendor profile for ${vendor.business_name}`}
+                  className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-amber-600 dark:hover:text-overdrive-yellow hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-200/60 dark:hover:border-amber-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                 >
-                  <Edit2 size={16} />
+                  <Edit2 size={16} aria-hidden="true" />
                 </button>
+
                 <button
+                  type="button"
                   onClick={() => handleToggleStatus(vendor)}
-                  title={vendor.is_active ? "Archive Vendor" : "Restore Vendor"}
-                  className={`p-2.5 rounded-xl transition-all cursor-pointer ${
+                  title={
                     vendor.is_active
-                      ? "bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-500/10 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
-                      : "bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                      ? `Archive ${vendor.business_name}`
+                      : `Restore ${vendor.business_name}`
+                  }
+                  aria-label={
+                    vendor.is_active
+                      ? `Archive vendor ${vendor.business_name}`
+                      : `Restore vendor ${vendor.business_name}`
+                  }
+                  className={`p-2 sm:p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${
+                    vendor.is_active
+                      ? "text-slate-400 border-transparent hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:border-rose-200/60 dark:hover:border-rose-500/20"
+                      : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200/60 dark:border-emerald-500/20 hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
                   }`}
                 >
                   {vendor.is_active ? (
-                    <Archive size={16} />
+                    <Archive size={16} aria-hidden="true" />
                   ) : (
-                    <RotateCcw size={16} />
+                    <RotateCcw size={16} aria-hidden="true" />
                   )}
                 </button>
               </div>
@@ -299,18 +377,26 @@ const Vendors = () => {
       >
         <div className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={vatFilterSelectId} className="form-label">
               Tax Registration Status
             </label>
-            <select
-              value={vatFilter}
-              onChange={(e) => setVatFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
-            >
-              <option value="all">All Statuses</option>
-              <option value="vat">VAT Registered</option>
-              <option value="non_vat">Non-VAT</option>
-            </select>
+            <div className="relative">
+              <select
+                id={vatFilterSelectId}
+                value={vatFilter}
+                onChange={(e) => handleVatFilterChange(e.target.value)}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">All Statuses</option>
+                <option value="vat">VAT Registered</option>
+                <option value="non_vat">Non-VAT</option>
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
         </div>
       </FilterModal>
@@ -328,7 +414,7 @@ const Vendors = () => {
       />
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
-        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
         onConfirm={confirmConfig.onConfirm}
         title={confirmConfig.title}
         message={confirmConfig.message}

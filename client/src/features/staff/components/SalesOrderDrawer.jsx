@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -8,15 +8,11 @@ import {
   User,
   Printer,
   Loader2,
-  Store,
-  Package,
   AlertCircle,
   BadgeCheck,
   CheckCircle,
   Clock,
-  FileCheck,
   XCircle,
-  FileText,
   Link,
   Play,
 } from "lucide-react";
@@ -33,19 +29,45 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
   const [error, setError] = useState("");
   const [isPrinting, setIsPrinting] = useState(false);
 
+  const drawerTitleId = useId();
+
   useEffect(() => {
+    let isMounted = true;
     if (isOpen && salesOrderId) {
       setLoading(true);
       setError("");
       salesOrderService
         .getSalesOrderDetails(salesOrderId)
-        .then((res) => setOrder(res.data))
-        .catch((err) => setError(err.message))
-        .finally(() => setLoading(false));
+        .then((res) => {
+          if (isMounted) setOrder(res.data);
+        })
+        .catch((err) => {
+          if (isMounted)
+            setError(err.message || "Unable to retrieve sales order details.");
+        })
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
     } else {
       setOrder(null);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, salesOrderId]);
+
+  // Close drawer on Escape key when not printing
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !isPrinting) {
+        onClose?.();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isPrinting, onClose]);
 
   const getStatusConfig = (status) => {
     switch (status) {
@@ -63,12 +85,28 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
     }
   };
 
+  const formatCurrency = (val) => {
+    return (parseFloat(val) || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "Not Scheduled";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  };
+
   const handlePrint = async () => {
     setIsPrinting(true);
     try {
       await openPdfInNewTab(() => salesOrderService.downloadPdf(salesOrderId));
     } catch (err) {
-      showToast(err.message, "error");
+      showToast(err.message || "Failed to generate sales order PDF.", "error");
     } finally {
       setIsPrinting(false);
     }
@@ -84,8 +122,8 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer"
+            onClick={() => !isPrinting && onClose?.()}
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm cursor-pointer"
             aria-hidden="true"
           />
 
@@ -100,33 +138,48 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
               stiffness: 300,
               mass: 0.8,
             }}
-            className="relative w-full sm:w-[500px] lg:w-[600px] bg-slate-50 dark:bg-slate-900/95 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
+            className="relative h-full h-dvh w-full sm:w-[500px] lg:w-[600px] bg-slate-50 dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
             role="dialog"
             aria-modal="true"
+            aria-labelledby={drawerTitleId}
           >
             {/* Standardized Fixed Header */}
-            <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
+            <header className="flex justify-between items-start px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 shadow-xs">
+              <div className="flex items-start gap-4 min-w-0">
+                <div
+                  aria-hidden="true"
+                  className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-600 dark:text-overdrive-yellow shrink-0"
+                >
                   <ClipboardList size={24} />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-xl font-black italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]">
+                  <h2
+                    id={drawerTitleId}
+                    className="text-lg sm:text-xl font-black font-mono tabular-nums italic tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-[200px] sm:max-w-[300px]"
+                  >
                     {order?.sales_order_number || "Loading..."}
                   </h2>
 
                   {order && (
                     <div className="flex flex-col items-start gap-1.5 mt-1.5">
                       <StatusBadge
-                        label={order.status.replace("_", " ")}
+                        label={
+                          order.status
+                            ? order.status.replace(/_/g, " ")
+                            : "PENDING SERVICE"
+                        }
                         variant={getStatusConfig(order.status).variant}
                         icon={getStatusConfig(order.status).icon}
                       />
                       <div className="flex flex-col gap-0.5 mt-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                          <BadgeCheck size={12} className="text-amber-500" />
-                          Prepared by:{" "}
-                          <span className="text-slate-600 dark:text-slate-300">
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <BadgeCheck
+                            size={12}
+                            aria-hidden="true"
+                            className="text-amber-500 dark:text-overdrive-yellow shrink-0"
+                          />
+                          <span>Prepared by:</span>
+                          <span className="text-slate-700 dark:text-slate-200 truncate max-w-[180px]">
                             {order.created_by_name || "System"}
                           </span>
                         </span>
@@ -136,65 +189,107 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={onClose}
-                className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0"
-                aria-label="Close panel"
+                disabled={isPrinting}
+                className="p-2.5 -mr-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0 disabled:opacity-50"
+                aria-label="Close sales order details drawer"
               >
-                <X size={20} />
+                <X size={20} aria-hidden="true" />
               </button>
             </header>
 
             {/* Standardized Scrollable Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50/50 dark:bg-transparent">
               {loading && (
-                <div className="flex flex-col items-center justify-center py-20 opacity-70">
-                  <Loader2 className="w-8 h-8 animate-spin mb-3 text-amber-500" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex flex-col items-center justify-center py-20 opacity-80"
+                >
+                  <Loader2
+                    aria-hidden="true"
+                    className="w-8 h-8 animate-spin mb-3 text-amber-500"
+                  />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                     Retrieving Document...
                   </p>
                 </div>
               )}
+
               {error && (
-                <div className="p-4 text-center bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-200">
-                  {error}
+                <div role="alert" className="form-error-banner">
+                  <AlertCircle
+                    size={18}
+                    aria-hidden="true"
+                    className="shrink-0 mt-0.5"
+                  />
+                  <span>{error}</span>
                 </div>
               )}
 
               {order && !loading && (
                 <div className="space-y-6 sm:space-y-8">
                   {/* Meta Source & Client Link */}
-                  <div className="grid grid-cols-2 gap-4 sm:gap-5">
-                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
-                      <User size={16} className="text-slate-400 mb-3" />
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                  <div className="grid grid-cols-1 xs:grid-cols-2 gap-4 sm:gap-5">
+                    <section className="p-5 sm:p-6 bg-white dark:bg-slate-800 rounded-[20px] sm:rounded-[24px] border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col justify-between min-w-0">
+                      <User
+                        size={16}
+                        aria-hidden="true"
+                        className="text-amber-600 dark:text-overdrive-yellow mb-3"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
                           Customer
                         </p>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                        <p
+                          className="text-sm font-bold text-slate-900 dark:text-white truncate"
+                          title={order.customer_name}
+                        >
                           {order.customer_name}
                         </p>
 
                         <div className="flex flex-col gap-1 mt-1">
-                          <p className="text-[10px] text-slate-500 truncate font-medium">
+                          <p
+                            className="text-[11px] font-mono tabular-nums text-slate-500 dark:text-slate-400 truncate font-medium"
+                            title={order.contact_number}
+                          >
                             {order.contact_number}
                           </p>
-                          <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate font-medium">
-                            <Building2 size={10} /> {order.branch_name}
+                          <p
+                            className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate font-bold uppercase tracking-wider"
+                            title={order.branch_name}
+                          >
+                            <Building2
+                              size={11}
+                              aria-hidden="true"
+                              className="shrink-0"
+                            />
+                            <span className="truncate">
+                              {order.branch_name}
+                            </span>
                           </p>
                         </div>
                       </div>
                     </section>
 
-                    <section className="p-5 sm:p-6 bg-blue-50 dark:bg-blue-500/5 rounded-[20px] sm:rounded-[24px] border border-blue-100 dark:border-blue-500/20 shadow-sm flex flex-col justify-between">
-                      <Link size={16} className="text-blue-400 mb-3" />
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">
+                    <section className="p-5 sm:p-6 bg-blue-50 dark:bg-blue-500/5 rounded-[20px] sm:rounded-[24px] border border-blue-200 dark:border-blue-500/20 shadow-xs flex flex-col justify-between min-w-0">
+                      <Link
+                        size={16}
+                        aria-hidden="true"
+                        className="text-blue-600 dark:text-blue-400 mb-3"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-1">
                           Source Document Link
                         </p>
-                        <p className="text-sm font-bold text-blue-700 dark:text-blue-400 truncate">
+                        <p
+                          className="text-sm font-mono tabular-nums font-bold text-blue-800 dark:text-blue-300 truncate"
+                          title={order.estimate_number}
+                        >
                           {order.estimate_number}
                         </p>
-                        <p className="text-[10px] text-blue-600/70 dark:text-blue-500/70 mt-0.5 truncate font-medium">
+                        <p className="text-[10px] text-blue-600/80 dark:text-blue-400/80 mt-0.5 truncate font-medium">
                           Financial Snapshot Frozen
                         </p>
                       </div>
@@ -202,80 +297,74 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                   </div>
 
                   {/* Target Completion Date */}
-                  <section className="flex items-center gap-4 p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm">
-                    <Calendar size={20} className="text-amber-500 shrink-0" />
+                  <section className="flex items-center gap-4 p-5 sm:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-xs">
+                    <Calendar
+                      size={20}
+                      aria-hidden="true"
+                      className="text-amber-500 dark:text-overdrive-yellow shrink-0"
+                    />
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
                         Target Completion Date
                       </p>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">
-                        {order.estimated_completion_date
-                          ? new Date(
-                              order.estimated_completion_date,
-                            ).toLocaleDateString()
-                          : "Not Scheduled"}
+                      <p className="text-sm font-mono tabular-nums font-bold text-slate-900 dark:text-white">
+                        {formatDate(order.estimated_completion_date)}
                       </p>
                     </div>
                   </section>
 
                   {/* Line Items Table (Checklist Mode for Shop Floor) */}
-                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-sm flex flex-col overflow-hidden">
+                  <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[20px] sm:rounded-[24px] shadow-xs flex flex-col overflow-hidden">
                     <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">
                         Approved Work Order Checklist
                       </h3>
                     </div>
                     <div className="p-5 sm:p-6 space-y-3">
-                      {order.items.map((item) => {
+                      {order.items?.map((item) => {
                         const isService = item.line_type === "SERVICE";
-
+                        const itemTitle = isService
+                          ? item.service_name
+                          : item.item_name;
                         const gross =
-                          parseFloat(item.recorded_selling_price) *
-                          item.quantity;
-                        const net = gross - parseFloat(item.discount_amount);
+                          (parseFloat(item.recorded_selling_price) || 0) *
+                          (Number(item.quantity) || 1);
+                        const disc = parseFloat(item.discount_amount) || 0;
+                        const net = Math.max(0, gross - disc);
 
                         return (
                           <div
                             key={item.id}
-                            className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-[16px] sm:rounded-[20px] flex items-center justify-between group transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-800"
+                            className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-2xl sm:rounded-[20px] flex items-center justify-between gap-3 group transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/80"
                           >
-                            <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
                               <div
-                                className={`w-2 h-2 rounded-full shrink-0 ${isService ? "bg-amber-400" : "bg-blue-400"}`}
+                                aria-hidden="true"
+                                className={`w-2 h-2 rounded-full shrink-0 ${
+                                  isService ? "bg-amber-400" : "bg-blue-400"
+                                }`}
                               />
                               <div className="flex flex-col min-w-0">
-                                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate uppercase italic">
-                                  {isService
-                                    ? item.service_name
-                                    : item.item_name}
+                                <p
+                                  className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate uppercase italic"
+                                  title={itemTitle}
+                                >
+                                  {itemTitle}
                                 </p>
 
-                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-widest mt-0.5">
+                                <p className="text-[10px] font-mono tabular-nums font-bold text-slate-500 dark:text-slate-400 tracking-wider mt-0.5">
                                   {item.quantity}x @ ₱
-                                  {parseFloat(
-                                    item.recorded_selling_price,
-                                  ).toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                  })}
-                                  {parseFloat(item.discount_amount) > 0 && (
-                                    <span className="text-amber-500 ml-1.5 font-bold">
-                                      (Disc: -₱
-                                      {parseFloat(
-                                        item.discount_amount,
-                                      ).toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                      })}
-                                      )
+                                  {formatCurrency(item.recorded_selling_price)}
+                                  {disc > 0 && (
+                                    <span className="text-amber-600 dark:text-overdrive-yellow ml-1.5 font-bold">
+                                      (Disc: -₱{formatCurrency(disc)})
                                     </span>
                                   )}
                                 </p>
                               </div>
                             </div>
-                            <span className="text-sm font-black text-slate-900 dark:text-white font-mono shrink-0">
-                              ₱
-                              {net.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                              })}
+                            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono tabular-nums shrink-0">
+                              ₱{formatCurrency(net)}
                             </span>
                           </div>
                         );
@@ -284,56 +373,40 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                   </section>
 
                   {/* Totals Lock */}
-                  <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl opacity-95">
-                    <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4 border-b border-white/10 pb-3">
+                  <section className="bg-slate-900 dark:bg-black rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 text-white shadow-xl border border-slate-800 dark:border-white/10">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500 dark:text-overdrive-yellow mb-4 border-b border-white/10 pb-3">
                       Locked Financials
-                    </p>
-                    <div className="space-y-2 mb-5 text-sm font-medium text-slate-400">
-                      <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                    </h3>
+                    <div className="space-y-2 mb-5 text-xs sm:text-sm font-medium text-slate-400">
+                      <div className="flex justify-between items-center bg-slate-800/60 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
                         <span>Subtotal (Gross)</span>
-                        <span className="font-bold text-slate-200 font-mono">
-                          ₱
-                          {parseFloat(order.subtotal).toLocaleString(
-                            undefined,
-                            { minimumFractionDigits: 2 },
-                          )}
+                        <span className="font-bold text-slate-200 font-mono tabular-nums">
+                          ₱{formatCurrency(order.subtotal)}
                         </span>
                       </div>
 
                       {parseFloat(order.total_discount) > 0 && (
-                        <div className="flex justify-between items-center bg-amber-500/10 p-3 sm:p-4 rounded-xl text-amber-500">
+                        <div className="flex justify-between items-center bg-amber-500/10 p-3 sm:p-4 rounded-xl text-amber-400 border border-amber-500/20">
                           <span className="font-bold">Total Discounts</span>
-                          <span className="font-black font-mono">
-                            - ₱
-                            {parseFloat(order.total_discount).toLocaleString(
-                              undefined,
-                              { minimumFractionDigits: 2 },
-                            )}
+                          <span className="font-black font-mono tabular-nums">
+                            - ₱{formatCurrency(order.total_discount)}
                           </span>
                         </div>
                       )}
 
-                      <div className="flex justify-between items-center bg-slate-800/50 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
+                      <div className="flex justify-between items-center bg-slate-800/60 dark:bg-slate-900 p-3 sm:p-4 rounded-xl">
                         <span>VAT Amount</span>
-                        <span className="font-bold text-slate-200 font-mono">
-                          ₱
-                          {parseFloat(order.vat_amount).toLocaleString(
-                            undefined,
-                            { minimumFractionDigits: 2 },
-                          )}
+                        <span className="font-bold text-slate-200 font-mono tabular-nums">
+                          ₱{formatCurrency(order.vat_amount)}
                         </span>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/50">
+                    <div className="flex justify-between items-center pt-4 sm:pt-5 border-t border-slate-700/60 gap-3">
                       <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-300">
                         Grand Total
                       </span>
-                      <span className="text-2xl sm:text-3xl font-black text-amber-500 tracking-tight font-mono">
-                        ₱
-                        {parseFloat(order.grand_total).toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2 },
-                        )}
+                      <span className="text-2xl sm:text-3xl font-black text-amber-500 dark:text-overdrive-yellow tracking-tight font-mono tabular-nums">
+                        ₱{formatCurrency(order.grand_total)}
                       </span>
                     </div>
                   </section>
@@ -341,9 +414,9 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
                   {/* Notes */}
                   {order.notes && (
                     <section className="p-5 sm:p-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-[20px] sm:rounded-[24px]">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-2">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-overdrive-yellow mb-2">
                         Operational Notes
-                      </p>
+                      </h3>
                       <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200/80 italic leading-relaxed">
                         "{order.notes}"
                       </p>
@@ -353,21 +426,27 @@ const SalesOrderDrawer = ({ isOpen, onClose, salesOrderId }) => {
               )}
             </div>
 
-            {/* Print Footer Stub */}
+            {/* Print Footer */}
             <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
               <button
+                type="button"
                 onClick={handlePrint}
                 disabled={!order || loading || isPrinting}
-                className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white border border-slate-200/80 dark:border-slate-700 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isPrinting ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Generating PDF...
+                    <Loader2
+                      size={16}
+                      aria-hidden="true"
+                      className="animate-spin"
+                    />
+                    <span>Generating PDF...</span>
                   </>
                 ) : (
                   <>
-                    <Printer size={16} /> Print Document
+                    <Printer size={16} aria-hidden="true" />
+                    <span>Print Document</span>
                   </>
                 )}
               </button>

@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Scale,
   Download,
-  Search,
   CheckCircle2,
   AlertTriangle,
   Calculator,
   Eye,
+  ChevronDown,
 } from "lucide-react";
 
 // Services
@@ -41,6 +41,12 @@ const TrialBalance = () => {
   const { showToast } = useApp();
   const navigate = useNavigate();
 
+  // Accessible Filter Modal Control IDs
+  const branchFilterSelectId = useId();
+  const typeFilterSelectId = useId();
+  const cutoffDateInputId = useId();
+  const hideZeroCheckboxId = useId();
+
   // State
   const [data, setData] = useState(null);
   const [branches, setBranches] = useState([]);
@@ -60,7 +66,7 @@ const TrialBalance = () => {
     (typeFilter !== "all" ? 1 : 0) +
     (branchFilter !== "all" ? 1 : 0) +
     (endDate ? 1 : 0) +
-    (hideZero ? 1 : 0);
+    (!hideZero ? 1 : 0);
 
   // Initial Load: Branches
   useEffect(() => {
@@ -71,7 +77,7 @@ const TrialBalance = () => {
   }, []);
 
   // Fetch Trial Balance Data
-  const loadTrialBalance = async () => {
+  const loadTrialBalance = useCallback(async () => {
     try {
       setLoading(true);
       const res = await trialBalanceService.getTrialBalance({
@@ -83,17 +89,26 @@ const TrialBalance = () => {
       });
       setData(res.data);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(
+        error.message || "Unable to load Trial Balance report.",
+        "error",
+      );
       setData(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    debouncedSearchQuery,
+    typeFilter,
+    branchFilter,
+    endDate,
+    hideZero,
+    showToast,
+  ]);
 
   useEffect(() => {
     loadTrialBalance();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchQuery, typeFilter, branchFilter, endDate, hideZero]);
+  }, [loadTrialBalance]);
 
   const resetFilters = () => {
     setTypeFilter("all");
@@ -111,35 +126,73 @@ const TrialBalance = () => {
     });
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) {
+      return new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      });
+    }
+    const [year, month, day] = String(dateString).split("T")[0].split("-");
+    if (year && month && day) {
+      const localDate = new Date(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1,
+        parseInt(day, 10),
+      );
+      if (!isNaN(localDate.getTime())) {
+        return localDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+        });
+      }
+    }
+    const fallback = new Date(dateString);
+    return isNaN(fallback.getTime())
+      ? String(dateString)
+      : fallback.toLocaleDateString("en-US", {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+        });
+  };
+
   const getTypeBadge = (type) => {
     switch (type) {
       case "ASSET":
-        return "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20";
+        return "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20";
       case "LIABILITY":
-        return "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20";
+        return "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20";
       case "EQUITY":
-        return "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20";
+        return "bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20";
       case "INCOME":
-        return "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20";
+        return "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20";
       case "EXPENSE":
-        return "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20";
+        return "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20";
       default:
-        return "bg-slate-50 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400 border border-slate-200 dark:border-slate-500/20";
+        return "bg-slate-100 text-slate-700 dark:bg-slate-700/80 dark:text-slate-300 border border-slate-200 dark:border-slate-600";
     }
   };
 
   // Inject a Grand Total row for the DataTable
-  const tableData = data ? [...data.accounts] : [];
-  if (data && tableData.length > 0) {
-    tableData.push({
-      is_total_row: true,
-      debit_balance: data.summary.total_debits,
-      credit_balance: data.summary.total_credits,
-    });
-  }
+  const tableData = useMemo(() => {
+    const accountsList = Array.isArray(data?.accounts)
+      ? [...data.accounts]
+      : [];
+    if (accountsList.length > 0 && data?.summary) {
+      accountsList.push({
+        is_total_row: true,
+        debit_balance: data.summary.total_debits,
+        credit_balance: data.summary.total_credits,
+      });
+    }
+    return accountsList;
+  }, [data]);
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       <PageHeader
         title="Trial Balance"
         subtitle="Mathematical Parity & Pre-Reporting Audit"
@@ -167,7 +220,7 @@ const TrialBalance = () => {
       </PageHeader>
 
       {/* KPI DASHBOARD */}
-      {data && (
+      {data?.summary && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 print:hidden">
           <StatCard
             title="Total Debit"
@@ -202,19 +255,17 @@ const TrialBalance = () => {
         <p className="text-sm font-bold text-slate-600 mt-1 uppercase">
           {branchFilter === "all"
             ? "Enterprise Global (Consolidated)"
-            : branches.find((b) => b.id.toString() === branchFilter)
+            : branches.find((b) => b.id.toString() === branchFilter.toString())
                 ?.branch_name || "Branch Specific"}
         </p>
-        <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-widest">
-          As of{" "}
-          {endDate
-            ? new Date(endDate).toLocaleDateString()
-            : new Date().toLocaleDateString()}
+        <p className="text-[10px] font-mono tabular-nums font-bold text-slate-500 mt-1 uppercase tracking-widest">
+          As of {formatDate(endDate)}
         </p>
       </div>
 
       {/* DATA TABLE */}
       <DataTable
+        caption="Trial Balance Pre-Reporting Mathematical Parity Audit"
         headers={[
           "Account Code",
           "Account Name",
@@ -235,73 +286,95 @@ const TrialBalance = () => {
                 key="grand-total"
                 className="bg-slate-50 dark:bg-slate-900/80 border-t-4 border-double border-slate-900 dark:border-white print:bg-transparent print:border-black"
               >
-                <td colSpan={3} className="px-4 sm:px-8 py-5 text-right">
-                  <span className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white print:text-black">
+                <td
+                  colSpan={3}
+                  className="px-4 sm:px-8 py-5 text-right whitespace-nowrap"
+                >
+                  <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white print:text-black">
                     Grand Totals:
                   </span>
                 </td>
-                <td className="px-4 sm:px-8 py-5 text-right">
-                  <span className="text-base font-black font-mono text-slate-900 dark:text-white print:text-black">
-                    {formatCurrency(acc.debit_balance)}
+                <td className="px-4 sm:px-8 py-5 text-right whitespace-nowrap">
+                  <span className="text-sm sm:text-base font-black font-mono tabular-nums text-slate-900 dark:text-white print:text-black">
+                    ₱{formatCurrency(acc.debit_balance)}
                   </span>
                 </td>
-                <td className="px-4 sm:px-8 py-5 text-right">
-                  <span className="text-base font-black font-mono text-slate-900 dark:text-white print:text-black">
-                    {formatCurrency(acc.credit_balance)}
+                <td className="px-4 sm:px-8 py-5 text-right whitespace-nowrap">
+                  <span className="text-sm sm:text-base font-black font-mono tabular-nums text-slate-900 dark:text-white print:text-black">
+                    ₱{formatCurrency(acc.credit_balance)}
                   </span>
                 </td>
-                <td className="px-4 sm:px-8 py-5"></td>
+                <td className="px-4 sm:px-8 py-5" />
               </tr>
             );
           }
 
+          const debitBal = parseFloat(acc.debit_balance) || 0;
+          const creditBal = parseFloat(acc.credit_balance) || 0;
+
           return (
             <tr
               key={`acc-${acc.id}-${idx}`}
-              className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors print:hover:bg-transparent"
+              className="group table-row-hover border-b border-slate-100 dark:border-white/5 last:border-0 print:hover:bg-transparent"
             >
-              <td className="px-4 sm:px-8 py-4">
-                <span className="inline-flex px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[11px] font-black text-slate-800 dark:text-slate-300 font-mono tracking-wider print:bg-transparent print:border print:border-slate-400 print:text-black">
+              {/* Account Code */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 dark:bg-slate-900/70 dark:text-slate-200 border border-slate-200/80 dark:border-white/10 text-xs font-black font-mono tabular-nums tracking-wider print:bg-transparent print:border print:border-slate-400 print:text-black">
                   {acc.account_code}
                 </span>
               </td>
 
-              <td className="px-4 sm:px-8 py-4">
-                <p className="text-sm font-bold text-slate-900 dark:text-white uppercase truncate max-w-[250px] print:text-black">
+              {/* Account Name */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <p
+                  className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white uppercase truncate max-w-[260px] print:text-black"
+                  title={acc.account_name}
+                >
                   {acc.account_name}
                 </p>
               </td>
 
-              <td className="px-4 sm:px-8 py-4">
+              {/* Account Type */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
                 <span
-                  className={`inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest print:bg-transparent print:border print:border-slate-400 print:text-black ${getTypeBadge(acc.account_type)}`}
+                  className={`inline-flex px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest print:bg-transparent print:border print:border-slate-400 print:text-black ${getTypeBadge(
+                    acc.account_type,
+                  )}`}
                 >
                   {acc.account_type}
                 </span>
               </td>
 
-              <td className="px-4 sm:px-8 py-4 text-right">
-                {parseFloat(acc.debit_balance) > 0 ? (
-                  <span className="text-sm font-black font-mono text-slate-900 dark:text-white print:text-black">
-                    {formatCurrency(acc.debit_balance)}
+              {/* Debit Balance */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
+                {debitBal > 0 ? (
+                  <span className="text-xs sm:text-sm font-black font-mono tabular-nums text-slate-900 dark:text-white print:text-black">
+                    {formatCurrency(debitBal)}
                   </span>
                 ) : (
-                  <span className="text-slate-300 dark:text-slate-700">-</span>
+                  <span className="text-slate-300 dark:text-slate-600 font-mono">
+                    -
+                  </span>
                 )}
               </td>
 
-              <td className="px-4 sm:px-8 py-4 text-right">
-                {parseFloat(acc.credit_balance) > 0 ? (
-                  <span className="text-sm font-black font-mono text-slate-900 dark:text-white print:text-black">
-                    {formatCurrency(acc.credit_balance)}
+              {/* Credit Balance */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
+                {creditBal > 0 ? (
+                  <span className="text-xs sm:text-sm font-black font-mono tabular-nums text-slate-900 dark:text-white print:text-black">
+                    {formatCurrency(creditBal)}
                   </span>
                 ) : (
-                  <span className="text-slate-300 dark:text-slate-700">-</span>
+                  <span className="text-slate-300 dark:text-slate-600 font-mono">
+                    -
+                  </span>
                 )}
               </td>
 
-              <td className="px-4 sm:px-8 py-4 text-right">
+              {/* Action */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
                 <button
+                  type="button"
                   onClick={() => {
                     const params = new URLSearchParams();
                     params.append("accountId", acc.id);
@@ -315,10 +388,11 @@ const TrialBalance = () => {
                       `/manager/accounting/general-ledger?${params.toString()}`,
                     );
                   }}
-                  className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer print:hidden"
-                  title="View Account Ledger"
+                  className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-200/60 dark:hover:border-blue-500/20 rounded-xl transition-all active:scale-95 cursor-pointer print:hidden"
+                  title={`View General Ledger for ${acc.account_code}`}
+                  aria-label={`View general ledger for ${acc.account_code} ${acc.account_name}`}
                 >
-                  <Eye size={16} />
+                  <Eye size={16} aria-hidden="true" />
                 </button>
               </td>
             </tr>
@@ -335,67 +409,88 @@ const TrialBalance = () => {
       >
         <div className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={branchFilterSelectId} className="form-label">
               Branch Isolation
             </label>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-            >
-              <option value="all">Enterprise Global (Consolidated)</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.branch_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={branchFilterSelectId}
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">Enterprise Global (Consolidated)</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.branch_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={typeFilterSelectId} className="form-label">
               Account Type
             </label>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-            >
-              {ACCOUNT_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t === "all" ? "All Classifications" : t}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={typeFilterSelectId}
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                {ACCOUNT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t === "all" ? "All Classifications" : t}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={cutoffDateInputId} className="form-label">
               As Of Date (Cutoff)
             </label>
             <input
+              id={cutoffDateInputId}
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+              className="form-input font-mono tabular-nums cursor-pointer"
             />
           </div>
 
-          <div className="pt-2">
-            <label className="flex items-center gap-3 cursor-pointer group p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors hover:border-amber-300">
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700/50">
+            <label
+              htmlFor={hideZeroCheckboxId}
+              className="flex items-center gap-3 cursor-pointer group p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors hover:border-amber-300 dark:hover:border-amber-500/40 select-none"
+            >
               <input
+                id={hideZeroCheckboxId}
                 type="checkbox"
                 checked={hideZero}
                 onChange={(e) => setHideZero(e.target.checked)}
-                className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500 focus:ring-offset-0 bg-white dark:bg-slate-800 cursor-pointer shrink-0"
+                className="w-4 h-4 rounded border-slate-300 accent-amber-500 text-amber-500 focus:ring-amber-500 bg-white dark:bg-slate-800 cursor-pointer shrink-0"
               />
               <div className="flex flex-col">
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 group-hover:text-amber-500 transition-colors">
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 group-hover:text-amber-600 dark:group-hover:text-overdrive-yellow transition-colors">
                   Hide Zero Balances
                 </span>
-                <span className="text-[9px] text-slate-400 leading-tight mt-0.5">
-                  Excludes inactive accounts with ₱0.00 debit/credit to keep the
-                  report clean.
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
+                  Excludes accounts with ₱0.00 debit/credit to keep the report
+                  clean.
                 </span>
               </div>
             </label>

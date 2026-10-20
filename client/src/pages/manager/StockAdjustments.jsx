@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Scale,
   Clock,
@@ -7,6 +8,7 @@ import {
   ArrowDownRight,
   Eye,
   CheckCircle,
+  ChevronDown,
 } from "lucide-react";
 import { stockAdjustmentService } from "../../services/manager/stockAdjustment.service";
 import { inventoryService } from "../../services/manager/inventory.service";
@@ -25,8 +27,18 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import { useApp } from "../../context/AppContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
+const STATUS_OPTIONS = [
+  { label: "Pending", value: "PENDING" },
+  { label: "Approved", value: "APPROVED" },
+  { label: "Rejected", value: "REJECTED" },
+];
+
+const ITEMS_PER_PAGE = 10;
+
 const StockAdjustments = () => {
   const { showToast } = useApp();
+  const [searchParams] = useSearchParams();
+  const branchSelectId = useId();
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,12 +49,13 @@ const StockAdjustments = () => {
   const [statusFilter, setStatusFilter] = useState("PENDING");
 
   const [branches, setBranches] = useState([]);
-  const [branchFilter, setBranchFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState(
+    () => searchParams.get("branch") || "all",
+  );
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   // View States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,7 +71,7 @@ const StockAdjustments = () => {
       .catch((err) => console.error("Failed to load branches", err));
   }, []);
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     try {
       setLoading(true);
       const response = await stockAdjustmentService.getRequests(
@@ -68,18 +81,36 @@ const StockAdjustments = () => {
         statusFilter,
         branchFilter,
       );
-      setRequests(response.data?.requests || []);
-      setTotalPages(response.data?.pagination?.totalPages || 1);
+
+      const fetchedRequests = response.data?.requests || [];
+      const fetchedTotalPages = response.data?.pagination?.totalPages || 1;
+
+      if (fetchedRequests.length === 0 && currentPage > fetchedTotalPages) {
+        setCurrentPage(Math.max(1, fetchedTotalPages));
+        return;
+      }
+
+      setRequests(fetchedRequests);
+      setTotalPages(fetchedTotalPages);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(
+        error.message || "Unable to load stock adjustment requests.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    currentPage,
+    debouncedSearchQuery,
+    statusFilter,
+    branchFilter,
+    showToast,
+  ]);
 
   useEffect(() => {
     loadRequests();
-  }, [currentPage, debouncedSearchQuery, statusFilter, branchFilter]);
+  }, [loadRequests]);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -97,19 +128,15 @@ const StockAdjustments = () => {
   };
 
   const handleResolution = async (id, action, remarks) => {
-    try {
-      if (action === "APPROVE") {
-        const res = await stockAdjustmentService.approveRequest(id, remarks);
-        showToast(res.message, "success");
-      } else {
-        const res = await stockAdjustmentService.rejectRequest(id, remarks);
-        showToast(res.message, "info");
-      }
-      setIsModalOpen(false);
-      loadRequests();
-    } catch (error) {
-      throw error;
+    if (action === "APPROVE") {
+      const res = await stockAdjustmentService.approveRequest(id, remarks);
+      showToast(res.message, "success");
+    } else {
+      const res = await stockAdjustmentService.rejectRequest(id, remarks);
+      showToast(res.message, "info");
     }
+    setIsModalOpen(false);
+    loadRequests();
   };
 
   const handleOpenView = (req) => {
@@ -124,10 +151,11 @@ const StockAdjustments = () => {
   const resetFilters = () => {
     setBranchFilter("all");
     if (currentPage !== 1) setCurrentPage(1);
+    setIsFilterModalOpen(false);
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       {/* UNIVERSAL PAGE HEADER */}
       <PageHeader
         title="Stock Adjustments"
@@ -149,16 +177,15 @@ const StockAdjustments = () => {
         <StatusToggle
           activeValue={statusFilter}
           onToggle={handleStatusToggle}
-          options={[
-            { label: "Pending", value: "PENDING" },
-            { label: "Approved", value: "APPROVED" },
-            { label: "Rejected", value: "REJECTED" },
-          ]}
+          ariaLabel="Filter stock adjustment requests by status"
+          options={STATUS_OPTIONS}
         />
       </PageHeader>
 
       {/* DATA TABLE */}
       <DataTable
+        caption="Stock Adjustment Requests and Managerial Resolution Queue"
+        minWidth="min-w-[820px]"
         headers={[
           "Request Details",
           "Target Branch",
@@ -169,88 +196,125 @@ const StockAdjustments = () => {
         data={requests}
         loading={loading}
         emptyTitle={`No ${statusFilter.toLowerCase()} requests found`}
-        renderRow={(req) => (
-          <tr
-            key={req.id}
-            className="group transition-colors hover:bg-slate-50/50 dark:hover:bg-white/[0.02]"
-          >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="min-w-0 max-w-[200px] sm:max-w-[300px]">
-                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white italic uppercase truncate">
-                  {req.item_name}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                    {req.sku}
-                  </span>
-                  <span className="text-slate-300 dark:text-slate-600">•</span>
-                  <span className="text-[9px] font-medium text-slate-400">
-                    By {req.requester_first_name} {req.requester_last_name}
-                  </span>
+        emptySubtitle="No stock adjustment requests match your current search or filter criteria."
+        renderRow={(req) => {
+          const isAdd = req.adjustment_type === "ADD";
+          const isPending = req.status === "PENDING";
+
+          return (
+            <tr
+              key={req.id}
+              className="group table-row-hover border-b border-slate-100 dark:border-white/5 last:border-0"
+            >
+              {/* Request Details */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <div className="min-w-0 max-w-[200px] sm:max-w-[300px]">
+                  <p
+                    className="text-xs sm:text-sm font-black text-slate-900 dark:text-white italic uppercase truncate"
+                    title={req.item_name}
+                  >
+                    {req.item_name}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] font-mono tabular-nums font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                      {req.sku}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="text-slate-300 dark:text-slate-600"
+                    >
+                      •
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                      By {req.requester_first_name} {req.requester_last_name}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-                {req.branch_name}
-              </span>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <div className="flex flex-col items-start gap-1.5">
-                <div
-                  className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black tracking-widest uppercase ${
-                    req.adjustment_type === "ADD"
-                      ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                      : "bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400"
-                  }`}
-                >
-                  {req.adjustment_type === "ADD" ? (
-                    <ArrowUpRight size={12} />
-                  ) : (
-                    <ArrowDownRight size={12} />
-                  )}
-                  {req.requested_quantity} {req.uom}
-                </div>
-                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
-                  {(req.reason || "").replace(/_/g, " ")}
+              </td>
+
+              {/* Target Branch */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+                  {req.branch_name}
                 </span>
-              </div>
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <StatusBadge
-                label={req.status}
-                variant={
-                  req.status === "APPROVED"
-                    ? "success"
-                    : req.status === "REJECTED"
-                      ? "danger"
-                      : "warning"
-                }
-                icon={
-                  req.status === "APPROVED"
-                    ? CheckCircle
-                    : req.status === "REJECTED"
-                      ? XCircle
-                      : Clock
-                }
-              />
-            </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-1 sm:gap-2">
-                <button
-                  onClick={() => handleOpenView(req)}
-                  title={
-                    req.status === "PENDING" ? "Review Request" : "View Details"
+              </td>
+
+              {/* Variance Details */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <div className="flex flex-col items-start gap-1.5">
+                  <div
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-mono tabular-nums font-black tracking-widest uppercase border ${
+                      isAdd
+                        ? "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200/80 dark:border-emerald-500/20"
+                        : "bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-400 border-red-200/80 dark:border-red-500/20"
+                    }`}
+                  >
+                    {isAdd ? (
+                      <ArrowUpRight size={12} aria-hidden="true" />
+                    ) : (
+                      <ArrowDownRight size={12} aria-hidden="true" />
+                    )}
+                    <span>
+                      {isAdd ? "+" : "-"}
+                      {req.requested_quantity} {req.uom}
+                    </span>
+                  </div>
+                  <span
+                    className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[160px]"
+                    title={(req.reason || "").replace(/_/g, " ")}
+                  >
+                    {(req.reason || "").replace(/_/g, " ")}
+                  </span>
+                </div>
+              </td>
+
+              {/* Status */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+                <StatusBadge
+                  label={req.status}
+                  variant={
+                    req.status === "APPROVED"
+                      ? "success"
+                      : req.status === "REJECTED"
+                        ? "danger"
+                        : "warning"
                   }
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
-                >
-                  <Eye size={14} />{" "}
-                  {req.status === "PENDING" ? "Review" : "Details"}
-                </button>
-              </div>
-            </td>
-          </tr>
-        )}
+                  icon={
+                    req.status === "APPROVED"
+                      ? CheckCircle
+                      : req.status === "REJECTED"
+                        ? XCircle
+                        : Clock
+                  }
+                />
+              </td>
+
+              {/* Action */}
+              <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
+                <div className="flex items-center justify-end gap-1 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenView(req)}
+                    title={
+                      isPending
+                        ? `Review Request for ${req.item_name}`
+                        : `View Details for ${req.item_name}`
+                    }
+                    aria-label={
+                      isPending
+                        ? `Review pending stock adjustment request for ${req.item_name}`
+                        : `View resolved stock adjustment details for ${req.item_name}`
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Eye size={14} aria-hidden="true" />
+                    <span>{isPending ? "Review" : "Details"}</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          );
+        }}
       />
 
       <Pagination
@@ -268,21 +332,29 @@ const StockAdjustments = () => {
       >
         <div className="space-y-5">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+            <label htmlFor={branchSelectId} className="form-label">
               Branch Location
             </label>
-            <select
-              value={branchFilter}
-              onChange={handleBranchChange}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500 text-slate-700 dark:text-slate-300"
-            >
-              <option value="all">All Branches</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.branch_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id={branchSelectId}
+                value={branchFilter}
+                onChange={handleBranchChange}
+                className="form-select appearance-none pr-10 cursor-pointer"
+              >
+                <option value="all">All Branches</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.branch_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
           </div>
         </div>
       </FilterModal>

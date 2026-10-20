@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import {
   ClipboardList,
@@ -37,6 +37,8 @@ const STATUS_FILTERS = [
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
+const ITEMS_PER_PAGE = 10;
+
 const SalesOrders = () => {
   const { showToast } = useApp();
   const navigate = useNavigate();
@@ -51,11 +53,10 @@ const SalesOrders = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState(
-    searchParams.get("status") || "all",
+    () => searchParams.get("status") || "all",
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   // Modals & Drawers
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,6 +73,7 @@ const SalesOrders = () => {
     onConfirm: () => {},
   });
 
+  // Handle incoming Estimate-to-Order conversion handoff
   useEffect(() => {
     if (location.state?.estimateId) {
       setModalMode("CREATE");
@@ -81,11 +83,33 @@ const SalesOrders = () => {
     }
   }, [location.state]);
 
+  // Synchronize status filter if URL query param changes
   useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter]);
+    const paramStatus = searchParams.get("status") || "all";
+    setStatusFilter((prev) => {
+      if (prev !== paramStatus) {
+        setCurrentPage(1);
+        return paramStatus;
+      }
+      return prev;
+    });
+  }, [searchParams]);
 
-  const loadOrders = async () => {
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
+
+  const loadOrders = useCallback(async () => {
     try {
       setLoading(true);
       const response = await salesOrderService.getSalesOrders(
@@ -95,46 +119,53 @@ const SalesOrders = () => {
         statusFilter,
         "all",
       );
-      setOrders(response.data?.salesOrders || []);
-      setTotalPages(response.data?.pagination?.totalPages || 1);
+
+      const fetchedOrders = response.data?.salesOrders || [];
+      const fetchedTotalPages = response.data?.pagination?.totalPages || 1;
+
+      if (fetchedOrders.length === 0 && currentPage > fetchedTotalPages) {
+        setCurrentPage(Math.max(1, fetchedTotalPages));
+        return;
+      }
+
+      setOrders(fetchedOrders);
+      setTotalPages(fetchedTotalPages);
     } catch (error) {
-      showToast(error.message, "error");
+      showToast(
+        error.message || "Unable to load sales order records.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearchQuery, statusFilter, showToast]);
 
   useEffect(() => {
     loadOrders();
-  }, [currentPage, debouncedSearchQuery, statusFilter]);
+  }, [loadOrders]);
 
   const handleModalSubmit = async (formData) => {
-    try {
-      if (modalMode === "CREATE") {
-        await salesOrderService.createSalesOrder(formData);
-        showToast("Work Order initialized successfully.", "success");
-      } else {
-        await salesOrderService.updateSalesOrder(
-          selectedOrderData.id,
-          formData,
-        );
-        showToast("Work Order details updated.", "success");
-      }
-      setIsModalOpen(false);
-      loadOrders();
-    } catch (error) {
-      throw error;
+    if (modalMode === "CREATE") {
+      await salesOrderService.createSalesOrder(formData);
+      showToast("Job Order initialized successfully.", "success");
+    } else {
+      await salesOrderService.updateSalesOrder(selectedOrderData.id, formData);
+      showToast("Job Order details updated.", "success");
     }
+    setIsModalOpen(false);
+    setSelectedOrderData(null);
+    loadOrders();
   };
 
   const handleStatusChange = (order, newStatus) => {
     const isProgress = newStatus === "IN_PROGRESS";
     const isCompleted = newStatus === "COMPLETED";
+    const formattedStatus = newStatus.replace(/_/g, " ");
 
     const isCancellingFromProgress =
       order.status === "IN_PROGRESS" && newStatus === "CANCELLED";
 
-    let message = `Are you sure you want to mark ${order.sales_order_number} as ${newStatus}?`;
+    let message = `Are you sure you want to mark ${order.sales_order_number} as ${formattedStatus}?`;
 
     if (isCancellingFromProgress) {
       message = `Are you sure you want to cancel ${order.sales_order_number}? Cancelling this in-progress order will automatically return all issued parts back to physical inventory.`;
@@ -142,9 +173,9 @@ const SalesOrders = () => {
 
     setConfirmConfig({
       isOpen: true,
-      title: `${isCompleted ? "Complete" : isProgress ? "Start" : "Cancel"} Work Order`,
+      title: `${isCompleted ? "Complete" : isProgress ? "Start" : "Cancel"} Job Order`,
       message: message,
-      confirmText: `Yes, Mark ${newStatus}`,
+      confirmText: `Yes, Mark ${formattedStatus}`,
       variant: isCompleted ? "info" : isProgress ? "warning" : "danger",
       onConfirm: async () => {
         try {
@@ -154,22 +185,26 @@ const SalesOrders = () => {
 
           if (isCancellingFromProgress) {
             showToast(
-              `Order Cancelled. Parts have been restocked to inventory.`,
+              "Order Cancelled. Parts have been restocked to inventory.",
               "success",
             );
           } else {
-            showToast(`Work order marked as ${newStatus}.`, "success");
+            showToast(`Job order marked as ${formattedStatus}.`, "success");
           }
 
           loadOrders();
         } catch (error) {
-          showToast(error.message, "error");
+          showToast(
+            error.message || "Failed to update job order status.",
+            "error",
+          );
         }
       },
     });
   };
 
   const handleEditClick = async (orderId) => {
+    if (isEditingRow) return;
     try {
       setIsEditingRow(orderId);
       const res = await salesOrderService.getSalesOrderDetails(orderId);
@@ -207,8 +242,17 @@ const SalesOrders = () => {
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "TBD";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative pb-10 w-full">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 relative pb-10 w-full">
       <PageHeader
         title="Sales Orders"
         subtitle="Operational Work Hub"
@@ -216,12 +260,13 @@ const SalesOrders = () => {
       >
         <StatusToggle
           activeValue={statusFilter}
-          onToggle={setStatusFilter}
+          onToggle={handleStatusFilterChange}
+          ariaLabel="Filter sales orders by operational status"
           options={STATUS_FILTERS}
         />
         <SearchBar
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           isSearching={searchQuery !== debouncedSearchQuery}
           placeholder="Search Order..."
         />
@@ -238,6 +283,8 @@ const SalesOrders = () => {
 
       {/* DATA TABLE */}
       <DataTable
+        caption="Sales Orders Directory"
+        minWidth="min-w-[840px]"
         headers={[
           "Job Card",
           "Client Link",
@@ -249,74 +296,98 @@ const SalesOrders = () => {
         data={orders}
         loading={loading}
         emptyTitle="No Sales Orders Found"
+        emptySubtitle="Try adjusting your search or filter criteria, or convert an approved estimate."
         renderRow={(order) => (
           <tr
             key={order.id}
-            className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+            className="group table-row-hover border-b border-slate-100 dark:border-white/5 last:border-0"
           >
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-black tracking-widest uppercase">
+            {/* Job Card */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+              <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-900/70 dark:text-slate-300 border border-slate-200/80 dark:border-white/10 text-xs font-mono tabular-nums font-black tracking-widest uppercase">
                 {order.sales_order_number}
               </span>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">
+
+            {/* Client Link */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+              <p
+                className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase italic tracking-tight truncate max-w-[180px] sm:max-w-[240px]"
+                title={order.customer_name}
+              >
                 {order.customer_name}
               </p>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                {order.estimated_completion_date
-                  ? new Date(
-                      order.estimated_completion_date,
-                    ).toLocaleDateString()
-                  : "TBD"}
+
+            {/* Completion Target */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+              <p className="text-xs font-mono tabular-nums font-bold text-slate-700 dark:text-slate-300">
+                {formatDate(order.estimated_completion_date)}
               </p>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
-              <span className="text-sm font-black text-slate-900 dark:text-white">
+
+            {/* Grand Total */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
+              <span className="text-xs sm:text-sm font-mono tabular-nums font-black text-slate-900 dark:text-white">
                 ₱
-                {parseFloat(order.grand_total).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
+                {(parseFloat(order.grand_total) || 0).toLocaleString(
+                  undefined,
+                  {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  },
+                )}
               </span>
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6">
+
+            {/* Status */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 whitespace-nowrap">
               <StatusBadge
-                label={order.status.replace("_", " ")}
+                label={
+                  order.status
+                    ? order.status.replace(/_/g, " ")
+                    : "PENDING SERVICE"
+                }
                 variant={getStatusVariant(order.status)}
                 icon={getStatusIcon(order.status)}
               />
             </td>
-            <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
-              <div className="flex items-center justify-end gap-1 sm:gap-2">
+
+            {/* Actions */}
+            <td className="px-4 sm:px-8 py-4 sm:py-5 text-right whitespace-nowrap">
+              <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedOrderId(order.id);
                     setIsDrawerOpen(true);
                   }}
-                  title="View Document"
-                  className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                  title={`View ${order.sales_order_number}`}
+                  aria-label={`View sales order ${order.sales_order_number}`}
+                  className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-200/60 dark:hover:border-blue-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                 >
-                  <FileSearch size={16} />
+                  <FileSearch size={16} aria-hidden="true" />
                 </button>
 
                 {/* Edit Dates & Notes */}
                 {(order.status === "PENDING_SERVICE" ||
                   order.status === "IN_PROGRESS") && (
                   <button
+                    type="button"
                     onClick={() => handleEditClick(order.id)}
                     disabled={isEditingRow === order.id}
-                    title="Edit Dates & Notes"
-                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                    title={`Edit ${order.sales_order_number} Dates & Notes`}
+                    aria-label={`Edit dates and notes for ${order.sales_order_number}`}
+                    className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-amber-600 dark:hover:text-overdrive-yellow hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-200/60 dark:hover:border-amber-500/20 rounded-xl transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                   >
                     {isEditingRow === order.id ? (
                       <Loader2
                         size={16}
+                        aria-hidden="true"
                         className="animate-spin text-amber-500"
                       />
                     ) : (
-                      <Edit2 size={16} />
+                      <Edit2 size={16} aria-hidden="true" />
                     )}
                   </button>
                 )}
@@ -324,37 +395,43 @@ const SalesOrders = () => {
                 {/* Convert to Invoice */}
                 {order.status === "COMPLETED" && (
                   <button
+                    type="button"
                     onClick={() =>
                       navigate("/staff/sales/invoices", {
                         state: { salesOrderId: order.id },
                       })
                     }
                     title="Convert to Invoice"
-                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors cursor-pointer"
+                    aria-label={`Convert ${order.sales_order_number} to Invoice`}
+                    className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:border-indigo-200/60 dark:hover:border-indigo-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                   >
-                    <Receipt size={16} />
+                    <Receipt size={16} aria-hidden="true" />
                   </button>
                 )}
 
                 {/* Start Service */}
                 {order.status === "PENDING_SERVICE" && (
                   <button
+                    type="button"
                     onClick={() => handleStatusChange(order, "IN_PROGRESS")}
-                    title="Start Service"
-                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors cursor-pointer"
+                    title={`Start Service on ${order.sales_order_number}`}
+                    aria-label={`Start service on ${order.sales_order_number}`}
+                    className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-200/60 dark:hover:border-blue-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                   >
-                    <Play size={16} />
+                    <Play size={16} aria-hidden="true" />
                   </button>
                 )}
 
                 {/* Mark Completed */}
                 {order.status === "IN_PROGRESS" && (
                   <button
+                    type="button"
                     onClick={() => handleStatusChange(order, "COMPLETED")}
-                    title="Mark Completed"
-                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer"
+                    title={`Mark ${order.sales_order_number} Completed`}
+                    aria-label={`Mark ${order.sales_order_number} as Completed`}
+                    className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:border-emerald-200/60 dark:hover:border-emerald-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                   >
-                    <CheckCircle size={16} />
+                    <CheckCircle size={16} aria-hidden="true" />
                   </button>
                 )}
 
@@ -362,11 +439,13 @@ const SalesOrders = () => {
                 {(order.status === "PENDING_SERVICE" ||
                   order.status === "IN_PROGRESS") && (
                   <button
+                    type="button"
                     onClick={() => handleStatusChange(order, "CANCELLED")}
-                    title="Cancel Order"
-                    className="p-1.5 sm:p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
+                    title={`Cancel ${order.sales_order_number}`}
+                    aria-label={`Cancel ${order.sales_order_number}`}
+                    className="p-2 sm:p-2.5 text-slate-400 border border-transparent hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:border-rose-200/60 dark:hover:border-rose-500/20 rounded-xl transition-all active:scale-95 cursor-pointer"
                   >
-                    <XCircle size={16} />
+                    <XCircle size={16} aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -384,7 +463,10 @@ const SalesOrders = () => {
       {/* Modals & Drawers */}
       <SalesOrderModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedOrderData(null);
+        }}
         onSubmit={handleModalSubmit}
         mode={modalMode}
         initialData={selectedOrderData}
@@ -396,7 +478,7 @@ const SalesOrders = () => {
       />
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
-        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
         onConfirm={confirmConfig.onConfirm}
         title={confirmConfig.title}
         message={confirmConfig.message}

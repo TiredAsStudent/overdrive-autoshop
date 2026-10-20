@@ -23,7 +23,7 @@ class StockAdjustment {
     }
     if (search) {
       conditions.push(
-        `(i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`,
+        `(sar.adjustment_number ILIKE $${paramIdx} OR i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`,
       );
       values.push(`%${search}%`);
       paramIdx++;
@@ -67,7 +67,7 @@ class StockAdjustment {
     }
     if (search) {
       conditions.push(
-        `(i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`,
+        `(sar.adjustment_number ILIKE $${paramIdx} OR i.item_name ILIKE $${paramIdx} OR i.sku ILIKE $${paramIdx})`,
       );
       values.push(`%${search}%`);
       paramIdx++;
